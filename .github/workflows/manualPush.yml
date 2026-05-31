@@ -42,8 +42,8 @@ jobs:
         uses: docker/metadata-action@v4
         with:
           images: |
-            ${{ secrets.DOCKER_USERNAME }}/paperlesser
-            ghcr.io/${{ github.repository_owner }}/paperlesser
+            ${{ secrets.DOCKER_USERNAME }}/archivista-ai
+            ghcr.io/${{ github.repository_owner }}/archivista-ai
           tags: |
             type=raw,value=${{ inputs.tag }}
             type=sha,prefix={{branch}}-
@@ -63,5 +63,5 @@ jobs:
           echo "Successfully built and pushed Docker images with tag: **${{ inputs.tag }}**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Images pushed to:" >> $GITHUB_STEP_SUMMARY
-          echo "- Docker Hub: \`${{ secrets.DOCKER_USERNAME }}/paperlesser:${{ inputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "- GitHub Container Registry: \`ghcr.io/${{ github.repository_owner }}/paperlesser:${{ inputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker Hub: \`${{ secrets.DOCKER_USERNAME }}/archivista-ai:${{ inputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Container Registry: \`ghcr.io/${{ github.repository_owner }}/archivista-ai:${{ inputs.tag }}\`" >> $GITHUB_STEP_SUMMARY

@@ -118,7 +118,7 @@ const DEFAULT_MODELS = {
   openrouter: 'openai/gpt-5.4-nano',
   ollama: 'llama3.2',
   compatible: '',
-  openai: 'gpt-5.4-mini',
+  openai: 'gpt-5.4-nano',
   azure: ''
 };
 

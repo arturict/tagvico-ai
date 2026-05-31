@@ -68,7 +68,13 @@ textarea {
   background: var(--bg-strong);
   color: var(--text);
   border-radius: 14px;
-  padding: 0.85rem 1rem;
+  padding: 1rem 1.05rem;
+  min-height: 48px;
+}
+
+textarea {
+  min-height: 140px;
+  line-height: 1.55;
 }
 
 code {
@@ -426,6 +432,7 @@ textarea:focus {
 .field-hint {
   color: var(--muted);
   font-size: 0.84rem;
+  line-height: 1.5;
 }
 
 .field-wide {
@@ -620,4 +627,50 @@ textarea:focus {
 
 #paperlessDiscoveryStatus[data-tone="warn"] {
   color: var(--warning);
+}
+
+.secret-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.secret-input input {
+  padding-right: 3.2rem;
+}
+
+.secret-toggle {
+  position: absolute;
+  right: 0.65rem;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  color: var(--muted);
+  display: inline-grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.secret-toggle:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+
+.help-card {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-strong);
+  padding: 1rem;
+  color: var(--muted);
+}
+
+.help-card strong {
+  color: var(--text);
+}
+
+.help-card p {
+  margin: 0.5rem 0 0;
+  line-height: 1.5;
 }

@@ -59,8 +59,8 @@ content and AI output against Paperless user profile data (`username`, name,
 email). Optional hints can be added:
 
 ```text
-artur: Artur, Arthur, invoices for Artur, private documents
-lukas: Lukas, Luc, school, work contract
+alex: Alex M., private invoices, health insurance
+finance: accounting team, vendor bills, receipts
 ```
 
 ## Development

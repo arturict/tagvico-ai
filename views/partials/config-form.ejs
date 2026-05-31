@@ -53,7 +53,10 @@
 
       <div class="field">
         <label for="paperlessToken">API token</label>
-            <input id="paperlessToken" name="paperlessToken" type="password" required value="<%= config.PAPERLESS_API_TOKEN %>" placeholder="Paste one Paperless API token">
+            <div class="secret-input">
+              <input id="paperlessToken" name="paperlessToken" type="password" required value="<%= config.PAPERLESS_API_TOKEN %>" placeholder="Paste one Paperless API token">
+              <button type="button" class="secret-toggle" data-toggle-secret="paperlessToken" aria-label="Show Paperless API token"><i class="fa-solid fa-eye"></i></button>
+            </div>
         <p class="field-hint">
           <a id="openPaperlessTokenLink" href="#" target="_blank" rel="noopener" class="inline-link">
             <i class="fa-solid fa-up-right-from-square"></i> Open Paperless-ngx to copy your API token
@@ -137,7 +140,10 @@
         <div class="form-grid">
           <div class="field field-wide">
             <label for="openrouterApiKey">OpenRouter API key</label>
-            <input id="openrouterApiKey" name="openrouterApiKey" type="password" value="<%= config.OPENROUTER_API_KEY %>">
+            <div class="secret-input">
+              <input id="openrouterApiKey" name="openrouterApiKey" type="password" value="<%= config.OPENROUTER_API_KEY %>">
+              <button type="button" class="secret-toggle" data-toggle-secret="openrouterApiKey" aria-label="Show OpenRouter API key"><i class="fa-solid fa-eye"></i></button>
+            </div>
           </div>
 
           <div class="field field-wide">
@@ -209,7 +215,10 @@
 
           <div class="field">
             <label for="compatibleApiKey">API key</label>
-            <input id="compatibleApiKey" name="compatibleApiKey" type="password" value="<%= config.COMPATIBLE_API_KEY %>" placeholder="optional for some local gateways">
+            <div class="secret-input">
+              <input id="compatibleApiKey" name="compatibleApiKey" type="password" value="<%= config.COMPATIBLE_API_KEY %>" placeholder="optional for some local gateways">
+              <button type="button" class="secret-toggle" data-toggle-secret="compatibleApiKey" aria-label="Show compatible API key"><i class="fa-solid fa-eye"></i></button>
+            </div>
           </div>
 
           <div class="field">
@@ -228,7 +237,10 @@
         <div class="form-grid">
           <div class="field">
             <label for="openaiKey">OpenAI API key</label>
-            <input id="openaiKey" name="openaiKey" type="password" value="<%= config.OPENAI_API_KEY %>">
+            <div class="secret-input">
+              <input id="openaiKey" name="openaiKey" type="password" value="<%= config.OPENAI_API_KEY %>">
+              <button type="button" class="secret-toggle" data-toggle-secret="openaiKey" aria-label="Show OpenAI API key"><i class="fa-solid fa-eye"></i></button>
+            </div>
           </div>
 
           <div class="field">
@@ -257,7 +269,10 @@
 
           <div class="field">
             <label for="azureApiKey">API key</label>
-            <input id="azureApiKey" name="azureApiKey" type="password" value="<%= config.AZURE_API_KEY %>">
+            <div class="secret-input">
+              <input id="azureApiKey" name="azureApiKey" type="password" value="<%= config.AZURE_API_KEY %>">
+              <button type="button" class="secret-toggle" data-toggle-secret="azureApiKey" aria-label="Show Azure API key"><i class="fa-solid fa-eye"></i></button>
+            </div>
           </div>
 
           <div class="field">
@@ -323,8 +338,8 @@
 
       <label class="choice-card <%= config.ACTIVATE_OWNER_ASSIGNMENT === 'yes' ? 'is-selected' : '' %>">
         <input type="checkbox" name="activateOwnerAssignment" <%= config.ACTIVATE_OWNER_ASSIGNMENT === 'yes' ? 'checked' : '' %> hidden>
-        <div class="choice-title"><span>Person assignment</span><span class="badge">Zero-config</span></div>
-        <div class="choice-copy">Assign docs to Paperless users when names like “artur” appear.</div>
+        <div class="choice-title"><span>Person assignment</span><span class="badge">Optional</span></div>
+        <div class="choice-copy">Assign documents to matching Paperless users. Works automatically from user names; hints are optional.</div>
       </label>
     </div>
 
@@ -375,16 +390,21 @@
 
   <div class="hero stack">
     <div>
-      <p class="section-kicker">5. People profiles</p>
-      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Teach assignment without setup pain</h2>
-      <p class="field-hint">Leave blank for automatic matching from Paperless users (username, name, email). Add optional lines when you want aliases or hints.</p>
+      <p class="section-kicker">5. Optional person hints</p>
+      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Help Archivista choose the right Paperless user</h2>
+      <p class="field-hint">You can leave this empty. Archivista already compares document text with each Paperless user name and email. Add hints only when a person has aliases, departments, or keywords that are not obvious from their account.</p>
     </div>
 
     <div class="form-grid">
       <div class="field field-wide">
-        <label for="ownerProfiles">Assignment profiles</label>
-        <textarea id="ownerProfiles" name="ownerProfiles" rows="7" placeholder="artur: Artur, Arthur, invoices for Artur, documents addressed to Artur&#10;nex: Nex, N. Example, personal docs"><%= config.OWNER_PROFILES %></textarea>
-        <p class="field-hint">Format: one profile per line, <code>username: alias, hint, keyword</code>. The username must match a Paperless user.</p>
+        <label for="ownerProfiles">Extra matching hints</label>
+        <textarea id="ownerProfiles" name="ownerProfiles" rows="7" placeholder="alex: Alex M., private invoices, health insurance&#10;finance: accounting team, vendor bills, receipts"><%= config.OWNER_PROFILES %></textarea>
+        <div class="help-card">
+          <strong>How this works</strong>
+          <p>Left side is an existing Paperless username. Right side is optional text that may appear in documents for that user.</p>
+          <p>Example: <code>alex: Alex M., private invoices, health insurance</code></p>
+          <p>If you are unsure, leave it blank and let automatic matching handle it.</p>
+        </div>
       </div>
     </div>
   </div>

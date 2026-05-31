@@ -174,7 +174,7 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
   const documentEditable = await paperlessService.getPermissionOfDocument(doc.id);
   if (!documentEditable) {
     console.log(`[DEBUG] Document belongs to: ${documentEditable}, skipping analysis`);
-    console.log(`[DEBUG] Document ${doc.id} Not Editable by Paper-Ai User, skipping analysis`);
+    console.log(`[DEBUG] Document ${doc.id} not editable by Archivista AI user, skipping analysis`);
     return null;
   }else {
     console.log(`[DEBUG] Document ${doc.id} rights for AI User - processed`);
@@ -196,7 +196,7 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
 
   const aiService = AIServiceFactory.getService();
   const analysis = await aiService.analyzeDocument(content, existingTags, existingCorrespondentList, existingDocumentTypesList, doc.id);
-  console.log('Repsonse from AI service:', analysis);
+  console.log('Response from AI service:', analysis);
   if (analysis.error) {
     throw new Error(`[ERROR] Document analysis failed: ${analysis.error}`);
   }
@@ -207,8 +207,6 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
 async function buildUpdateData(analysis, doc, content = '') {
   const updateData = {};
 
-  console.log('TEST: ', config.addAIProcessedTag)
-  console.log('TEST 2: ', config.addAIProcessedTags)
   // Only process tags if tagging is activated
   if (config.limitFunctions?.activateTagging !== 'no') {
     const { tagIds, errors } = await paperlessService.processTags(analysis.document.tags);

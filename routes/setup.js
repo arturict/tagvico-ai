@@ -1202,7 +1202,7 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
   const documentEditable = await paperlessService.getPermissionOfDocument(doc.id);
   if (!documentEditable) {
     console.log(`[DEBUG] Document belongs to: ${documentEditable}, skipping analysis`);
-    console.log(`[DEBUG] Document ${doc.id} Not Editable by Paper-Ai User, skipping analysis`);
+    console.log(`[DEBUG] Document ${doc.id} not editable by Archivista AI user, skipping analysis`);
     return null;
   }else {
     console.log(`[DEBUG] Document ${doc.id} rights for AI User - processed`);
@@ -1250,7 +1250,7 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
   }else{
     analysis = await aiService.analyzeDocument(content, existingTags, existingCorrespondentList, existingDocumentTypesList, doc.id, null, options);
   }
-  console.log('Repsonse from AI service:', analysis);
+  console.log('Response from AI service:', analysis);
   if (analysis.error) {
     throw new Error(`[ERROR] Document analysis failed: ${analysis.error}`);
   }
@@ -1998,19 +1998,21 @@ function normalizePaperlessBaseUrl(raw) {
  *      which means the instance is up but token-gated.
  *   4. A JSON API root listing the usual Paperless resources.
  */
-async function probePaperlessInstance(baseUrl, timeout = 2500) {
+async function probePaperlessInstance(baseUrl, timeout = 2500, token = '') {
   const url = normalizePaperlessBaseUrl(baseUrl);
   if (!url) return { url: baseUrl, ok: false };
+
+  const tokenHeader = token ? { Authorization: `Token ${token}` } : {};
 
   const get = (path) => axios.get(`${url}${path}`, {
     timeout,
     validateStatus: () => true,
     maxRedirects: 0,
-    headers: { Accept: 'application/json' }
+    headers: { Accept: 'application/json', ...tokenHeader }
   });
 
   try {
-    const response = await get('/api/');
+    const response = await get(token ? '/api/documents/?page_size=1' : '/api/');
     const headers = response.headers || {};
     const version = headers['x-version'] || null;
     const apiVersion = headers['x-api-version'] || null;
@@ -2021,8 +2023,22 @@ async function probePaperlessInstance(baseUrl, timeout = 2500) {
       version ||
       apiVersion ||
       (response.data && typeof response.data === 'object' &&
-        ('documents' in response.data || 'correspondents' in response.data || 'tags' in response.data))
+        ('documents' in response.data || 'correspondents' in response.data || 'tags' in response.data || 'results' in response.data))
     );
+
+    if (token && response.status === 200) {
+      const permission = await validatePaperlessTokenPermissions(url, token, timeout);
+      return {
+        url,
+        ok: permission.success,
+        status: response.status,
+        version,
+        apiVersion,
+        requiresAuth: false,
+        authenticated: permission.success,
+        error: permission.success ? null : permission.message
+      };
+    }
 
     // Signal 2: /api/ redirects to the DRF schema view (Paperless-ngx behaviour).
     if (!looksLikePaperless && response.status >= 300 && response.status < 400 &&
@@ -2086,6 +2102,12 @@ function buildDiscoveryCandidates(hint) {
   ['http://localhost:8000', 'http://127.0.0.1:8000', 'http://host.docker.internal:8000']
     .forEach(add);
 
+  // Common homelab/LAN addresses. This intentionally includes the local /24 so
+  // setup does not only rely on Docker DNS names.
+  for (let host = 1; host <= 254; host += 1) {
+    add(`http://192.168.1.${host}:8000`);
+  }
+
   // If the hint points at a host, also try the standard Paperless port on that host.
   const n = normalizePaperlessBaseUrl(hint);
   if (n) {
@@ -2097,6 +2119,32 @@ function buildDiscoveryCandidates(hint) {
   }
 
   return Array.from(candidates);
+}
+
+async function validatePaperlessTokenPermissions(baseUrl, token, timeout = 3500) {
+  if (!token) {
+    return { success: false, message: 'API token is required.' };
+  }
+
+  for (const endpoint of ['documents', 'tags', 'correspondents', 'document_types', 'users']) {
+    try {
+      const response = await axios.get(`${baseUrl}/api/${endpoint}/`, {
+        timeout,
+        validateStatus: () => true,
+        headers: {
+          Accept: 'application/json',
+          Authorization: `Token ${token}`
+        }
+      });
+      if (response.status !== 200) {
+        return { success: false, message: `Token check failed at /api/${endpoint}/ with HTTP ${response.status}.` };
+      }
+    } catch (error) {
+      return { success: false, message: `Token check failed at /api/${endpoint}/: ${error.code || error.message}` };
+    }
+  }
+
+  return { success: true, message: 'Paperless token can read documents and metadata.' };
 }
 
 /**
@@ -2129,6 +2177,16 @@ router.get('/api/paperless/probe', allowDuringSetup, async (req, res) => {
     return res.status(400).json({ success: false, error: 'url query parameter is required' });
   }
   const result = await probePaperlessInstance(url);
+  res.json({ success: result.ok, instance: result });
+});
+
+router.post('/api/paperless/probe', allowDuringSetup, express.json(), async (req, res) => {
+  const url = req.body?.url;
+  const token = req.body?.token;
+  if (!url) {
+    return res.status(400).json({ success: false, error: 'url is required' });
+  }
+  const result = await probePaperlessInstance(url, 3500, token || '');
   res.json({ success: result.ok, instance: result });
 });
 

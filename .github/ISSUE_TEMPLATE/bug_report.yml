@@ -4,7 +4,7 @@ title: "[Bug]: "
 labels: ["bug", "triage"]
 assignees:
   - ""
-projects: ["arturict/paperlesser"]
+projects: ["arturict/archivista-ai"]
 
 body:
   - type: markdown
@@ -67,8 +67,8 @@ body:
   - type: input
     id: paperless_ai_version
     attributes:
-      label: "🏷️ paperlesser Version"
-      description: "What version of paperlesser are you using? You can find this in your settings or docker-compose file."
+      label: "🏷️ Archivista AI Version"
+      description: "What version of Archivista AI are you using? You can find this in your settings or docker-compose file."
       placeholder: "e.g. v1.2.3, latest, commit hash, etc."
     validations:
       required: true
@@ -95,7 +95,7 @@ body:
     id: screenshots
     attributes:
       label: "🖼️ Screenshots of your settings page"
-      description: "Attach screenshots of your current paperlesser settings."
+      description: "Attach screenshots of your current Archivista AI settings."
       placeholder: "Drag & drop images or provide a link."
 
   - type: dropdown

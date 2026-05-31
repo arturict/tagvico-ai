@@ -8,7 +8,7 @@ const {
 const currentDir = decodeURIComponent(process.cwd());
 const envPath = path.join(currentDir, 'data', '.env');
 console.log('Loading .env from:', envPath); // Debug log
-require('dotenv').config({ path: envPath });
+require('dotenv').config({ path: envPath, override: true });
 
 // Helper function to parse boolean-like env vars
 const parseEnvBoolean = (value, defaultValue = 'yes') => {
@@ -58,7 +58,7 @@ console.log('Loaded environment variables:', {
 });
 
 module.exports = {
-  PAPERLESS_AI_VERSION: '1.0.0',
+  PAPERLESS_AI_VERSION: '1.0.1',
   CONFIGURED: false,
   disableAutomaticProcessing: process.env.DISABLE_AUTOMATIC_PROCESSING || 'no',
   predefinedMode: process.env.PROCESS_PREDEFINED_DOCUMENTS,

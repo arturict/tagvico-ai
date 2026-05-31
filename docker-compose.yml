@@ -1,7 +1,7 @@
 services:
-  paperlesser:
-    image: ghcr.io/arturict/paperlesser:latest
-    container_name: paperlesser
+  archivista-ai:
+    image: ghcr.io/arturict/archivista-ai:latest
+    container_name: archivista-ai
     network_mode: bridge
     restart: unless-stopped
     cap_drop:
@@ -15,7 +15,7 @@ services:
     ports:
       - "3000:${PAPERLESS_AI_PORT:-3000}"
     volumes:
-      - paperlesser_data:/app/data
+      - archivista_ai_data:/app/data
 
 volumes:
-  paperlesser_data:
+  archivista_ai_data:

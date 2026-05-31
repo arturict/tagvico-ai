@@ -6,6 +6,12 @@ const config = require('../config/config');
 const AzureOpenAI = require('openai').AzureOpenAI;
 const { normalizeProvider } = require('./providerCatalogService');
 
+function tokenLimitParam(model, value) {
+  return /^gpt-5/i.test(model || '')
+    ? { max_completion_tokens: value }
+    : { max_tokens: value };
+}
+
 class SetupService {
   constructor() {
     this.envPath = path.join(process.cwd(), 'data', '.env');
@@ -31,8 +37,9 @@ class SetupService {
 
   async validatePaperlessConfig(url, token) {
     try {
-      console.log('Validating Paperless config for:', url + '/api/documents/');
-      const response = await axios.get(`${url}/api/documents/`, {
+      const baseUrl = String(url || '').replace(/\/+$/, '').replace(/\/api$/i, '');
+      console.log('Validating Paperless config for:', baseUrl + '/api/documents/');
+      const response = await axios.get(`${baseUrl}/api/documents/`, {
         headers: {
           'Authorization': `Token ${token}`
         }
@@ -45,10 +52,11 @@ class SetupService {
   }
 
   async validateApiPermissions(url, token) {
+    const baseUrl = String(url || '').replace(/\/+$/, '').replace(/\/api$/i, '');
     for (const endpoint of ['correspondents', 'tags', 'documents', 'document_types', 'custom_fields', 'users']) {
       try {
-        console.log(`Validating API permissions for ${url}/api/${endpoint}/`);
-        const response = await axios.get(`${url}/api/${endpoint}/`, {
+        console.log(`Validating API permissions for ${baseUrl}/api/${endpoint}/`);
+        const response = await axios.get(`${baseUrl}/api/${endpoint}/`, {
           headers: {
             'Authorization': `Token ${token}`
           }
@@ -68,12 +76,14 @@ class SetupService {
 
 
   async validateOpenAIConfig(apiKey) {
-    if (config.CONFIGURED === false) {
+    if (apiKey) {
       try {
         const openai = new OpenAI({ apiKey });
+        const model = process.env.OPENAI_MODEL || 'gpt-5.4-nano';
         const response = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [{ role: "user", content: "Test" }],
+          model,
+          messages: [{ role: "user", content: "Reply with the single word: ok" }],
+          ...tokenLimitParam(model, 8)
         });
         const now = new Date();
         const timestamp = now.toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' });
@@ -83,9 +93,8 @@ class SetupService {
         console.error('OpenAI validation error:', error.message);
         return false;
       }
-    }else{
-      return true;
     }
+    return false;
   }
 
   async validateOpenRouterConfig(apiKey, model = 'openai/gpt-5.4-nano') {
@@ -106,7 +115,7 @@ class SetupService {
       const response = await openai.chat.completions.create({
         model,
         messages: [{ role: 'user', content: 'Reply with the single word: ok' }],
-        max_tokens: 8
+        ...tokenLimitParam(model, 8)
       });
 
       return !!response?.choices?.length;
@@ -167,7 +176,7 @@ class SetupService {
 
   async validateAzureConfig(apiKey, endpoint, deploymentName, apiVersion) {
     console.log('Endpoint: ', endpoint);
-    if (config.CONFIGURED === false) {
+    if (apiKey && endpoint && deploymentName && apiVersion) {
       try {
         const openai = new AzureOpenAI({ apiKey: apiKey,
                 endpoint: endpoint,
@@ -185,9 +194,8 @@ class SetupService {
         console.error('OpenAI validation error:', error.message);
         return false;
       }
-    }else{
-      return true;
     }
+    return false;
   }
 
   async validateConfig(config) {

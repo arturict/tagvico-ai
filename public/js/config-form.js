@@ -14,6 +14,7 @@ class ConfigFormApp {
     this.initPaperlessDiscovery();
     this.initCustomFields();
     this.initToggleCards();
+    this.initSecretToggles();
     this.initSubmit();
   }
 
@@ -205,26 +206,51 @@ class ConfigFormApp {
 
   async testPaperless() {
     const url = this.paperlessUrl?.value.trim();
+    const token = document.getElementById('paperlessToken')?.value.trim();
     if (!url) {
       this.setDiscoveryStatus('Enter a Paperless URL first.', 'warn');
       return;
     }
-    this.setDiscoveryStatus('Testing connection...');
+    if (!token) {
+      this.setDiscoveryStatus('Enter a Paperless API token first.', 'warn');
+      return;
+    }
+    this.setDiscoveryStatus('Testing Paperless URL and API token...');
     try {
-      const response = await fetch(`/api/paperless/probe?url=${encodeURIComponent(url)}`);
+      const response = await fetch('/api/paperless/probe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url, token })
+      });
       const payload = await response.json();
       const instance = payload.instance || {};
       if (payload.success) {
         this.setDiscoveryStatus(
-          `Paperless-ngx reachable${instance.version ? ` (v${instance.version})` : ''}${instance.requiresAuth ? ' — needs API token' : ''}.`,
+          `Connection works${instance.version ? ` (Paperless ${instance.version})` : ''}. Token can read documents and metadata.`,
           'ok'
         );
       } else {
-        this.setDiscoveryStatus(`Not reachable as Paperless-ngx${instance.error ? `: ${instance.error}` : ''}.`, 'warn');
+        this.setDiscoveryStatus(instance.error || 'Connection failed. Check the URL and API token.', 'warn');
       }
     } catch (error) {
       this.setDiscoveryStatus(error.message, 'warn');
     }
+  }
+
+  initSecretToggles() {
+    document.querySelectorAll('[data-toggle-secret]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const input = document.getElementById(button.dataset.toggleSecret);
+        const icon = button.querySelector('i');
+        if (!input) return;
+        const show = input.type === 'password';
+        input.type = show ? 'text' : 'password';
+        button.setAttribute('aria-label', `${show ? 'Hide' : 'Show'} ${input.name || input.id}`);
+        if (icon) {
+          icon.className = show ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+        }
+      });
+    });
   }
 
   initCustomFields() {
