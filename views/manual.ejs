@@ -1,0 +1,82 @@
+<%
+  const body = `
+    <section class="page-header">
+      <div>
+        <p class="section-kicker">Manual review</p>
+        <h1 class="page-title">Review a document before filing</h1>
+        <p class="page-subtitle">Manual mode keeps the workflow lean: inspect the OCR text, ask for AI suggestions, then decide what should be written back to Paperless.</p>
+      </div>
+    </section>
+
+    <div id="manualMessage" class="hidden"></div>
+
+    <section class="card-grid">
+      <article class="card span-4 stack">
+        <div class="field">
+          <label for="documentSelect">Document</label>
+          <select id="documentSelect"></select>
+        </div>
+
+        <div class="field">
+          <label for="titleInput">Title</label>
+          <input id="titleInput" type="text">
+        </div>
+
+        <div class="field">
+          <label for="correspondentInput">Correspondent</label>
+          <input id="correspondentInput" type="text" list="manualCorrespondents">
+        </div>
+
+        <div class="field">
+          <label for="documentTypeInput">Document type</label>
+          <input id="documentTypeInput" type="text" list="manualDocumentTypes">
+        </div>
+
+        <div class="field">
+          <label for="ownerInput">Assign owner</label>
+          <select id="ownerInput">
+            <option value="">Leave unchanged</option>
+            ${users.map((user) => `<option value="${user.id}">${user.username}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="tagsInput">Tags</label>
+          <textarea id="tagsInput" rows="4" placeholder="invoice, utilities, personal"></textarea>
+          <p class="field-hint">Comma-separated tags. New tags are still allowed unless restrictions are enabled in settings.</p>
+        </div>
+
+        <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+          <button id="analyzeButton" class="button-secondary" type="button">Suggest with AI</button>
+          <button id="saveButton" class="button" type="button">Save to Paperless</button>
+        </div>
+      </article>
+
+      <article class="card span-8 stack">
+        <div>
+          <div class="metric-label">OCR preview</div>
+          <div class="metric-footnote">Large documents are truncated for analysis, but you can still inspect the text here before saving.</div>
+        </div>
+        <div style="min-height:70vh;border:1px solid var(--border);border-radius:18px;padding:1rem;background:var(--bg-strong);overflow:auto;white-space:pre-wrap;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;" id="contentPreview">Choose a document to begin.</div>
+      </article>
+    </section>
+
+    <datalist id="manualCorrespondents">
+      ${correspondents.map((item) => `<option value="${item.name}"></option>`).join('')}
+    </datalist>
+
+    <datalist id="manualDocumentTypes">
+      ${documentTypes.map((item) => `<option value="${item.name}"></option>`).join('')}
+    </datalist>
+  `;
+%>
+<%- include('partials/app-shell', {
+  title: 'Manual | Archivista AI',
+  activePage: 'manual',
+  version,
+  includeCharts: false,
+  includeDataTables: false,
+  extraHead: '',
+  extraScripts: '<script src="/js/manual.js"></script>',
+  body
+}) %>

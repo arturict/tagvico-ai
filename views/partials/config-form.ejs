@@ -1,0 +1,508 @@
+<%
+  const isSetup = mode === 'setup';
+  const formAction = isSetup ? '/setup' : '/settings';
+  const submitLabel = isSetup ? 'Finish setup' : 'Save changes';
+  const introTitle = isSetup ? 'Set up Archivista AI' : 'Configuration';
+  const introCopy = isSetup
+    ? 'Fast path: scan Paperless, paste one API token, choose a model, and start filing. Everything else can stay on smart defaults.'
+    : 'Switch providers, refresh model choices, and control how aggressively Archivista AI updates documents.';
+%>
+
+<section class="page-header">
+  <div>
+    <p class="section-kicker"><%= isSetup ? 'Onboarding' : 'Settings' %></p>
+    <h1 class="page-title"><%= introTitle %></h1>
+    <p class="page-subtitle"><%= introCopy %></p>
+  </div>
+  <div class="badge-row">
+    <span class="badge"><i class="fa-solid fa-code-branch"></i> <%= config.PAPERLESS_AI_VERSION %></span>
+    <span class="badge"><i class="fa-solid fa-star"></i> Recommended: <%= providerCatalog.recommendedModel %></span>
+  </div>
+</section>
+
+<% if (success) { %>
+<div class="success" style="margin-bottom:1rem;"><%= success %></div>
+<% } %>
+
+<% if (settingsError || error) { %>
+<div class="danger" style="margin-bottom:1rem;"><%= settingsError || error %></div>
+<% } %>
+
+<form id="configForm" class="stack" data-mode="<%= mode %>" data-action="<%= formAction %>">
+  <% if (isSetup) { %>
+  <div class="onboarding-strip">
+    <div class="onboarding-step is-active"><span>1</span><strong>Scan</strong><small>Find Paperless</small></div>
+    <div class="onboarding-step"><span>2</span><strong>Token</strong><small>Paste API key</small></div>
+    <div class="onboarding-step"><span>3</span><strong>Model</strong><small>Pick default</small></div>
+    <div class="onboarding-step"><span>4</span><strong>Run</strong><small>Auto-file docs</small></div>
+  </div>
+  <% } %>
+
+  <div class="hero stack cube-hero">
+    <div>
+      <p class="section-kicker">1. Paperless connection</p>
+      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Connect your Paperless-ngx instance</h2>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+            <label for="paperlessUrl">Paperless URL</label>
+        <input id="paperlessUrl" name="paperlessUrl" type="url" required value="<%= config.PAPERLESS_API_URL %>" placeholder="https://paperless.example.com">
+        <p class="field-hint">Only the base URL. `/api` is added automatically.</p>
+      </div>
+
+      <div class="field">
+        <label for="paperlessToken">API token</label>
+            <input id="paperlessToken" name="paperlessToken" type="password" required value="<%= config.PAPERLESS_API_TOKEN %>" placeholder="Paste one Paperless API token">
+        <p class="field-hint">
+          <a id="openPaperlessTokenLink" href="#" target="_blank" rel="noopener" class="inline-link">
+            <i class="fa-solid fa-up-right-from-square"></i> Open Paperless-ngx to copy your API token
+          </a>
+        </p>
+      </div>
+
+      <div class="field">
+        <label for="paperlessUsername">Paperless username</label>
+        <input id="paperlessUsername" name="paperlessUsername" type="text" value="<%= config.PAPERLESS_USERNAME %>" placeholder="Archivista AI">
+      </div>
+
+      <div class="field">
+        <label for="scanInterval">Scan interval</label>
+        <input id="scanInterval" name="scanInterval" type="text" value="<%= config.SCAN_INTERVAL %>" placeholder="*/30 * * * *">
+        <p class="field-hint">Cron syntax. Default scans every 30 minutes.</p>
+      </div>
+    </div>
+
+    <div class="discovery-row">
+      <button type="button" id="discoverPaperlessBtn" class="button-secondary">
+        <i class="fa-solid fa-magnifying-glass"></i> Scan for Paperless-ngx instances
+      </button>
+      <button type="button" id="testPaperlessBtn" class="button-secondary">
+        <i class="fa-solid fa-plug-circle-check"></i> Test connection
+      </button>
+      <span id="paperlessDiscoveryStatus" class="field-hint" aria-live="polite"></span>
+    </div>
+    <div id="paperlessDiscoveryResults" class="discovery-results hidden"></div>
+  </div>
+
+  <% if (isSetup) { %>
+  <div class="hero stack">
+    <div>
+      <p class="section-kicker">2. Local login</p>
+      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Create a tiny local admin</h2>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="username">Admin username</label>
+        <input id="username" name="username" type="text" autocomplete="username" required>
+      </div>
+
+      <div class="field">
+        <label for="password">Admin password</label>
+        <input id="password" name="password" type="password" autocomplete="new-password" required>
+      </div>
+    </div>
+  </div>
+  <% } %>
+
+  <div class="hero stack">
+    <div>
+      <p class="section-kicker">3. Model provider</p>
+      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Choose how Archivista AI talks to AI</h2>
+    </div>
+
+    <input id="aiProvider" name="aiProvider" type="hidden" value="<%= providerCatalog.selectedProvider %>">
+    <input id="aiModel" name="aiModel" type="hidden" value="<%= providerCatalog.effectiveModel %>">
+
+    <div id="providerChoices" class="segmented">
+      <% providerCatalog.providers.forEach((provider) => { %>
+      <button type="button" class="choice-card <%= provider.selected ? 'is-selected' : '' %>" data-provider-choice="<%= provider.id %>">
+        <div class="choice-title">
+          <span><%= provider.name %></span>
+          <% if (provider.recommended) { %><span class="badge">Recommended</span><% } %>
+        </div>
+        <div class="choice-copy"><%= provider.description %></div>
+      </button>
+      <% }) %>
+    </div>
+
+    <div id="providerPanels" class="stack">
+      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'openrouter' ? '' : 'hidden' %>" data-provider-panel="openrouter">
+        <div>
+          <h3 style="margin:0 0 0.35rem;">OpenRouter</h3>
+          <p class="field-hint">Best default for this app. Use the curated small-model list or paste your own OpenRouter slug.</p>
+        </div>
+
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="openrouterApiKey">OpenRouter API key</label>
+            <input id="openrouterApiKey" name="openrouterApiKey" type="password" value="<%= config.OPENROUTER_API_KEY %>">
+          </div>
+
+          <div class="field field-wide">
+            <label>Curated models</label>
+            <div id="openrouterPresetGrid" class="segmented model-grid">
+              <% providerCatalog.openrouterPresets.forEach((preset) => { %>
+              <button type="button" class="choice-card model-choice <%= providerCatalog.effectiveModel === preset.slug ? 'is-selected' : '' %>" data-model-choice="<%= preset.slug %>">
+                <div class="choice-title">
+                  <span><%= preset.name %></span>
+                  <% if (preset.recommended) { %><span class="badge">Recommended</span><% } %>
+                </div>
+                <div class="choice-copy"><%= preset.summary %></div>
+                <div class="badge-row" style="margin-top:0.65rem;">
+                  <% preset.badges.forEach((badge) => { %>
+                  <span class="badge"><%= badge %></span>
+                  <% }) %>
+                </div>
+              </button>
+              <% }) %>
+            </div>
+          </div>
+
+          <div class="field field-wide">
+            <label for="openrouterCustomModel">Custom OpenRouter slug</label>
+            <input id="openrouterCustomModel" type="text" placeholder="openai/gpt-5.4-nano" value="<%= !providerCatalog.selectedPreset && providerCatalog.selectedProvider === 'openrouter' ? providerCatalog.effectiveModel : '' %>">
+            <p class="field-hint">Useful for trying a fresh model from OpenRouter without waiting for a preset update.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'ollama' ? '' : 'hidden' %>" data-provider-panel="ollama">
+        <div>
+          <h3 style="margin:0 0 0.35rem;">Ollama</h3>
+          <p class="field-hint">Supports local instances and remote Ollama hosts. Fetch models directly from the selected endpoint.</p>
+        </div>
+
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="ollamaUrl">Ollama URL</label>
+            <input id="ollamaUrl" name="ollamaUrl" type="url" value="<%= config.OLLAMA_API_URL %>" placeholder="http://localhost:11434">
+          </div>
+
+          <div class="field field-wide">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;">
+              <label for="ollamaModelSelect">Available models</label>
+              <button type="button" class="button-secondary" id="refreshOllamaModels">Refresh models</button>
+            </div>
+            <select id="ollamaModelSelect"></select>
+          </div>
+
+          <div class="field field-wide">
+            <label for="ollamaCustomModel">Or enter a model manually</label>
+            <input id="ollamaCustomModel" type="text" value="<%= config.OLLAMA_MODEL %>" placeholder="llama3.2">
+          </div>
+        </div>
+      </section>
+
+      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'compatible' ? '' : 'hidden' %>" data-provider-panel="compatible">
+        <div>
+          <h3 style="margin:0 0 0.35rem;">OpenAI-compatible API</h3>
+          <p class="field-hint">Works for LM Studio, LiteLLM, vLLM, FastChat, and most OpenAI-compatible gateways.</p>
+        </div>
+
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="compatibleBaseUrl">Base URL</label>
+            <input id="compatibleBaseUrl" name="compatibleBaseUrl" type="url" value="<%= config.COMPATIBLE_BASE_URL %>" placeholder="http://localhost:1234/v1">
+          </div>
+
+          <div class="field">
+            <label for="compatibleApiKey">API key</label>
+            <input id="compatibleApiKey" name="compatibleApiKey" type="password" value="<%= config.COMPATIBLE_API_KEY %>" placeholder="optional for some local gateways">
+          </div>
+
+          <div class="field">
+            <label for="compatibleModel">Model slug</label>
+            <input id="compatibleModel" type="text" value="<%= config.COMPATIBLE_MODEL %>" placeholder="qwen2.5-14b-instruct">
+          </div>
+        </div>
+      </section>
+
+      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'openai' ? '' : 'hidden' %>" data-provider-panel="openai">
+        <div>
+          <h3 style="margin:0 0 0.35rem;">OpenAI direct</h3>
+          <p class="field-hint">Use native OpenAI access when you do not want OpenRouter in the middle.</p>
+        </div>
+
+        <div class="form-grid">
+          <div class="field">
+            <label for="openaiKey">OpenAI API key</label>
+            <input id="openaiKey" name="openaiKey" type="password" value="<%= config.OPENAI_API_KEY %>">
+          </div>
+
+          <div class="field">
+            <label for="openaiModel">Model</label>
+            <select id="openaiModel">
+              <% providerCatalog.openaiDirectModels.forEach((model) => { %>
+              <option value="<%= model.slug %>" <%= config.OPENAI_MODEL === model.slug || providerCatalog.effectiveModel === model.slug ? 'selected' : '' %>><%= model.name %></option>
+              <% }) %>
+            </select>
+            <p class="field-hint">OpenAI Direct is intentionally locked to supported GPT-5.x models.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'azure' ? '' : 'hidden' %>" data-provider-panel="azure">
+        <div>
+          <h3 style="margin:0 0 0.35rem;">Azure OpenAI</h3>
+          <p class="field-hint">Legacy path for existing Azure-backed setups.</p>
+        </div>
+
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="azureEndpoint">Endpoint</label>
+            <input id="azureEndpoint" name="azureEndpoint" type="url" value="<%= config.AZURE_ENDPOINT %>">
+          </div>
+
+          <div class="field">
+            <label for="azureApiKey">API key</label>
+            <input id="azureApiKey" name="azureApiKey" type="password" value="<%= config.AZURE_API_KEY %>">
+          </div>
+
+          <div class="field">
+            <label for="azureDeploymentName">Deployment name</label>
+            <input id="azureDeploymentName" name="azureDeploymentName" type="text" value="<%= config.AZURE_DEPLOYMENT_NAME %>">
+          </div>
+
+          <div class="field field-wide">
+            <label for="azureApiVersion">API version</label>
+            <input id="azureApiVersion" name="azureApiVersion" type="text" value="<%= config.AZURE_API_VERSION %>">
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="field field-wide">
+      <label for="aiReasoningEffort">Thinking effort for GPT-5 models</label>
+      <select id="aiReasoningEffort" name="aiReasoningEffort">
+        <option value="minimal" <%= config.AI_REASONING_EFFORT === 'minimal' ? 'selected' : '' %>>Minimal</option>
+        <option value="low" <%= config.AI_REASONING_EFFORT === 'low' ? 'selected' : '' %>>Low</option>
+        <option value="medium" <%= config.AI_REASONING_EFFORT === 'medium' ? 'selected' : '' %>>Medium</option>
+      </select>
+      <p class="field-hint">Applies when the selected model supports GPT-5-style reasoning effort. Default stays low.</p>
+    </div>
+  </div>
+
+  <div class="hero stack">
+    <div>
+      <p class="section-kicker">4. Filing behavior</p>
+      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Decide what Archivista AI writes back</h2>
+    </div>
+
+    <div class="segmented">
+      <label class="choice-card <%= config.ACTIVATE_TAGGING === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateTagging" <%= config.ACTIVATE_TAGGING === 'yes' ? 'checked' : '' %> hidden>
+        <div class="choice-title"><span>Tags</span></div>
+        <div class="choice-copy">Generate and attach tags.</div>
+      </label>
+
+      <label class="choice-card <%= config.ACTIVATE_CORRESPONDENTS === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateCorrespondents" <%= config.ACTIVATE_CORRESPONDENTS === 'yes' ? 'checked' : '' %> hidden>
+        <div class="choice-title"><span>Correspondent</span></div>
+        <div class="choice-copy">Infer the sender or issuer.</div>
+      </label>
+
+      <label class="choice-card <%= config.ACTIVATE_DOCUMENT_TYPE === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateDocumentType" <%= config.ACTIVATE_DOCUMENT_TYPE === 'yes' ? 'checked' : '' %> hidden>
+        <div class="choice-title"><span>Document type</span></div>
+        <div class="choice-copy">Classify invoices, contracts, letters, and similar types.</div>
+      </label>
+
+      <label class="choice-card <%= config.ACTIVATE_TITLE === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateTitle" <%= config.ACTIVATE_TITLE === 'yes' ? 'checked' : '' %> hidden>
+        <div class="choice-title"><span>Title</span></div>
+        <div class="choice-copy">Rewrite titles into something clearer.</div>
+      </label>
+
+        <label class="choice-card <%= config.ACTIVATE_CUSTOM_FIELDS === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateCustomFields" <%= config.ACTIVATE_CUSTOM_FIELDS === 'yes' ? 'checked' : '' %> hidden>
+        <div class="choice-title"><span>Custom fields</span></div>
+        <div class="choice-copy">Populate your own Paperless custom fields.</div>
+      </label>
+
+      <label class="choice-card <%= config.ACTIVATE_OWNER_ASSIGNMENT === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateOwnerAssignment" <%= config.ACTIVATE_OWNER_ASSIGNMENT === 'yes' ? 'checked' : '' %> hidden>
+        <div class="choice-title"><span>Person assignment</span><span class="badge">Zero-config</span></div>
+        <div class="choice-copy">Assign docs to Paperless users when names like “artur” appear.</div>
+      </label>
+    </div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="useExistingData">Reuse existing Paperless metadata</label>
+        <select id="useExistingData" name="useExistingData">
+          <option value="no" <%= config.USE_EXISTING_DATA === 'no' ? 'selected' : '' %>>No</option>
+          <option value="yes" <%= config.USE_EXISTING_DATA === 'yes' ? 'selected' : '' %>>Yes</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="disableAutomaticProcessing">Automatic processing</label>
+        <select id="disableAutomaticProcessing" name="disableAutomaticProcessing">
+          <option value="no" <%= config.DISABLE_AUTOMATIC_PROCESSING === 'no' ? 'selected' : '' %>>Enabled</option>
+          <option value="yes" <%= config.DISABLE_AUTOMATIC_PROCESSING === 'yes' ? 'selected' : '' %>>Manual only</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="aiProcessedTag">AI processed tag</label>
+        <select id="aiProcessedTag" name="aiProcessedTag">
+          <option value="no" <%= config.ADD_AI_PROCESSED_TAG === 'no' ? 'selected' : '' %>>Off</option>
+          <option value="yes" <%= config.ADD_AI_PROCESSED_TAG === 'yes' ? 'selected' : '' %>>On</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="aiTagName">Processed tag name</label>
+        <input id="aiTagName" name="aiTagName" type="text" value="<%= config.AI_PROCESSED_TAG_NAME %>" placeholder="ai-processed">
+      </div>
+
+      <div class="field">
+        <label for="showTags">Only process selected tags</label>
+        <select id="showTags" name="showTags">
+          <option value="no" <%= config.PROCESS_PREDEFINED_DOCUMENTS === 'no' ? 'selected' : '' %>>Process all documents</option>
+          <option value="yes" <%= config.PROCESS_PREDEFINED_DOCUMENTS === 'yes' ? 'selected' : '' %>>Only tagged documents</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="tags">Required tags</label>
+        <input id="tags" name="tags" type="text" value="<%= Array.isArray(config.TAGS) ? config.TAGS.join(', ') : '' %>" placeholder="invoice, tax, todo-ai">
+      </div>
+    </div>
+  </div>
+
+  <div class="hero stack">
+    <div>
+      <p class="section-kicker">5. People profiles</p>
+      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Teach assignment without setup pain</h2>
+      <p class="field-hint">Leave blank for automatic matching from Paperless users (username, name, email). Add optional lines when you want aliases or hints.</p>
+    </div>
+
+    <div class="form-grid">
+      <div class="field field-wide">
+        <label for="ownerProfiles">Assignment profiles</label>
+        <textarea id="ownerProfiles" name="ownerProfiles" rows="7" placeholder="artur: Artur, Arthur, invoices for Artur, documents addressed to Artur&#10;nex: Nex, N. Example, personal docs"><%= config.OWNER_PROFILES %></textarea>
+        <p class="field-hint">Format: one profile per line, <code>username: alias, hint, keyword</code>. The username must match a Paperless user.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero stack">
+    <div>
+      <p class="section-kicker">6. Guardrails and extras</p>
+      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Restrict suggestions and enrich context</h2>
+    </div>
+
+    <div class="segmented">
+      <label class="choice-card <%= config.RESTRICT_TO_EXISTING_TAGS === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="restrictToExistingTags" <%= config.RESTRICT_TO_EXISTING_TAGS === 'yes' ? 'checked' : '' %> hidden>
+        <div class="choice-title"><span>Only existing tags</span></div>
+        <div class="choice-copy">Prevents new tags from being created by AI.</div>
+      </label>
+
+      <label class="choice-card <%= config.RESTRICT_TO_EXISTING_CORRESPONDENTS === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="restrictToExistingCorrespondents" <%= config.RESTRICT_TO_EXISTING_CORRESPONDENTS === 'yes' ? 'checked' : '' %> hidden>
+        <div class="choice-title"><span>Only existing correspondents</span></div>
+        <div class="choice-copy">Keeps correspondent suggestions inside your current Paperless data.</div>
+      </label>
+
+      <label class="choice-card <%= config.RESTRICT_TO_EXISTING_DOCUMENT_TYPES === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="restrictToExistingDocumentTypes" <%= config.RESTRICT_TO_EXISTING_DOCUMENT_TYPES === 'yes' ? 'checked' : '' %> hidden>
+        <div class="choice-title"><span>Only existing document types</span></div>
+        <div class="choice-copy">Avoids creating new Paperless document types automatically.</div>
+      </label>
+
+      <label class="choice-card <%= config.EXTERNAL_API_ENABLED === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="externalApiEnabled" <%= config.EXTERNAL_API_ENABLED === 'yes' ? 'checked' : '' %> hidden>
+        <div class="choice-title"><span>External enrichment</span></div>
+        <div class="choice-copy">Attach extra API data to the analysis prompt before filing.</div>
+      </label>
+    </div>
+
+    <div class="form-grid">
+      <div class="field field-wide">
+        <label for="externalApiUrl">External API URL</label>
+        <input id="externalApiUrl" name="externalApiUrl" type="url" value="<%= config.EXTERNAL_API_URL %>" placeholder="https://api.example.com/lookup">
+      </div>
+
+      <div class="field">
+        <label for="externalApiMethod">HTTP method</label>
+        <select id="externalApiMethod" name="externalApiMethod">
+          <option value="GET" <%= config.EXTERNAL_API_METHOD === 'GET' ? 'selected' : '' %>>GET</option>
+          <option value="POST" <%= config.EXTERNAL_API_METHOD === 'POST' ? 'selected' : '' %>>POST</option>
+          <option value="PUT" <%= config.EXTERNAL_API_METHOD === 'PUT' ? 'selected' : '' %>>PUT</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="externalApiTimeout">Timeout in ms</label>
+        <input id="externalApiTimeout" name="externalApiTimeout" type="number" value="<%= config.EXTERNAL_API_TIMEOUT %>">
+      </div>
+
+      <div class="field field-wide">
+        <label for="externalApiHeaders">Headers JSON</label>
+        <textarea id="externalApiHeaders" name="externalApiHeaders" rows="4"><%= config.EXTERNAL_API_HEADERS %></textarea>
+      </div>
+
+      <div class="field field-wide">
+        <label for="externalApiBody">Body JSON</label>
+        <textarea id="externalApiBody" name="externalApiBody" rows="4"><%= config.EXTERNAL_API_BODY %></textarea>
+      </div>
+
+      <div class="field field-wide">
+        <label for="externalApiTransform">Transform function</label>
+        <textarea id="externalApiTransform" name="externalApiTransform" rows="6"><%= config.EXTERNAL_API_TRANSFORM %></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero stack">
+    <div>
+      <p class="section-kicker">7. Custom fields</p>
+      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Structured metadata extraction</h2>
+      <p class="field-hint">Define the Paperless custom fields you want AI to fill when it can confidently extract them.</p>
+    </div>
+
+    <div id="customFieldList" class="stack"></div>
+
+    <div class="form-grid">
+      <div class="field">
+        <label for="newFieldName">Field name</label>
+        <input id="newFieldName" type="text" placeholder="Invoice amount">
+      </div>
+
+      <div class="field">
+        <label for="newFieldType">Field type</label>
+        <select id="newFieldType">
+          <option value="string">Text</option>
+          <option value="float">Number</option>
+          <option value="integer">Integer</option>
+          <option value="monetary">Currency</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="currencyCode">Currency code</label>
+        <select id="currencyCode">
+          <option value="EUR">EUR</option>
+          <option value="USD">USD</option>
+          <option value="GBP">GBP</option>
+          <option value="CHF">CHF</option>
+        </select>
+      </div>
+
+      <div class="field" style="align-self:end;">
+        <button type="button" id="addCustomField" class="button-secondary">Add field</button>
+      </div>
+    </div>
+
+    <input id="customFieldsJson" name="customFields" type="hidden" value='<%= config.CUSTOM_FIELDS || "{\"custom_fields\":[]}" %>'>
+  </div>
+
+  <div class="page-header" style="margin-top:0;align-items:center;">
+    <p class="page-subtitle">When saved, the app restarts itself so the backend picks up the new provider settings.</p>
+    <button type="submit" class="button" id="configSubmit"><%= submitLabel %></button>
+  </div>
+</form>

@@ -1,0 +1,123 @@
+<%
+  const body = `
+    <section class="page-header">
+      <div>
+        <p class="section-kicker">Overview</p>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">A clearer view of what Archivista AI has processed, how much model budget it burns, and what is still waiting for action.</p>
+      </div>
+      <div style="display:flex;gap:0.75rem;align-items:center;">
+        <div id="scanResult" class="success hidden">Scan triggered successfully.</div>
+        <button id="scanButton" class="button"><i class="fa-solid fa-wand-magic-sparkles"></i><span>Scan now</span></button>
+      </div>
+    </section>
+
+    <section class="card-grid">
+      <article class="card span-3">
+        <div class="metric-label">Documents</div>
+        <div class="metric-value">${paperless_data.documentCount}</div>
+        <div class="metric-footnote">Total visible to the configured Paperless user.</div>
+      </article>
+      <article class="card span-3">
+        <div class="metric-label">Processed</div>
+        <div class="metric-value">${paperless_data.processedDocumentCount}</div>
+        <div class="metric-footnote">Documents filed by Archivista AI.</div>
+      </article>
+      <article class="card span-3">
+        <div class="metric-label">Tags</div>
+        <div class="metric-value">${paperless_data.tagCount}</div>
+        <div class="metric-footnote"><button id="showTagsButton" class="button-secondary">Inspect tag activity</button></div>
+      </article>
+      <article class="card span-3">
+        <div class="metric-label">Correspondents</div>
+        <div class="metric-value">${paperless_data.correspondentCount}</div>
+        <div class="metric-footnote"><button id="showCorrespondentsButton" class="button-secondary">Inspect correspondents</button></div>
+      </article>
+
+      <article class="card span-5 stack">
+        <div>
+          <div class="metric-label">Processing progress</div>
+          <div class="metric-footnote">Recommended default is GPT-5.4 Nano via OpenRouter for this workflow.</div>
+        </div>
+        <div style="height:280px;"><canvas id="processingChart"></canvas></div>
+      </article>
+
+      <article class="card span-7 stack">
+        <div>
+          <div class="metric-label">Runner state</div>
+          <div class="metric-value" id="processingState">Idle</div>
+        </div>
+        <div class="choice-card">
+          <div class="choice-title"><span>Current document</span></div>
+          <div class="choice-copy" id="processingCurrent">No active document</div>
+        </div>
+        <div class="form-grid">
+          <div class="choice-card">
+            <div class="choice-title"><span>Processed today</span></div>
+            <div class="metric-value" id="processingToday">0</div>
+          </div>
+          <div class="choice-card">
+            <div class="choice-title"><span>Last processed</span></div>
+            <div class="choice-copy" id="processingLast">No processed documents yet</div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card span-4 stack">
+        <div class="metric-label">Average tokens per document</div>
+        <div class="metric-value">${Math.round(openai_data.averageTotalTokens)}</div>
+        <div class="metric-footnote">Prompt: ${Math.round(openai_data.averagePromptTokens)} | Completion: ${Math.round(openai_data.averageCompletionTokens)}</div>
+      </article>
+      <article class="card span-4 stack">
+        <div class="metric-label">Total tokens</div>
+        <div class="metric-value">${openai_data.tokensOverall.toLocaleString()}</div>
+        <div class="metric-footnote">Accumulated across all tracked analyses.</div>
+      </article>
+      <article class="card span-4 stack">
+        <div class="metric-label">Version</div>
+        <div class="metric-value">${version}</div>
+        <div class="metric-footnote">Independent semantic versioning for Archivista AI.</div>
+      </article>
+
+      <article class="card span-4">
+        <div class="metric-label">Token distribution</div>
+        <div style="height:260px;margin-top:1rem;"><canvas id="tokenDistributionChart"></canvas></div>
+      </article>
+      <article class="card span-4">
+        <div class="metric-label">Document types</div>
+        <div style="height:260px;margin-top:1rem;"><canvas id="documentTypeChart"></canvas></div>
+      </article>
+      <article class="card span-4">
+        <div class="metric-label">Today timeline</div>
+        <div style="height:260px;margin-top:1rem;"><canvas id="timelineChart"></canvas></div>
+      </article>
+    </section>
+
+    <section id="dashboardModal" class="modal">
+      <div class="modal-backdrop" data-close-modal></div>
+      <div class="modal-panel">
+        <div class="page-header" style="margin-bottom:1rem;align-items:center;">
+          <h2 id="dashboardModalTitle" style="margin:0;font-size:1.4rem;">Details</h2>
+          <button type="button" class="button-secondary" data-close-modal>Close</button>
+        </div>
+        <div id="dashboardModalContent"></div>
+      </div>
+    </section>
+  `;
+%>
+<%- include('partials/app-shell', {
+  title: 'Dashboard | Archivista AI',
+  activePage: 'dashboard',
+  version,
+  includeCharts: true,
+  includeDataTables: false,
+  extraHead: '',
+  extraScripts: `<script>window.dashboardPageData = ${JSON.stringify({
+    documentCount: paperless_data.documentCount,
+    processedCount: paperless_data.processedDocumentCount,
+    tokenDistribution: paperless_data.tokenDistribution,
+    documentTypes: paperless_data.documentTypes,
+    processingTimeStats: paperless_data.processingTimeStats
+  })};</script><script src="/js/dashboard.js"></script>`,
+  body
+}) %>

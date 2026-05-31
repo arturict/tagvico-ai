@@ -1,0 +1,21 @@
+services:
+  paperlesser:
+    image: ghcr.io/arturict/paperlesser:latest
+    container_name: paperlesser
+    network_mode: bridge
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges=true
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - PAPERLESS_AI_PORT=${PAPERLESS_AI_PORT:-3000}
+    ports:
+      - "3000:${PAPERLESS_AI_PORT:-3000}"
+    volumes:
+      - paperlesser_data:/app/data
+
+volumes:
+  paperlesser_data:

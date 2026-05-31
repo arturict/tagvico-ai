@@ -1,0 +1,10 @@
+<%- include('partials/app-shell', {
+  title: 'Setup | Archivista AI',
+  activePage: 'settings',
+  version: config.PAPERLESS_AI_VERSION,
+  includeCharts: false,
+  includeDataTables: false,
+  extraHead: '',
+  extraScripts: '<script src="/js/config-form.js"></script>',
+  body: include('partials/config-form', { mode: 'setup', config, providerCatalog, success, error, settingsError: null })
+}) %>

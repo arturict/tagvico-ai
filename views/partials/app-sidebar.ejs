@@ -1,0 +1,41 @@
+<%
+  const navItems = [
+    { href: '/dashboard', key: 'dashboard', icon: 'fa-solid fa-chart-line', label: 'Dashboard' },
+    { href: '/manual', key: 'manual', icon: 'fa-solid fa-file-pen', label: 'Manual' },
+    { href: '/history', key: 'history', icon: 'fa-solid fa-clock-rotate-left', label: 'History' },
+    { href: '/settings', key: 'settings', icon: 'fa-solid fa-sliders', label: 'Settings' }
+  ];
+%>
+<aside class="app-sidebar" id="appSidebar">
+  <div class="app-brand">
+    <div class="app-brand-mark">P</div>
+    <div>
+      <div class="app-brand-title">Archivista AI</div>
+      <div class="app-brand-subtitle">AI filing for Paperless-ngx</div>
+    </div>
+  </div>
+
+  <nav class="app-nav">
+    <% navItems.forEach((item) => { %>
+      <a href="<%= item.href %>" class="app-nav-link <%= activePage === item.key ? 'is-active' : '' %>">
+        <i class="<%= item.icon %>"></i>
+        <span><%= item.label %></span>
+      </a>
+    <% }) %>
+    <a href="/logout" class="app-nav-link">
+      <i class="fa-solid fa-right-from-bracket"></i>
+      <span>Logout</span>
+    </a>
+  </nav>
+
+  <div class="app-sidebar-footer">
+    <a href="https://github.com/arturict/archivista-ai" class="app-github" target="_blank" rel="noreferrer">
+      <span>
+        <i class="fa-brands fa-github"></i>
+        Star on GitHub
+      </span>
+      <strong id="starCount">...</strong>
+    </a>
+    <p>Rebuilt for current model workflows and cleaner Paperless-ngx filing operations.</p>
+  </div>
+</aside>
