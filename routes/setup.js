@@ -152,7 +152,8 @@ let PUBLIC_ROUTES = [
   // Paperless-ngx discovery/probe: needed during onboarding before an admin exists.
   // These are still gated by the allowDuringSetup middleware (auth required once configured).
   '/api/paperless/discover',
-  '/api/paperless/probe'
+  '/api/paperless/probe',
+  '/api/ollama/models'
 ];
 
 // Combined middleware to check authentication and setup
@@ -1511,6 +1512,14 @@ function buildViewModel(config) {
   };
 }
 
+function resetRuntimeServices() {
+  paperlessService.reset?.();
+  openaiService.reset?.();
+  ollamaService.reset?.();
+  azureService.reset?.();
+  customService.reset?.();
+}
+
 async function getOllamaModelsForUrl(url) {
   const models = await setupService.getOllamaModels(url || 'http://localhost:11434');
   return models.map((model) => ({
@@ -1963,7 +1972,7 @@ router.get('/api/provider-catalog', async (req, res) => {
   });
 });
 
-router.get('/api/ollama/models', async (req, res) => {
+router.get('/api/ollama/models', allowDuringSetup, async (req, res) => {
   try {
     const url = req.query.url || process.env.OLLAMA_API_URL || 'http://localhost:11434';
     const models = await getOllamaModelsForUrl(url);
@@ -2604,7 +2613,7 @@ router.get('/dashboard', async (req, res) => {
  *       The interface provides validation for connection settings and displays the current
  *       configuration values.
  *       
- *       Changes made on this page require application restart to take full effect.
+ *       Changes made on this page are applied to new processing runs immediately.
  *     tags:
  *       - Navigation
  *       - Setup
@@ -3544,6 +3553,7 @@ router.post('/setup', express.json(), async (req, res) => {
 
     // Save configuration
     await setupService.saveConfig(config);
+    resetRuntimeServices();
     onboardingService.writeOnboardingSnapshot(config);
     const hashedPassword = await bcrypt.hash(password, 15);
     await documentModel.addUser(username, hashedPassword);
@@ -3551,13 +3561,8 @@ router.post('/setup', express.json(), async (req, res) => {
     res.json({ 
       success: true,
       message: 'Configuration saved successfully.',
-      restart: true
+      restart: false
     });
-
-    // Trigger application restart
-    setTimeout(() => {
-      process.exit(0);
-    }, 5000);
 
   } catch (error) {
     console.error('[ERROR] Setup error:', error);
@@ -3894,6 +3899,7 @@ router.post('/settings', express.json(), async (req, res) => {
     });
 
     await setupService.saveConfig(mergedConfig);
+    resetRuntimeServices();
     onboardingService.writeOnboardingSnapshot(mergedConfig);
     try {
       for (const field of processedCustomFields) {
@@ -3906,12 +3912,8 @@ router.post('/settings', express.json(), async (req, res) => {
     res.json({ 
       success: true,
       message: 'Configuration saved successfully.',
-      restart: true
+      restart: false
     });
-
-    setTimeout(() => {
-      process.exit(0);
-    }, 5000);
 
   } catch (error) {
     console.error('Settings update error:', error);

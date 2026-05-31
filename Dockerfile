@@ -19,11 +19,14 @@ RUN npm install pm2 -g
 # Copy package files for dependency installation
 COPY package*.json ./
 
-# Install node dependencies with clean install
-RUN npm ci --only=production && npm cache clean --force
+# Install node dependencies with clean install. Dev dependencies are needed for
+# the TypeScript build, then pruned before runtime.
+RUN npm ci
 
 # Copy application source code
 COPY . .
+
+RUN npm run build && npm prune --omit=dev && npm cache clean --force
 
 # Make startup script executable
 RUN chmod +x start-services.sh

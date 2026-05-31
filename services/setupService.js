@@ -2,7 +2,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const axios = require('axios');
 const { OpenAI } = require('openai');
-const config = require('../config/config');
+const runtimeConfig = require('../config/config');
 const AzureOpenAI = require('openai').AzureOpenAI;
 const { normalizeProvider } = require('./providerCatalogService');
 
@@ -296,10 +296,21 @@ class SetupService {
       Object.entries(config).forEach(([key, value]) => {
         process.env[key] = value;
       });
+      this.reloadRuntimeConfig();
+      this.configured = true;
     } catch (error) {
       console.error('Error saving config:', error.message);
       throw error;
     }
+  }
+
+  reloadRuntimeConfig() {
+    const configPath = require.resolve('../config/config');
+    delete require.cache[configPath];
+    const freshConfig = require('../config/config');
+    Object.keys(runtimeConfig).forEach((key) => delete runtimeConfig[key]);
+    Object.assign(runtimeConfig, freshConfig);
+    require.cache[configPath].exports = runtimeConfig;
   }
 
   async isConfigured() {

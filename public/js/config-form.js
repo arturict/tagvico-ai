@@ -345,10 +345,7 @@ class ConfigFormApp {
           throw new Error(result.error || 'Failed to save configuration');
         }
 
-        window.alert(result.message || 'Configuration saved. The app will restart.');
-        if (result.restart) {
-          window.location.reload();
-        }
+        window.alert(result.message || 'Configuration saved. New settings are active.');
       } catch (error) {
         window.alert(error.message);
       } finally {

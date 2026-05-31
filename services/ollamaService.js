@@ -66,6 +66,17 @@ class OllamaService {
         };
     }
 
+    reset() {
+        this.apiUrl = config.ollama.apiUrl;
+        this.model = config.ollama.model;
+    }
+
+    refreshConfig() {
+        if (this.apiUrl !== config.ollama.apiUrl || this.model !== config.ollama.model) {
+            this.reset();
+        }
+    }
+
     /**
      * Analyze a document and extract metadata
      * @param {string} content - Document content
@@ -77,6 +88,7 @@ class OllamaService {
      */
     async analyzeDocument(content, existingTags = [], existingCorrespondentList = [], existingDocumentTypesList = [], id, customPrompt = null, options = {}) {
         try {
+            this.refreshConfig();
             // Truncate content if needed
             content = this._truncateContent(content);
 
@@ -183,6 +195,7 @@ class OllamaService {
      */
     async analyzePlayground(content, prompt) {
         try {
+            this.refreshConfig();
             // Calculate context window size
             const promptTokenCount = await calculateTokens(prompt);
             const numCtx = this._calculateNumCtx(promptTokenCount, 1024);
@@ -540,6 +553,7 @@ class OllamaService {
      * @returns {Object} Ollama API response
      */
     async _callOllamaAPI(prompt, systemPrompt, numCtx, schema) {
+        this.refreshConfig();
         const response = await this.client.post(`${this.apiUrl}/api/generate`, {
             model: this.model,
             prompt: prompt,
@@ -683,6 +697,7 @@ class OllamaService {
      */
     async generateText(prompt) {
         try {
+            this.refreshConfig();
             // Calculate context window size based on prompt length
             const promptTokenCount = this._calculatePromptTokenCount(prompt);
             const numCtx = this._calculateNumCtx(promptTokenCount, 512);
@@ -722,6 +737,7 @@ class OllamaService {
     async checkStatus() {
         // use ollama status endpoint
         try {
+            this.refreshConfig();
             const response = await this.client.get(`${this.apiUrl}/api/ps`);
             if (response.status === 200) {
                 const data = response.data;

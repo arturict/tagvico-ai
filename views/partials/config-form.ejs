@@ -16,7 +16,7 @@
   </div>
   <div class="badge-row">
     <span class="badge"><i class="fa-solid fa-code-branch"></i> <%= config.PAPERLESS_AI_VERSION %></span>
-    <span class="badge"><i class="fa-solid fa-star"></i> Recommended: <%= providerCatalog.recommendedModel %></span>
+    <span class="badge"><i class="fa-solid fa-wand-magic-sparkles"></i> Default model: <%= providerCatalog.recommendedModel %></span>
   </div>
 </section>
 
@@ -153,7 +153,6 @@
               <button type="button" class="choice-card model-choice <%= providerCatalog.effectiveModel === preset.slug ? 'is-selected' : '' %>" data-model-choice="<%= preset.slug %>">
                 <div class="choice-title">
                   <span><%= preset.name %></span>
-                  <% if (preset.recommended) { %><span class="badge">Recommended</span><% } %>
                 </div>
                 <div class="choice-copy"><%= preset.summary %></div>
                 <div class="badge-row" style="margin-top:0.65rem;">
@@ -388,11 +387,17 @@
     </div>
   </div>
 
-  <div class="hero stack">
+  <details class="hero stack advanced-panel">
+    <summary>
+      <span>
+        <span class="section-kicker">Advanced</span>
+        <strong>Person hints</strong>
+      </span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </summary>
+
     <div>
-      <p class="section-kicker">5. Optional person hints</p>
-      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Help Archivista choose the right Paperless user</h2>
-      <p class="field-hint">You can leave this empty. Archivista already compares document text with each Paperless user name and email. Add hints only when a person has aliases, departments, or keywords that are not obvious from their account.</p>
+      <p class="field-hint">Optional. Archivista already compares document text with each Paperless user name and email. Add hints only when a person has aliases, departments, or keywords that are not obvious from their account.</p>
     </div>
 
     <div class="form-grid">
@@ -407,13 +412,16 @@
         </div>
       </div>
     </div>
-  </div>
+  </details>
 
-  <div class="hero stack">
-    <div>
-      <p class="section-kicker">6. Guardrails and extras</p>
-      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Restrict suggestions and enrich context</h2>
-    </div>
+  <details class="hero stack advanced-panel">
+    <summary>
+      <span>
+        <span class="section-kicker">Advanced</span>
+        <strong>Guardrails and enrichment</strong>
+      </span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </summary>
 
     <div class="segmented">
       <label class="choice-card <%= config.RESTRICT_TO_EXISTING_TAGS === 'yes' ? 'is-selected' : '' %>">
@@ -476,12 +484,18 @@
         <textarea id="externalApiTransform" name="externalApiTransform" rows="6"><%= config.EXTERNAL_API_TRANSFORM %></textarea>
       </div>
     </div>
-  </div>
+  </details>
 
-  <div class="hero stack">
+  <details class="hero stack advanced-panel">
+    <summary>
+      <span>
+        <span class="section-kicker">Advanced</span>
+        <strong>Custom fields</strong>
+      </span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </summary>
+
     <div>
-      <p class="section-kicker">7. Custom fields</p>
-      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Structured metadata extraction</h2>
       <p class="field-hint">Define the Paperless custom fields you want AI to fill when it can confidently extract them.</p>
     </div>
 
@@ -519,10 +533,10 @@
     </div>
 
     <input id="customFieldsJson" name="customFields" type="hidden" value='<%= config.CUSTOM_FIELDS || "{\"custom_fields\":[]}" %>'>
-  </div>
+  </details>
 
   <div class="page-header" style="margin-top:0;align-items:center;">
-    <p class="page-subtitle">When saved, the app restarts itself so the backend picks up the new provider settings.</p>
+    <p class="page-subtitle">Saved settings apply to new processing runs immediately. No app restart is needed.</p>
     <button type="submit" class="button" id="configSubmit"><%= submitLabel %></button>
   </div>
 </form>

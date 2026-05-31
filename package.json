@@ -4,7 +4,9 @@
   "description": "AI autopilot for Paperless-ngx: metadata, tagging, classification and person assignment.",
   "main": "server.js",
   "scripts": {
-    "test": "nodemon server.js"
+    "build": "tsc",
+    "test": "nodemon server.js",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "paperless-ngx",
@@ -53,11 +55,13 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
+    "@types/node": "^22.13.10",
     "eslint": "^9.22.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-jsdoc": "^50.6.3",
     "globals": "^16.0.0",
-    "prettier": "^3.5.3"
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

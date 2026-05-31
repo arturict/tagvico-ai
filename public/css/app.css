@@ -72,6 +72,19 @@ textarea {
   min-height: 48px;
 }
 
+select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) calc(50% - 3px),
+    calc(100% - 12px) calc(50% - 3px);
+  background-size: 6px 6px, 6px 6px;
+  background-repeat: no-repeat;
+  padding-right: 2.5rem;
+}
+
 textarea {
   min-height: 140px;
   line-height: 1.55;
@@ -196,13 +209,10 @@ textarea:focus {
   width: 48px;
   height: 48px;
   border-radius: 6px;
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  color: white;
-  background:
-    linear-gradient(135deg, transparent 0 24%, rgba(255,255,255,0.18) 24% 28%, transparent 28%),
-    linear-gradient(135deg, var(--accent), #101010);
+  display: block;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  background: var(--bg-strong);
 }
 
 .app-brand-title {
@@ -673,4 +683,44 @@ textarea:focus {
 .help-card p {
   margin: 0.5rem 0 0;
   line-height: 1.5;
+}
+
+.advanced-panel {
+  padding: 0;
+}
+
+.advanced-panel summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 1.2rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.advanced-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-panel summary strong {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 1.15rem;
+}
+
+.advanced-panel[open] {
+  padding: 0 1.5rem 1.5rem;
+}
+
+.advanced-panel[open] summary {
+  padding-inline: 0;
+}
+
+.advanced-panel summary i {
+  transition: transform 0.18s ease;
+}
+
+.advanced-panel[open] summary i {
+  transform: rotate(180deg);
 }

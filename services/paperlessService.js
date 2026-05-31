@@ -14,6 +14,14 @@ class PaperlessService {
     this.CACHE_LIFETIME = 3000; // 3 Sekunden
   }
 
+  reset() {
+    this.client = null;
+    this.tagCache.clear();
+    this.customFieldCache.clear();
+    this.lastTagRefresh = 0;
+    this.lastCustomFieldRefresh = 0;
+  }
+
   initialize() {
     if (!this.client && config.paperless.apiUrl && config.paperless.apiToken) {
       this.client = axios.create({

@@ -17,6 +17,10 @@ class AzureOpenAIService {
     this.client = null;
   }
 
+  reset() {
+    this.client = null;
+  }
+
   initialize() {
     if (!this.client && config.aiProvider === 'azure') {
       this.client = new AzureOpenAI({

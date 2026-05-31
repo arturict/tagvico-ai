@@ -18,6 +18,11 @@ class OpenAIService {
     this.clientKey = null;
   }
 
+  reset() {
+    this.client = null;
+    this.clientKey = null;
+  }
+
   initialize() {
     const provider = normalizeProvider(config.aiProvider);
 
