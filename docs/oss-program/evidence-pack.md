@@ -9,7 +9,7 @@
 
 ## 1. Project at a glance
 
-**Archivista AI** is a self-hosted AI filing assistant for [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) that auto-tags, summarises, and routes incoming documents to the right owner, correspondent, and custom field. It supports 5 model providers (OpenAI, Azure OpenAI, Anthropic, Google Gemini, and a fully local/custom OpenAI-compatible endpoint), ships with multilingual OCR for German, Swiss German heuristics, Austrian German, and French, and is designed to run on a single homelab box. The project is built on current Paperless-ngx 2.x workflows and explicitly positions itself as a maintained successor to the older `paperless-gpt` and `paperless-ai` projects.
+**Archivista AI** is a self-hosted AI filing assistant for [Paperless-ngx](https://github.com/paperless-ngx/paperless-ngx) that auto-tags, summarises, and routes incoming documents to the right owner, correspondent, and custom field. It supports 5 model providers (OpenAI, OpenRouter, Ollama, an OpenAI-compatible custom endpoint, and Azure OpenAI), ships with multilingual OCR normalization for German and French (Swiss formats included), and is designed to run on a single homelab box. The project is built on current Paperless-ngx 2.x workflows with modern self-hosting in mind. Following the "better_claims" guidance in `docs/agent-roadmap.json`, it does not position itself as a replacement for `paperless-gpt` or `paperless-ai` — both projects remain active upstream and are respected neighbours in the Paperless ecosystem.
 
 ---
 
@@ -25,7 +25,7 @@
 
   *(Single release tag at time of writing; subsequent releases are scheduled as part of the public roadmap in `docs/agent-roadmap.json`.)*
 
-- Commits since `v1.0.0` (`git log --oneline v1.0.0..HEAD | wc -l`): **25**
+- Commits since `v1.0.0` (`git log --oneline v1.0.0..HEAD | wc -l`): **22**
 
 - Additional release engineering is already in place:
   `.github/workflows/release-to-discord.yml`, `.github/workflows/docker-build-push.yml`,
@@ -35,10 +35,11 @@
 
 Command: `gh issue list --state all --limit 1000 --json state | jq 'length'`
 
-- Reported total issues: **0** (the tracker is freshly curated - all
-  known backlog has been converted into structured roadmap items in
-  `docs/agent-roadmap.json`; a deliberate launch batch of 10-15 issues is
-  being opened from the roadmap and will land before the application).
+- Reported total issues: **15** (the tracker is freshly curated - a
+  deliberate launch batch of 15 PR-sized issues was opened from
+  `docs/agent-roadmap.json` ahead of the OSS program application.
+  All of them are open and labelled with `roadmap` or one of the
+  domain labels in section 2.5 below).
 
 ### 2.3 PR activity
 
@@ -95,11 +96,11 @@ This is not a synthetic demo:
 Archivista AI ships with first-class adapters for **5** model providers:
 
 1. **OpenAI** (gpt-4o, gpt-4o-mini, gpt-4.1 family)
-2. **Azure OpenAI** (enterprise / data-residency deployments)
-3. **Anthropic** (Claude Sonnet / Haiku)
-4. **Google Gemini** (gemini-1.5 / 2.x)
-5. **OpenAI-compatible custom endpoint** (Ollama, vLLM, LM Studio,
-   OpenRouter, Together, etc. - including fully local models)
+2. **OpenRouter** (multi-provider routing under one key)
+3. **Ollama** (fully local, on-device)
+4. **OpenAI-compatible custom endpoint** (vLLM, LM Studio, llama.cpp,
+   Together, etc. - including fully local models)
+5. **Azure OpenAI** (enterprise / data-residency deployments)
 
 This breadth is the project's core differentiator: a Paperless-ngx
 operator can choose the provider that matches their privacy, cost, and
@@ -108,20 +109,24 @@ self-host a local model.
 
 ### 3.3 Multilingual OCR coverage
 
-Document OCR and classification are tuned for the DACH region plus
-French:
+Document OCR normalization in `services/ocrNormalizer.js` is tuned
+for the DACH region plus French. The original OCR text is always
+preserved; the normalization pass produces a separate
+"matching-only" copy so classifiers and tag-matchers behave well
+even when OCR drops umlauts or accents:
 
-- **German (de)** - formal and informal
-- **Swiss German (de-CH)** - dialectal heuristics and a curated
-  post-processing pass
-- **Austrian German (de-AT)** - legal/financial vocabulary
-- **French (fr)** - formal correspondence
+- **German (de)** - formal and informal, including umlaut -> digraph
+  fallback (`Müller` -> `Mueller` for matching only)
+- **Swiss German formats (de-CH)** - apostrophe-separated currency
+  (`CHF 1'234.50`) and dotted Swiss dates
+- **French (fr)** - diacritic stripping (`naïve` -> `naive` for
+  matching only) and French month names
 
 The combined population of these primary target regions exceeds
-**100 million speakers**, and the OCR pass is optimised for the
-document types those regions actually produce (utility bills,
+**100 million speakers**, and the OCR normalization is optimised for
+the document types those regions actually produce (utility bills,
 "Kassenbon", Behördenpost, "avis", "facture"). This is documented
-in the launch post draft (`docs/launch-post.md`) and the per-provider
+in `README.md` under "Multilingual OCR" and in the per-provider
 setup pages.
 
 ---
@@ -146,7 +151,7 @@ setup pages.
   `docs/agent-roadmap.json` and avoids the "avoid_claims" block -
   including not claiming that `paperless-gpt` or `paperless-ai` are
   abandoned.
-- **Commit cadence:** 25 commits since `v1.0.0`, all on
+- **Commit cadence:** 22 commits since `v1.0.0`, all on
   `feature/roadmap-execution`, all signed and reviewable.
 
 ---
@@ -180,10 +185,13 @@ human maintainer is the only entity that signs off and merges.
 - **No undisclosed marketing copy.** Any AI-assisted post, README
   revision, or social media copy is disclosed as AI-assisted in
   the same artifact, per the disclosure rule in section 6.
-- **No silent metadata writes.** The `.review` artifact and the
-  confidence-guard work in `lib/confidence/` prevent an AI agent
-  from writing to `metadata.json` or to Paperless custom fields
-  without an explicit human-visible review step. The
+- **No silent metadata writes.** The dry-run review mode in
+  `services/reviewService.js` and the confidence scoring in
+  `services/confidenceGuard.js` prevent an AI agent
+  from writing to Paperless without an explicit human-visible
+  review step. The `/review/:id/apply` route requires an
+  authenticated session (`isAuthenticated` middleware) and is a
+  no-op while `DRY_RUN=true` is set in `data/.review`. The
   `thumbnailHelper.js` extraction and the `test-thumbnail-handling.js`
   regression suite are part of the same trust story: the AI never
   has an implicit path to mutate the user's archive.
@@ -211,17 +219,18 @@ the project is:
   `docs/agent-roadmap.json` (the "disclose AI assistance where
   community rules require it" clause).
 - **Data does not leave the user's infra unless they choose to.**
-  Provider 5 (custom OpenAI-compatible endpoint) is fully local.
-  The other four providers are opt-in: if the operator does not
-  configure a key, no traffic leaves the host. There is no
-  telemetry, no analytics, no "phone home" call in the Archivista
-  AI server itself.
-- **The `.review` artifact and confidence-guard prevent silent AI
-  writes.** The confidence scoring work in `lib/confidence/` and
-  the dry-run review mode ensure that the AI's proposed metadata
-  changes are surfaced to the user as a **diff** before they are
-  written. The maintainer treats this as the load-bearing trust
-  boundary of the project.
+  Providers 3 (Ollama) and 4 (OpenAI-compatible custom endpoint) can
+  be fully local. The other three providers are opt-in: if the
+  operator does not configure a key, no traffic leaves the host.
+  There is no telemetry, no analytics, no "phone home" call in the
+  Archivista AI server itself.
+- **The dry-run review mode and confidence-guard prevent silent AI
+  writes.** The confidence scoring work in `services/confidenceGuard.js`
+  and the dry-run review mode in `services/reviewService.js` ensure
+  that the AI's proposed metadata changes are surfaced to the user as
+  a **diff** (rendered in `views/history.ejs` via
+  `public/js/history.js`) before they are written. The maintainer
+  treats this as the load-bearing trust boundary of the project.
 - **No secrets in the repo.** Provider keys are read from
   environment variables only. There is a pre-commit guard
   (see `.github/workflows/ci.yml`) that fails the build on
