@@ -4,6 +4,7 @@ const config = require('../config/config');
 const fs = require('fs');
 const path = require('path');
 const { parse, isValid, parseISO, format } = require('date-fns');
+const { compareMetadata } = require('./metadataDiff');
 
 class PaperlessService {
   constructor() {
@@ -1246,6 +1247,67 @@ async getOrCreateDocumentType(name) {
     }
   }
 
+
+  /**
+   * Apply a partial metadata patch to a single document and return a
+   * structured diff describing what actually changed on the Paperless side.
+   *
+   * The diff is computed from the live document state before and after the
+   * PATCH call, so fields Paperless rejected (validation errors, immutable
+   * fields) are not reported as changed. The result keeps the original
+   * raw responses available so callers can persist additional context.
+   *
+   * @param {number|string} documentId
+   * @param {object} partial - Subset of { title, tags, correspondent,
+   *   document_type, language, custom_fields, created, owner }.
+   * @returns {Promise<{ ok: boolean, before?: object, after?: object,
+   *   diff?: Array<{field:string,before:*,after:*,applied:boolean,error?:string}>,
+   *   error?: string, status?: number }>}
+   */
+  async patchDocument(documentId, partial = {}) {
+    this.initialize();
+    if (!this.client) {
+      return { ok: false, error: 'Paperless client not initialized' };
+    }
+    if (!documentId) {
+      return { ok: false, error: 'documentId is required' };
+    }
+
+    let before;
+    try {
+      before = await this.getDocument(documentId);
+    } catch (error) {
+      return {
+        ok: false,
+        error: `Failed to load document ${documentId}: ${error.message}`,
+        status: error.response?.status
+      };
+    }
+
+    try {
+      await this.client.patch(`/documents/${documentId}/`, partial);
+    } catch (error) {
+      return {
+        ok: false,
+        error: `PATCH failed: ${error.message}`,
+        status: error.response?.status
+      };
+    }
+
+    let after;
+    try {
+      after = await this.getDocument(documentId);
+    } catch (error) {
+      return {
+        ok: false,
+        error: `Failed to reload document ${documentId}: ${error.message}`,
+        status: error.response?.status
+      };
+    }
+
+    const diff = compareMetadata(before || {}, after || {});
+    return { ok: true, before, after, diff };
+  }
 
   async updateDocument(documentId, updates) {
     this.initialize();

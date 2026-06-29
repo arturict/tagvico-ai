@@ -15,6 +15,7 @@ const { max } = require('date-fns');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const ownerProfileService = require('./services/ownerProfileService');
+const historyService = require('./services/historyService');
 
 const htmlLogger = new Logger({
   logFile: 'logs.html',
@@ -611,6 +612,8 @@ async function startServer() {
   const port = process.env.PAPERLESS_AI_PORT || 3000;
   try {
     await initializeDataDirectory();
+    // Idempotent schema migration for the history.diff JSON column.
+    historyService.migrate();
     await saveOpenApiSpec(); // Save OpenAPI specification on startup
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);

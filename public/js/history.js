@@ -35,6 +35,11 @@ class HistoryPage {
         },
         { data: 'correspondent' },
         {
+          data: 'document_id',
+          orderable: false,
+          render: (id) => this.renderChangesCell(id)
+        },
+        {
           data: 'link',
           render: (link) => `<a class="button-secondary" href="${link}" target="_blank" rel="noreferrer">Open</a>`,
           orderable: false
@@ -45,10 +50,80 @@ class HistoryPage {
     });
   }
 
+  renderChangesCell(documentId) {
+    // Static placeholder — gets replaced on demand when the user opens
+    // the <details> element (see bind()).
+    return `<details class="history-diff" data-document-id="${documentId}">
+      <summary>View</summary>
+      <div class="history-diff-body" data-state="loading">Loading…</div>
+    </details>`;
+  }
+
+  async loadDiff(details) {
+    const body = details.querySelector('.history-diff-body');
+    if (!body || body.dataset.state !== 'loading') return;
+    const documentId = details.dataset.documentId;
+    body.dataset.state = 'loading';
+    body.textContent = 'Loading…';
+    try {
+      const response = await fetch(`/api/history/${documentId}/diff`);
+      if (response.status === 404) {
+        body.dataset.state = 'empty';
+        body.textContent = 'No diff recorded for this document yet.';
+        return;
+      }
+      if (!response.ok) {
+        body.dataset.state = 'error';
+        body.textContent = 'Failed to load diff.';
+        return;
+      }
+      const payload = await response.json();
+      const diff = Array.isArray(payload.diff) ? payload.diff : [];
+      if (diff.length === 0) {
+        body.dataset.state = 'empty';
+        body.textContent = 'No changes recorded.';
+        return;
+      }
+      body.dataset.state = 'loaded';
+      body.innerHTML = this.formatDiff(diff);
+    } catch (error) {
+      body.dataset.state = 'error';
+      body.textContent = 'Failed to load diff.';
+    }
+  }
+
+  formatDiff(diff) {
+    return `<ul class="history-diff-list">${diff.map((entry) => `
+      <li>
+        <code>${this.escape(entry.field)}</code>:
+        <span class="diff-before">${this.escape(JSON.stringify(entry.before))}</span>
+        →
+        <span class="diff-after">${this.escape(JSON.stringify(entry.after))}</span>
+        ${entry.error ? `<span class="diff-error">(${this.escape(entry.error)})</span>` : ''}
+      </li>`).join('')}</ul>`;
+  }
+
+  escape(value) {
+    if (value === undefined) return '(unset)';
+    const str = value === null ? 'null' : String(value);
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   bind() {
     $('#tagFilter, #correspondentFilter').on('change', () => this.table.ajax.reload());
     document.getElementById('resetSelectedBtn')?.addEventListener('click', () => this.resetSelected());
     document.getElementById('resetAllBtn')?.addEventListener('click', () => this.resetAll());
+    document.addEventListener('toggle', (event) => {
+      const target = event.target;
+      if (target instanceof HTMLDetailsElement && target.classList.contains('history-diff')) {
+        if (target.open) this.loadDiff(target);
+      }
+    }, true);
   }
 
   getSelectedIds() {

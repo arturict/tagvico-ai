@@ -1,16 +1,15 @@
 // services/reviewService.js
 //
 // Read-only support for the dry-run review mode. Lists the latest auto-analyzed
-// documents and provides a thin wrapper that calls paperlessService.updateDocument
-// once the user clicks "Apply" on a single analysis. The actual patch logic
-// (mapping a partial metadata object onto a Paperless PATCH call) is intentionally
-// left as a TODO — wiring it up lands in a follow-up commit alongside the
-// paperlessService.patchDocument helper.
+// documents and provides a thin wrapper that calls paperlessService.patchDocument
+// once the user clicks "Apply" on a single analysis. The diff that the patch
+// returns is persisted via historyService so the history view can render it.
 
 const fs = require('fs');
 const path = require('path');
 const documentModel = require('../models/document.js');
 const paperlessService = require('./paperlessService.js');
+const historyService = require('./historyService.js');
 
 const REVIEW_PATH = path.join(process.cwd(), 'data', '.review');
 
@@ -98,12 +97,14 @@ async function listRecentAnalyses(limit = 20) {
  * produces in routes/setup.js: { title, tags, correspondent, document_type,
  * custom_fields, owner }.
  *
- * NOTE: This currently returns a "skipped" result for the actual patch call.
- * The next commit introduces paperlessService.patchDocument and wires it here.
+ * The PATCH is delegated to paperlessService.patchDocument, which returns
+ * a structured diff; we persist the diff in the history table so the
+ * history view can render it later.
  *
  * @param {number|string} documentId
  * @param {object} metadata
- * @returns {Promise<{ok: boolean, reason?: string, dryRun: boolean}>}
+ * @returns {Promise<{ok: boolean, reason?: string, dryRun: boolean,
+ *   diff?: Array<object>}>}
  */
 async function applyMetadata(documentId, metadata = {}) {
   if (!documentId) {
@@ -114,16 +115,30 @@ async function applyMetadata(documentId, metadata = {}) {
     return { ok: false, reason: 'DRY_RUN is enabled; enable writes in /settings', dryRun: true };
   }
 
-  // TODO: implement paperlessService.patchDocument call here
-  // The follow-up commit will:
-  //   1. Add `patchDocument(id, partialMetadata)` to paperlessService.js.
-  //   2. Map the partial metadata keys onto the Paperless fields here.
-  //   3. Replace the placeholder below with a real call.
-  if (typeof paperlessService.patchDocument === 'function') {
-    return await paperlessService.patchDocument(documentId, metadata);
+  if (typeof paperlessService.patchDocument !== 'function') {
+    return { ok: false, reason: 'paperlessService.patchDocument not implemented', dryRun: false };
   }
 
-  return { ok: false, reason: 'paperlessService.patchDocument not implemented', dryRun: false };
+  const result = await paperlessService.patchDocument(documentId, metadata);
+  if (!result.ok) {
+    return { ok: false, reason: result.error || 'patch failed', dryRun: false };
+  }
+
+  // Persist the diff alongside the regular history row so the UI can show
+  // it. We do not log the document body — only field names and ids.
+  const title = metadata.title || (result.after && result.after.title) || null;
+  const correspondent = metadata.correspondent
+    ? String(metadata.correspondent)
+    : (result.after && result.after.correspondent) || null;
+  historyService.addToHistory(
+    documentId,
+    metadata.tags || (result.after && result.after.tags) || [],
+    title,
+    correspondent,
+    result.diff || []
+  );
+
+  return { ok: true, dryRun: false, diff: result.diff || [] };
 }
 
 module.exports = {

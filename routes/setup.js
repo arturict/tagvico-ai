@@ -23,6 +23,7 @@ const customService = require('../services/customService.js');
 const config = require('../config/config.js');
 const providerCatalogService = require('../services/providerCatalogService');
 const reviewService = require('../services/reviewService');
+const historyService = require('../services/historyService');
 const {
   buildUiConfig,
   normalizeArray,
@@ -936,6 +937,88 @@ router.get('/api/history', async (req, res) => {
   } catch (error) {
     console.error('[ERROR] loading history data:', error);
     res.status(500).json({ error: 'Error loading history data' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/history/{id}/diff:
+ *   get:
+ *     summary: Get the structured diff for a single processed document
+ *     description: |
+ *       Returns the diff captured when the document was last patched by
+ *       Archivista AI. The :id parameter is the Paperless document id
+ *       (NOT the history row id); the endpoint picks the most recent
+ *       history row for that document.
+ *
+ *       Each diff entry is `{ field, before, after, applied, error? }` —
+ *       the same shape used internally by metadataDiff.compareMetadata.
+ *     tags:
+ *       - History
+ *       - API
+ *     security:
+ *       - BearerAuth: []
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Paperless document id
+ *         example: 123
+ *     responses:
+ *       200:
+ *         description: Diff returned (may be empty array when no patch happened)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 document_id:
+ *                   type: integer
+ *                   example: 123
+ *                 title:
+ *                   type: string
+ *                   example: "Invoice #12345"
+ *                 created_at:
+ *                   type: string
+ *                   format: date-time
+ *                 diff:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       field:
+ *                         type: string
+ *                         example: "title"
+ *                       before:
+ *                         nullable: true
+ *                       after:
+ *                         nullable: true
+ *                       applied:
+ *                         type: boolean
+ *                       error:
+ *                         type: string
+ *       404:
+ *         description: No history row for this document
+ */
+router.get('/api/history/:id/diff', async (req, res) => {
+  try {
+    const documentId = req.params.id;
+    const row = historyService.getLatestByDocumentId(documentId);
+    if (!row) {
+      return res.status(404).json({ error: 'No history row for document', document_id: documentId });
+    }
+    res.json({
+      document_id: row.document_id,
+      title: row.title,
+      created_at: row.created_at,
+      diff: row.diff || []
+    });
+  } catch (error) {
+    console.error('[ERROR] loading history diff:', error);
+    res.status(500).json({ error: 'Error loading history diff' });
   }
 });
 
