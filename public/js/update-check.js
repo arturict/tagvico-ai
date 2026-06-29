@@ -94,7 +94,7 @@
     }
   }
 
-  function showBanner(latestVersion, htmlUrl) {
+  function showBanner(latestVersion, htmlUrl, currentVersion) {
     var banner = $('#appUpdateBanner');
     if (!banner) return;
 
@@ -112,7 +112,9 @@
       dismissBtn.dataset.bound = '1';
       dismissBtn.addEventListener('click', function () {
         banner.hidden = true;
-        setDismissedVersion(latestVersion);
+        // Track which app version the user dismissed at — upgrading the app
+        // should let the banner re-appear for the newer release.
+        setDismissedVersion(currentVersion);
       });
     }
 
@@ -122,6 +124,14 @@
   function checkForUpdate() {
     var current = readCurrentVersion();
     if (!current) {
+      return;
+    }
+
+    // If the user previously dismissed the banner for this app version, the
+    // banner stays hidden until they upgrade. After upgrade, current changes
+    // and the dismissed-version check no longer matches, so the banner
+    // re-appears for the new release.
+    if (getDismissedVersion() === current) {
       return;
     }
 
@@ -137,10 +147,7 @@
         if (!isNewer(latest, current)) {
           return;
         }
-        if (getDismissedVersion() === latest) {
-          return;
-        }
-        showBanner(latest, release.html_url);
+        showBanner(latest, release.html_url, current);
       })
       .catch(function (err) {
         /* never break the app if GitHub is unreachable */
