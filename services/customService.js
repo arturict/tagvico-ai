@@ -11,6 +11,7 @@ const fs = require('fs').promises;
 const RestrictionPromptService = require('./restrictionPromptService');
 const { normalizeProvider } = require('./providerCatalogService');
 const { loadThumbnail, buildUserMessage } = require('./thumbnailHelper');
+const confidenceGuard = require('./confidenceGuard');
 
 class CustomOpenAIService {
   constructor() {
@@ -138,6 +139,10 @@ class CustomOpenAIService {
         systemPrompt = customPrompt + '\n\n' + config.mustHavePrompt;
       }
 
+      // Append the confidence-scoring contract so the model returns per-field
+      // scores that the guardrails module can compare against the threshold.
+      systemPrompt = confidenceGuard.appendConfidencePrompt(systemPrompt);
+
       // Calculate tokens AFTER all prompt modifications are complete
       const totalPromptTokens = await calculateTotalPromptTokens(
         systemPrompt,
@@ -227,13 +232,23 @@ class CustomOpenAIService {
         });
       } catch (error) {
         console.error('Failed to parse JSON response:', error);
-        throw new Error('Invalid JSON response from API');
+        // Hold the whole document for review when parsing fails entirely.
+        parsedResponse = { tags: [], correspondent: null, held_for_review: ['title', 'tags', 'correspondent', 'document_type', 'custom_fields', 'owner'] };
+        return {
+          document: parsedResponse,
+          metrics: mappedUsage,
+          truncated: truncatedContent.length < content.length
+        };
       }
 
       // Validate response structure
       if (!parsedResponse || !Array.isArray(parsedResponse.tags) || typeof parsedResponse.correspondent !== 'string') {
         throw new Error('Invalid response structure: missing tags array or correspondent string');
       }
+
+      // Annotate the response with the held_for_review fields based on
+      // per-field confidence. Field values are never logged.
+      parsedResponse = confidenceGuard.annotateHeldFields(parsedResponse);
 
       return {
         document: parsedResponse,
@@ -350,13 +365,23 @@ class CustomOpenAIService {
         parsedResponse = JSON.parse(jsonContent);
       } catch (error) {
         console.error('Failed to parse JSON response:', error);
-        throw new Error('Invalid JSON response from API');
+        // Hold the whole document for review when parsing fails entirely.
+        parsedResponse = { tags: [], correspondent: null, held_for_review: ['title', 'tags', 'correspondent', 'document_type', 'custom_fields', 'owner'] };
+        return {
+          document: parsedResponse,
+          metrics: mappedUsage,
+          truncated: truncatedContent.length < content.length
+        };
       }
 
       // Validate response structure
       if (!parsedResponse || !Array.isArray(parsedResponse.tags) || typeof parsedResponse.correspondent !== 'string') {
         throw new Error('Invalid response structure: missing tags array or correspondent string');
       }
+
+      // Annotate the response with the held_for_review fields based on
+      // per-field confidence. Field values are never logged.
+      parsedResponse = confidenceGuard.annotateHeldFields(parsedResponse);
 
       return {
         document: parsedResponse,
