@@ -22,6 +22,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const customService = require('../services/customService.js');
 const config = require('../config/config.js');
 const providerCatalogService = require('../services/providerCatalogService');
+const reviewService = require('../services/reviewService');
 const {
   buildUiConfig,
   normalizeArray,
@@ -935,6 +936,84 @@ router.get('/api/history', async (req, res) => {
   } catch (error) {
     console.error('[ERROR] loading history data:', error);
     res.status(500).json({ error: 'Error loading history data' });
+  }
+});
+
+/**
+ * /review:
+ *   get:
+ *     summary: Dry-run review queue
+ *     description: |
+ *       Renders the dry-run review queue: the latest 20 auto-analyzed documents
+ *       with their proposed title, tags, correspondent, document type, and
+ *       custom fields. While DRY_RUN=true (the default), new AI suggestions
+ *       land here instead of being written back to Paperless-ngx automatically.
+ *     tags:
+ *       - Navigation
+ *     security:
+ *       - BearerAuth: []
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Review page rendered successfully
+ */
+router.get('/review', async (req, res) => {
+  try {
+    const analyses = await reviewService.listRecentAnalyses(20);
+    res.render('review', {
+      title: 'Review | Archivista AI',
+      activePage: 'review',
+      version: configFile.PAPERLESS_AI_VERSION,
+      analyses,
+      dryRun: reviewService.isDryRunEnabled()
+    });
+  } catch (error) {
+    console.error('[ERROR] loading review page:', error);
+    res.status(500).render('review', {
+      title: 'Review | Archivista AI',
+      activePage: 'review',
+      version: configFile.PAPERLESS_AI_VERSION,
+      analyses: [],
+      dryRun: reviewService.isDryRunEnabled(),
+      error: 'Error loading review queue'
+    });
+  }
+});
+
+/**
+ * /review/:id/apply:
+ *   post:
+ *     summary: Apply a partial metadata patch to a single document
+ *     description: |
+ *       Accepts a partial metadata object (any of title, tags, correspondent,
+ *       document_type, custom_fields, owner) and writes it back to Paperless-ngx.
+ *       In dry-run mode the request is rejected so operators can stage changes
+ *       first. The actual Paperless PATCH call is left as a TODO and lands in
+ *       the next commit alongside paperlessService.patchDocument.
+ *     tags:
+ *       - Documents
+ *     security:
+ *       - BearerAuth: []
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ */
+router.post('/review/:id/apply', express.json(), async (req, res) => {
+  try {
+    const documentId = req.params.id;
+    const metadata = req.body || {};
+    const result = await reviewService.applyMetadata(documentId, metadata);
+    if (!result.ok) {
+      return res.status(409).json(result);
+    }
+    res.json({ success: true, documentId, ...result });
+  } catch (error) {
+    console.error('[ERROR] applying review metadata:', error);
+    res.status(500).json({ error: 'Error applying metadata' });
   }
 });
 
@@ -3555,6 +3634,16 @@ router.post('/setup', express.json(), async (req, res) => {
     await setupService.saveConfig(config);
     resetRuntimeServices();
     onboardingService.writeOnboardingSnapshot(config);
+
+    // Persist dry-run review flag alongside the main config so the review
+    // queue picks it up on the next request without restarting the process.
+    if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'dry_run')) {
+      reviewService.writeReviewConfig({ DRY_RUN: req.body.dry_run ? 'true' : 'false' });
+    } else {
+      // Make sure the on-disk default exists so /review can read it.
+      reviewService.writeReviewConfig({});
+    }
+
     const hashedPassword = await bcrypt.hash(password, 15);
     await documentModel.addUser(username, hashedPassword);
 
