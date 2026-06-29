@@ -274,6 +274,68 @@ textarea:focus {
   border: 1px solid var(--border);
 }
 
+.app-update-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--warning) 14%, var(--bg-strong));
+  border: 1px solid color-mix(in srgb, var(--warning) 45%, var(--border));
+  color: var(--text);
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.app-update-banner[hidden] {
+  display: none;
+}
+
+.app-update-banner > i.fa-circle-up {
+  color: var(--warning);
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.app-update-banner-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-update-banner-link {
+  text-decoration: none;
+  color: var(--warning);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.app-update-banner-link:hover {
+  text-decoration: underline;
+}
+
+.app-update-banner-dismiss {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0 0.15rem;
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+
+.app-update-banner-dismiss:hover,
+.app-update-banner-dismiss:focus-visible {
+  color: var(--text);
+  background: var(--accent-soft);
+  outline: none;
+}
+
 .app-main {
   padding: 2rem;
 }

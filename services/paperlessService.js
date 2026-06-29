@@ -4,6 +4,8 @@ const config = require('../config/config');
 const fs = require('fs');
 const path = require('path');
 const { parse, isValid, parseISO, format } = require('date-fns');
+const { compareMetadata } = require('./metadataDiff');
+const ocrNormalizer = require('./ocrNormalizer');
 
 class PaperlessService {
   constructor() {
@@ -899,6 +901,22 @@ class PaperlessService {
     return response.data.content;
   }
 
+  /**
+   * Like getDocumentContent, but also returns a `normalized` copy of the
+   * OCR text suitable for matching / tagging. The original spelling is
+   * always preserved so the field can be safely written back to
+   * Paperless if needed.
+   *
+   * @param {number|string} documentId
+   * @param {string} [locale] - Locale hint for the normalizer (e.g. "de-CH").
+   * @returns {Promise<{ content: string, normalized: string, locale: string }>}
+   */
+  async getDocumentContentNormalized(documentId, locale) {
+    const content = await this.getDocumentContent(documentId);
+    const { original, normalized } = ocrNormalizer.normalize(content, locale);
+    return { content: original, normalized, locale: locale || '' };
+  }
+
   async getDocument(documentId) {
     this.initialize();
     try {
@@ -1246,6 +1264,67 @@ async getOrCreateDocumentType(name) {
     }
   }
 
+
+  /**
+   * Apply a partial metadata patch to a single document and return a
+   * structured diff describing what actually changed on the Paperless side.
+   *
+   * The diff is computed from the live document state before and after the
+   * PATCH call, so fields Paperless rejected (validation errors, immutable
+   * fields) are not reported as changed. The result keeps the original
+   * raw responses available so callers can persist additional context.
+   *
+   * @param {number|string} documentId
+   * @param {object} partial - Subset of { title, tags, correspondent,
+   *   document_type, language, custom_fields, created, owner }.
+   * @returns {Promise<{ ok: boolean, before?: object, after?: object,
+   *   diff?: Array<{field:string,before:*,after:*,applied:boolean,error?:string}>,
+   *   error?: string, status?: number }>}
+   */
+  async patchDocument(documentId, partial = {}) {
+    this.initialize();
+    if (!this.client) {
+      return { ok: false, error: 'Paperless client not initialized' };
+    }
+    if (!documentId) {
+      return { ok: false, error: 'documentId is required' };
+    }
+
+    let before;
+    try {
+      before = await this.getDocument(documentId);
+    } catch (error) {
+      return {
+        ok: false,
+        error: `Failed to load document ${documentId}: ${error.message}`,
+        status: error.response?.status
+      };
+    }
+
+    try {
+      await this.client.patch(`/documents/${documentId}/`, partial);
+    } catch (error) {
+      return {
+        ok: false,
+        error: `PATCH failed: ${error.message}`,
+        status: error.response?.status
+      };
+    }
+
+    let after;
+    try {
+      after = await this.getDocument(documentId);
+    } catch (error) {
+      return {
+        ok: false,
+        error: `Failed to reload document ${documentId}: ${error.message}`,
+        status: error.response?.status
+      };
+    }
+
+    const diff = compareMetadata(before || {}, after || {});
+    return { ok: true, before, after, diff };
+  }
 
   async updateDocument(documentId, updates) {
     this.initialize();
