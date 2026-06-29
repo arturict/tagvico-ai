@@ -209,8 +209,8 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
 async function buildUpdateData(analysis, doc, content = '') {
   const updateData = {};
 
-  // Only process tags if tagging is activated
-  if (config.limitFunctions?.activateTagging !== 'no') {
+  // Only process tags if tagging is activated and tags are not held for review
+  if (config.limitFunctions?.activateTagging !== 'no' && !heldFields.includes('tags')) {
     const { tagIds, errors } = await paperlessService.processTags(analysis.document.tags);
     if (errors.length > 0) {
       console.warn('[ERROR] Some tags could not be processed:', errors);
@@ -227,18 +227,27 @@ async function buildUpdateData(analysis, doc, content = '') {
     }
     updateData.tags = tagIds;
     console.log('[DEBUG] Tagging is deactivated');
+  } else if (heldFields.includes('tags')) {
+    console.log('[DEBUG] Tags held for review, skipping auto-apply');
   }
 
-  // Only process title if title generation is activated
-  if (config.limitFunctions?.activateTitle !== 'no') {
+  // Only process title if title generation is activated and title is not held for review
+  if (config.limitFunctions?.activateTitle !== 'no' && !heldFields.includes('title')) {
     updateData.title = analysis.document.title || doc.title;
+  } else if (heldFields.includes('title')) {
+    console.log('[DEBUG] Title held for review, skipping auto-apply');
   }
 
-  // Add created date regardless of settings as it's a core field
-  updateData.created = analysis.document.document_date || doc.created;
+  // Add created date regardless of settings as it's a core field (unless held)
+  if (!heldFields.includes('document_date')) {
+    updateData.created = analysis.document.document_date || doc.created;
+  } else {
+    updateData.created = doc.created;
+    console.log('[DEBUG] Document date held for review, keeping original');
+  }
 
-  // Only process document type if document type classification is activated
-  if (config.limitFunctions?.activateDocumentType !== 'no' && analysis.document.document_type) {
+  // Only process document type if document type classification is activated and not held
+  if (config.limitFunctions?.activateDocumentType !== 'no' && analysis.document.document_type && !heldFields.includes('document_type')) {
     try {
       const documentType = await paperlessService.getOrCreateDocumentType(analysis.document.document_type);
       if (documentType) {
