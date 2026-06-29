@@ -4,7 +4,7 @@
   "description": "AI autopilot for Paperless-ngx: metadata, tagging, classification and person assignment.",
   "main": "server.js",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "node server.js",
     "dev": "nodemon --watch . --ext js,ts,json server.js",
     "build": "tsc",
     "test": "nodemon server.js",
