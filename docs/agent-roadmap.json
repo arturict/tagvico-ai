@@ -1,0 +1,436 @@
+{
+  "project": "archivista-ai",
+  "created_at": "2026-06-29",
+  "goal": "Make Archivista AI a credible, maintained, self-hosted Paperless-ngx AI filing project with a public roadmap for coding agents.",
+  "positioning": {
+    "primary_claim": "A modern, self-hosted AI filing assistant for Paperless-ngx with strong onboarding, provider choice, owner assignment, custom fields, and automation-ready workflows.",
+    "avoid_claims": [
+      "Do not claim paperless-gpt and paperless-ai are abandoned. As of 2026-06-29, both still show recent GitHub activity.",
+      "Do not claim ChatGPT Plus/Pro or Claude Pro/Max browser automation is officially supported until the legal and technical model is validated."
+    ],
+    "better_claims": [
+      "Built after paperless-gpt and paperless-ai with current self-hosting workflows in mind.",
+      "Focuses on clean setup, modern model routing, owner assignment, custom fields, and homelab-friendly operations.",
+      "Explores user-owned subscription workflows as an optional advanced mode where provider terms allow it."
+    ]
+  },
+  "recommended_agent_routing": {
+    "quick_repo_audits": "agy with Gemini 3.5 Flash",
+    "implementation_tasks": "Codex or Claude Code",
+    "broad_product_architecture": "GLM 5.2 with max reasoning if available; otherwise Codex deep review"
+  },
+  "phases": [
+    {
+      "id": "phase-0",
+      "name": "Trust reset",
+      "target_window": "1-2 days",
+      "outcome": "The repo no longer looks like a quick fork/rebrand and has a credible OSS surface."
+    },
+    {
+      "id": "phase-1",
+      "name": "Maintainer-ready foundation",
+      "target_window": "1 week",
+      "outcome": "CI, docs, release flow, issue templates, and demo material make contribution and usage feel safe."
+    },
+    {
+      "id": "phase-2",
+      "name": "Differentiating product work",
+      "target_window": "2-4 weeks",
+      "outcome": "Archivista AI offers visible advantages over existing Paperless AI tools."
+    },
+    {
+      "id": "phase-3",
+      "name": "Community launch",
+      "target_window": "4-8 weeks",
+      "outcome": "Real users, issues, feedback, stars, and release history exist before applying to OSS programs."
+    }
+  ],
+  "tasks": [
+    {
+      "id": "repo-001",
+      "phase": "phase-0",
+      "title": "Remove stale upstream funding metadata",
+      "type": "repo-polish",
+      "priority": "critical",
+      "suggested_github_issue": true,
+      "context": ".github/FUNDING.yml still points to clusterzx accounts, which weakens trust and makes the repo look like an unfinished fork.",
+      "acceptance_criteria": [
+        ".github/FUNDING.yml is removed or replaced with arturict-owned links.",
+        "No remaining funding metadata points to another maintainer.",
+        "A short PR explains this as project identity cleanup."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "repo-002",
+      "phase": "phase-0",
+      "title": "Audit legacy names and fork leftovers",
+      "type": "repo-polish",
+      "priority": "critical",
+      "suggested_github_issue": true,
+      "context": "Search for paperless-ai, ppai, clusterzx, old icon names, old donation links, and stale docs references.",
+      "acceptance_criteria": [
+        "No user-facing references imply the project is still Paperless-AI unless intentionally used in comparison/history.",
+        "Old asset names are either harmless internal filenames or renamed in a focused PR.",
+        "README and release notes consistently say Archivista AI."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "ci-001",
+      "phase": "phase-1",
+      "title": "Add pull-request CI workflow",
+      "type": "github-actions",
+      "priority": "critical",
+      "suggested_github_issue": true,
+      "context": "Current workflows build Docker on release/nightly/manual, but there is no visible PR quality gate.",
+      "acceptance_criteria": [
+        "A workflow runs on pull_request and push to main.",
+        "It runs npm ci, npm run typecheck, lint if available, and a minimal smoke test.",
+        "The README shows a CI badge only after the workflow is green."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "ci-002",
+      "phase": "phase-1",
+      "title": "Modernize Docker build workflow",
+      "type": "github-actions",
+      "priority": "high",
+      "suggested_github_issue": true,
+      "context": "Actions use older major versions and require a GHCR_PAT secret even though GITHUB_TOKEN may be sufficient with package permissions.",
+      "acceptance_criteria": [
+        "actions/checkout, docker/setup-qemu-action, docker/setup-buildx-action, docker/login-action, docker/metadata-action, and docker/build-push-action use current major versions.",
+        "GHCR push uses least-privilege permissions where possible.",
+        "Nightly image, release semver tags, latest tag, and sha tags are documented."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "ci-003",
+      "phase": "phase-1",
+      "title": "Replace aggressive stale bot defaults",
+      "type": "community",
+      "priority": "high",
+      "suggested_github_issue": true,
+      "context": "The stale workflow marks issues stale after 7 days and closes after 3 more. That feels hostile for a small OSS project.",
+      "acceptance_criteria": [
+        "Stale timing is relaxed or workflow is disabled until the project has real issue volume.",
+        "Bug reports and feature requests are not closed quickly while adoption is being built.",
+        "Maintainer policy is documented in CONTRIBUTING.md."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "dx-001",
+      "phase": "phase-1",
+      "title": "Fix documented development commands",
+      "type": "developer-experience",
+      "priority": "critical",
+      "suggested_github_issue": true,
+      "context": "README says to run npm start, but package.json does not define a start script.",
+      "acceptance_criteria": [
+        "Either package.json includes a working start script or README uses the actual command.",
+        "Local development instructions work from a clean clone.",
+        "CI validates the documented command path."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "bug-001",
+      "phase": "phase-1",
+      "title": "Handle missing Paperless thumbnails without crashing",
+      "type": "bugfix",
+      "priority": "critical",
+      "suggested_github_issue": true,
+      "context": "The read-only audit found services that can attempt to write null thumbnail data to disk when Paperless has no thumbnail available.",
+      "affected_files": [
+        "services/openaiService.js",
+        "services/customService.js",
+        "services/azureService.js"
+      ],
+      "acceptance_criteria": [
+        "Missing thumbnail data is handled as a non-fatal condition.",
+        "Document analysis can continue with OCR text only when thumbnails are unavailable.",
+        "Logs clearly say thumbnail was unavailable without leaking document content.",
+        "A regression test covers missing thumbnail responses."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "docs-001",
+      "phase": "phase-1",
+      "title": "Rewrite README into a launch-quality OSS README",
+      "type": "documentation",
+      "priority": "critical",
+      "suggested_github_issue": true,
+      "context": "Current README is short and useful but lacks screenshots, architecture, quickstart detail, comparison, support policy, and contribution flow.",
+      "acceptance_criteria": [
+        "README starts with what it does, who it is for, and a screenshot.",
+        "Includes Docker Compose quickstart, required Paperless token scopes, provider setup, common failures, and security notes.",
+        "Includes a balanced comparison with paperless-gpt and paperless-ai without attacking them.",
+        "Includes roadmap, contributing link, license, and release badge."
+      ],
+      "agent_fit": "kimi-k2.6 for copy, Codex for markdown integration"
+    },
+    {
+      "id": "docs-002",
+      "phase": "phase-1",
+      "title": "Create docs pages for provider setup",
+      "type": "documentation",
+      "priority": "high",
+      "suggested_github_issue": true,
+      "context": "Provider choice is a major differentiator but needs clear setup docs.",
+      "acceptance_criteria": [
+        "Docs cover OpenRouter, OpenAI API, Ollama, LM Studio/OpenAI-compatible, and Azure.",
+        "Each provider page lists required env vars, example values, privacy/cost notes, and troubleshooting.",
+        "Docs avoid promising non-API subscription automation until validated."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "docs-003",
+      "phase": "phase-1",
+      "title": "Add real Fudligagg Lab screenshots",
+      "type": "documentation",
+      "priority": "high",
+      "suggested_github_issue": true,
+      "context": "The README and landing page should show a real, anonymized deployment and workflow instead of only abstract screenshots.",
+      "acceptance_criteria": [
+        "Capture setup, dashboard, provider picker, document history, and Paperless before/after metadata from an anonymized real deployment.",
+        "All screenshots are anonymized and contain no private documents, names, addresses, tokens, or sensitive metadata.",
+        "README and landing page use the screenshots with short captions."
+      ],
+      "agent_fit": "Codex plus browser/canvas tooling"
+    },
+    {
+      "id": "product-001",
+      "phase": "phase-2",
+      "title": "Validate user-owned subscription provider mode",
+      "type": "research",
+      "priority": "critical",
+      "suggested_github_issue": true,
+      "context": "The idea is to let users use existing ChatGPT Plus/Pro, Claude Pro/Max, or opencode-based subscriptions instead of paying for API keys. This needs legal, UX, and reliability validation before implementation.",
+      "acceptance_criteria": [
+        "Document what is allowed by OpenAI, Anthropic, OpenRouter, and opencode terms for automated access.",
+        "Define a safe architecture that does not ask users to share account credentials with Archivista AI.",
+        "If viable, design a local adapter interface where the user runs their own agent bridge locally.",
+        "If not viable, document why API/local providers remain the supported path."
+      ],
+      "agent_fit": "GLM 5.2 max reasoning or Codex deep research"
+    },
+    {
+      "id": "product-002",
+      "phase": "phase-2",
+      "title": "Design provider adapter interface",
+      "type": "architecture",
+      "priority": "high",
+      "suggested_github_issue": true,
+      "context": "Archivista should support API providers cleanly now and optional local agent bridges later.",
+      "acceptance_criteria": [
+        "There is a ProviderAdapter interface with analyzeDocument capabilities, model metadata, healthcheck, and privacy/cost metadata.",
+        "OpenAI/OpenRouter/Ollama/Compatible implementations fit the same shape.",
+        "Future opencode/Claude Code/local browser bridge adapters can be added without touching document-processing logic."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "product-003",
+      "phase": "phase-2",
+      "title": "Add dry-run review mode",
+      "type": "feature",
+      "priority": "high",
+      "suggested_github_issue": true,
+      "context": "Users need to trust AI metadata before allowing writes to Paperless.",
+      "acceptance_criteria": [
+        "A setting allows AI suggestions without writing metadata.",
+        "Dashboard shows proposed title, tags, correspondent, document type, custom fields, and owner.",
+        "User can approve, reject, or apply selected fields.",
+        "Audit history stores model, prompt version, and applied changes."
+      ],
+      "agent_fit": "Codex or Claude Code"
+    },
+    {
+      "id": "product-004",
+      "phase": "phase-2",
+      "title": "Add confidence scoring and guardrails",
+      "type": "feature",
+      "priority": "high",
+      "suggested_github_issue": true,
+      "context": "Owner assignment and filing fields should avoid bad guesses.",
+      "acceptance_criteria": [
+        "Prompt asks model for confidence per field.",
+        "Configurable thresholds decide auto-apply vs review-required.",
+        "Low-confidence owner/correspondent changes are never auto-applied by default.",
+        "Dashboard explains why a suggestion was held for review."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "product-005",
+      "phase": "phase-2",
+      "title": "Build Paperless metadata diff engine",
+      "type": "feature",
+      "priority": "high",
+      "suggested_github_issue": true,
+      "context": "Users should see exactly what Archivista changed in Paperless.",
+      "acceptance_criteria": [
+        "Before/after values are captured for each modified field.",
+        "History page can filter by field, document, model, and apply status.",
+        "Failed writes are visible with error messages and retry options.",
+        "Sensitive values are not leaked into public logs."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "product-006",
+      "phase": "phase-2",
+      "title": "Improve custom fields support",
+      "type": "feature",
+      "priority": "medium",
+      "suggested_github_issue": true,
+      "context": "Custom fields are a key Paperless power-user feature and a source of API edge cases.",
+      "acceptance_criteria": [
+        "Field types are discovered from Paperless and shown in settings.",
+        "The model receives field labels, types, allowed values, and examples.",
+        "Invalid model outputs are rejected before PATCH/PUT.",
+        "A fixture test covers text, date, boolean, monetary, select, and URL-like fields if Paperless supports them."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "product-007",
+      "phase": "phase-2",
+      "title": "Add multilingual OCR normalization strategy",
+      "type": "feature",
+      "priority": "medium",
+      "suggested_github_issue": true,
+      "context": "German/French documents can suffer from OCR quirks around umlauts and accents. Archivista can help by normalizing text before matching/classification.",
+      "acceptance_criteria": [
+        "Preprocessing keeps original OCR text but also builds a normalized matching copy.",
+        "German umlauts, French accents, currency formats, and Swiss date/address formats are tested.",
+        "Prompt tells the model to preserve original spelling in output where appropriate."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "site-001",
+      "phase": "phase-1",
+      "title": "Replace illustrative hero card with real product screenshot",
+      "type": "landing-page",
+      "priority": "high",
+      "suggested_github_issue": true,
+      "context": "The landing page is polished but too abstract for a utility OSS project. Real UI screenshots will convert better and feel more credible.",
+      "acceptance_criteria": [
+        "Hero uses a real anonymized Archivista dashboard/setup screenshot.",
+        "The first viewport shows what the app actually looks like.",
+        "Mobile layout keeps text and screenshot readable without overlap."
+      ],
+      "agent_fit": "Codex with browser screenshot verification"
+    },
+    {
+      "id": "site-002",
+      "phase": "phase-1",
+      "title": "Add install and demo sections to landing page",
+      "type": "landing-page",
+      "priority": "medium",
+      "suggested_github_issue": true,
+      "context": "The current site is mostly value-prop copy. OSS users need proof and a quick path to try it.",
+      "acceptance_criteria": [
+        "Add Docker Compose quickstart section.",
+        "Add screenshot-driven workflow: connect Paperless, choose provider, review result, write back metadata.",
+        "Add GitHub release and docs links.",
+        "Add clear note that the public website does not process documents."
+      ],
+      "agent_fit": "kimi-k2.6 for copy, Codex for implementation"
+    },
+    {
+      "id": "community-001",
+      "phase": "phase-3",
+      "title": "Create first public issue set",
+      "type": "community",
+      "priority": "high",
+      "suggested_github_issue": false,
+      "context": "A serious OSS repo should show planned work publicly instead of hiding everything in private notes.",
+      "acceptance_criteria": [
+        "Create 10-15 GitHub issues from this roadmap.",
+        "Label issues as good first issue, documentation, provider, paperless-integration, ci, security, or roadmap.",
+        "Use issue text that sounds human, specific, and non-generic.",
+        "Do not spam; each issue should map to a real PR-sized change."
+      ],
+      "agent_fit": "kimi-k2.6 for issue text, Codex for gh issue create"
+    },
+    {
+      "id": "community-002",
+      "phase": "phase-3",
+      "title": "Write launch post for r/selfhosted and Paperless communities",
+      "type": "community",
+      "priority": "medium",
+      "suggested_github_issue": false,
+      "context": "The launch should ask for testers, not stars. It should be transparent about early status and AI assistance if required.",
+      "acceptance_criteria": [
+        "Post explains the real problem: scanned documents still need cleanup after OCR.",
+        "Includes screenshots, Docker Compose, GitHub link, and clear early-stage caveats.",
+        "Avoids trashing paperless-gpt or paperless-ai.",
+        "Mentions AI-assisted writing only where community rules require it."
+      ],
+      "agent_fit": "kimi-k2.6"
+    },
+    {
+      "id": "upstream-001",
+      "phase": "phase-3",
+      "title": "Investigate Paperless workflow timing issue #12117",
+      "type": "upstream-pr-candidate",
+      "priority": "medium",
+      "suggested_github_issue": false,
+      "context": "Paperless issue #12117 says Document Added workflows may run before OCR text and metadata matching are ready. This overlaps with Archivista's automation needs.",
+      "source_url": "https://github.com/paperless-ngx/paperless-ngx/issues/12117",
+      "acceptance_criteria": [
+        "Reproduce on a local Paperless-ngx dev setup.",
+        "Identify whether docs, workflow trigger order, or implementation is wrong.",
+        "Submit either a small docs PR or a focused code PR upstream.",
+        "Reference how reliable post-consume metadata hooks help external automation tools."
+      ],
+      "agent_fit": "Codex or Claude Code"
+    },
+    {
+      "id": "upstream-002",
+      "phase": "phase-3",
+      "title": "Investigate Paperless custom field API edge cases",
+      "type": "upstream-pr-candidate",
+      "priority": "medium",
+      "suggested_github_issue": false,
+      "context": "Several historical Paperless issues mention custom field update surprises. Archivista depends on reliable metadata writes.",
+      "source_urls": [
+        "https://github.com/paperless-ngx/paperless-ngx/issues/9311",
+        "https://github.com/paperless-ngx/paperless-ngx/issues/9478",
+        "https://github.com/paperless-ngx/paperless-ngx/issues/5293"
+      ],
+      "acceptance_criteria": [
+        "Check current Paperless behavior against latest main, not old reports only.",
+        "Write a small reproducible test or docs clarification if behavior is confusing.",
+        "Only open an upstream PR if the issue still exists or docs are objectively unclear."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "upstream-003",
+      "phase": "phase-3",
+      "title": "Investigate OCR normalization docs for DACH/French documents",
+      "type": "upstream-pr-candidate",
+      "priority": "low",
+      "suggested_github_issue": false,
+      "context": "Older issues mention umlaut/accent OCR problems. Even if not a Paperless bug, docs or troubleshooting improvements could help users and tie into Archivista's target audience.",
+      "source_urls": [
+        "https://github.com/paperless-ngx/paperless-ngx/issues/4139",
+        "https://github.com/paperless-ngx/paperless-ngx/issues/4833"
+      ],
+      "acceptance_criteria": [
+        "Verify whether current Paperless docs already cover OCR language packs and PDF text extraction behavior.",
+        "If a gap exists, propose a docs PR with a DACH/French troubleshooting section.",
+        "Keep the PR helpful to Paperless itself, not promotional for Archivista."
+      ],
+      "agent_fit": "Codex"
+    }
+  ]
+}
