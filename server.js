@@ -331,10 +331,12 @@ async function buildUpdateData(analysis, doc, content = '') {
     if (processedFields.length > 0) {
       updateData.custom_fields = processedFields;
     }
+  } else if (heldFields.includes('custom_fields')) {
+    console.log('[DEBUG] Custom fields held for review, skipping auto-apply');
   }
 
-  // Only process correspondent if correspondent detection is activated
-  if (config.limitFunctions?.activateCorrespondents !== 'no' && analysis.document.correspondent) {
+  // Only process correspondent if correspondent detection is activated and not held
+  if (config.limitFunctions?.activateCorrespondents !== 'no' && analysis.document.correspondent && !heldFields.includes('correspondent')) {
     try {
       const correspondent = await paperlessService.getOrCreateCorrespondent(analysis.document.correspondent);
       if (correspondent) {
@@ -343,6 +345,8 @@ async function buildUpdateData(analysis, doc, content = '') {
     } catch (error) {
       console.error(`[ERROR] Error processing correspondent:`, error);
     }
+  } else if (heldFields.includes('correspondent')) {
+    console.log('[DEBUG] Correspondent held for review, skipping auto-apply');
   }
 
   // Always include language if provided as it's a core field
@@ -350,7 +354,7 @@ async function buildUpdateData(analysis, doc, content = '') {
     updateData.language = analysis.document.language;
   }
 
-  if (config.activateOwnerAssignment !== 'no' && !doc.owner) {
+  if (config.activateOwnerAssignment !== 'no' && !doc.owner && !heldFields.includes('owner')) {
     try {
       const users = await paperlessService.getUsers();
       const ownerMatch = ownerProfileService.findOwnerMatch({
@@ -367,6 +371,8 @@ async function buildUpdateData(analysis, doc, content = '') {
     } catch (error) {
       console.error('[ERROR] Error assigning owner profile:', error.message);
     }
+  } else if (heldFields.includes('owner')) {
+    console.log('[DEBUG] Owner held for review, skipping auto-apply');
   }
 
   return updateData;
