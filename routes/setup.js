@@ -1085,7 +1085,7 @@ router.get('/review', async (req, res) => {
  *         schema:
  *           type: integer
  */
-router.post('/review/:id/apply', express.json(), async (req, res) => {
+router.post('/review/:id/apply', express.json(), isAuthenticated, async (req, res) => {
   try {
     const documentId = req.params.id;
     const metadata = req.body || {};
