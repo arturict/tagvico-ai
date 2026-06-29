@@ -16,6 +16,7 @@ const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('./swagger');
 const ownerProfileService = require('./services/ownerProfileService');
 const historyService = require('./services/historyService');
+const customFieldsService = require('./services/customFieldsService');
 
 const htmlLogger = new Logger({
   logFile: 'logs.html',
@@ -253,17 +254,43 @@ async function buildUpdateData(analysis, doc, content = '') {
     const customFields = analysis.document.custom_fields;
     const processedFields = [];
 
+    // Discover the live field list so we can validate model output against
+    // the declared Paperless type. Failures here are non-fatal — the
+    // legacy lookup-by-name path is still used as a fallback.
+    let liveFields = [];
+    try {
+      liveFields = await customFieldsService.listFields();
+    } catch (error) {
+      console.warn('[WARN] Custom field discovery failed, continuing with legacy lookup:', error.message);
+    }
+
+    // Validate + drop invalid values. The model output is sanitized
+    // against the live type list first; whatever passes is then turned
+    // into a Paperless-friendly { field, value } array. Values for
+    // fields the discovery step didn't return (e.g. legacy / unknown)
+    // fall through to the existing name lookup.
+    const { valid: sanitizedValid, dropped: sanitizedDropped } = customFieldsService.sanitize(
+      liveFields,
+      customFields
+    );
+    if (sanitizedDropped.length > 0) {
+      console.warn(
+        `[WARN] Dropped ${sanitizedDropped.length} custom field(s) that did not match their declared type`
+      );
+    }
+
     // Get existing custom fields
     const existingFields = await paperlessService.getExistingCustomFields(doc.id);
     console.log(`[DEBUG] Found existing fields:`, existingFields);
 
     // Keep track of which fields we've processed to avoid duplicates
     const processedFieldIds = new Set();
+    const processedNames = new Set();
 
     // First, add any new/updated fields
     for (const key in customFields) {
       const customField = customFields[key];
-      
+
       if (!customField.field_name || !customField.value?.trim()) {
         console.log(`[DEBUG] Skipping empty/invalid custom field`);
         continue;
@@ -271,11 +298,26 @@ async function buildUpdateData(analysis, doc, content = '') {
 
       const fieldDetails = await paperlessService.findExistingCustomField(customField.field_name);
       if (fieldDetails?.id) {
+        const trimmedValue = customField.value.trim();
+        const liveField = liveFields.find(
+          (f) => String(f.name).toLowerCase() === String(fieldDetails.name).toLowerCase()
+        );
+        if (liveField) {
+          // Re-check the value against the declared type after trimming.
+          const reason = customFieldsService.validateValue(liveField, trimmedValue);
+          if (reason) {
+            console.warn(
+              `[WARN] Custom field "${liveField.name}" value rejected: ${reason}`
+            );
+            continue;
+          }
+        }
         processedFields.push({
           field: fieldDetails.id,
-          value: customField.value.trim()
+          value: trimmedValue
         });
         processedFieldIds.add(fieldDetails.id);
+        processedNames.add(String(fieldDetails.name).toLowerCase());
       }
     }
 

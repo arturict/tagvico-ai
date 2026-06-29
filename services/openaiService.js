@@ -11,6 +11,7 @@ const RestrictionPromptService = require('./restrictionPromptService');
 const { normalizeProvider } = require('./providerCatalogService');
 const { loadThumbnail, buildUserMessage } = require('./thumbnailHelper');
 const confidenceGuard = require('./confidenceGuard');
+const customFieldsService = require('./customFieldsService');
 
 class OpenAIService {
   constructor() {
@@ -91,6 +92,7 @@ class OpenAIService {
       }
 
       let systemPrompt = '';
+      let systemPromptExtra = '';
       let promptTags = '';
       const provider = normalizeProvider(config.aiProvider);
       const model = provider === 'openrouter'
@@ -121,6 +123,20 @@ class OpenAIService {
         .split('\n')
         .map(line => '    ' + line)  // Add proper indentation
         .join('\n');
+
+      // Discover live custom fields from Paperless and append a JSON
+      // description block. Falls back to the static env-var list when
+      // the discovery call fails (e.g. unauthenticated or offline).
+      let liveFieldList = [];
+      try {
+        liveFieldList = await customFieldsService.listFields();
+      } catch (error) {
+        console.warn('[WARN] Custom field discovery failed:', error.message);
+      }
+      if (liveFieldList.length > 0) {
+        const liveBlock = customFieldsService.formatForPrompt(liveFieldList);
+        systemPromptExtra = `\n\nKnown custom fields (from Paperless, with type info):\n${liveBlock}\n\nUse these field names exactly when populating custom_fields. Drop fields whose declared type does not match the value.`;
+      }
 
       // Get system prompt and model
       if (config.useExistingData === 'yes' && config.restrictToExistingTags === 'no' && config.restrictToExistingCorrespondents === 'no') {
@@ -164,6 +180,11 @@ class OpenAIService {
       // Append the confidence-scoring contract so the model returns per-field
       // scores that the guardrails module can compare against the threshold.
       systemPrompt = confidenceGuard.appendConfidencePrompt(systemPrompt);
+
+      // Append the discovered custom field list, if any.
+      if (systemPromptExtra) {
+        systemPrompt += systemPromptExtra;
+      }
 
       // Calculate tokens AFTER all prompt modifications are complete
       const totalPromptTokens = await calculateTotalPromptTokens(
