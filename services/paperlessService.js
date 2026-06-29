@@ -5,6 +5,7 @@ const fs = require('fs');
 const path = require('path');
 const { parse, isValid, parseISO, format } = require('date-fns');
 const { compareMetadata } = require('./metadataDiff');
+const ocrNormalizer = require('./ocrNormalizer');
 
 class PaperlessService {
   constructor() {
@@ -898,6 +899,22 @@ class PaperlessService {
     this.initialize();
     const response = await this.client.get(`/documents/${documentId}/`);
     return response.data.content;
+  }
+
+  /**
+   * Like getDocumentContent, but also returns a `normalized` copy of the
+   * OCR text suitable for matching / tagging. The original spelling is
+   * always preserved so the field can be safely written back to
+   * Paperless if needed.
+   *
+   * @param {number|string} documentId
+   * @param {string} [locale] - Locale hint for the normalizer (e.g. "de-CH").
+   * @returns {Promise<{ content: string, normalized: string, locale: string }>}
+   */
+  async getDocumentContentNormalized(documentId, locale) {
+    const content = await this.getDocumentContent(documentId);
+    const { original, normalized } = ocrNormalizer.normalize(content, locale);
+    return { content: original, normalized, locale: locale || '' };
   }
 
   async getDocument(documentId) {
