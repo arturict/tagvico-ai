@@ -1,7 +1,7 @@
 {
   "project": "archivista-ai",
   "created_at": "2026-06-29",
-  "goal": "Make Archivista AI a credible, maintained, self-hosted Paperless-ngx AI filing project with a public roadmap for coding agents.",
+  "goal": "Make Archivista AI a credible, maintained, self-hosted Paperless-ngx AI filing project that can plausibly support an OpenAI Codex for OSS or Claude for OSS application.",
   "positioning": {
     "primary_claim": "A modern, self-hosted AI filing assistant for Paperless-ngx with strong onboarding, provider choice, owner assignment, custom fields, and automation-ready workflows.",
     "avoid_claims": [
@@ -14,10 +14,32 @@
       "Explores user-owned subscription workflows as an optional advanced mode where provider terms allow it."
     ]
   },
+  "repo_cleanup_status": {
+    "private_now": [
+      "coolify-traefik-proxy-manager",
+      "Pico-Temp",
+      "img2macros",
+      "othello",
+      "lightmancer",
+      "quick-mailer",
+      "Backtrace",
+      "paperlesser"
+    ],
+    "not_found": [
+      "art-prototype"
+    ],
+    "left_untouched": [
+      "cart-prototype",
+      "edubase-exporter"
+    ],
+    "delete_blocker": "gh token lacks delete_repo scope, so confirmed repos were made private instead of deleted."
+  },
   "recommended_agent_routing": {
+    "writing_public_copy": "kimi-k2.6 via opencode when available; otherwise write manually in a direct, non-generic style.",
     "quick_repo_audits": "agy with Gemini 3.5 Flash",
     "implementation_tasks": "Codex or Claude Code",
-    "broad_product_architecture": "GLM 5.2 with max reasoning if available; otherwise Codex deep review"
+    "broad_product_architecture": "GLM 5.2 with max reasoning if available; otherwise Codex deep review",
+    "launch_copy_and_posts": "kimi-k2.6 draft, human review, disclose AI assistance where community rules require it"
   },
   "phases": [
     {
@@ -73,6 +95,24 @@
         "No user-facing references imply the project is still Paperless-AI unless intentionally used in comparison/history.",
         "Old asset names are either harmless internal filenames or renamed in a focused PR.",
         "README and release notes consistently say Archivista AI."
+      ],
+      "agent_fit": "Codex"
+    },
+    {
+      "id": "repo-003",
+      "phase": "phase-0",
+      "title": "Full TypeScript migration",
+      "type": "architecture",
+      "priority": "high",
+      "suggested_github_issue": true,
+      "context": "The entire project should be migrated to TypeScript for better type safety, maintainability, and developer experience.",
+      "acceptance_criteria": [
+        "All JavaScript files are converted to TypeScript",
+        "Type definitions are provided for all modules and interfaces",
+        "tsconfig.json is properly configured with strict mode",
+        "Build pipeline includes TypeScript compilation",
+        "All existing functionality is preserved after migration",
+        "Documentation is updated with TypeScript-specific setup instructions"
       ],
       "agent_fit": "Codex"
     },
@@ -195,9 +235,9 @@
       "type": "documentation",
       "priority": "high",
       "suggested_github_issue": true,
-      "context": "The README and landing page should show a real, anonymized deployment and workflow instead of only abstract screenshots.",
+      "context": "The repo has screenshots, but the README and landing page should show a real, anonymized homelab deployment and workflow.",
       "acceptance_criteria": [
-        "Capture setup, dashboard, provider picker, document history, and Paperless before/after metadata from an anonymized real deployment.",
+        "Capture setup, dashboard, provider picker, document history, and Paperless before/after metadata.",
         "All screenshots are anonymized and contain no private documents, names, addresses, tokens, or sensitive metadata.",
         "README and landing page use the screenshots with short captions."
       ],
@@ -205,22 +245,6 @@
     },
     {
       "id": "product-001",
-      "phase": "phase-2",
-      "title": "Validate user-owned subscription provider mode",
-      "type": "research",
-      "priority": "critical",
-      "suggested_github_issue": true,
-      "context": "The idea is to let users use existing ChatGPT Plus/Pro, Claude Pro/Max, or opencode-based subscriptions instead of paying for API keys. This needs legal, UX, and reliability validation before implementation.",
-      "acceptance_criteria": [
-        "Document what is allowed by OpenAI, Anthropic, OpenRouter, and opencode terms for automated access.",
-        "Define a safe architecture that does not ask users to share account credentials with Archivista AI.",
-        "If viable, design a local adapter interface where the user runs their own agent bridge locally.",
-        "If not viable, document why API/local providers remain the supported path."
-      ],
-      "agent_fit": "GLM 5.2 max reasoning or Codex deep research"
-    },
-    {
-      "id": "product-002",
       "phase": "phase-2",
       "title": "Design provider adapter interface",
       "type": "architecture",
@@ -235,7 +259,7 @@
       "agent_fit": "Codex"
     },
     {
-      "id": "product-003",
+      "id": "product-002",
       "phase": "phase-2",
       "title": "Add dry-run review mode",
       "type": "feature",
@@ -251,7 +275,7 @@
       "agent_fit": "Codex or Claude Code"
     },
     {
-      "id": "product-004",
+      "id": "product-003",
       "phase": "phase-2",
       "title": "Add confidence scoring and guardrails",
       "type": "feature",
@@ -267,7 +291,7 @@
       "agent_fit": "Codex"
     },
     {
-      "id": "product-005",
+      "id": "product-004",
       "phase": "phase-2",
       "title": "Build Paperless metadata diff engine",
       "type": "feature",
@@ -283,7 +307,7 @@
       "agent_fit": "Codex"
     },
     {
-      "id": "product-006",
+      "id": "product-005",
       "phase": "phase-2",
       "title": "Improve custom fields support",
       "type": "feature",
@@ -299,7 +323,7 @@
       "agent_fit": "Codex"
     },
     {
-      "id": "product-007",
+      "id": "product-006",
       "phase": "phase-2",
       "title": "Add multilingual OCR normalization strategy",
       "type": "feature",
@@ -431,6 +455,22 @@
         "Keep the PR helpful to Paperless itself, not promotional for Archivista."
       ],
       "agent_fit": "Codex"
+    },
+    {
+      "id": "oss-program-001",
+      "phase": "phase-3",
+      "title": "Prepare OSS program evidence pack",
+      "type": "application-prep",
+      "priority": "high",
+      "suggested_github_issue": false,
+      "context": "OpenAI and Anthropic applications need evidence of real maintenance and usefulness.",
+      "acceptance_criteria": [
+        "Collect release history, issue/PR activity, screenshots, community feedback, stars/forks, and usage stats if available.",
+        "Write a concise maintainer story focused on OSS work, not private business projects.",
+        "Explain exactly how Codex/Claude will be used for triage, review, docs, releases, security, and upstream contributions.",
+        "Apply after at least several visible releases and real user feedback unless a strong exception story exists."
+      ],
+      "agent_fit": "kimi-k2.6 for application draft, Codex for evidence gathering"
     }
   ]
 }
