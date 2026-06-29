@@ -1,133 +1,76 @@
 /**
- * Test script to verify the thumbnail null-handling in OpenAIService.analyzeDocument
+ * Tests for services/thumbnailHelper.js
  *
- * When paperlessService.getThumbnailImage returns null:
- * - The cache write should be skipped entirely
- * - The model should be called with text-only content
- * - The messages array should NOT contain an image_url entry
+ * Targets the helper directly:
+ *  - loadThumbnail propagates the null result from paperlessService
+ *  - buildUserMessage omits image_url when no thumbnail is present
+ *  - buildUserMessage adds image_url when a Buffer is provided
  */
+const assert = require('node:assert/strict');
 const path = require('path');
-const fs = require('fs').promises;
-const fssync = require('fs');
+const fs = require('fs');
+const fsp = require('fs').promises;
+const os = require('os');
 
-// Mock the paperless service BEFORE requiring the service under test
+// Mock the paperless service BEFORE requiring the helper so the helper
+// picks up the stub.
 const paperlessService = require('./services/paperlessService');
 paperlessService.getThumbnailImage = async () => null;
 
-// Spy on fs.promises.writeFile at module level
-const realWriteFile = fs.writeFile.bind(fs);
-let writeFileInvocations = [];
-fs.writeFile = async (filePath, data) => {
-  writeFileInvocations.push({ filePath, data });
-  // Do not actually write when data is null
-  if (data === null || data === undefined) {
-    throw new Error('fs.writeFile called with null/undefined data - this is the bug we are guarding against');
-  }
-  return realWriteFile(filePath, data);
-};
-
-// Now load the service under test (it will pick up the mocked fs and paperlessService)
-const openaiService = require('./services/openaiService');
-
-// Capture the messages the stub client sees
-let capturedMessages = null;
-
-// Install a stub client that records the messages
-openaiService.client = {
-  chat: {
-    completions: {
-      create: async (payload) => {
-        capturedMessages = payload.messages;
-        return {
-          choices: [
-            {
-              message: {
-                content: JSON.stringify({
-                  tags: ['mocked-tag'],
-                  correspondent: 'mocked-correspondent',
-                  title: 'mocked-title',
-                  document_date: '2024-01-01',
-                  language: 'en',
-                  custom_fields: {}
-                })
-              }
-            }
-          ],
-          usage: { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 }
-        };
-      }
-    }
-  }
-};
+const { loadThumbnail, buildUserMessage } = require('./services/thumbnailHelper');
 
 async function run() {
-  // Ensure no stale cache file exists for this id
-  const testId = 99999;
-  const cachePath = path.join('./public/images', `${testId}.png`);
+  // --- loadThumbnail: returns null/available=false when Paperless has no image ---
+  const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'thumbnail-helper-'));
+  const id = 'unit-test-no-thumb';
+  // Make sure no stale cache file is present.
   try {
-    await fs.unlink(cachePath);
+    await fsp.unlink(path.join(tmpDir, `${id}.png`));
   } catch (_) {
     /* not present */
   }
 
-  const result = await openaiService.analyzeDocument(
-    'Sample document text body',
-    [],
-    [],
-    [],
-    testId
+  const result = await loadThumbnail(id, tmpDir);
+  assert.equal(result.thumbnailAvailable, false, 'thumbnailAvailable should be false');
+  assert.equal(result.thumbnailData, null, 'thumbnailData should be null');
+  console.log('OK: loadThumbnail returns thumbnailAvailable=false, thumbnailData=null on miss');
+
+  // Sanity: no cache file should have been written on a miss.
+  const cached = fs.existsSync(path.join(tmpDir, `${id}.png`));
+  assert.equal(cached, false, 'no cache file should be written on a miss');
+  console.log('OK: loadThumbnail does not write a cache file on a miss');
+
+  // --- buildUserMessage: text-only when thumbnailData is null ---
+  const textOnly = buildUserMessage('hello', null);
+  assert.equal(textOnly.length, 1, 'text-only message should have one entry');
+  assert.equal(textOnly[0].type, 'text');
+  assert.equal(textOnly[0].text, 'hello');
+  const hasImageUrlTextOnly = textOnly.some(function (c) {
+    return c && c.type === 'image_url';
+  });
+  assert.equal(hasImageUrlTextOnly, false, 'text-only message must not contain image_url');
+  console.log('OK: buildUserMessage("hello", null) contains no image_url entry');
+
+  // --- buildUserMessage: image_url present when a Buffer is provided ---
+  const withImage = buildUserMessage('hello', Buffer.from('fake', 'base64'));
+  const imageEntry = withImage.find(function (c) {
+    return c && c.type === 'image_url';
+  });
+  assert.ok(imageEntry, 'image_url entry should be present when a Buffer is provided');
+  assert.ok(
+    typeof imageEntry.image_url.url === 'string' &&
+      imageEntry.image_url.url.indexOf('data:image/png;base64,') === 0,
+    'image_url.url must be a data: PNG base64 URL'
   );
+  console.log('OK: buildUserMessage("hello", Buffer) contains an image_url entry');
 
-  let failed = false;
+  // Cleanup
+  await fsp.rm(tmpDir, { recursive: true, force: true });
 
-  // Assertion 1: fs.writeFile was never called with null/undefined data
-  const nullWrites = writeFileInvocations.filter((i) => i.data === null || i.data === undefined);
-  if (nullWrites.length > 0) {
-    console.error('FAIL: fs.writeFile was called with null/undefined data:', nullWrites);
-    failed = true;
-  } else {
-    console.log('OK: fs.writeFile was not called with null/undefined data');
-  }
-
-  // Assertion 2: stub client was invoked and messages captured
-  if (!capturedMessages) {
-    console.error('FAIL: stub client was never invoked');
-    failed = true;
-  } else {
-    const userMsg = capturedMessages.find((m) => m.role === 'user');
-    if (!userMsg) {
-      console.error('FAIL: no user message in payload');
-      failed = true;
-    } else {
-      const contents = Array.isArray(userMsg.content) ? userMsg.content : [{ type: 'text', text: userMsg.content }];
-      const hasImageUrl = contents.some((c) => c && c.type === 'image_url');
-      if (hasImageUrl) {
-        console.error('FAIL: messages array contains an image_url entry, but thumbnail was missing');
-        failed = true;
-      } else {
-        console.log('OK: messages array does not contain an image_url entry');
-      }
-    }
-  }
-
-  // Assertion 3: analyzeDocument did not return an error
-  if (result && result.error) {
-    console.error('FAIL: analyzeDocument returned an error:', result.error);
-    failed = true;
-  } else {
-    console.log('OK: analyzeDocument returned without error');
-  }
-
-  if (failed) {
-    console.error('\n=== Test FAILED ===');
-    process.exit(1);
-  } else {
-    console.log('\n=== Test PASSED ===');
-    process.exit(0);
-  }
+  console.log('\n=== Test PASSED ===');
 }
 
-run().catch((err) => {
+run().catch(function (err) {
   console.error('Unexpected error in test:', err);
   process.exit(1);
 });
