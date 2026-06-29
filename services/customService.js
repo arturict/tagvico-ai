@@ -7,11 +7,10 @@ const {
 const OpenAI = require('openai');
 const config = require('../config/config');
 const tiktoken = require('tiktoken');
-const paperlessService = require('./paperlessService');
 const fs = require('fs').promises;
-const path = require('path');
 const RestrictionPromptService = require('./restrictionPromptService');
 const { normalizeProvider } = require('./providerCatalogService');
+const { loadThumbnail, buildUserMessage } = require('./thumbnailHelper');
 
 class CustomOpenAIService {
   constructor() {
@@ -40,9 +39,6 @@ class CustomOpenAIService {
   }
 
   async analyzeDocument(content, existingTags = [], existingCorrespondentList = [], existingDocumentTypesList = [], id, customPrompt = null, options = {}) {
-    const cachePath = path.join('./public/images', `${id}.png`);
-    let thumbnailAvailable = false;
-    let thumbnailData = null;
     try {
       this.initialize();
       const now = new Date();
@@ -53,26 +49,7 @@ class CustomOpenAIService {
       }
 
       // Handle thumbnail caching
-      try {
-        await fs.access(cachePath);
-        console.log('[DEBUG] Thumbnail already cached');
-        thumbnailData = await fs.readFile(cachePath);
-        thumbnailAvailable = !!thumbnailData;
-      } catch (err) {
-        console.log('Thumbnail not cached, fetching from Paperless');
-
-        thumbnailData = await paperlessService.getThumbnailImage(id);
-
-        if (!thumbnailData) {
-          console.warn(`Thumbnail for document ${id} not available from Paperless, continuing with text-only analysis`);
-          thumbnailAvailable = false;
-          thumbnailData = null;
-        } else {
-          await fs.mkdir(path.dirname(cachePath), { recursive: true });
-          await fs.writeFile(cachePath, thumbnailData);
-          thumbnailAvailable = true;
-        }
-      }
+      const { thumbnailAvailable, thumbnailData } = await loadThumbnail(id, './public/images');
 
       // Format existing tags
       let existingTagsList = existingTags.join(', ');
@@ -200,20 +177,8 @@ class CustomOpenAIService {
 
       const userMessage = {
         role: 'user',
-        content: [
-          { type: 'text', text: truncatedContent }
-        ]
+        content: buildUserMessage(truncatedContent, thumbnailAvailable ? thumbnailData : null)
       };
-
-      if (thumbnailAvailable && thumbnailData) {
-        const base64Image = Buffer.isBuffer(thumbnailData)
-          ? thumbnailData.toString('base64')
-          : Buffer.from(thumbnailData).toString('base64');
-        userMessage.content.push({
-          type: 'image_url',
-          image_url: { url: `data:image/png;base64,${base64Image}` }
-        });
-      }
 
       const responsePayload = {
         model,
