@@ -35,8 +35,20 @@ function getThreshold() {
   return Number(process.env.REVIEW_THRESHOLD || CONFIG.reviewThreshold);
 }
 
+/**
+ * Whether the Owner field is allowed to be auto-applied without human review.
+ *
+ * Precedence: CONFIG is the single source of truth. There is no environment
+ * variable override — this value is configurable only via the onboarding flow
+ * (`.onboarding` state) or the Setup page (`/settings`), both of which write
+ * back into CONFIG.autoApplyOwner. Operators are expected to acknowledge the
+ * trust implication of owner auto-apply explicitly, which is why we do not
+ * honour ad-hoc env overrides from container orchestration.
+ *
+ * @returns {boolean}
+ */
 function isAutoApplyOwner() {
-  return process.env.AUTO_APPLY_OWNER === 'true' || CONFIG.autoApplyOwner === true;
+  return CONFIG.autoApplyOwner === true;
 }
 
 /**
