@@ -7,10 +7,9 @@ const {
 const OpenAI = require('openai');
 const AzureOpenAI = require('openai').AzureOpenAI;
 const config = require('../config/config');
-const paperlessService = require('./paperlessService');
 const fs = require('fs').promises;
-const path = require('path');
 const RestrictionPromptService = require('./restrictionPromptService');
+const { loadThumbnail, buildUserMessage } = require('./thumbnailHelper');
 
 class AzureOpenAIService {
   constructor() {
@@ -33,7 +32,6 @@ class AzureOpenAIService {
   }
 
   async analyzeDocument(content, existingTags = [], existingCorrespondentList = [], existingDocumentTypesList = [], id, customPrompt = null, options = {}) {
-    const cachePath = path.join('./public/images', `${id}.png`);
     try {
       this.initialize();
       const now = new Date();
@@ -44,21 +42,7 @@ class AzureOpenAIService {
       }
 
       // Handle thumbnail caching
-      try {
-        await fs.access(cachePath);
-        console.log('[DEBUG] Thumbnail already cached');
-      } catch (err) {
-        console.log('Thumbnail not cached, fetching from Paperless');
-
-        const thumbnailData = await paperlessService.getThumbnailImage(id);
-
-        if (!thumbnailData) {
-          console.warn('Thumbnail nicht gefunden');
-        }
-
-        await fs.mkdir(path.dirname(cachePath), { recursive: true });
-        await fs.writeFile(cachePath, thumbnailData);
-      }
+      const { thumbnailAvailable, thumbnailData } = await loadThumbnail(id, './public/images');
 
       // Format existing tags
       let existingTagsList = existingTags.join(', ');
@@ -170,6 +154,11 @@ class AzureOpenAIService {
 
       await writePromptToFile(systemPrompt, truncatedContent);
 
+      const userMessage = {
+        role: 'user',
+        content: buildUserMessage(truncatedContent, thumbnailAvailable ? thumbnailData : null)
+      };
+
       const response = await this.client.chat.completions.create({
         model: model,
         messages: [
@@ -177,10 +166,7 @@ class AzureOpenAIService {
             role: "system",
             content: systemPrompt
           },
-          {
-            role: "user",
-            content: truncatedContent
-          }
+          userMessage
         ],
         temperature: 0.3,
       });

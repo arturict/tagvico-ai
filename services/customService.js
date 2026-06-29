@@ -7,11 +7,10 @@ const {
 const OpenAI = require('openai');
 const config = require('../config/config');
 const tiktoken = require('tiktoken');
-const paperlessService = require('./paperlessService');
 const fs = require('fs').promises;
-const path = require('path');
 const RestrictionPromptService = require('./restrictionPromptService');
 const { normalizeProvider } = require('./providerCatalogService');
+const { loadThumbnail, buildUserMessage } = require('./thumbnailHelper');
 
 class CustomOpenAIService {
   constructor() {
@@ -40,7 +39,6 @@ class CustomOpenAIService {
   }
 
   async analyzeDocument(content, existingTags = [], existingCorrespondentList = [], existingDocumentTypesList = [], id, customPrompt = null, options = {}) {
-    const cachePath = path.join('./public/images', `${id}.png`);
     try {
       this.initialize();
       const now = new Date();
@@ -51,21 +49,7 @@ class CustomOpenAIService {
       }
 
       // Handle thumbnail caching
-      try {
-        await fs.access(cachePath);
-        console.log('[DEBUG] Thumbnail already cached');
-      } catch (err) {
-        console.log('Thumbnail not cached, fetching from Paperless');
-
-        const thumbnailData = await paperlessService.getThumbnailImage(id);
-
-        if (!thumbnailData) {
-          console.warn('Thumbnail nicht gefunden');
-        }
-
-        await fs.mkdir(path.dirname(cachePath), { recursive: true });
-        await fs.writeFile(cachePath, thumbnailData);
-      }
+      const { thumbnailAvailable, thumbnailData } = await loadThumbnail(id, './public/images');
 
       // Format existing tags
       let existingTagsList = existingTags.join(', ');
@@ -191,6 +175,11 @@ class CustomOpenAIService {
       // console.log('######################################################################');
 
 
+      const userMessage = {
+        role: 'user',
+        content: buildUserMessage(truncatedContent, thumbnailAvailable ? thumbnailData : null)
+      };
+
       const responsePayload = {
         model,
         messages: [
@@ -198,10 +187,7 @@ class CustomOpenAIService {
             role: 'system',
             content: systemPrompt
           },
-          {
-            role: 'user',
-            content: truncatedContent
-          }
+          userMessage
         ],
         temperature: 0.3
       };
