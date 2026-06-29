@@ -62,6 +62,8 @@ class OpenAIService {
 
   async analyzeDocument(content, existingTags = [], existingCorrespondentList = [], existingDocumentTypesList = [], id, customPrompt = null, options = {}) {
     const cachePath = path.join('./public/images', `${id}.png`);
+    let thumbnailAvailable = false;
+    let thumbnailData = null;
     try {
       this.initialize();
       const now = new Date();
@@ -75,17 +77,22 @@ class OpenAIService {
       try {
         await fs.access(cachePath);
         console.log('[DEBUG] Thumbnail already cached');
+        thumbnailData = await fs.readFile(cachePath);
+        thumbnailAvailable = !!thumbnailData;
       } catch (err) {
         console.log('Thumbnail not cached, fetching from Paperless');
 
-        const thumbnailData = await paperlessService.getThumbnailImage(id);
+        thumbnailData = await paperlessService.getThumbnailImage(id);
 
         if (!thumbnailData) {
-          console.warn('Thumbnail nicht gefunden');
+          console.warn(`Thumbnail for document ${id} not available from Paperless, continuing with text-only analysis`);
+          thumbnailAvailable = false;
+          thumbnailData = null;
+        } else {
+          await fs.mkdir(path.dirname(cachePath), { recursive: true });
+          await fs.writeFile(cachePath, thumbnailData);
+          thumbnailAvailable = true;
         }
-
-        await fs.mkdir(path.dirname(cachePath), { recursive: true });
-        await fs.writeFile(cachePath, thumbnailData);
       }
 
       // Format existing tags
@@ -201,6 +208,23 @@ class OpenAIService {
 
       await writePromptToFile(systemPrompt, truncatedContent);
 
+      const userMessage = {
+        role: 'user',
+        content: [
+          { type: 'text', text: truncatedContent }
+        ]
+      };
+
+      if (thumbnailAvailable && thumbnailData) {
+        const base64Image = Buffer.isBuffer(thumbnailData)
+          ? thumbnailData.toString('base64')
+          : Buffer.from(thumbnailData).toString('base64');
+        userMessage.content.push({
+          type: 'image_url',
+          image_url: { url: `data:image/png;base64,${base64Image}` }
+        });
+      }
+
       const responsePayload = {
         model,
         messages: [
@@ -208,10 +232,7 @@ class OpenAIService {
             role: 'system',
             content: systemPrompt
           },
-          {
-            role: 'user',
-            content: truncatedContent
-          }
+          userMessage
         ]
       };
 
