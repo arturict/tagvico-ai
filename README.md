@@ -87,6 +87,32 @@ npm test        # run the local smoke test
 
 The dev server listens on `http://localhost:3000` by default. The TypeScript compiler is configured but optional — `tsc --noEmit` is exposed as `npm run typecheck`.
 
+## TypeScript Migration
+
+Archivista AI started as a plain-JavaScript codebase. We are migrating it to TypeScript gradually, starting with the files that sit on the most critical paths. The TypeScript scaffold (`tsconfig.json`, `npm run typecheck`, `@types/node`) is in place; what is not yet done is a full repo-wide conversion.
+
+**Current status:** 3 of ~20 service files are migrated:
+
+- `services/thumbnailHelper.ts` — thumbnail cache and multimodal message builder
+- `services/confidenceGuard.ts` — confidence scoring and human-review guardrails
+- `services/metadataDiff.ts` — structured diff between two metadata snapshots
+
+Two other files (`services/configHelpers.ts`, `services/providerCatalogService.ts`) were converted as part of the Phase 0 TypeScript scaffold work.
+
+**Migration strategy:** critical paths first, gradual rollout.
+
+1. Migrate pure helpers and modules with few dependencies first (metadataDiff, confidenceGuard, thumbnailHelper). These give us the most type-safety benefit per line of migration because they have clear input/output contracts and minimal coupling.
+2. Keep the original `.js` files alongside the new `.ts` files (dual-stack). Node's `require()` resolves the `.js` at runtime, so behaviour is unchanged, while `tsc --noEmit` type-checks the `.ts`. The `.js` files are removed only once the whole module is verified under TypeScript.
+3. Work outward from the leaves: service factories and provider adapters come after the helpers they depend on are migrated, so every new `.ts` file can import typed siblings instead of `any`.
+
+**How to add new TypeScript files:**
+
+1. Create `services/yourModule.ts` next to the existing `yourModule.js`. Use `export = { ... }` (matching the pattern in the already-migrated files) so the compiled output is a drop-in replacement for the CommonJS module.
+2. Type all function parameters and return values. Use `declare namespace yourModule { ... }` for public types that callers will need — this merges with the value export without running into the "export assignment cannot be used with other exported elements" restriction.
+3. For dependencies that are still `.js`, use a typed `require(...) as { ... }` cast rather than migrating the whole dependency tree in one PR.
+4. Run `npm run typecheck` — it must pass with no errors. Run the matching `test-*.js` smoke test to confirm runtime behaviour is unchanged.
+5. Remove the `.js` file only when you are ready to wire the TypeScript version into the runtime path (e.g. by switching the entry point or by having `tsc` emit into `dist/` for that module).
+
 ## Security & Privacy
 
 Documents never leave your infrastructure unless you explicitly choose a hosted provider. With Ollama or a self-hosted OpenAI-compatible endpoint, OCR text and metadata are processed entirely on machines you control. With OpenAI, OpenRouter, or Azure, document content is sent to the provider you configure — pick the one whose data handling matches your threat model. Secrets (Paperless token, provider API keys) are stored in `data/.env` and never written to the database. The default container runs with all Linux capabilities dropped and `no-new-privileges`. See [SECURITY.md](SECURITY.md) for the vulnerability disclosure process and [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the full data-handling statement.
