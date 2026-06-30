@@ -74,7 +74,7 @@
 
       /* Hero */
       .hero {
-        padding: 80px 0 64px;
+        padding: 56px 0 48px;
         text-align: center;
       }
       .hero h1 {
@@ -124,6 +124,28 @@
         color: var(--text);
       }
       .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+      /* Hero screenshot */
+      .hero-media {
+        margin-top: 48px;
+        max-width: 960px;
+        margin-left: auto;
+        margin-right: auto;
+      }
+      .hero-media img {
+        display: block;
+        width: 100%;
+        height: auto;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.45);
+      }
+      .hero-caption {
+        margin: 12px 0 0;
+        font-size: 0.88rem;
+        color: var(--text-muted);
+        text-align: center;
+      }
 
       /* Sections */
       section {
@@ -378,6 +400,10 @@
           <div class="hero-actions">
             <a class="btn btn-primary" href="#install">Quick Install</a>
             <a class="btn btn-secondary" href="https://github.com/arturict/archivista-ai">View on GitHub</a>
+          </div>
+          <div class="hero-media">
+            <img src="dashboard.png" alt="Archivista AI dashboard — real-time document processing" width="2880" height="1582" loading="eager">
+            <p class="hero-caption">Archivista AI dashboard &mdash; real-time document processing</p>
           </div>
         </div>
       </div>
