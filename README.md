@@ -12,6 +12,25 @@ Archivista AI connects to your Paperless-ngx instance, reads OCR content and exi
 
 ![Archivista AI dashboard](dashboard.png)
 
+## Screenshots
+
+The full launch screenshot set is captured from a real Fudligagg Lab
+install and lives in [`docs/screenshots/`](docs/screenshots/). Placeholder
+images are in place for every shot until the final captures land:
+
+| Screen | Placeholder | What it shows |
+|---|---|---|
+| Setup wizard | ![Setup placeholder](docs/screenshots/setup-placeholder.svg) | First-run `/setup` with Paperless scan and provider picker |
+| Dashboard | ![Dashboard placeholder](docs/screenshots/dashboard-placeholder.svg) | Main dashboard with scan status and recent activity |
+| Provider picker | ![Provider picker placeholder](docs/screenshots/provider-picker-placeholder.svg) | Settings page with all five model providers |
+| Document history | ![Document history placeholder](docs/screenshots/document-history-placeholder.svg) | Per-document AI output: title, tags, correspondent, type |
+| Before / after | ![Before-after placeholder](docs/screenshots/paperless-before-after-placeholder.svg) | Paperless detail page before and after Archivista processing |
+
+See [`docs/screenshots/README.md`](docs/screenshots/README.md) for the
+capture spec, anonymization requirements, and instructions for replacing
+the placeholders. The capture workflow is codified in
+[`scripts/capture-screenshots.sh`](scripts/capture-screenshots.sh).
+
 ## Quickstart (Docker Compose)
 
 Save the following as `docker-compose.yml` and run `docker compose up -d`:

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800">
+  <rect width="1200" height="800" fill="#e5e7eb"/>
+  <rect x="40" y="40" width="1120" height="720" rx="12" fill="#f3f4f6" stroke="#9ca3af" stroke-width="2" stroke-dasharray="8 4"/>
+  <text x="600" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#374151" text-anchor="middle" font-weight="600">Screenshot: Setup Wizard</text>
+  <text x="600" y="430" font-family="system-ui, -apple-system, sans-serif" font-size="18" fill="#6b7280" text-anchor="middle">Replace with actual screenshot from Fudligagg Lab</text>
+  <text x="600" y="470" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#9ca3af" text-anchor="middle">1200 × 800 · PNG @2x recommended</text>
+</svg>
