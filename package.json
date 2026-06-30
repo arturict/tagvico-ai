@@ -8,7 +8,8 @@
     "dev": "nodemon --watch . --ext js,ts,json server.js",
     "build": "tsc",
     "test": "nodemon server.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint eslint.config.mjs"
   },
   "keywords": [
     "paperless-ngx",
