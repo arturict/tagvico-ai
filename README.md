@@ -1,6 +1,6 @@
 # Archivista AI
 
-Self-hosted AI filing for [Paperless-ngx](https://docs.paperless-ngx.com/): turn OCR text into useful metadata while keeping control of the model, review flow, and privacy boundary.
+Self-hosted AI filing for [Paperless-ngx](https://docs.paperless-ngx.com/): turn OCR text into clean metadata — titles, tags, correspondents, document types, dates, languages, custom fields, and optional owner assignment — while keeping control of the model, cost mode, and the privacy boundary.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/arturict/archivista-ai)](https://github.com/arturict/archivista-ai/releases)
@@ -12,25 +12,26 @@ Self-hosted AI filing for [Paperless-ngx](https://docs.paperless-ngx.com/): turn
 
 - **Useful metadata, automatically** — titles, tags, correspondents, document types, dates, languages, custom fields, and optional owner assignment.
 - **Your choice of model** — Ollama, OpenAI, Anthropic, OpenRouter, Azure OpenAI, an OpenAI-compatible endpoint, or an experimental local Codex sign-in.
-- **Cost-aware processing** — use immediate requests, OpenAI Flex, or asynchronous OpenAI/Anthropic batches.
-- **Review before writing** — inspect suggestions, re-run documents, and choose which fields Archivista may update.
+- **Cost-aware processing** — pick immediate requests, OpenAI Flex, or asynchronous OpenAI/Anthropic batches.
 - **Designed for homelabs** — one container, one persistent volume, and SQLite for processing history and retries.
 - **Clear privacy boundaries** — keep processing on your network with a local endpoint, or explicitly choose a hosted provider.
 
-### Manual review
-
-![Archivista AI manual review](docs/screenshots/manual-review.png)
-
 ## Quick start
 
-Save this as `docker-compose.yml`:
+Archivista AI ships as a container image on the GitHub Container Registry. Save this as `docker-compose.yml`:
 
 ```yaml
 services:
   archivista-ai:
-    image: ghcr.io/arturict/archivista-ai:latest
+    # Pin an immutable release tag for upgrades you can rely on.
+    # See https://github.com/arturict/archivista-ai/releases for the current version.
+    image: ghcr.io/arturict/archivista-ai:1.1.0
     container_name: archivista-ai
     restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges=true
     ports:
       - "8080:3000"
     environment:
@@ -42,11 +43,18 @@ volumes:
   archivista_ai_data:
 ```
 
-Run `docker compose up -d`, then open `http://localhost:8080/setup`. Connect your Paperless-ngx instance, choose a model provider, and decide which metadata Archivista may write.
+### Setup in four steps
+
+1. **Start the container.** Run `docker compose up -d`, then open `http://localhost:8080/setup`.
+2. **Connect Paperless-ngx.** Paste the base URL of your instance and an API token (Paperless-ngx → Settings → My API token). Use the built-in discovery or test buttons to verify the connection.
+3. **Choose a model provider.** Pick OpenRouter for the fastest curated start, Ollama to keep everything on your own hardware, or any other supported provider (see below). Add the required key or endpoint.
+4. **Decide what Archivista may write.** Toggle tags, title, correspondent, document type, custom fields, and optional owner assignment, then finish setup. Archivista scans on the configured cron interval — it does not need a restart.
+
+The first run creates a tiny local admin account, stored in the SQLite database inside the persistent volume.
 
 ## How it works
 
-Archivista polls Paperless-ngx for new documents, reads their OCR text and existing metadata, and asks the configured model for a structured filing suggestion. Validated values are written back to the original document. Processing history, retries, and manual re-runs are available in the web UI.
+Archivista polls Paperless-ngx for new documents, reads their OCR text and existing metadata, and asks the configured model for a structured filing suggestion. Validated values are written back to the original document. Processing history, token metrics, retries, and manual re-runs are available in the web UI.
 
 Owner matching is conservative: optional hint profiles add context, and assignment only happens when the model output agrees with the available Paperless user information.
 
@@ -54,17 +62,38 @@ Owner matching is conservative: optional hint profiles add context, and assignme
 
 | Provider | Best for |
 |---|---|
+| OpenRouter | Curated cloud models with a preset picker (recommended default) |
 | Ollama | Fully local inference |
-| OpenAI | Direct hosted OpenAI access |
-| Anthropic | Direct Claude access, including Message Batches |
-| OpenRouter | A broad catalog through one API |
+| OpenAI direct | Native OpenAI access with Flex and Batch pricing |
+| Anthropic direct | Claude with standard or discounted Message Batches |
 | OpenAI-compatible | LM Studio, LiteLLM, vLLM, and custom gateways |
 | Azure OpenAI | Existing Azure deployments |
 | Codex subscription | Experimental local provider using the host's Codex CLI sign-in |
 
-OpenAI Flex trades latency and guaranteed availability for Batch-level pricing. Batch mode groups documents found in the same scan and may take up to 24 hours. The Codex option requires `codex login` on the machine or inside the container and is intentionally sandboxed read-only with approvals disabled; Codex models are optimized for coding, so this path is experimental for document extraction.
-
 Provider-specific setup and troubleshooting live in [`docs/providers/`](docs/providers/README.md).
+
+## Cost and processing modes
+
+- **Standard** — process each document immediately. Best for interactive feedback and low-volume setups.
+- **OpenAI Flex** — trades latency and guaranteed availability for Batch-level pricing. Available only for supported OpenAI models, selected in the provider step.
+- **Batch** — asynchronous, discounted jobs that may take up to 24 hours. Available for OpenAI direct and Anthropic direct; Archivista groups all documents discovered in the same scan into one batch.
+- **Codex subscription (experimental)** — uses the Codex CLI account on this host instead of an API key. Run `codex login` inside the container or mount a Codex home directory first. No API key is stored by Archivista, and the path is intentionally sandboxed read-only with approvals disabled. Codex models are optimized for coding, so document extraction quality is experimental.
+
+## Upgrades
+
+1. Check the latest release at <https://github.com/arturict/archivista-ai/releases>.
+2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** — for example `ghcr.io/arturict/archivista-ai:1.1.0`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
+3. `docker compose pull && docker compose up -d`.
+
+Archivista is stateless across restarts: configuration, processing history, and the local admin account live in the `archivista_ai_data` volume, so upgrades do not touch your settings.
+
+## Troubleshooting
+
+- **Setup page does not load after first start.** Confirm the container is healthy with `docker compose ps` and `docker compose logs archivista-ai`. The health endpoint is `http://localhost:8080/health`.
+- **Cannot reach Paperless-ngx.** Use the "Test connection" button on the setup page. The base URL should not include `/api` — Archivista adds that automatically.
+- **Model calls fail.** Verify the API key and model slug in Settings. For Ollama and OpenAI-compatible endpoints, confirm the host is reachable from inside the container (`docker exec -it archivista-ai curl ...`).
+- **Batch jobs not completing.** Batch mode may take up to 24 hours and is only supported for OpenAI direct and Anthropic direct. Switch to Standard or Flex in Settings to process immediately.
+- **Forgot the local admin password.** Stop the container, back up the volume, and recreate the admin by resetting setup state, or start a fresh `archivista_ai_data` volume.
 
 ## Security and privacy
 

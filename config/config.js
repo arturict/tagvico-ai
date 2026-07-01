@@ -59,7 +59,7 @@ console.log('Loaded environment variables:', {
 });
 
 module.exports = {
-  ARCHIVISTA_AI_VERSION: '1.0.1',
+  ARCHIVISTA_AI_VERSION: '1.1.0',
   CONFIGURED: false,
   disableAutomaticProcessing: process.env.DISABLE_AUTOMATIC_PROCESSING || 'no',
   predefinedMode: process.env.PROCESS_PREDEFINED_DOCUMENTS,

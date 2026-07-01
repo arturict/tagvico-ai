@@ -4,7 +4,7 @@
   const submitLabel = isSetup ? 'Finish setup' : 'Save changes';
   const introTitle = isSetup ? 'Set up Archivista AI' : 'Configuration';
   const introCopy = isSetup
-    ? 'Fast path: scan Paperless, paste one API token, choose a model, and start filing. Everything else can stay on smart defaults.'
+    ? 'Connect Paperless-ngx, choose a model, and decide what Archivista AI may write back. The rest uses smart defaults.'
     : 'Switch providers, refresh model choices, and control how aggressively Archivista AI updates documents.';
 %>
 
@@ -21,42 +21,42 @@
 </section>
 
 <% if (success) { %>
-<div class="success" style="margin-bottom:1rem;"><%= success %></div>
+<div class="success" style="margin-bottom:1rem;" role="status"><%= success %></div>
 <% } %>
 
 <% if (settingsError || error) { %>
-<div class="danger" style="margin-bottom:1rem;"><%= settingsError || error %></div>
+<div class="danger" style="margin-bottom:1rem;" role="alert"><%= settingsError || error %></div>
 <% } %>
 
 <form id="configForm" class="stack" data-mode="<%= mode %>" data-action="<%= formAction %>">
   <% if (isSetup) { %>
-  <div class="onboarding-strip">
-    <div class="onboarding-step is-active"><span>1</span><strong>Scan</strong><small>Find Paperless</small></div>
-    <div class="onboarding-step"><span>2</span><strong>Token</strong><small>Paste API key</small></div>
-    <div class="onboarding-step"><span>3</span><strong>Model</strong><small>Pick default</small></div>
-    <div class="onboarding-step"><span>4</span><strong>Run</strong><small>Auto-file docs</small></div>
-  </div>
+  <ol class="onboarding-strip" aria-label="Setup steps">
+    <li class="onboarding-step is-active"><span>1</span><strong>Scan</strong><small>Find Paperless</small></li>
+    <li class="onboarding-step"><span>2</span><strong>Token</strong><small>Paste API key</small></li>
+    <li class="onboarding-step"><span>3</span><strong>Model</strong><small>Pick default</small></li>
+    <li class="onboarding-step"><span>4</span><strong>Run</strong><small>Auto-file docs</small></li>
+  </ol>
   <% } %>
 
-  <div class="hero stack cube-hero">
-    <div>
-      <p class="section-kicker">1. Paperless connection</p>
-      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Connect your Paperless-ngx instance</h2>
-    </div>
+  <fieldset class="section-fieldset stack cube-hero">
+    <legend>
+      <span class="section-kicker">1. Paperless connection</span>
+      <span class="legend-title">Connect your Paperless-ngx instance</span>
+    </legend>
 
     <div class="form-grid">
       <div class="field">
-            <label for="paperlessUrl">Paperless URL</label>
-        <input id="paperlessUrl" name="paperlessUrl" type="url" required value="<%= config.PAPERLESS_API_URL %>" placeholder="https://paperless.example.com">
+        <label for="paperlessUrl">Paperless URL</label>
+        <input id="paperlessUrl" name="paperlessUrl" type="url" required value="<%= config.PAPERLESS_API_URL %>" placeholder="https://paperless.example.com" autocomplete="url">
         <p class="field-hint">Only the base URL. `/api` is added automatically.</p>
       </div>
 
       <div class="field">
         <label for="paperlessToken">API token</label>
-            <div class="secret-input">
-              <input id="paperlessToken" name="paperlessToken" type="password" required value="<%= config.PAPERLESS_API_TOKEN %>" placeholder="Paste one Paperless API token">
-              <button type="button" class="secret-toggle" data-toggle-secret="paperlessToken" aria-label="Show Paperless API token"><i class="fa-solid fa-eye"></i></button>
-            </div>
+        <div class="secret-input">
+          <input id="paperlessToken" name="paperlessToken" type="password" required value="<%= config.PAPERLESS_API_TOKEN %>" placeholder="Paste one Paperless API token" autocomplete="off">
+          <button type="button" class="secret-toggle" data-toggle-secret="paperlessToken" aria-label="Show Paperless API token"><i class="fa-solid fa-eye"></i></button>
+        </div>
         <p class="field-hint">
           <a id="openPaperlessTokenLink" href="#" target="_blank" rel="noopener" class="inline-link">
             <i class="fa-solid fa-up-right-from-square"></i> Open Paperless-ngx to copy your API token
@@ -66,12 +66,12 @@
 
       <div class="field">
         <label for="paperlessUsername">Paperless username</label>
-        <input id="paperlessUsername" name="paperlessUsername" type="text" value="<%= config.PAPERLESS_USERNAME %>" placeholder="Archivista AI">
+        <input id="paperlessUsername" name="paperlessUsername" type="text" value="<%= config.PAPERLESS_USERNAME %>" placeholder="Archivista AI" autocomplete="username">
       </div>
 
       <div class="field">
         <label for="scanInterval">Scan interval</label>
-        <input id="scanInterval" name="scanInterval" type="text" value="<%= config.SCAN_INTERVAL %>" placeholder="*/30 * * * *">
+        <input id="scanInterval" name="scanInterval" type="text" value="<%= config.SCAN_INTERVAL %>" placeholder="*/30 * * * *" inputmode="text">
         <p class="field-hint">Cron syntax. Default scans every 30 minutes.</p>
       </div>
     </div>
@@ -86,14 +86,14 @@
       <span id="paperlessDiscoveryStatus" class="field-hint" aria-live="polite"></span>
     </div>
     <div id="paperlessDiscoveryResults" class="discovery-results hidden"></div>
-  </div>
+  </fieldset>
 
   <% if (isSetup) { %>
-  <div class="hero stack">
-    <div>
-      <p class="section-kicker">2. Local login</p>
-      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Create a tiny local admin</h2>
-    </div>
+  <fieldset class="section-fieldset stack">
+    <legend>
+      <span class="section-kicker">2. Local login</span>
+      <span class="legend-title">Create a tiny local admin</span>
+    </legend>
 
     <div class="form-grid">
       <div class="field">
@@ -103,24 +103,27 @@
 
       <div class="field">
         <label for="password">Admin password</label>
-        <input id="password" name="password" type="password" autocomplete="new-password" required>
+        <div class="secret-input">
+          <input id="password" name="password" type="password" autocomplete="new-password" required>
+          <button type="button" class="secret-toggle" data-toggle-secret="password" aria-label="Show admin password"><i class="fa-solid fa-eye"></i></button>
+        </div>
       </div>
     </div>
-  </div>
+  </fieldset>
   <% } %>
 
-  <div class="hero stack">
-    <div>
-      <p class="section-kicker">3. Model provider</p>
-      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Choose how Archivista AI talks to AI</h2>
-    </div>
+  <fieldset class="section-fieldset stack">
+    <legend>
+      <span class="section-kicker"><%= isSetup ? '3. Model provider' : 'Model provider' %></span>
+      <span class="legend-title">Choose how Archivista AI talks to AI</span>
+    </legend>
 
     <input id="aiProvider" name="aiProvider" type="hidden" value="<%= providerCatalog.selectedProvider %>">
     <input id="aiModel" name="aiModel" type="hidden" value="<%= providerCatalog.effectiveModel %>">
 
-    <div id="providerChoices" class="segmented">
+    <div id="providerChoices" class="segmented" role="radiogroup" aria-label="Model provider">
       <% providerCatalog.providers.forEach((provider) => { %>
-      <button type="button" class="choice-card <%= provider.selected ? 'is-selected' : '' %>" data-provider-choice="<%= provider.id %>">
+      <button type="button" class="choice-card <%= provider.selected ? 'is-selected' : '' %>" role="radio" aria-checked="<%= provider.selected ? 'true' : 'false' %>" data-provider-choice="<%= provider.id %>">
         <div class="choice-title">
           <span><%= provider.name %></span>
           <% if (provider.recommended) { %><span class="badge">Recommended</span><% } %>
@@ -131,26 +134,24 @@
     </div>
 
     <div id="providerPanels" class="stack">
-      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'openrouter' ? '' : 'hidden' %>" data-provider-panel="openrouter">
-        <div>
-          <h3 style="margin:0 0 0.35rem;">OpenRouter</h3>
-          <p class="field-hint">Best default for this app. Use the curated small-model list or paste your own OpenRouter slug.</p>
-        </div>
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'openrouter' ? '' : 'hidden' %>" data-provider-panel="openrouter" aria-hidden="<%= providerCatalog.selectedProvider === 'openrouter' ? 'false' : 'true' %>">
+        <h3>OpenRouter</h3>
+        <p class="field-hint">Best default for this app. Use the curated small-model list or paste your own OpenRouter slug.</p>
 
         <div class="form-grid">
           <div class="field field-wide">
             <label for="openrouterApiKey">OpenRouter API key</label>
             <div class="secret-input">
-              <input id="openrouterApiKey" name="openrouterApiKey" type="password" value="<%= config.OPENROUTER_API_KEY %>">
+              <input id="openrouterApiKey" name="openrouterApiKey" type="password" value="<%= config.OPENROUTER_API_KEY %>" autocomplete="off">
               <button type="button" class="secret-toggle" data-toggle-secret="openrouterApiKey" aria-label="Show OpenRouter API key"><i class="fa-solid fa-eye"></i></button>
             </div>
           </div>
 
           <div class="field field-wide">
-            <label>Curated models</label>
-            <div id="openrouterPresetGrid" class="segmented model-grid">
+            <span id="openrouterPresetLabel" class="field-hint" style="font-weight:600;color:var(--text);">Curated models</span>
+            <div id="openrouterPresetGrid" class="segmented model-grid" role="radiogroup" aria-labelledby="openrouterPresetLabel">
               <% providerCatalog.openrouterPresets.forEach((preset) => { %>
-              <button type="button" class="choice-card model-choice <%= providerCatalog.effectiveModel === preset.slug ? 'is-selected' : '' %>" data-model-choice="<%= preset.slug %>">
+              <button type="button" class="choice-card model-choice <%= providerCatalog.effectiveModel === preset.slug ? 'is-selected' : '' %>" role="radio" aria-checked="<%= providerCatalog.effectiveModel === preset.slug ? 'true' : 'false' %>" data-model-choice="<%= preset.slug %>">
                 <div class="choice-title">
                   <span><%= preset.name %></span>
                 </div>
@@ -173,11 +174,9 @@
         </div>
       </section>
 
-      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'ollama' ? '' : 'hidden' %>" data-provider-panel="ollama">
-        <div>
-          <h3 style="margin:0 0 0.35rem;">Ollama</h3>
-          <p class="field-hint">Supports local instances and remote Ollama hosts. Fetch models directly from the selected endpoint.</p>
-        </div>
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'ollama' ? '' : 'hidden' %>" data-provider-panel="ollama" aria-hidden="<%= providerCatalog.selectedProvider === 'ollama' ? 'false' : 'true' %>">
+        <h3>Ollama</h3>
+        <p class="field-hint">Supports local instances and remote Ollama hosts. Fetch models directly from the selected endpoint.</p>
 
         <div class="form-grid">
           <div class="field field-wide">
@@ -200,11 +199,9 @@
         </div>
       </section>
 
-      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'compatible' ? '' : 'hidden' %>" data-provider-panel="compatible">
-        <div>
-          <h3 style="margin:0 0 0.35rem;">OpenAI-compatible API</h3>
-          <p class="field-hint">Works for LM Studio, LiteLLM, vLLM, FastChat, and most OpenAI-compatible gateways.</p>
-        </div>
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'compatible' ? '' : 'hidden' %>" data-provider-panel="compatible" aria-hidden="<%= providerCatalog.selectedProvider === 'compatible' ? 'false' : 'true' %>">
+        <h3>OpenAI-compatible API</h3>
+        <p class="field-hint">Works for LM Studio, LiteLLM, vLLM, FastChat, and most OpenAI-compatible gateways.</p>
 
         <div class="form-grid">
           <div class="field field-wide">
@@ -215,7 +212,7 @@
           <div class="field">
             <label for="compatibleApiKey">API key</label>
             <div class="secret-input">
-              <input id="compatibleApiKey" name="compatibleApiKey" type="password" value="<%= config.COMPATIBLE_API_KEY %>" placeholder="optional for some local gateways">
+              <input id="compatibleApiKey" name="compatibleApiKey" type="password" value="<%= config.COMPATIBLE_API_KEY %>" placeholder="optional for some local gateways" autocomplete="off">
               <button type="button" class="secret-toggle" data-toggle-secret="compatibleApiKey" aria-label="Show compatible API key"><i class="fa-solid fa-eye"></i></button>
             </div>
           </div>
@@ -227,17 +224,15 @@
         </div>
       </section>
 
-      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'openai' ? '' : 'hidden' %>" data-provider-panel="openai">
-        <div>
-          <h3 style="margin:0 0 0.35rem;">OpenAI direct</h3>
-          <p class="field-hint">Use native OpenAI access when you do not want OpenRouter in the middle.</p>
-        </div>
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'openai' ? '' : 'hidden' %>" data-provider-panel="openai" aria-hidden="<%= providerCatalog.selectedProvider === 'openai' ? 'false' : 'true' %>">
+        <h3>OpenAI direct</h3>
+        <p class="field-hint">Use native OpenAI access when you do not want OpenRouter in the middle.</p>
 
         <div class="form-grid">
           <div class="field">
             <label for="openaiKey">OpenAI API key</label>
             <div class="secret-input">
-              <input id="openaiKey" name="openaiKey" type="password" value="<%= config.OPENAI_API_KEY %>">
+              <input id="openaiKey" name="openaiKey" type="password" value="<%= config.OPENAI_API_KEY %>" autocomplete="off">
               <button type="button" class="secret-toggle" data-toggle-secret="openaiKey" aria-label="Show OpenAI API key"><i class="fa-solid fa-eye"></i></button>
             </div>
           </div>
@@ -254,16 +249,14 @@
         </div>
       </section>
 
-      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'anthropic' ? '' : 'hidden' %>" data-provider-panel="anthropic">
-        <div>
-          <h3 style="margin:0 0 0.35rem;">Anthropic direct</h3>
-          <p class="field-hint">Use Claude synchronously or through Anthropic Message Batches.</p>
-        </div>
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'anthropic' ? '' : 'hidden' %>" data-provider-panel="anthropic" aria-hidden="<%= providerCatalog.selectedProvider === 'anthropic' ? 'false' : 'true' %>">
+        <h3>Anthropic direct</h3>
+        <p class="field-hint">Use Claude synchronously or through Anthropic Message Batches.</p>
         <div class="form-grid">
           <div class="field">
             <label for="anthropicApiKey">Anthropic API key</label>
             <div class="secret-input">
-              <input id="anthropicApiKey" name="anthropicApiKey" type="password" value="<%= config.ANTHROPIC_API_KEY %>">
+              <input id="anthropicApiKey" name="anthropicApiKey" type="password" value="<%= config.ANTHROPIC_API_KEY %>" autocomplete="off">
               <button type="button" class="secret-toggle" data-toggle-secret="anthropicApiKey" aria-label="Show Anthropic API key"><i class="fa-solid fa-eye"></i></button>
             </div>
           </div>
@@ -274,11 +267,9 @@
         </div>
       </section>
 
-      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'codex' ? '' : 'hidden' %>" data-provider-panel="codex">
-        <div>
-          <h3 style="margin:0 0 0.35rem;">Codex subscription <span class="badge">Experimental</span></h3>
-          <p class="field-hint">Uses the Codex CLI account on this host. Run <code>codex login</code> inside the container or mounted Codex home first. No API key is stored by Archivista.</p>
-        </div>
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'codex' ? '' : 'hidden' %>" data-provider-panel="codex" aria-hidden="<%= providerCatalog.selectedProvider === 'codex' ? 'false' : 'true' %>">
+        <h3>Codex subscription <span class="badge">Experimental</span></h3>
+        <p class="field-hint">Uses the Codex CLI account on this host. Run <code>codex login</code> inside the container or mounted Codex home first. No API key is stored by Archivista.</p>
         <div class="field">
           <label for="codexModel">Codex model</label>
           <input id="codexModel" type="text" value="<%= config.CODEX_MODEL %>" placeholder="gpt-5.4-mini">
@@ -286,11 +277,9 @@
         </div>
       </section>
 
-      <section class="card stack provider-panel <%= providerCatalog.selectedProvider === 'azure' ? '' : 'hidden' %>" data-provider-panel="azure">
-        <div>
-          <h3 style="margin:0 0 0.35rem;">Azure OpenAI</h3>
-          <p class="field-hint">Legacy path for existing Azure-backed setups.</p>
-        </div>
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'azure' ? '' : 'hidden' %>" data-provider-panel="azure" aria-hidden="<%= providerCatalog.selectedProvider === 'azure' ? 'false' : 'true' %>">
+        <h3>Azure OpenAI</h3>
+        <p class="field-hint">Legacy path for existing Azure-backed setups.</p>
 
         <div class="form-grid">
           <div class="field field-wide">
@@ -301,7 +290,7 @@
           <div class="field">
             <label for="azureApiKey">API key</label>
             <div class="secret-input">
-              <input id="azureApiKey" name="azureApiKey" type="password" value="<%= config.AZURE_API_KEY %>">
+              <input id="azureApiKey" name="azureApiKey" type="password" value="<%= config.AZURE_API_KEY %>" autocomplete="off">
               <button type="button" class="secret-toggle" data-toggle-secret="azureApiKey" aria-label="Show Azure API key"><i class="fa-solid fa-eye"></i></button>
             </div>
           </div>
@@ -338,47 +327,47 @@
       </select>
       <p class="field-hint">Applies when the selected model supports GPT-5-style reasoning effort. Default stays low.</p>
     </div>
-  </div>
+  </fieldset>
 
-  <div class="hero stack">
-    <div>
-      <p class="section-kicker">4. Filing behavior</p>
-      <h2 style="margin:0.35rem 0 0.5rem;font-size:1.3rem;">Decide what Archivista AI writes back</h2>
-    </div>
+  <fieldset class="section-fieldset stack">
+    <legend>
+      <span class="section-kicker"><%= isSetup ? '4. Filing behavior' : 'Filing behavior' %></span>
+      <span class="legend-title">Decide what Archivista AI writes back</span>
+    </legend>
 
-    <div class="segmented">
-      <label class="choice-card <%= config.ACTIVATE_TAGGING === 'yes' ? 'is-selected' : '' %>">
-        <input type="checkbox" name="activateTagging" <%= config.ACTIVATE_TAGGING === 'yes' ? 'checked' : '' %> hidden>
+    <div class="segmented" role="group" aria-label="Fields Archivista AI may write back">
+      <label class="choice-card toggle-card <%= config.ACTIVATE_TAGGING === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateTagging" <%= config.ACTIVATE_TAGGING === 'yes' ? 'checked' : '' %> hidden aria-label="Generate and attach tags">
         <div class="choice-title"><span>Tags</span></div>
         <div class="choice-copy">Generate and attach tags.</div>
       </label>
 
-      <label class="choice-card <%= config.ACTIVATE_CORRESPONDENTS === 'yes' ? 'is-selected' : '' %>">
-        <input type="checkbox" name="activateCorrespondents" <%= config.ACTIVATE_CORRESPONDENTS === 'yes' ? 'checked' : '' %> hidden>
+      <label class="choice-card toggle-card <%= config.ACTIVATE_CORRESPONDENTS === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateCorrespondents" <%= config.ACTIVATE_CORRESPONDENTS === 'yes' ? 'checked' : '' %> hidden aria-label="Infer the sender or issuer">
         <div class="choice-title"><span>Correspondent</span></div>
         <div class="choice-copy">Infer the sender or issuer.</div>
       </label>
 
-      <label class="choice-card <%= config.ACTIVATE_DOCUMENT_TYPE === 'yes' ? 'is-selected' : '' %>">
-        <input type="checkbox" name="activateDocumentType" <%= config.ACTIVATE_DOCUMENT_TYPE === 'yes' ? 'checked' : '' %> hidden>
+      <label class="choice-card toggle-card <%= config.ACTIVATE_DOCUMENT_TYPE === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateDocumentType" <%= config.ACTIVATE_DOCUMENT_TYPE === 'yes' ? 'checked' : '' %> hidden aria-label="Classify document types">
         <div class="choice-title"><span>Document type</span></div>
         <div class="choice-copy">Classify invoices, contracts, letters, and similar types.</div>
       </label>
 
-      <label class="choice-card <%= config.ACTIVATE_TITLE === 'yes' ? 'is-selected' : '' %>">
-        <input type="checkbox" name="activateTitle" <%= config.ACTIVATE_TITLE === 'yes' ? 'checked' : '' %> hidden>
+      <label class="choice-card toggle-card <%= config.ACTIVATE_TITLE === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateTitle" <%= config.ACTIVATE_TITLE === 'yes' ? 'checked' : '' %> hidden aria-label="Rewrite titles">
         <div class="choice-title"><span>Title</span></div>
         <div class="choice-copy">Rewrite titles into something clearer.</div>
       </label>
 
-        <label class="choice-card <%= config.ACTIVATE_CUSTOM_FIELDS === 'yes' ? 'is-selected' : '' %>">
-        <input type="checkbox" name="activateCustomFields" <%= config.ACTIVATE_CUSTOM_FIELDS === 'yes' ? 'checked' : '' %> hidden>
+      <label class="choice-card toggle-card <%= config.ACTIVATE_CUSTOM_FIELDS === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateCustomFields" <%= config.ACTIVATE_CUSTOM_FIELDS === 'yes' ? 'checked' : '' %> hidden aria-label="Populate custom fields">
         <div class="choice-title"><span>Custom fields</span></div>
         <div class="choice-copy">Populate your own Paperless custom fields.</div>
       </label>
 
-      <label class="choice-card <%= config.ACTIVATE_OWNER_ASSIGNMENT === 'yes' ? 'is-selected' : '' %>">
-        <input type="checkbox" name="activateOwnerAssignment" <%= config.ACTIVATE_OWNER_ASSIGNMENT === 'yes' ? 'checked' : '' %> hidden>
+      <label class="choice-card toggle-card <%= config.ACTIVATE_OWNER_ASSIGNMENT === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="activateOwnerAssignment" <%= config.ACTIVATE_OWNER_ASSIGNMENT === 'yes' ? 'checked' : '' %> hidden aria-label="Assign documents to matching users">
         <div class="choice-title"><span>Person assignment</span><span class="badge">Optional</span></div>
         <div class="choice-copy">Assign documents to matching Paperless users. Works automatically from user names; hints are optional.</div>
       </label>
@@ -427,7 +416,7 @@
         <input id="tags" name="tags" type="text" value="<%= Array.isArray(config.TAGS) ? config.TAGS.join(', ') : '' %>" placeholder="invoice, tax, todo-ai">
       </div>
     </div>
-  </div>
+  </fieldset>
 
   <details class="hero stack advanced-panel">
     <summary>
@@ -435,7 +424,7 @@
         <span class="section-kicker">Advanced</span>
         <strong>Person hints</strong>
       </span>
-      <i class="fa-solid fa-chevron-down"></i>
+      <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
     </summary>
 
     <div>
@@ -462,30 +451,30 @@
         <span class="section-kicker">Advanced</span>
         <strong>Guardrails and enrichment</strong>
       </span>
-      <i class="fa-solid fa-chevron-down"></i>
+      <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
     </summary>
 
-    <div class="segmented">
-      <label class="choice-card <%= config.RESTRICT_TO_EXISTING_TAGS === 'yes' ? 'is-selected' : '' %>">
-        <input type="checkbox" name="restrictToExistingTags" <%= config.RESTRICT_TO_EXISTING_TAGS === 'yes' ? 'checked' : '' %> hidden>
+    <div class="segmented" role="group" aria-label="Guardrails that restrict AI suggestions">
+      <label class="choice-card toggle-card <%= config.RESTRICT_TO_EXISTING_TAGS === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="restrictToExistingTags" <%= config.RESTRICT_TO_EXISTING_TAGS === 'yes' ? 'checked' : '' %> hidden aria-label="Only existing tags">
         <div class="choice-title"><span>Only existing tags</span></div>
         <div class="choice-copy">Prevents new tags from being created by AI.</div>
       </label>
 
-      <label class="choice-card <%= config.RESTRICT_TO_EXISTING_CORRESPONDENTS === 'yes' ? 'is-selected' : '' %>">
-        <input type="checkbox" name="restrictToExistingCorrespondents" <%= config.RESTRICT_TO_EXISTING_CORRESPONDENTS === 'yes' ? 'checked' : '' %> hidden>
+      <label class="choice-card toggle-card <%= config.RESTRICT_TO_EXISTING_CORRESPONDENTS === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="restrictToExistingCorrespondents" <%= config.RESTRICT_TO_EXISTING_CORRESPONDENTS === 'yes' ? 'checked' : '' %> hidden aria-label="Only existing correspondents">
         <div class="choice-title"><span>Only existing correspondents</span></div>
         <div class="choice-copy">Keeps correspondent suggestions inside your current Paperless data.</div>
       </label>
 
-      <label class="choice-card <%= config.RESTRICT_TO_EXISTING_DOCUMENT_TYPES === 'yes' ? 'is-selected' : '' %>">
-        <input type="checkbox" name="restrictToExistingDocumentTypes" <%= config.RESTRICT_TO_EXISTING_DOCUMENT_TYPES === 'yes' ? 'checked' : '' %> hidden>
+      <label class="choice-card toggle-card <%= config.RESTRICT_TO_EXISTING_DOCUMENT_TYPES === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="restrictToExistingDocumentTypes" <%= config.RESTRICT_TO_EXISTING_DOCUMENT_TYPES === 'yes' ? 'checked' : '' %> hidden aria-label="Only existing document types">
         <div class="choice-title"><span>Only existing document types</span></div>
         <div class="choice-copy">Avoids creating new Paperless document types automatically.</div>
       </label>
 
-      <label class="choice-card <%= config.EXTERNAL_API_ENABLED === 'yes' ? 'is-selected' : '' %>">
-        <input type="checkbox" name="externalApiEnabled" <%= config.EXTERNAL_API_ENABLED === 'yes' ? 'checked' : '' %> hidden>
+      <label class="choice-card toggle-card <%= config.EXTERNAL_API_ENABLED === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="externalApiEnabled" <%= config.EXTERNAL_API_ENABLED === 'yes' ? 'checked' : '' %> hidden aria-label="Enable external enrichment">
         <div class="choice-title"><span>External enrichment</span></div>
         <div class="choice-copy">Attach extra API data to the analysis prompt before filing.</div>
       </label>
@@ -508,7 +497,7 @@
 
       <div class="field">
         <label for="externalApiTimeout">Timeout in ms</label>
-        <input id="externalApiTimeout" name="externalApiTimeout" type="number" value="<%= config.EXTERNAL_API_TIMEOUT %>">
+        <input id="externalApiTimeout" name="externalApiTimeout" type="number" value="<%= config.EXTERNAL_API_TIMEOUT %>" inputmode="numeric">
       </div>
 
       <div class="field field-wide">
@@ -534,7 +523,7 @@
         <span class="section-kicker">Advanced</span>
         <strong>Custom fields</strong>
       </span>
-      <i class="fa-solid fa-chevron-down"></i>
+      <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
     </summary>
 
     <div>
@@ -577,8 +566,8 @@
     <input id="customFieldsJson" name="customFields" type="hidden" value='<%= config.CUSTOM_FIELDS || "{\"custom_fields\":[]}" %>'>
   </details>
 
-  <div class="page-header" style="margin-top:0;align-items:center;">
-    <p class="page-subtitle">Saved settings apply to new processing runs immediately. No app restart is needed.</p>
+  <div class="save-bar">
+    <p class="save-hint">Saved settings apply to new processing runs immediately. No app restart is needed.</p>
     <button type="submit" class="button" id="configSubmit"><%= submitLabel %></button>
   </div>
 </form>

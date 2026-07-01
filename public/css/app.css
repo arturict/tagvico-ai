@@ -36,15 +36,24 @@
   box-sizing: border-box;
 }
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 4.5rem;
+  height: auto;
+  overflow-y: auto;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
+  overflow-y: auto;
   background:
     linear-gradient(var(--cube-line) 1px, transparent 1px),
     linear-gradient(90deg, var(--cube-line) 1px, transparent 1px),
     radial-gradient(circle at 12% 8%, var(--accent-soft), transparent 28%),
     var(--bg);
   background-size: 32px 32px, 32px 32px, auto, auto;
+  background-attachment: fixed;
   color: var(--text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -195,6 +204,14 @@ textarea:focus {
   border-right: 1px solid var(--border);
   background: var(--bg-elevated);
   backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.app-nav {
+  flex: 1 1 auto;
 }
 
 .app-brand {
@@ -225,12 +242,6 @@ textarea:focus {
   font-size: 0.88rem;
 }
 
-.app-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-}
-
 .app-nav-link {
   display: flex;
   align-items: center;
@@ -248,10 +259,8 @@ textarea:focus {
 }
 
 .app-sidebar-footer {
-  position: absolute;
-  left: 1.1rem;
-  right: 1.1rem;
-  bottom: 1.3rem;
+  margin-top: auto;
+  padding-top: 1rem;
   display: grid;
   gap: 0.8rem;
 }
@@ -337,7 +346,7 @@ textarea:focus {
 }
 
 .app-main {
-  padding: 2rem;
+  padding: 3rem 2rem 3.5rem;
 }
 
 .page-header {
@@ -346,6 +355,7 @@ textarea:focus {
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1.5rem;
+  padding-right: 3.5rem;
 }
 
 .page-title {
@@ -641,7 +651,11 @@ textarea:focus {
   }
 
   .app-main {
-    padding: 5rem 1rem 1.25rem;
+    padding: 5rem 1rem 3rem;
+  }
+
+  .page-header {
+    padding-right: 3.5rem;
   }
 
   .onboarding-strip {
@@ -785,4 +799,309 @@ textarea:focus {
 
 .advanced-panel[open] summary i {
   transform: rotate(180deg);
+}
+
+/* ---- Semantic section groups (config-form redesign) ---- */
+.section-fieldset {
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  backdrop-filter: blur(8px);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+  padding: 1.5rem;
+  margin: 0;
+}
+
+.section-fieldset > legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0 0.4rem;
+  font-weight: 600;
+}
+
+.section-fieldset > legend .section-kicker {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.section-fieldset > legend .legend-title {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.section-fieldset > legend .legend-sub {
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 400;
+}
+
+/* Provider choice cards: semantic role + accessible selected state */
+.choice-card[aria-pressed="true"].is-selected,
+.choice-card.is-selected {
+  border-color: var(--accent);
+}
+
+.provider-panel {
+  padding: 1.25rem;
+}
+
+.provider-panel h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.35rem;
+}
+
+.model-grid {
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+}
+
+/* Filing behavior toggles: checkbox and card work as one control. */
+.toggle-card {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.toggle-card input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+
+.toggle-card input[type="checkbox"]:focus-visible + .choice-title {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* Sticky save bar within the form (in normal flow, never covers content) */
+.save-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+}
+
+.save-bar .save-hint {
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0;
+}
+
+/* ---- Dashboard redesign ---- */
+.dash-intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.dash-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.dash-identity .dash-mark {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: linear-gradient(135deg, var(--accent), transparent);
+  border: 1px solid var(--border);
+}
+
+.dash-group-title {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+
+.kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.kpi {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+  border-radius: 6px;
+  box-shadow: var(--shadow);
+}
+
+.kpi .kpi-label {
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.kpi .kpi-value {
+  font-size: 2rem;
+  font-weight: 700;
+  line-height: 1.05;
+}
+
+.kpi .kpi-context {
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.kpi .kpi-context strong {
+  color: var(--text);
+}
+
+.chart-card {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1.25rem;
+}
+
+.chart-card .chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.chart-card .chart-title {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.chart-card .chart-sub {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.chart-canvas {
+  position: relative;
+  height: 280px;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  font-size: 0.85rem;
+}
+
+.chart-legend .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.chart-legend .legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+.empty-state {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--muted);
+  gap: 0.4rem;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: var(--bg-strong);
+}
+
+.empty-state .empty-title {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.runner-card {
+  display: grid;
+  gap: 0.8rem;
+  padding: 1.25rem;
+}
+
+.runner-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.runner-pulse {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.runner-state.is-processing .runner-pulse {
+  background: var(--success);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 60%, transparent);
+  animation: runnerPulse 1.6s infinite;
+}
+
+@keyframes runnerPulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 55%, transparent); }
+  70% { box-shadow: 0 0 0 10px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+.runner-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-strong);
+}
+
+@media (max-width: 1080px) {
+  .kpi-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .kpi-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .save-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-header {
+    padding-right: 3.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .runner-state.is-processing .runner-pulse { animation: none; }
 }

@@ -24,6 +24,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const customService = require('../services/customService.js');
 const config = require('../config/config.js');
 const providerCatalogService = require('../services/providerCatalogService');
+const dashboardMetrics = require('../services/dashboardMetrics');
 const reviewService = require('../services/reviewService');
 const historyService = require('../services/historyService');
 const {
@@ -2741,32 +2742,32 @@ router.get('/dashboard', async (req, res) => {
   const processingTimeStats = await documentModel.getProcessingTimeStats();
   const tokenDistribution = await documentModel.getTokenDistribution();
   const documentTypes = await documentModel.getDocumentTypeStats();
-  
+
   const averagePromptTokens = metrics.length > 0 ? Math.round(metrics.reduce((acc, cur) => acc + cur.promptTokens, 0) / metrics.length) : 0;
   const averageCompletionTokens = metrics.length > 0 ? Math.round(metrics.reduce((acc, cur) => acc + cur.completionTokens, 0) / metrics.length) : 0;
   const averageTotalTokens = metrics.length > 0 ? Math.round(metrics.reduce((acc, cur) => acc + cur.totalTokens, 0) / metrics.length) : 0;
   const tokensOverall = metrics.length > 0 ? metrics.reduce((acc, cur) => acc + cur.totalTokens, 0) : 0;
-  
+
+  const paperless_data = {
+    tagCount,
+    correspondentCount,
+    documentCount,
+    processedDocumentCount,
+    processingTimeStats,
+    tokenDistribution,
+    documentTypes
+  };
+  const openai_data = {
+    averagePromptTokens,
+    averageCompletionTokens,
+    averageTotalTokens,
+    tokensOverall,
+    metricCount: metrics.length
+  };
+  const summary = dashboardMetrics.buildDashboardSummary(paperless_data, openai_data);
   const version = configFile.ARCHIVISTA_AI_VERSION || ' ';
-  
-  res.render('dashboard', { 
-    paperless_data: { 
-      tagCount, 
-      correspondentCount, 
-      documentCount, 
-      processedDocumentCount,
-      processingTimeStats,
-      tokenDistribution,
-      documentTypes
-    }, 
-    openai_data: { 
-      averagePromptTokens, 
-      averageCompletionTokens, 
-      averageTotalTokens, 
-      tokensOverall 
-    }, 
-    version 
-  });
+
+  res.render('dashboard', { paperless_data, openai_data, summary, version });
 });
 
 /**

@@ -24,9 +24,15 @@ class ConfigFormApp {
       button.addEventListener('click', () => {
         const provider = button.dataset.providerChoice;
         this.providerInput.value = provider;
-        document.querySelectorAll('[data-provider-choice]').forEach((item) => item.classList.toggle('is-selected', item === button));
+        document.querySelectorAll('[data-provider-choice]').forEach((item) => {
+          const active = item === button;
+          item.classList.toggle('is-selected', active);
+          item.setAttribute('aria-checked', active ? 'true' : 'false');
+        });
         document.querySelectorAll('[data-provider-panel]').forEach((panel) => {
-          panel.classList.toggle('hidden', panel.dataset.providerPanel !== provider);
+          const visible = panel.dataset.providerPanel === provider;
+          panel.classList.toggle('hidden', !visible);
+          panel.setAttribute('aria-hidden', visible ? 'false' : 'true');
         });
 
         this.syncModelValue();
@@ -53,7 +59,11 @@ class ConfigFormApp {
   initModelSelection() {
     document.querySelectorAll('[data-model-choice]').forEach((button) => {
       button.addEventListener('click', () => {
-        document.querySelectorAll('[data-model-choice]').forEach((item) => item.classList.toggle('is-selected', item === button));
+        document.querySelectorAll('[data-model-choice]').forEach((item) => {
+          const active = item === button;
+          item.classList.toggle('is-selected', active);
+          item.setAttribute('aria-checked', active ? 'true' : 'false');
+        });
         this.modelInput.value = button.dataset.modelChoice;
         const custom = document.getElementById('openrouterCustomModel');
         if (custom) custom.value = '';
@@ -336,11 +346,17 @@ class ConfigFormApp {
   initToggleCards() {
     document.querySelectorAll('.choice-card input[type="checkbox"]').forEach((input) => {
       const card = input.closest('.choice-card');
-      card?.addEventListener('click', (event) => {
+      if (!card) return;
+      const sync = () => card.classList.toggle('is-selected', input.checked);
+      sync();
+      // The <label> wrapping the hidden checkbox already toggles the input.
+      // We only refresh the visual state after the browser applies the
+      // change, which avoids the double-toggle that used to cancel clicks.
+      card.addEventListener('click', (event) => {
         if (event.target.tagName === 'BUTTON') return;
-        input.checked = !input.checked;
-        card.classList.toggle('is-selected', input.checked);
+        window.requestAnimationFrame(sync);
       });
+      input.addEventListener('change', sync);
     });
   }
 
