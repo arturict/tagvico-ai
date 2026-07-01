@@ -1,0 +1,61 @@
+<%
+  const body = `
+    <section class="page-header">
+      <div>
+        <p class="section-kicker">History</p>
+        <h1 class="page-title">Reprocessing history</h1>
+        <p class="page-subtitle">Reset selected records when you want Archivista AI to run again with a different provider, model, or filing strategy.</p>
+      </div>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <button id="resetSelectedBtn" class="button-danger" type="button">Reset selected</button>
+        <button id="resetAllBtn" class="button-secondary" type="button">Reset all</button>
+      </div>
+    </section>
+
+    <section class="card stack">
+      <div class="form-grid">
+        <div class="field">
+          <label for="tagFilter">Filter by tag</label>
+          <select id="tagFilter">
+            <option value="">All tags</option>
+            ${filters.allTags.map((tag) => `<option value="${tag.id}">${tag.name}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="correspondentFilter">Filter by correspondent</label>
+          <select id="correspondentFilter">
+            <option value="">All correspondents</option>
+            ${filters.allCorrespondents.map((name) => `<option value="${name}">${name}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="historyTable" class="display">
+          <thead>
+            <tr>
+              <th></th>
+              <th>ID</th>
+              <th>Title</th>
+              <th>Tags</th>
+              <th>Correspondent</th>
+              <th>Changes</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+    </section>
+  `;
+%>
+<%- include('partials/app-shell', {
+  title: 'History | Archivista AI',
+  activePage: 'history',
+  version,
+  includeCharts: false,
+  includeDataTables: true,
+  extraHead: '',
+  extraScripts: '<script src="/js/history.js"></script>',
+  body
+}) %>

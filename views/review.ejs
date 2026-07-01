@@ -1,0 +1,142 @@
+<%
+  function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  const rows = Array.isArray(analyses) ? analyses : [];
+  const banner = dryRun
+    ? '<p class="metric-footnote">DRY_RUN is enabled. Apply is paused so you can stage changes before they reach Paperless-ngx.</p>'
+    : '<p class="metric-footnote">DRY_RUN is off. Apply will write directly to Paperless-ngx.</p>';
+
+  const tableBody = rows.length === 0
+    ? '<tr><td colspan="6" style="text-align:center;padding:1.5rem;">No recent analyses yet.</td></tr>'
+    : rows.map((row) => {
+        const tagsText = Array.isArray(row.tags) && row.tags.length > 0
+          ? row.tags.map((tag) => `<span class="badge">${escapeHtml(tag)}</span>`).join(' ')
+          : '<span class="metric-footnote">—</span>';
+        return `
+          <tr data-document-id="${escapeHtml(row.document_id)}">
+            <td><input type="checkbox" class="review-row-select" data-document-id="${escapeHtml(row.document_id)}"></td>
+            <td><a href="/manual/preview/${escapeHtml(row.document_id)}" target="_blank" rel="noreferrer">#${escapeHtml(row.document_id)}</a></td>
+            <td>${escapeHtml(row.title || '(untitled)')}</td>
+            <td>${tagsText}</td>
+            <td>${escapeHtml(row.correspondent || '—')}</td>
+            <td>
+              <button type="button" class="button review-apply" data-document-id="${escapeHtml(row.document_id)}">Apply</button>
+              <button type="button" class="button-secondary review-reject" data-document-id="${escapeHtml(row.document_id)}">Reject</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+  const body = `
+    <section class="page-header">
+      <div>
+        <p class="section-kicker">Review queue</p>
+        <h1 class="page-title">Dry-run review mode</h1>
+        <p class="page-subtitle">Inspect the latest AI suggestions before they reach Paperless-ngx. ${banner}</p>
+      </div>
+      <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+        <button id="applySelectedBtn" class="button" type="button">Apply selected</button>
+        <button id="refreshBtn" class="button-secondary" type="button">Refresh</button>
+      </div>
+    </section>
+
+    <section class="card stack">
+      <div style="overflow-x:auto;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Doc</th>
+              <th>Title</th>
+              <th>Tags</th>
+              <th>Correspondent</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reviewTableBody">
+            ${tableBody}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  `;
+
+  const extraScripts = `
+    <script>
+      (function () {
+        const table = document.getElementById('reviewTableBody');
+        if (!table) return;
+
+        async function applyOne(documentId) {
+          // TODO: implement paperlessService.patchDocument call here
+          // For now we hit the route stub; it returns 409 in dry-run mode.
+          try {
+            const response = await fetch('/review/' + encodeURIComponent(documentId) + '/apply', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+            });
+            const payload = await response.json().catch(() => ({}));
+            if (!response.ok) {
+              alert('Apply skipped for #' + documentId + ': ' + (payload.reason || payload.error || 'unknown'));
+              return;
+            }
+            const row = table.querySelector('tr[data-document-id="' + documentId + '"]');
+            if (row) row.remove();
+          } catch (err) {
+            alert('Apply failed for #' + documentId + ': ' + err.message);
+          }
+        }
+
+        table.addEventListener('click', function (event) {
+          const target = event.target;
+          if (!(target instanceof HTMLElement)) return;
+          if (target.classList.contains('review-apply')) {
+            const id = target.getAttribute('data-document-id');
+            if (id) applyOne(id);
+          } else if (target.classList.contains('review-reject')) {
+            const id = target.getAttribute('data-document-id');
+            const row = id ? table.querySelector('tr[data-document-id="' + id + '"]') : null;
+            if (row) row.remove();
+          }
+        });
+
+        const applySelectedBtn = document.getElementById('applySelectedBtn');
+        if (applySelectedBtn) {
+          applySelectedBtn.addEventListener('click', function () {
+            const checkboxes = table.querySelectorAll('.review-row-select:checked');
+            checkboxes.forEach(function (cb) {
+              const id = cb.getAttribute('data-document-id');
+              if (id) applyOne(id);
+            });
+          });
+        }
+
+        const refreshBtn = document.getElementById('refreshBtn');
+        if (refreshBtn) {
+          refreshBtn.addEventListener('click', function () {
+            window.location.reload();
+          });
+        }
+      })();
+    </script>
+  `;
+%>
+<%- include('partials/app-shell', {
+  title: title || 'Review | Archivista AI',
+  activePage: 'review',
+  version,
+  includeCharts: false,
+  includeDataTables: false,
+  extraHead: '',
+  extraScripts,
+  body
+}) %>

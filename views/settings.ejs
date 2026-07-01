@@ -1,0 +1,10 @@
+<%- include('partials/app-shell', {
+  title: 'Settings | Archivista AI',
+  activePage: 'settings',
+  version: version,
+  includeCharts: false,
+  includeDataTables: false,
+  extraHead: '',
+  extraScripts: '<script src="/js/config-form.js"></script>',
+  body: include('partials/config-form', { mode: 'settings', config, providerCatalog, success, error: null, settingsError })
+}) %>

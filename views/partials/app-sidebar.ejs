@@ -1,0 +1,53 @@
+<%
+  const navItems = [
+    { href: '/dashboard', key: 'dashboard', icon: 'fa-solid fa-chart-line', label: 'Dashboard' },
+    { href: '/review', key: 'review', icon: 'fa-solid fa-clipboard-check', label: 'Review' },
+    { href: '/history', key: 'history', icon: 'fa-solid fa-clock-rotate-left', label: 'History' },
+    { href: '/settings', key: 'settings', icon: 'fa-solid fa-sliders', label: 'Settings' }
+  ];
+%>
+<aside class="app-sidebar" id="appSidebar">
+  <div class="app-brand">
+    <img class="app-brand-mark" src="/archivista-icon.png" alt="Archivista AI icon">
+    <div>
+      <div class="app-brand-title">Archivista AI</div>
+      <div class="app-brand-subtitle">AI filing for Paperless-ngx</div>
+    </div>
+  </div>
+
+  <nav class="app-nav">
+    <% navItems.forEach((item) => { %>
+      <a href="<%= item.href %>" class="app-nav-link <%= activePage === item.key ? 'is-active' : '' %>">
+        <i class="<%= item.icon %>"></i>
+        <span><%= item.label %></span>
+      </a>
+    <% }) %>
+    <a href="/logout" class="app-nav-link">
+      <i class="fa-solid fa-right-from-bracket"></i>
+      <span>Logout</span>
+    </a>
+  </nav>
+
+  <div class="app-sidebar-footer">
+    <div id="appUpdateBanner" class="app-update-banner" hidden>
+      <i class="fa-solid fa-circle-up"></i>
+      <span class="app-update-banner-text">New update available</span>
+      <a href="#" class="app-update-banner-link" target="_blank" rel="noreferrer">View</a>
+      <button class="app-update-banner-dismiss" type="button" aria-label="Dismiss update notification">×</button>
+    </div>
+    <a href="/manual" class="app-github">
+      <span>
+        <i class="fa-solid fa-file-pen"></i>
+        Manual review
+      </span>
+    </a>
+    <a href="https://github.com/arturict/archivista-ai" class="app-github" target="_blank" rel="noreferrer">
+      <span>
+        <i class="fa-brands fa-github"></i>
+        Star on GitHub
+      </span>
+      <strong id="starCount">...</strong>
+    </a>
+    <p>Rebuilt for current model workflows and cleaner Paperless-ngx filing operations.</p>
+  </div>
+</aside>

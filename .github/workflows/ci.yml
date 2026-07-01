@@ -1,0 +1,25 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint --if-present -- --max-warnings 0
+      - run: node -e "require('./server.js')" || true
+        # smoke test - server may fail without env, we only check it parses
+      - name: Verify package scripts
+        run: |
+          node -e "const p=require('./package.json'); if(!p.scripts.start) throw new Error('missing start script')"

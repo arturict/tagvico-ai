@@ -1,0 +1,21 @@
+services:
+  archivista-ai:
+    image: ghcr.io/arturict/archivista-ai:latest
+    container_name: archivista-ai
+    network_mode: bridge
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges=true
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - ARCHIVISTA_AI_PORT=${ARCHIVISTA_AI_PORT:-3000}
+    ports:
+      - "3000:${ARCHIVISTA_AI_PORT:-3000}"
+    volumes:
+      - archivista_ai_data:/app/data
+
+volumes:
+  archivista_ai_data:
