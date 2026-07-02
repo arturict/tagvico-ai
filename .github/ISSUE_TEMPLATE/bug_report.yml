@@ -1,166 +1,72 @@
-name: "🐞 Bug Report"
-description: "Report a bug or unexpected behavior"
-title: "[Bug]: "
+name: Bug report
+description: Tell us about reproducible, unexpected behavior
+title: "bug: "
 labels: ["bug", "triage"]
-assignees:
-  - ""
-projects: ["arturict/archivista-ai"]
-
 body:
   - type: markdown
     attributes:
       value: |
-        ## 🐞 Bug Report
-        Thanks for taking the time to report an issue! Please fill in as much detail as possible to help us investigate and fix it.
-        
-        **⚠️ IMPORTANT: Issues that are missing required information or do not follow this template will be deleted without notice. Please ensure all required fields are completed.**
-
-  - type: input
-    id: bug_summary
+        Thanks for helping improve Archivista AI. Please search existing issues first and remove secrets, API keys, document text, and personal data from logs or screenshots.
+  - type: textarea
+    id: description
     attributes:
-      label: "🔍 Bug Summary"
-      description: "Briefly describe the issue."
-      placeholder: "A short, clear summary of the bug..."
+      label: What happened?
+      description: Explain what you expected and what happened instead.
+      placeholder: I expected … but …
     validations:
       required: true
-
   - type: textarea
-    id: bug_description
+    id: reproduce
     attributes:
-      label: "📖 Description"
-      description: "Provide a detailed description of the bug, including any observations."
-      placeholder: "Explain the issue, expected behavior, and actual behavior."
-    validations:
-      required: true
-
-  - type: textarea
-    id: reproduction_steps
-    attributes:
-      label: "🔄 Steps to Reproduce"
-      description: "How do we reproduce the issue?"
+      label: How can we reproduce it?
       placeholder: |
-        1. Go to '...'
-        2. Click on '...'
-        3. Scroll down to '...'
-        4. See error
+        1. Configure …
+        2. Open …
+        3. Click …
     validations:
       required: true
-
-  - type: textarea
-    id: expected_behavior
-    attributes:
-      label: "✅ Expected Behavior"
-      description: "What should happen instead?"
-      placeholder: "Describe the expected outcome."
-    validations:
-      required: true
-
-  - type: textarea
-    id: actual_behavior
-    attributes:
-      label: "❌ Actual Behavior"
-      description: "What actually happens?"
-      placeholder: "Describe what you see instead of the expected behavior."
-    validations:
-      required: true
-
   - type: input
-    id: archivista_ai_version
+    id: version
     attributes:
-      label: "🏷️ Archivista AI Version"
-      description: "What version of Archivista AI are you using? You can find this in your settings or docker-compose file."
-      placeholder: "e.g. v1.2.3, latest, commit hash, etc."
+      label: Archivista AI version
+      description: Use the image tag, release, or commit SHA—not just "latest".
+      placeholder: "1.1.0"
     validations:
       required: true
-
-  - type: textarea
-    id: docker_logs
-    attributes:
-      label: "📜 Docker Logs"
-      description: "Upload Docker logs (or paste relevant log snippets)."
-      placeholder: "Drag & drop files here or paste logs."
-      render: shell
-    validations:
-      required: true
-
-  - type: textarea
-    id: paperless_ngx_logs
-    attributes:
-      label: "📜 Paperless-ngx Logs"
-      description: "Upload Paperless-ngx logs (or paste relevant log snippets)."
-      placeholder: "Drag & drop files here or paste logs."
-      render: shell
-
-  - type: textarea
-    id: screenshots
-    attributes:
-      label: "🖼️ Screenshots of your settings page"
-      description: "Attach screenshots of your current Archivista AI settings."
-      placeholder: "Drag & drop images or provide a link."
-
   - type: dropdown
-    id: operating_system
+    id: install
     attributes:
-      label: "🖥️ Desktop Environment"
-      description: "Select the OS where the issue occurs."
+      label: Installation method
       options:
-        - "Windows"
-        - "macOS"
-        - "Linux"
-        - "Other"
+        - Docker Compose / GHCR image
+        - Docker run / GHCR image
+        - From source
+        - Other
     validations:
       required: true
-
   - type: input
-    id: os_version
+    id: provider
     attributes:
-      label: "💻 OS Version"
-      description: "Enter your OS version."
-      placeholder: "e.g. Windows 11, macOS 14, Ubuntu 22.04"
-
-  - type: dropdown
-    id: browser
+      label: Provider and model
+      description: If relevant; never include an API key.
+      placeholder: OpenAI / gpt-5-mini, Ollama / qwen3, …
+  - type: textarea
+    id: logs
     attributes:
-      label: "🌐 Browser"
-      description: "Which browser are you using (if applicable)?"
-      options:
-        - "Chrome"
-        - "Safari"
-        - "Firefox"
-        - "Edge"
-        - "Other"
-
-  - type: input
-    id: browser_version
+      label: Relevant logs
+      description: Paste the smallest useful excerpt after removing secrets and personal data.
+      render: shell
+  - type: textarea
+    id: context
     attributes:
-      label: "🔢 Browser Version"
-      description: "Enter your browser version (if applicable)."
-      placeholder: "e.g. 120.0.6099.199"
-
-  - type: input
-    id: smartphone_browser
-    attributes:
-      label: "🌐 Mobile Browser"
-      description: "Specify the browser you used on mobile (if applicable)."
-      placeholder: "e.g. Safari, Chrome, Firefox"
-
+      label: Anything else?
+      description: Add screenshots, browser/OS details, or related issues when useful.
   - type: checkboxes
-    id: additional_info
+    id: checks
     attributes:
-      label: "📝 Additional Information"
-      description: "Select any that apply."
+      label: Checklist
       options:
-        - label: "I have checked existing issues and this is not a duplicate"
+        - label: I searched existing issues for duplicates.
           required: true
-        - label: "I have tried debugging this issue on my own"
-        - label: "I can provide a fix and submit a PR"
-        - label: "I am sure that this problem is affecting everyone, not only me"
-        - label: "I have provided all required information above"
+        - label: I removed secrets and personal data from this report.
           required: true
-
-  - type: textarea
-    id: extra_notes
-    attributes:
-      label: "📌 Extra Notes"
-      description: "Anything else you'd like to add?"
-      placeholder: "Additional comments or findings..."

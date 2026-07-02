@@ -16,9 +16,11 @@ Self-hosted AI filing for [Paperless-ngx](https://docs.paperless-ngx.com/): turn
 - **Designed for homelabs** — one container, one persistent volume, and SQLite for processing history and retries.
 - **Clear privacy boundaries** — keep processing on your network with a local endpoint, or explicitly choose a hosted provider.
 
-## Quick start
+## Quick start (about 2 minutes)
 
-Archivista AI ships as a container image on the GitHub Container Registry. Save this as `docker-compose.yml`:
+You need Docker Compose, a running Paperless-ngx instance, and a Paperless API token. No source checkout is required.
+
+Create a new folder, save the following as `docker-compose.yml`, and run `docker compose up -d`:
 
 ```yaml
 services:
@@ -43,14 +45,39 @@ volumes:
   archivista_ai_data:
 ```
 
+Open **<http://localhost:8080/setup>**. To confirm the container is ready first, run:
+
+```bash
+docker compose ps
+curl http://localhost:8080/health
+```
+
 ### Setup in four steps
 
-1. **Start the container.** Run `docker compose up -d`, then open `http://localhost:8080/setup`.
-2. **Connect Paperless-ngx.** Paste the base URL of your instance and an API token (Paperless-ngx → Settings → My API token). Use the built-in discovery or test buttons to verify the connection.
+1. **Start the container.** Run `docker compose up -d`, then open <http://localhost:8080/setup>.
+2. **Connect Paperless-ngx.** Paste its base URL and an API token (Paperless-ngx → Settings → My API token). Do not add `/api` to the URL. If Paperless runs on the Docker host, use `http://host.docker.internal:<port>` on Docker Desktop or the host's LAN IP on Linux. If both apps share a Docker network, use the Paperless service name.
 3. **Choose a model provider.** Pick OpenRouter for the fastest curated start, Ollama to keep everything on your own hardware, or any other supported provider (see below). Add the required key or endpoint.
 4. **Decide what Archivista may write.** Toggle tags, title, correspondent, document type, custom fields, and optional owner assignment, then finish setup. Archivista scans on the configured cron interval — it does not need a restart.
 
 The first run creates a tiny local admin account, stored in the SQLite database inside the persistent volume.
+
+<details>
+<summary><strong>Prefer a single docker run command?</strong></summary>
+
+```bash
+docker volume create archivista_ai_data
+docker run -d \
+  --name archivista-ai \
+  --restart unless-stopped \
+  --cap-drop ALL \
+  --security-opt no-new-privileges=true \
+  -p 8080:3000 \
+  -e ARCHIVISTA_AI_PORT=3000 \
+  -v archivista_ai_data:/app/data \
+  ghcr.io/arturict/archivista-ai:1.1.0
+```
+
+</details>
 
 ## How it works
 
@@ -90,7 +117,7 @@ Archivista is stateless across restarts: configuration, processing history, and 
 ## Troubleshooting
 
 - **Setup page does not load after first start.** Confirm the container is healthy with `docker compose ps` and `docker compose logs archivista-ai`. The health endpoint is `http://localhost:8080/health`.
-- **Cannot reach Paperless-ngx.** Use the "Test connection" button on the setup page. The base URL should not include `/api` — Archivista adds that automatically.
+- **Cannot reach Paperless-ngx.** Use the "Test connection" button. Do not include `/api`. `localhost` inside the Archivista container means that container—not your Docker host. Use `host.docker.internal`, the host LAN IP, or a shared Docker-network service name as described above.
 - **Model calls fail.** Verify the API key and model slug in Settings. For Ollama and OpenAI-compatible endpoints, confirm the host is reachable from inside the container (`docker exec -it archivista-ai curl ...`).
 - **Batch jobs not completing.** Batch mode may take up to 24 hours and is only supported for OpenAI direct and Anthropic direct. Switch to Standard or Flex in Settings to process immediately.
 - **Forgot the local admin password.** Stop the container, back up the volume, and recreate the admin by resetting setup state, or start a fresh `archivista_ai_data` volume.
@@ -116,7 +143,7 @@ The development server listens on `http://localhost:3000`. The TypeScript migrat
 
 ## Contributing
 
-Bug reports, feature requests, and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow. For security disclosures, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
+Bug reports, feature requests, and pull requests are welcome. The issue chooser asks only for the information needed to reproduce or evaluate a change, and the pull-request template includes a short verification checklist. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow. For security disclosures, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 
 ## License
 

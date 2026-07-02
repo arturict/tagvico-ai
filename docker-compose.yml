@@ -1,6 +1,7 @@
 services:
   archivista-ai:
-    image: ghcr.io/arturict/archivista-ai:latest
+    # Pin a release tag so upgrades and rollbacks remain predictable.
+    image: ghcr.io/arturict/archivista-ai:1.1.0
     container_name: archivista-ai
     network_mode: bridge
     restart: unless-stopped
@@ -13,7 +14,7 @@ services:
       - PGID=1000
       - ARCHIVISTA_AI_PORT=${ARCHIVISTA_AI_PORT:-3000}
     ports:
-      - "3000:${ARCHIVISTA_AI_PORT:-3000}"
+      - "${ARCHIVISTA_AI_HOST_PORT:-8080}:${ARCHIVISTA_AI_PORT:-3000}"
     volumes:
       - archivista_ai_data:/app/data
 

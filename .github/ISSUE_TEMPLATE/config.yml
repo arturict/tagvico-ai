@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/arturict/archivista-ai/security/policy
+    about: Please report security issues privately.
+  - name: Setup and usage documentation
+    url: https://github.com/arturict/archivista-ai#quick-start-about-2-minutes
+    about: Check the quick start and troubleshooting steps before opening an issue.
