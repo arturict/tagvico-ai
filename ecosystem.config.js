@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'archivista-ai',
-    script: 'server.js',
+    script: 'dist/server.js',
     instances: 1,
     autorestart: true,
     watch: false,

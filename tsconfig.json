@@ -8,17 +8,21 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "types": ["node"],
-    "rootDir": "."
+    "rootDir": ".",
+    "outDir": "dist"
   },
   "include": [
     "services/**/*.ts",
     "routes/**/*.ts",
-    "scripts/**/*.ts",
+    "models/**/*.ts",
+    "config/**/*.ts",
     "schemas.ts",
+    "swagger.ts",
     "server.ts"
   ],
   "exclude": [
     "node_modules",
+    "dist",
     "data",
     "public",
     "docs"

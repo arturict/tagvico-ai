@@ -120,8 +120,10 @@ function matchGlob(filePath, pattern) {
     '^' +
       pat
         .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/\/\*\*\//g, '::GLOBSTAR_DIR::')
         .replace(/\*\*/g, '::DOUBLESTAR::')
         .replace(/\*/g, '[^/]*')
+        .replace(/::GLOBSTAR_DIR::/g, '(?:.*/)?')
         .replace(/::DOUBLESTAR::/g, '.*') +
       '$'
   );
@@ -150,7 +152,7 @@ function resolveTarget(target) {
   if (target.includes('*')) {
     // Extract the longest literal prefix that ends at a path separator.
     const firstStar = target.indexOf('*');
-    const prefix = target.slice(0, firstStar).replace(/\*+$/, '');
+    const prefix = target.slice(0, firstStar).replace(/\*+$/, '').replace(/[\\/]$/, '');
     const baseDir = path.resolve(REPO_ROOT, prefix);
     const all = listJsFiles(baseDir);
     return all.filter((f) => matchGlob(f, target)).sort();

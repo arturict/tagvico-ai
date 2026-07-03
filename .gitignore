@@ -3,6 +3,7 @@
 .dockerignore
 data/
 node_modules/
+dist/
 api-test.ps1
 openai_debug.log
 prompt.bak

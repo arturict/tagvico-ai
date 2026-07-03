@@ -2,12 +2,12 @@
   "name": "archivista-ai",
   "version": "1.1.0-alpha.1",
   "description": "Archivista AI — alpha. Self-hosted AI autopilot for Paperless-ngx (metadata, tagging, classification, owner assignment). Active development; APIs and schema may change without notice.",
-  "main": "server.js",
+  "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
-    "dev": "nodemon --watch . --ext js,ts,json server.js",
+    "dev": "npm run build && nodemon --watch services --watch routes --watch models --watch config --watch server.ts --ext ts,json --exec \"npm run build && node dist/server.js\"",
     "build": "tsc",
-    "test": "nodemon server.js",
+    "test": "npm run typecheck",
     "typecheck": "tsc --noEmit",
     "lint": "eslint eslint.config.mjs"
   },
