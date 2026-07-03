@@ -1,4 +1,4 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
+// @ts-nocheck — legacy module; tracked for strict typing.
 // services/customFieldsService.js
 //
 // Discovers and validates the custom fields defined in the connected

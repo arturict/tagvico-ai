@@ -1,4 +1,3 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
 const path = require('path');
 const {
   getDefaultModel,
@@ -12,7 +11,7 @@ console.log('Loading .env from:', envPath); // Debug log
 require('dotenv').config({ path: envPath, override: true });
 
 // Helper function to parse boolean-like env vars
-const parseEnvBoolean = (value, defaultValue = 'yes') => {
+const parseEnvBoolean = (value: string | undefined, defaultValue = 'yes') => {
   if (!value) return defaultValue;
   return value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'yes' ? 'yes' : 'no';
 };

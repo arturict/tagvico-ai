@@ -1,4 +1,3 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
 // services/ocrNormalizer.js
 //
 // Multilingual OCR normalization for Paperless-ngx DACH / French documents.
@@ -54,7 +53,7 @@ const FR_MONTHS = {
   décembre: 12
 };
 
-const ALL_MONTHS = Object.assign({}, DE_MONTHS, FR_MONTHS);
+const ALL_MONTHS: Record<string, number> = Object.assign({}, DE_MONTHS, FR_MONTHS);
 
 // German ASCII digraph replacements. Order matters: longest first so
 // "ss" doesn't replace the "ss" produced by "ß" before we get a chance to.
@@ -71,11 +70,11 @@ const DE_DIGRAPHS = [
 // French unaccenting (NFD + strip combining marks) is enough for our
 // purposes — it covers é→e, è→e, ê→e, ë→e, à→a, â→a, ç→c, ï→i, î→i,
 // ô→o, ù→u, û→u and their uppercase variants.
-function unaccent(value) {
+function unaccent(value: string): string {
   return value.normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
-function normalizeGerman(value) {
+function normalizeGerman(value: unknown): string {
   let out = String(value);
   for (const [from, to] of DE_DIGRAPHS) {
     out = out.split(from).join(to);
@@ -83,7 +82,7 @@ function normalizeGerman(value) {
   return out;
 }
 
-function normalizeForLocale(value, locale) {
+function normalizeForLocale(value: unknown, locale?: string): string {
   const base = String(value || '');
   const loc = String(locale || '').toLowerCase();
 
@@ -105,7 +104,7 @@ function normalizeForLocale(value, locale) {
  *   "1.234,56"     -> 1234.56
  *   "12.34"        -> 12.34
  */
-function parseCurrencyAmount(value) {
+function parseCurrencyAmount(value: unknown): number | null {
   if (typeof value === 'number') return Number.isFinite(value) ? value : null;
   if (typeof value !== 'string') return null;
   // Strip currency letters and the apostrophe-style thousand separator.
@@ -139,7 +138,7 @@ function parseCurrencyAmount(value) {
  *   - "2026-03-12"           -> 2026-03-12
  * Returns an ISO 8601 date string (YYYY-MM-DD) or null.
  */
-function parseLocalizedDate(value) {
+function parseLocalizedDate(value: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   if (trimmed === '') return null;
@@ -174,7 +173,7 @@ function parseLocalizedDate(value) {
   return null;
 }
 
-function formatIsoDate(year, month, day) {
+function formatIsoDate(year: number, month: number, day: number): string | null {
   if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
   if (month < 1 || month > 12 || day < 1 || day > 31) return null;
   const mm = String(month).padStart(2, '0');
@@ -191,7 +190,7 @@ function formatIsoDate(year, month, day) {
  * @param {string} [locale] - Document locale (e.g. "de-CH", "de", "fr").
  * @returns {{ normalized: string, original: string }}
  */
-function normalize(text, locale) {
+function normalize(text: unknown, locale?: string): { normalized: string; original: string } {
   const original = String(text == null ? '' : text);
   return {
     original,

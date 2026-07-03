@@ -7,7 +7,9 @@
     "start": "node dist/server.js",
     "dev": "npm run build && nodemon --watch services --watch routes --watch models --watch config --watch server.ts --ext ts,json --exec \"npm run build && node dist/server.js\"",
     "build": "tsc",
-    "test": "npm run typecheck",
+    "test": "npm run check",
+    "check": "npm run typecheck && npm run lint && npm run check:type-debt",
+    "check:type-debt": "node scripts/check-type-debt.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint eslint.config.mjs"
   },
@@ -66,7 +68,8 @@
     "eslint-plugin-jsdoc": "^50.6.3",
     "globals": "^16.0.0",
     "prettier": "^3.5.3",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.62.1"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

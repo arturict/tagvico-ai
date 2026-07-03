@@ -1,4 +1,4 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
+// @ts-nocheck — legacy module; tracked for strict typing.
 const express = require('express');
 const cron = require('node-cron');
 const path = require('path');

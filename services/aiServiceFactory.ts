@@ -1,4 +1,3 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
 const config = require('../config/config');
 const openaiService = require('./openaiService');
 const ollamaService = require('./ollamaService');

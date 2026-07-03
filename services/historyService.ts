@@ -1,4 +1,4 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
+// @ts-nocheck — legacy module; tracked for strict typing.
 // services/historyService.js
 //
 // Thin wrapper around the history_documents SQLite table that knows about

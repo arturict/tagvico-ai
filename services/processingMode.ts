@@ -1,7 +1,6 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
 const MODES = new Set(['standard', 'flex', 'batch']);
 
-function normalizeProcessingMode(value, provider = '') {
+function normalizeProcessingMode(value: unknown, provider = ''): string {
   const mode = MODES.has(String(value || '').toLowerCase())
     ? String(value).toLowerCase()
     : 'standard';

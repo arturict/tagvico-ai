@@ -1,4 +1,3 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
 /**
  * Service for handling placeholder replacement in prompts
  * Used by all LLM services to ensure consistent placeholder handling
@@ -12,7 +11,13 @@ class RestrictionPromptService {
    * @param {Object} config - Configuration object (unused but kept for compatibility)
    * @returns {string} - Prompt with placeholders replaced
    */
-  static processRestrictionsInPrompt(prompt, existingTags, existingCorrespondentList, config) {
+  static processRestrictionsInPrompt(
+    prompt: string,
+    existingTags: Array<{ name?: string }>,
+    existingCorrespondentList: string | Array<string | { name?: string }>,
+    config: unknown
+  ): string {
+    void config;
     // Replace placeholders in the original prompt
     return this._replacePlaceholders(prompt, existingTags, existingCorrespondentList);
   }
@@ -24,7 +29,11 @@ class RestrictionPromptService {
    * @param {Array|string} existingCorrespondentList - List of existing correspondents
    * @returns {string} - Prompt with placeholders replaced
    */
-  static _replacePlaceholders(prompt, existingTags, existingCorrespondentList) {
+  static _replacePlaceholders(
+    prompt: string,
+    existingTags: Array<{ name?: string }>,
+    existingCorrespondentList: string | Array<string | { name?: string }>
+  ): string {
     let processedPrompt = prompt;
 
     // Replace %RESTRICTED_TAGS% placeholder
@@ -47,7 +56,7 @@ class RestrictionPromptService {
    * @param {Array} existingTags - Array of existing tags
    * @returns {string} - Comma-separated list of tag names or empty string
    */
-  static _formatTagsList(existingTags) {
+  static _formatTagsList(existingTags: Array<{ name?: string }>): string {
     if (!Array.isArray(existingTags) || existingTags.length === 0) {
       return '';
     }
@@ -63,7 +72,9 @@ class RestrictionPromptService {
    * @param {Array|string} existingCorrespondentList - List of existing correspondents
    * @returns {string} - Comma-separated list of correspondent names or empty string
    */
-  static _formatCorrespondentsList(existingCorrespondentList) {
+  static _formatCorrespondentsList(
+    existingCorrespondentList: string | Array<string | { name?: string }>
+  ): string {
     if (!existingCorrespondentList) {
       return '';
     }

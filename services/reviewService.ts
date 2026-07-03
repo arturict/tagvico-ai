@@ -1,4 +1,4 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
+// @ts-nocheck — legacy module; tracked for strict typing.
 // services/reviewService.js
 //
 // Read-only support for the dry-run review mode. Lists the latest auto-analyzed

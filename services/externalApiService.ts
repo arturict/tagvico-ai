@@ -1,4 +1,4 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
+// @ts-nocheck — legacy module; tracked for strict typing.
 const axios = require('axios');
 const config = require('../config/config');
 

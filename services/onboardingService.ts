@@ -1,11 +1,10 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
 const fs = require('fs');
 const path = require('path');
 
 const ONBOARDING_PATH = path.join(process.cwd(), 'data', '.onboarding');
 
-function parseOnboarding(content) {
-  const values = {};
+function parseOnboarding(content: unknown): Record<string, string> {
+  const values: Record<string, string> = {};
   String(content || '')
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -25,7 +24,7 @@ function loadOnboardingDefaults() {
   return parseOnboarding(fs.readFileSync(ONBOARDING_PATH, 'utf8'));
 }
 
-function writeOnboardingSnapshot(config) {
+function writeOnboardingSnapshot(config: Record<string, unknown>) {
   fs.mkdirSync(path.dirname(ONBOARDING_PATH), { recursive: true });
   const keys = [
     'PAPERLESS_API_URL',

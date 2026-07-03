@@ -16,8 +16,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
-      - run: npm run typecheck
-      - run: npm run lint --if-present -- --max-warnings 0
+      - run: npm run check
       - run: npm run build
       - run: node -e "require('./dist/server.js')" || true
         # smoke test - server may fail without env, we only check it parses

@@ -1,4 +1,3 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
 const swaggerJSDoc = require('swagger-jsdoc');
 
 const swaggerDefinition = {

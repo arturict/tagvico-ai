@@ -1,4 +1,4 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
+// @ts-nocheck — legacy module; tracked for strict typing.
 const tiktoken = require('tiktoken');
 const fs = require('fs').promises;
 const path = require('path');

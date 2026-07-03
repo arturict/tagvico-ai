@@ -1,4 +1,3 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
 /**
  * ProviderAdapter — the uniform shape every AI provider must implement.
  *
@@ -41,7 +40,11 @@ class ProviderAdapter {
    * @param {object} ctx - Provider context (tags, correspondents, types, options).
    * @returns {Promise<object>} Normalised analysis result.
    */
-  async analyzeDocument(content, ctx) { throw new Error('not implemented'); }
+  async analyzeDocument(content: string, ctx: Record<string, unknown>): Promise<Record<string, unknown>> {
+    void content;
+    void ctx;
+    throw new Error('not implemented');
+  }
 
   /**
    * Static metadata about the model backing this adapter.

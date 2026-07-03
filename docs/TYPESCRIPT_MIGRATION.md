@@ -17,11 +17,11 @@ npm start
 configuration run `dist/server.js`. Static files and views remain in `public/`
 and `views/` and are loaded from the project root.
 
-The migration was deliberately mechanical. Previously untyped modules carry a
-`// @ts-nocheck` marker so runtime behavior remains unchanged. Removing those
-markers and adding strict types is follow-up hardening, not a file-format
-migration requirement. Modules that were already typed retain their existing
-types.
+The file-format migration is complete, but strict typing is still in progress.
+Modules without a suppression are checked with TypeScript's `strict` mode.
+Legacy modules that still need structural typing carry a clearly marked
+`@ts-nocheck` directive. `npm run check:type-debt` prevents that suppression
+count from increasing; each typing change should reduce it.
 
 ## JavaScript that remains
 
@@ -32,5 +32,6 @@ Some JavaScript is intentional and is not server TypeScript source:
 - `scripts/*.js` contains Node maintenance utilities.
 - Root `test-*.js` files are standalone diagnostic scripts, not runtime modules.
 
-The completed one-time migration workflow has been removed. New server runtime
-code must be added as TypeScript and is enforced by the build and CI checks.
+The completed one-time migration workflow and converter have been removed. New
+server runtime code must be strict TypeScript and is enforced by the build,
+lint, and type-debt checks.

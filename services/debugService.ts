@@ -1,9 +1,10 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
 // service to debug the paperless-ngx api routes
 const env = require('dotenv').config();
 const axios = require('axios');
 const paperless_api = process.env.PAPERLESS_API_URL;
 const paperless_token = process.env.PAPERLESS_API_TOKEN;
+
+const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
 
 const getDocuments = async () => {
     try {
@@ -16,7 +17,7 @@ const getDocuments = async () => {
         return response.data;
     }
     catch (error) {
-        console.error('Paperless validation error:', error.message);
+        console.error('Paperless validation error:', errorMessage(error));
         return JSON.stringify(error);
     }
 }
@@ -32,7 +33,7 @@ const getTags = async () => {
         return response.data;
     }
     catch (error) {
-        console.error('Paperless validation error:', error.message);
+        console.error('Paperless validation error:', errorMessage(error));
         return JSON.stringify(error);
     }
 }
@@ -48,7 +49,7 @@ const getCorrespondents = async () => {
         return response.data;
     }
     catch (error) {
-        console.error('Paperless validation error:', error.message);
+        console.error('Paperless validation error:', errorMessage(error));
         return JSON.stringify(error);
     }
 }

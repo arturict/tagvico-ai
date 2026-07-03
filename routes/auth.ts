@@ -1,13 +1,26 @@
-// @ts-nocheck — migrated from JavaScript; types will be tightened incrementally.
 const jwt = require('jsonwebtoken');
 const config = require('../config/config');
 
 // JWT secret key - should be moved to environment variables
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
+type AuthRequest = {
+  cookies: Record<string, string | undefined>;
+  headers: Record<string, string | string[] | undefined>;
+  user?: unknown;
+};
+type AuthResponse = {
+  status(code: number): AuthResponse;
+  json(body: unknown): unknown;
+  redirect(path: string): unknown;
+  clearCookie(name: string): void;
+};
+type Next = () => unknown;
+
 // JWT middleware to verify token
-const authenticateJWT = (req, res, next) => {
-  const token = req.cookies.jwt || req.headers.authorization?.split(' ')[1];
+const authenticateJWT = (req: AuthRequest, res: AuthResponse, next: Next) => {
+  const authorization = req.headers.authorization;
+  const token = req.cookies.jwt || (typeof authorization === 'string' ? authorization.split(' ')[1] : undefined);
   const apiKey = req.headers['x-api-key'];
 
   if (apiKey && apiKey === process.env.API_KEY) {
@@ -28,8 +41,9 @@ const authenticateJWT = (req, res, next) => {
   }
 };
 
-const isAuthenticated = (req, res, next) => {
-  const token = req.cookies.jwt || req.headers.authorization?.split(' ')[1];
+const isAuthenticated = (req: AuthRequest, res: AuthResponse, next: Next) => {
+  const authorization = req.headers.authorization;
+  const token = req.cookies.jwt || (typeof authorization === 'string' ? authorization.split(' ')[1] : undefined);
   const apiKey = req.headers['x-api-key'];
 
   if (apiKey && apiKey === process.env.API_KEY) {
