@@ -7,10 +7,15 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
+    "types": ["node"],
+    "rootDir": "."
   },
   "include": [
-    "services/**/*.ts"
+    "services/**/*.ts",
+    "routes/**/*.ts",
+    "scripts/**/*.ts",
+    "schemas.ts",
+    "server.ts"
   ],
   "exclude": [
     "node_modules",
