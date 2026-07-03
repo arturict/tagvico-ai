@@ -1,7 +1,11 @@
 # Archivista AI
 
+> **⚠️ Alpha — under active development.**
+> This project is currently in an **alpha** state. APIs, configuration schema, environment variables, the SQLite layout, and the TypeScript migration are subject to change without notice. Things will break. Pin a specific release tag if you need stability, and please open issues for anything that surprises you — feedback during alpha is what shapes the 1.0 API.
+
 Self-hosted AI filing for [Paperless-ngx](https://docs.paperless-ngx.com/): turn OCR text into clean metadata — titles, tags, correspondents, document types, dates, languages, custom fields, and optional owner assignment — while keeping control of the model, cost mode, and the privacy boundary.
 
+[![Status: Alpha](https://img.shields.io/badge/status-alpha-ff6f00.svg)](#-alpha--under-active-development)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/arturict/archivista-ai)](https://github.com/arturict/archivista-ai/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/arturict/archivista-ai/ci.yml?branch=main&label=CI)](https://github.com/arturict/archivista-ai/actions/workflows/ci.yml)
@@ -144,6 +148,8 @@ The development server listens on `http://localhost:3000`. The TypeScript migrat
 ## Contributing
 
 Bug reports, feature requests, and pull requests are welcome. The issue chooser asks only for the information needed to reproduce or evaluate a change, and the pull-request template includes a short verification checklist. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow. For security disclosures, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
+
+See [docs/STATUS.md](docs/STATUS.md) for the current development status, what may still change before 1.0, and recommendations for running alpha software in production.
 
 ## License
 

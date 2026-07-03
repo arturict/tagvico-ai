@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Archivista AI — AI autopilot for Paperless-ngx</title>
     <meta name="description" content="Self-hosted AI autopilot for Paperless-ngx. Automatic document classification, tagging, and owner assignment.">
+    <meta name="robots" content="index,follow">
     <style>
       :root {
         --bg: #0d0f0b;
@@ -71,6 +72,30 @@
         margin-left: 20px;
       }
       nav a:hover { color: var(--accent); text-decoration: none; }
+
+      /* Alpha strip */
+      .alpha-strip {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        justify-content: center;
+        background: rgba(200, 255, 46, 0.06);
+        border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+        padding: 8px 16px;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        text-align: center;
+      }
+      .alpha-pill {
+        background: #ff6f00;
+        color: #1a1300;
+        font-weight: 700;
+        font-size: 0.7rem;
+        letter-spacing: 0.08em;
+        padding: 2px 8px;
+        border-radius: 4px;
+      }
 
       /* Hero */
       .hero {
@@ -384,6 +409,10 @@
           <a href="https://github.com/arturict/archivista-ai">GitHub</a>
         </nav>
       </div>
+      <div class="alpha-strip" role="status" aria-label="Project status">
+        <span class="alpha-pill">ALPHA</span>
+        <span>Archivista AI is under active development. APIs and the configuration schema may change without notice &mdash; pin a release tag for stability.</span>
+      </div>
     </header>
 
     <main>
@@ -391,6 +420,7 @@
       <div class="hero">
         <div class="container">
           <div class="hero-badges">
+            <img src="https://img.shields.io/badge/status-ALPHA-ff6f00.svg" alt="Status: Alpha">
             <a href="https://github.com/arturict/archivista-ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"></a>
             <a href="https://github.com/arturict/archivista-ai/releases"><img src="https://img.shields.io/github/v/release/arturict/archivista-ai" alt="Latest release"></a>
             <a href="https://github.com/arturict/archivista-ai/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/arturict/archivista-ai/ci.yml?branch=main&label=CI" alt="CI"></a>

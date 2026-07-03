@@ -1,7 +1,7 @@
 {
   "name": "archivista-ai",
-  "version": "1.1.0",
-  "description": "AI autopilot for Paperless-ngx: metadata, tagging, classification and person assignment.",
+  "version": "1.1.0-alpha.1",
+  "description": "Archivista AI — alpha. Self-hosted AI autopilot for Paperless-ngx (metadata, tagging, classification, owner assignment). Active development; APIs and schema may change without notice.",
   "main": "server.js",
   "scripts": {
     "start": "node dist/server.js",
