@@ -62,6 +62,9 @@ a {
   color: inherit;
 }
 
+.row-actions { display:flex;align-items:center;gap:.45rem;flex-wrap:wrap; }
+.row-actions button,.row-actions a { white-space:nowrap; }
+
 button,
 input,
 select,

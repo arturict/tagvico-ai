@@ -74,10 +74,15 @@
       (function () {
         const table = document.getElementById('reviewTableBody');
         if (!table) return;
+        const events = new EventSource('/api/review/progress');
+        events.addEventListener('progress', function (event) {
+          const progress = JSON.parse(event.data || '{}');
+          if (!progress.documentId) return;
+          const row = table.querySelector('tr[data-document-id="' + progress.documentId + '"]');
+          if (row) row.dataset.status = progress.status;
+        });
 
         async function applyOne(documentId) {
-          // TODO: implement paperlessService.patchDocument call here
-          // For now we hit the route stub; it returns 409 in dry-run mode.
           try {
             const response = await fetch('/review/' + encodeURIComponent(documentId) + '/apply', {
               method: 'POST',

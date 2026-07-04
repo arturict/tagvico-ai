@@ -14,7 +14,7 @@ class PaperlessService {
     this.tagCache = new Map();
     this.customFieldCache = new Map();
     this.lastTagRefresh = 0;
-    this.CACHE_LIFETIME = 3000; // 3 Sekunden
+    this.CACHE_LIFETIME = (config.tagCacheTtlSeconds || 300) * 1000;
   }
 
   reset() {
@@ -67,6 +67,11 @@ class PaperlessService {
     if (this.tagCache.size === 0 || (now - this.lastTagRefresh) > this.CACHE_LIFETIME) {
       await this.refreshTagCache();
     }
+  }
+
+  clearTagCache() {
+    this.tagCache.clear();
+    this.lastTagRefresh = 0;
   }
 
   // Lädt alle existierenden Tags
@@ -648,6 +653,15 @@ class PaperlessService {
     let hasMore = true;
     const shouldFilterByTags = process.env.PROCESS_PREDEFINED_DOCUMENTS === 'yes';
     let tagIds = [];
+    let ignoredTagIds = [];
+
+    if (config.ignoreTags) {
+      await this.ensureTagCache();
+      for (const tagName of String(config.ignoreTags).split(',').map((tag) => tag.trim()).filter(Boolean)) {
+        const ignored = await this.findExistingTag(tagName);
+        if (ignored?.id) ignoredTagIds.push(Number(ignored.id));
+      }
+    }
 
     // Vorverarbeitung der Tags, wenn Filter aktiv ist
     if (shouldFilterByTags) {
@@ -699,7 +713,10 @@ class PaperlessService {
           break;
         }
 
-        documents = documents.concat(response.data.results);
+        documents = documents.concat(response.data.results.filter((document) => {
+          if (!ignoredTagIds.length || !Array.isArray(document.tags)) return true;
+          return !document.tags.some((tag) => ignoredTagIds.includes(Number(typeof tag === 'object' ? tag.id : tag)));
+        }));
         hasMore = response.data.next !== null;
         page++;
 
@@ -746,6 +763,21 @@ class PaperlessService {
       console.error('[ERROR] fetching document IDs:', error.message);
       return [];
     }
+  }
+
+  async getAllDocumentIdsUnfiltered() {
+    this.initialize();
+    const ids = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const response = await this.client.get('/documents/', { params: { page, page_size: 100, fields: 'id' } });
+      const results = Array.isArray(response.data?.results) ? response.data.results : [];
+      ids.push(...results.map((document) => Number(document.id)).filter(Number.isInteger));
+      hasMore = Boolean(response.data?.next);
+      page += 1;
+    }
+    return ids;
   }
 
   async getAllDocumentIdsScan() {

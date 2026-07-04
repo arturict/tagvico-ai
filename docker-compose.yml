@@ -13,6 +13,16 @@ services:
       - PUID=1000
       - PGID=1000
       - ARCHIVISTA_AI_PORT=${ARCHIVISTA_AI_PORT:-3000}
+      - CODEX_HOME=/app/data/codex
+      # Required for first-run setup through Docker bridge networking. Once an
+      # admin exists, setup is authenticated even when this remains enabled.
+      - ALLOW_REMOTE_SETUP=${ALLOW_REMOTE_SETUP:-yes}
+      # Optional durable OCR rescue:
+      # - OCR_ENABLED=yes
+      # - OCR_PROVIDER=mistral
+      # - OCR_API_URL=https://api.mistral.ai/v1
+      # - OCR_API_KEY=replace-me
+      # - OCR_MODEL=mistral-ocr-latest
     ports:
       - "${ARCHIVISTA_AI_HOST_PORT:-8080}:${ARCHIVISTA_AI_PORT:-3000}"
     volumes:

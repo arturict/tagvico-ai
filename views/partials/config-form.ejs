@@ -269,7 +269,14 @@
 
       <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'codex' ? '' : 'hidden' %>" data-provider-panel="codex" aria-hidden="<%= providerCatalog.selectedProvider === 'codex' ? 'false' : 'true' %>">
         <h3>Codex subscription <span class="badge">Experimental</span></h3>
-        <p class="field-hint">Uses the Codex CLI account on this host. Run <code>codex login</code> inside the container or mounted Codex home first. No API key is stored by Tagvico.</p>
+        <p class="field-hint">Uses the official Codex runtime. Tokens stay in the configured Codex home and are never exposed to this page.</p>
+        <div class="inline-actions">
+          <button id="codexStatusButton" type="button" class="button-secondary">Check login status</button>
+          <button id="codexLoginButton" type="button" class="button-secondary">Sign in with ChatGPT</button>
+          <button id="codexLogoutButton" type="button" class="button-danger">Sign out</button>
+          <span id="codexStatusResult" class="field-hint" aria-live="polite"></span>
+        </div>
+        <div id="codexLoginResult" class="field-hint" aria-live="polite"></div>
         <div class="field">
           <label for="codexModel">Codex model</label>
           <input id="codexModel" type="text" value="<%= config.CODEX_MODEL %>" placeholder="gpt-5.4-mini">

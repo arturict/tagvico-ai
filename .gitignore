@@ -2,6 +2,7 @@
 .env.bak
 .dockerignore
 data/
+/OPENAPI/
 node_modules/
 dist/
 api-test.ps1
@@ -11,6 +12,7 @@ data bak/
 data_bak/
 data_*/
 .env*
+!.env.example
 docker-compose-dev.yml
 public/images/
 delete_all.js
