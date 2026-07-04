@@ -12,10 +12,96 @@ if (!fs.existsSync(dataDir)) {
 }
 
 // Initialize database with WAL mode for better performance
-const db = new Database(path.join(dataDir, 'documents.db'), { 
+const databasePath = path.join(dataDir, 'documents.db');
+const db = new Database(databasePath, {
   //verbose: console.log 
 });
 db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
+
+const columnExists = (table, column) => db.prepare(`PRAGMA table_info(${table})`).all()
+  .some((entry) => entry.name === column);
+
+const MIGRATIONS = [
+  {
+    version: 1,
+    up() {
+      if (!columnExists('original_documents', 'document_type')) db.exec('ALTER TABLE original_documents ADD COLUMN document_type INTEGER');
+      if (!columnExists('original_documents', 'document_date')) db.exec('ALTER TABLE original_documents ADD COLUMN document_date TEXT');
+      if (!columnExists('original_documents', 'language')) db.exec('ALTER TABLE original_documents ADD COLUMN language TEXT');
+      if (!columnExists('original_documents', 'custom_fields')) db.exec("ALTER TABLE original_documents ADD COLUMN custom_fields TEXT DEFAULT '[]'");
+      if (!columnExists('original_documents', 'owner')) db.exec('ALTER TABLE original_documents ADD COLUMN owner INTEGER');
+      if (!columnExists('original_documents', 'snapshot_json')) db.exec("ALTER TABLE original_documents ADD COLUMN snapshot_json TEXT DEFAULT '{}'");
+      if (!columnExists('history_documents', 'event_type')) db.exec("ALTER TABLE history_documents ADD COLUMN event_type TEXT DEFAULT 'processed'");
+      if (!columnExists('history_documents', 'source')) db.exec("ALTER TABLE history_documents ADD COLUMN source TEXT DEFAULT 'automatic'");
+      db.exec(`
+        DELETE FROM original_documents
+        WHERE id NOT IN (SELECT MIN(id) FROM original_documents GROUP BY document_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_original_document_id ON original_documents(document_id);
+      `);
+    }
+  },
+  {
+    version: 2,
+    up() {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS ocr_queue (
+          id INTEGER PRIMARY KEY,
+          document_id INTEGER NOT NULL UNIQUE,
+          title TEXT,
+          reason TEXT NOT NULL DEFAULT 'manual',
+          status TEXT NOT NULL DEFAULT 'pending',
+          attempts INTEGER NOT NULL DEFAULT 0,
+          ocr_text TEXT,
+          last_error TEXT,
+          added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          processed_at DATETIME
+        );
+        CREATE INDEX IF NOT EXISTS idx_ocr_queue_status ON ocr_queue(status, added_at DESC);
+        CREATE TABLE IF NOT EXISTS failed_documents (
+          id INTEGER PRIMARY KEY,
+          document_id INTEGER NOT NULL UNIQUE,
+          title TEXT,
+          failed_reason TEXT NOT NULL,
+          source TEXT NOT NULL DEFAULT 'ai',
+          attempts INTEGER NOT NULL DEFAULT 1,
+          last_error TEXT,
+          failed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_failed_documents_updated ON failed_documents(updated_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_history_created ON history_documents(created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_history_document ON history_documents(document_id, created_at DESC);
+      `);
+    }
+  },
+  {
+    version: 3,
+    up() {
+      if (!columnExists('users', 'mfa_enabled')) db.exec('ALTER TABLE users ADD COLUMN mfa_enabled INTEGER DEFAULT 0');
+      if (!columnExists('users', 'mfa_secret')) db.exec('ALTER TABLE users ADD COLUMN mfa_secret TEXT');
+    }
+  }
+];
+
+function runMigrations() {
+  const current = Number(db.pragma('user_version', { simple: true })) || 0;
+  const pending = MIGRATIONS.filter((entry) => entry.version > current);
+  if (pending.length > 0 && fs.existsSync(databasePath)) {
+    db.pragma('wal_checkpoint(FULL)');
+    const backupPath = `${databasePath}.pre-migration-v${current}-${Date.now()}.bak`;
+    fs.copyFileSync(databasePath, backupPath, fs.constants.COPYFILE_EXCL);
+    console.log(`[DB] Created pre-migration backup at ${backupPath}`);
+  }
+  for (const migration of pending) {
+    db.transaction(() => {
+      migration.up();
+      db.pragma(`user_version = ${migration.version}`);
+    })();
+    console.log(`[DB] Applied migration ${migration.version}`);
+  }
+}
 
 // Create tables
 const createTableMain = db.prepare(`
@@ -130,6 +216,7 @@ const createProcessingStatus = db.prepare(`
   );
 `);
 createProcessingStatus.run();
+runMigrations();
 
 // Add with your other prepared statements
 const upsertProcessingStatus = db.prepare(`
@@ -153,6 +240,19 @@ const getActiveProcessing = db.prepare(`
 
 
 module.exports = {
+  getDatabase() {
+    return db;
+  },
+
+  getSchemaVersion() {
+    return Number(db.pragma('user_version', { simple: true })) || 0;
+  },
+
+  async backupDatabase(targetPath) {
+    await db.backup(targetPath);
+    return targetPath;
+  },
+
   async addProcessedDocument(documentId, title) {
     try {
       // Bei UNIQUE constraint failure wird der existierende Eintrag aktualisiert
@@ -237,6 +337,30 @@ module.exports = {
       console.error('[ERROR] saving original data:', error);
       return false;
     }
+  },
+
+  async saveOriginalSnapshot(documentId, snapshot = {}) {
+    const tags = JSON.stringify(snapshot.tags || []);
+    const customFields = JSON.stringify(snapshot.custom_fields || []);
+    const snapshotJson = JSON.stringify(snapshot);
+    const result = db.prepare(`
+      INSERT INTO original_documents
+        (document_id, title, tags, correspondent, document_type, document_date, language, custom_fields, owner, snapshot_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(document_id) DO NOTHING
+    `).run(
+      documentId,
+      snapshot.title || null,
+      tags,
+      snapshot.correspondent ?? null,
+      snapshot.document_type ?? null,
+      snapshot.created || snapshot.document_date || null,
+      snapshot.language || null,
+      customFields,
+      snapshot.owner ?? null,
+      snapshotJson
+    );
+    return result.changes > 0;
   },
 
   async addToHistory(documentId, tagIds, title, correspondent) {
@@ -334,6 +458,161 @@ module.exports = {
     }
   },
 
+  async getHistoryPage({ search = '', tag = '', correspondent = '', sortColumn = 'created_at', sortDir = 'desc', limit = 10, offset = 0 } = {}) {
+    const sortable = new Set(['document_id', 'title', 'correspondent', 'created_at']);
+    const column = sortable.has(sortColumn) ? sortColumn : 'created_at';
+    const direction = String(sortDir).toLowerCase() === 'asc' ? 'ASC' : 'DESC';
+    const clauses = [];
+    const params = [];
+    if (search) {
+      clauses.push('(title LIKE ? OR correspondent LIKE ? OR tags LIKE ? OR CAST(document_id AS TEXT) LIKE ?)');
+      const pattern = `%${search}%`;
+      params.push(pattern, pattern, pattern, pattern);
+    }
+    if (tag) {
+      clauses.push('EXISTS (SELECT 1 FROM json_each(history_documents.tags) WHERE CAST(json_each.value AS TEXT) = ?)');
+      params.push(String(tag));
+    }
+    if (correspondent) {
+      clauses.push('correspondent = ?');
+      params.push(correspondent);
+    }
+    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+    const total = db.prepare('SELECT COUNT(*) AS count FROM history_documents').get().count;
+    const filtered = db.prepare(`SELECT COUNT(*) AS count FROM history_documents ${where}`).get(...params).count;
+    const rows = db.prepare(`SELECT * FROM history_documents ${where} ORDER BY ${column} ${direction} LIMIT ? OFFSET ?`)
+      .all(...params, Math.min(Math.max(Number(limit) || 10, 1), 100), Math.max(Number(offset) || 0, 0));
+    return { rows, total, filtered };
+  },
+
+  async addToOcrQueue(documentId, title, reason = 'manual') {
+    const result = db.prepare(`
+      INSERT INTO ocr_queue (document_id, title, reason, status)
+      VALUES (?, ?, ?, 'pending')
+      ON CONFLICT(document_id) DO UPDATE SET
+        title = excluded.title,
+        reason = excluded.reason,
+        status = CASE WHEN ocr_queue.status = 'processing' THEN ocr_queue.status ELSE 'pending' END,
+        updated_at = CURRENT_TIMESTAMP,
+        last_error = NULL
+    `).run(documentId, title || `Document ${documentId}`, reason);
+    return result.changes > 0;
+  },
+
+  async getOcrQueueItem(documentId) {
+    return db.prepare('SELECT * FROM ocr_queue WHERE document_id = ?').get(documentId);
+  },
+
+  async getOcrQueuePage({ search = '', status = '', limit = 10, offset = 0 } = {}) {
+    const pattern = `%${search}%`;
+    const rows = db.prepare(`
+      SELECT * FROM ocr_queue
+      WHERE (? = '' OR title LIKE ? OR CAST(document_id AS TEXT) LIKE ?)
+        AND (? = '' OR status = ?)
+      ORDER BY added_at DESC LIMIT ? OFFSET ?
+    `).all(search, pattern, pattern, status, status, Math.min(Math.max(Number(limit) || 10, 1), 100), Math.max(Number(offset) || 0, 0));
+    const count = db.prepare(`
+      SELECT COUNT(*) AS count FROM ocr_queue
+      WHERE (? = '' OR title LIKE ? OR CAST(document_id AS TEXT) LIKE ?)
+        AND (? = '' OR status = ?)
+    `).get(search, pattern, pattern, status, status).count;
+    return { rows, total: count };
+  },
+
+  async updateOcrQueueStatus(documentId, status, { text = null, error = null, incrementAttempts = false } = {}) {
+    const result = db.prepare(`
+      UPDATE ocr_queue SET status = ?, ocr_text = COALESCE(?, ocr_text), last_error = ?,
+        attempts = attempts + ?, updated_at = CURRENT_TIMESTAMP,
+        processed_at = CASE WHEN ? IN ('done', 'failed') THEN CURRENT_TIMESTAMP ELSE processed_at END
+      WHERE document_id = ?
+    `).run(status, text, error, incrementAttempts ? 1 : 0, status, documentId);
+    return result.changes > 0;
+  },
+
+  async recoverInterruptedOcrJobs() {
+    const result = db.prepare(`
+      UPDATE ocr_queue SET status = 'pending', updated_at = CURRENT_TIMESTAMP
+      WHERE status IN ('processing', 'analyzing')
+    `).run();
+    return result.changes;
+  },
+
+  async removeFromOcrQueue(documentId) {
+    return db.prepare('DELETE FROM ocr_queue WHERE document_id = ? AND status != ?').run(documentId, 'processing').changes > 0;
+  },
+
+  async addFailedDocument(documentId, title, reason, source = 'ai', lastError = null) {
+    db.prepare(`
+      INSERT INTO failed_documents (document_id, title, failed_reason, source, last_error)
+      VALUES (?, ?, ?, ?, ?)
+      ON CONFLICT(document_id) DO UPDATE SET
+        title = excluded.title, failed_reason = excluded.failed_reason, source = excluded.source,
+        attempts = failed_documents.attempts + 1, last_error = excluded.last_error,
+        updated_at = CURRENT_TIMESTAMP
+    `).run(documentId, title || `Document ${documentId}`, reason, source, lastError);
+    return true;
+  },
+
+  async isDocumentFailed(documentId) {
+    return Boolean(db.prepare('SELECT 1 FROM failed_documents WHERE document_id = ?').get(documentId));
+  },
+
+  async getFailedDocumentsPage({ search = '', limit = 10, offset = 0 } = {}) {
+    const pattern = `%${search}%`;
+    const rows = db.prepare(`SELECT * FROM failed_documents
+      WHERE (? = '' OR title LIKE ? OR failed_reason LIKE ? OR CAST(document_id AS TEXT) LIKE ?)
+      ORDER BY updated_at DESC LIMIT ? OFFSET ?`)
+      .all(search, pattern, pattern, pattern, Math.min(Math.max(Number(limit) || 10, 1), 100), Math.max(Number(offset) || 0, 0));
+    const total = db.prepare(`SELECT COUNT(*) AS count FROM failed_documents
+      WHERE (? = '' OR title LIKE ? OR failed_reason LIKE ? OR CAST(document_id AS TEXT) LIKE ?)`)
+      .get(search, pattern, pattern, pattern).count;
+    return { rows, total };
+  },
+
+  async resetFailedDocument(documentId) {
+    const transaction = db.transaction(() => {
+      const removed = db.prepare('DELETE FROM failed_documents WHERE document_id = ?').run(documentId).changes;
+      db.prepare('DELETE FROM processing_status WHERE document_id = ?').run(documentId);
+      return removed;
+    });
+    return transaction() > 0;
+  },
+
+  async resetForRescan(documentId) {
+    return db.transaction(() => {
+      db.prepare('DELETE FROM processed_documents WHERE document_id = ?').run(documentId);
+      db.prepare('DELETE FROM processing_status WHERE document_id = ?').run(documentId);
+      db.prepare('DELETE FROM failed_documents WHERE document_id = ?').run(documentId);
+      return true;
+    })();
+  },
+
+  async getTrackedDocumentIds() {
+    return db.prepare(`
+      SELECT DISTINCT document_id FROM (
+        SELECT document_id FROM processed_documents UNION ALL
+        SELECT document_id FROM history_documents UNION ALL
+        SELECT document_id FROM original_documents UNION ALL
+        SELECT document_id FROM ocr_queue UNION ALL
+        SELECT document_id FROM failed_documents
+      )
+    `).all().map((row) => Number(row.document_id));
+  },
+
+  async purgeLocalDocument(documentId) {
+    db.transaction(() => {
+      for (const table of ['processed_documents', 'history_documents', 'original_documents', 'processing_status', 'ocr_queue', 'failed_documents', 'openai_metrics']) {
+        db.prepare(`DELETE FROM ${table} WHERE document_id = ?`).run(documentId);
+      }
+    })();
+    return true;
+  },
+
+  async setUserMfaSettings(username, enabled, secret = null) {
+    return db.prepare('UPDATE users SET mfa_enabled = ?, mfa_secret = ? WHERE username = ?')
+      .run(enabled ? 1 : 0, enabled ? secret : null, username).changes > 0;
+  },
+
   async deleteAllDocuments() {
     try {
       db.prepare('DELETE FROM processed_documents').run();
@@ -375,9 +654,9 @@ module.exports = {
       const stmt = db.prepare(query);
       const stmt2 = db.prepare(query2);
       const stmt3 = db.prepare(query3);
-      const result = stmt.run(numericIds);
-      const result2 = stmt2.run(numericIds);
-      const result3 = stmt3.run(numericIds);
+      const result = stmt.run(...numericIds);
+      const result2 = stmt2.run(...numericIds);
+      const result3 = stmt3.run(...numericIds);
 
       console.log('[DEBUG] SQL result:', result);
       console.log('[DEBUG] SQL result:', result2);

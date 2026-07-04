@@ -31,6 +31,11 @@
           <input id="password" name="password" type="password" required autocomplete="current-password">
         </div>
 
+        <div class="field">
+          <label for="otp">MFA code <span class="field-hint">(when enabled)</span></label>
+          <input id="otp" name="otp" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}">
+        </div>
+
         <button type="submit" class="button">Sign in</button>
       </form>
     </section>

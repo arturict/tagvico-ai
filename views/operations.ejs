@@ -1,0 +1,61 @@
+<%
+  const body = `
+    <section class="page-header operations-header">
+      <div>
+        <p class="section-kicker">Recovery control</p>
+        <h1 class="page-title">Operations</h1>
+        <p class="page-subtitle">Inspect stalled documents, rescue weak OCR, and stop a running scan without restarting the service.</p>
+      </div>
+      <button id="stopScan" class="button-danger" type="button"><i class="fa-solid fa-stop"></i> Stop scan</button>
+    </section>
+
+    <section class="operations-status" aria-label="Operations status">
+      <article class="operation-signal">
+        <span class="signal-label">OCR rescue</span>
+        <strong>${ocrEnabled ? 'Ready' : 'Disabled'}</strong>
+        <small>${ocrEnabled ? `Provider: ${ocrProvider}` : 'Enable OCR in Settings or data/.env'}</small>
+      </article>
+      <article class="operation-signal">
+        <span class="signal-label">Queue discipline</span>
+        <strong>Durable</strong>
+        <small>Interrupted work returns to pending after restart</small>
+      </article>
+      <article class="operation-signal">
+        <span class="signal-label">Terminal failures</span>
+        <strong id="failureCount">—</strong>
+        <small>Explicit reset required before another scan</small>
+      </article>
+    </section>
+
+    <div id="operationNotice" class="operation-notice" hidden></div>
+
+    <section class="operations-grid">
+      <article class="card stack operations-panel">
+        <div class="panel-heading">
+          <div><p class="section-kicker">OCR queue</p><h2>Documents awaiting rescue</h2></div>
+          <button id="refreshOcr" class="button-secondary" type="button">Refresh</button>
+        </div>
+        <form id="addOcrForm" class="operations-add-form">
+          <label class="sr-only" for="ocrDocumentId">Paperless document ID</label>
+          <input id="ocrDocumentId" name="documentId" type="number" min="1" placeholder="Paperless document ID" required>
+          <button class="button" type="submit">Add to queue</button>
+        </form>
+        <div class="operations-table-wrap"><table class="operations-table"><thead><tr><th>Document</th><th>Status</th><th>Attempts</th><th></th></tr></thead><tbody id="ocrRows"></tbody></table></div>
+      </article>
+
+      <article class="card stack operations-panel">
+        <div class="panel-heading">
+          <div><p class="section-kicker">Failure queue</p><h2>Needs operator attention</h2></div>
+          <button id="refreshFailures" class="button-secondary" type="button">Refresh</button>
+        </div>
+        <div class="operations-table-wrap"><table class="operations-table"><thead><tr><th>Document</th><th>Reason</th><th>Attempts</th><th></th></tr></thead><tbody id="failureRows"></tbody></table></div>
+      </article>
+    </section>
+  `;
+%>
+<%- include('partials/app-shell', {
+  title: 'Operations | Tagvico AI', activePage: 'operations', version,
+  includeCharts: false, includeDataTables: false,
+  extraHead: '<link rel="stylesheet" href="/css/operations.css">',
+  extraScripts: '<script src="/js/operations.js"></script>', body
+}) %>

@@ -2,14 +2,29 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const config = require('../config/config');
 const confidenceGuard = require('./confidenceGuard');
+const { ProviderAdapter } = require('./providerAdapter');
 
-class AnthropicService {
+class AnthropicService extends ProviderAdapter {
   constructor() {
+    super();
+    this.name = 'anthropic';
+    this.displayName = 'Anthropic Claude';
     this.client = null;
     this.key = null;
     this.pending = [];
     this.timer = null;
   }
+
+  async healthcheck() {
+    const started = Date.now();
+    try {
+      this.initialize();
+      if (!this.client) throw new Error('Anthropic API key is not configured');
+      return { ok: true, latencyMs: Date.now() - started };
+    } catch (error) { return { ok: false, error: error.message, latencyMs: Date.now() - started }; }
+  }
+
+  modelMetadata() { return { id: config.anthropic.model, contextWindow: 200000, supportsImages: true }; }
 
   initialize() {
     if (config.anthropic?.apiKey && this.key !== config.anthropic.apiKey) {

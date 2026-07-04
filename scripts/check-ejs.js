@@ -13,6 +13,7 @@ const targets = [
   'views/review.ejs',
   'views/manual.ejs',
   'views/history.ejs',
+  'views/operations.ejs',
   'views/login.ejs'
 ];
 

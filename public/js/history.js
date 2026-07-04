@@ -41,7 +41,7 @@ class HistoryPage {
         },
         {
           data: 'link',
-          render: (link) => `<a class="button-secondary" href="${link}" target="_blank" rel="noreferrer">Open</a>`,
+          render: (link, type, row) => `<div class="row-actions"><a class="button-secondary" href="${link}" target="_blank" rel="noreferrer">Open</a><button class="button-secondary history-action" data-action="rescan" data-id="${row.document_id}">Rescan</button><button class="button-danger history-action" data-action="restore" data-id="${row.document_id}">Restore</button></div>`,
           orderable: false
         }
       ],
@@ -118,12 +118,27 @@ class HistoryPage {
     $('#tagFilter, #correspondentFilter').on('change', () => this.table.ajax.reload());
     document.getElementById('resetSelectedBtn')?.addEventListener('click', () => this.resetSelected());
     document.getElementById('resetAllBtn')?.addEventListener('click', () => this.resetAll());
+    document.getElementById('historyTable')?.addEventListener('click', (event) => this.handleAction(event));
     document.addEventListener('toggle', (event) => {
       const target = event.target;
       if (target instanceof HTMLDetailsElement && target.classList.contains('history-diff')) {
         if (target.open) this.loadDiff(target);
       }
     }, true);
+  }
+
+  async handleAction(event) {
+    const button = event.target.closest('.history-action');
+    if (!button) return;
+    const { action, id } = button.dataset;
+    if (action === 'restore' && !window.confirm(`Restore document ${id} to its first saved metadata snapshot?`)) return;
+    const response = await fetch(`/api/history/${id}/${action}`, { method: 'POST' });
+    if (!response.ok) {
+      const payload = await response.json();
+      window.alert(payload.error || `${action} failed`);
+      return;
+    }
+    this.table.ajax.reload();
   }
 
   getSelectedIds() {

@@ -1,32 +1,32 @@
-# Use a slim Node.js (LTS) image as base
-FROM node:22-slim
+# Build native dependencies and TypeScript outside the runtime image.
+FROM node:22-slim AS build
 
 WORKDIR /app
 
-# Install system dependencies and clean up in single layer
-# (make/g++ are required to build the better-sqlite3 native module; curl for healthcheck)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     make \
-    g++ \
-    curl && \
+    g++ && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Install PM2 process manager globally
-RUN npm install pm2 -g
-
-# Copy package files for dependency installation
 COPY package*.json ./
-
-# Install node dependencies with clean install. Dev dependencies are needed for
-# the TypeScript build, then pruned before runtime.
 RUN npm ci
-
-# Copy application source code
 COPY . .
-
 RUN npm run build && npm prune --omit=dev && npm cache clean --force
+
+FROM node:22-slim AS runtime
+
+WORKDIR /app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends curl poppler-utils && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    npm install pm2 -g && \
+    npm cache clean --force
+
+COPY --from=build /app /app
 
 # Make startup script executable
 RUN chmod +x start-services.sh

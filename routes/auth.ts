@@ -1,8 +1,9 @@
-const jwt = require('jsonwebtoken');
+const jwt = require('../services/jwtCompat');
 const config = require('../config/config');
+const { getJwtSecret } = require('../services/authSecret');
 
 // JWT secret key - should be moved to environment variables
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const JWT_SECRET = getJwtSecret();
 
 type AuthRequest = {
   cookies: Record<string, string | undefined>;

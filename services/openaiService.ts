@@ -14,11 +14,31 @@ const { loadThumbnail, buildUserMessage } = require('./thumbnailHelper');
 const confidenceGuard = require('./confidenceGuard');
 const customFieldsService = require('./customFieldsService');
 const openaiBatchService = require('./openaiBatchService');
+const { ProviderAdapter } = require('./providerAdapter');
 
-class OpenAIService {
+class OpenAIService extends ProviderAdapter {
   constructor() {
+    super();
+    this.name = 'openai';
+    this.displayName = 'OpenAI compatible';
+    this.privacy = 'cloud';
+    this.costTier = 'paid';
     this.client = null;
     this.clientKey = null;
+  }
+
+  async healthcheck() {
+    const started = Date.now();
+    try {
+      this.initialize();
+      if (!this.client) throw new Error('Provider credentials are not configured');
+      await this.client.models.list();
+      return { ok: true, latencyMs: Date.now() - started };
+    } catch (error) { return { ok: false, error: error.message, latencyMs: Date.now() - started }; }
+  }
+
+  modelMetadata() {
+    return { id: config.aiModel || '', contextWindow: Number(config.tokenLimit || 0), supportsImages: true };
   }
 
   reset() {

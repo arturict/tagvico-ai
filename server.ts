@@ -18,6 +18,8 @@ const swaggerSpec = require('./swagger');
 const ownerProfileService = require('./services/ownerProfileService');
 const historyService = require('./services/historyService');
 const customFieldsService = require('./services/customFieldsService');
+const { isAuthenticated } = require('./routes/auth');
+const { createRateLimiter } = require('./services/rateLimiter');
 
 const htmlLogger = new Logger({
   logFile: 'logs.html',
@@ -35,10 +37,16 @@ const txtLogger = new Logger({
 
 const app = express();
 let runningTask = false;
+const scanControl = global.__tagvicoScanControl || { running: false, stopRequested: false, startedAt: null, source: null };
+global.__tagvicoScanControl = scanControl;
 
 
+const allowedOrigins = String(process.env.CORS_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean);
 const corsOptions = {
-  origin: true,
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('Origin is not allowed'));
+  },
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type', 
@@ -48,17 +56,15 @@ const corsOptions = {
   credentials: false
 };
 
-app.use(cors(corsOptions));
+if (allowedOrigins.length > 0) app.use(cors(corsOptions));
 
+app.disable('x-powered-by');
+app.set('trust proxy', process.env.TRUST_PROXY === 'yes' ? 1 : false);
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, x-api-key, Access-Control-Allow-Private-Network');
-  res.header('Access-Control-Allow-Private-Network', 'true');
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'same-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
   next();
 });
 
@@ -66,9 +72,10 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use(cookieParser());
+app.use('/api', createRateLimiter({ windowMs: 15 * 60 * 1000, max: Number(process.env.GLOBAL_RATE_LIMIT_MAX || 1000) }));
 
 // Swagger documentation route
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+app.use('/api-docs', isAuthenticated, swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
   swaggerOptions: {
     url: '/api-docs/openapi.json'
   }
@@ -106,7 +113,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-app.get('/api-docs/openapi.json', (req, res) => {
+app.get('/api-docs/openapi.json', isAuthenticated, (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 });
@@ -171,6 +178,7 @@ async function saveOpenApiSpec() {
 async function processDocument(doc, existingTags, existingCorrespondentList, existingDocumentTypesList, ownUserId) {
   const isProcessed = await documentModel.isDocumentProcessed(doc.id);
   if (isProcessed) return null;
+  if (await documentModel.isDocumentFailed(doc.id)) return null;
   await documentModel.setProcessingStatus(doc.id, doc.title, 'processing');
 
   //Check if the Document can be edited
@@ -188,8 +196,14 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
     paperlessService.getDocument(doc.id)
   ]);
 
-  if (!content || !content.length >= 10) {
-    console.log(`[DEBUG] Document ${doc.id} has no content, skipping analysis`);
+  if (!content || content.length < config.minContentLength) {
+    console.log(`[DEBUG] Document ${doc.id} has insufficient OCR content`);
+    if (config.ocr?.enabled === 'yes') {
+      await documentModel.addToOcrQueue(doc.id, doc.title, 'short_content');
+    } else {
+      await documentModel.addFailedDocument(doc.id, doc.title, 'short_content_ocr_disabled', 'ocr');
+    }
+    await documentModel.setProcessingStatus(doc.id, doc.title, 'failed');
     return null;
   }
 
@@ -389,31 +403,37 @@ async function buildUpdateData(analysis, doc, content = '') {
 }
 
 async function saveDocumentChanges(docId, updateData, analysis, originalData) {
-  const { tags: originalTags, correspondent: originalCorrespondent, title: originalTitle } = originalData;
-  
+  await documentModel.saveOriginalSnapshot(docId, originalData);
   await Promise.all([
-    documentModel.saveOriginalData(docId, originalTags, originalCorrespondent, originalTitle),
     paperlessService.updateDocument(docId, updateData),
     documentModel.addProcessedDocument(docId, updateData.title),
     documentModel.addOpenAIMetrics(
       docId, 
-      analysis.metrics.promptTokens,
-      analysis.metrics.completionTokens,
-      analysis.metrics.totalTokens
+      analysis.metrics?.promptTokens || 0,
+      analysis.metrics?.completionTokens || 0,
+      analysis.metrics?.totalTokens || 0
     ),
     documentModel.addToHistory(docId, updateData.tags, updateData.title, analysis.document.correspondent)
   ]);
 }
 
 async function processAndSaveDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId) {
-  try {
-    const result = await processDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
-    if (!result) return;
-    const { analysis, originalData, content } = result;
-    const updateData = await buildUpdateData(analysis, doc, content);
-    await saveDocumentChanges(doc.id, updateData, analysis, originalData);
-  } catch (error) {
-    console.error(`[ERROR] processing document ${doc.id}:`, error);
+  for (let attempt = 1; attempt <= config.maxRetries; attempt += 1) {
+    try {
+      const result = await processDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
+      if (!result) return;
+      const { analysis, originalData, content } = result;
+      const updateData = await buildUpdateData(analysis, doc, content);
+      await saveDocumentChanges(doc.id, updateData, analysis, originalData);
+      return;
+    } catch (error) {
+      console.error(`[ERROR] processing document ${doc.id} (attempt ${attempt}/${config.maxRetries}):`, error);
+      if (attempt === config.maxRetries) {
+        const message = error instanceof Error ? error.message : String(error);
+        await documentModel.addFailedDocument(doc.id, doc.title, 'ai_failed', 'ai', message);
+        await documentModel.setProcessingStatus(doc.id, doc.title, 'failed');
+      }
+    }
   }
 }
 
@@ -424,6 +444,7 @@ async function processDocumentCollection(documents, existingTagNames, existingCo
     return;
   }
   for (const doc of documents) {
+    if (scanControl.stopRequested) break;
     await processAndSaveDocument(doc, ...args);
   }
 }
@@ -464,6 +485,10 @@ async function scanDocuments() {
   }
 
   runningTask = true;
+  scanControl.running = true;
+  scanControl.stopRequested = false;
+  scanControl.startedAt = new Date().toISOString();
+  scanControl.source = 'scheduler';
   try {
     let [existingTags, documents, ownUserId, existingCorrespondentList, existingDocumentTypes] = await Promise.all([
       paperlessService.getTags(),
@@ -487,6 +512,10 @@ async function scanDocuments() {
     console.error('[ERROR]  during document scan:', error);
   } finally {
     runningTask = false;
+    scanControl.running = false;
+    scanControl.stopRequested = false;
+    scanControl.startedAt = null;
+    scanControl.source = null;
     console.log('[INFO] Task completed');
   }
 }
@@ -620,6 +649,17 @@ async function startScanning() {
         await scanDocuments();
       });
     }
+    if (config.reconciliationEnabled === 'yes') {
+      const reconciliationService = require('./services/reconciliationService');
+      cron.schedule(config.reconciliationInterval, async () => {
+        try {
+          const result = await reconciliationService.run();
+          if (result.removed) console.log(`[RECONCILIATION] Removed ${result.removed} stale local document(s)`);
+        } catch (error) {
+          console.error('[RECONCILIATION] Failed:', error.message);
+        }
+      });
+    }
   } catch (error) {
     console.error('[ERROR] in startScanning:', error);
   }
@@ -673,6 +713,9 @@ async function startServer() {
     await initializeDataDirectory();
     // Idempotent schema migration for the history.diff JSON column.
     historyService.migrate();
+    const ocrService = require('./services/ocrService');
+    const recovered = await ocrService.recoverInterruptedJobs();
+    if (recovered) console.log(`[OCR] Recovered ${recovered} interrupted job(s)`);
     await saveOpenApiSpec(); // Save OpenAPI specification on startup
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);

@@ -9,6 +9,7 @@ const ollamaService = require('../services/ollamaService.js');
 const azureService = require('../services/azureService.js');
 const anthropicService = require('../services/anthropicService.js');
 const codexService = require('../services/codexService.js');
+const codexAuthService = require('../services/codexAuthService.js');
 const documentModel = require('../models/document.js');
 const AIServiceFactory = require('../services/aiServiceFactory');
 const debugService = require('../services/debugService.js');
@@ -17,17 +18,25 @@ const ownerProfileService = require('../services/ownerProfileService');
 const onboardingService = require('../services/onboardingService');
 const fs = require('fs').promises;
 const path = require('path');
-const jwt = require('jsonwebtoken');
+const jwt = require('../services/jwtCompat');
 const bcrypt = require('bcryptjs');
 const cookieParser = require('cookie-parser');
 const { authenticateJWT, isAuthenticated } = require('./auth.js');
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+const { getJwtSecret } = require('../services/authSecret');
+const JWT_SECRET = getJwtSecret();
 const customService = require('../services/customService.js');
 const config = require('../config/config.js');
 const providerCatalogService = require('../services/providerCatalogService');
 const dashboardMetrics = require('../services/dashboardMetrics');
 const reviewService = require('../services/reviewService');
+const reviewProgressService = require('../services/reviewProgressService');
 const historyService = require('../services/historyService');
+const ocrService = require('../services/ocrService');
+const reconciliationService = require('../services/reconciliationService');
+const { createRateLimiter } = require('../services/rateLimiter');
+const loginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'login' });
+const totpService = require('../services/totpService');
+const pendingMfaSecrets = new Map();
 const {
   buildUiConfig,
   normalizeArray,
@@ -152,6 +161,7 @@ const API_ENDPOINTS = ['/health'];
 // Routes that don't require authentication
 let PUBLIC_ROUTES = [
   '/health',
+  '/api/health',
   '/login',
   '/logout',
   '/setup',
@@ -166,6 +176,15 @@ let PUBLIC_ROUTES = [
 router.use(async (req, res, next) => {
   const token = req.cookies.jwt || req.headers.authorization?.split(' ')[1];
   const apiKey = req.headers['x-api-key'];
+
+  if (req.path.startsWith('/setup')) {
+    const configured = await setupService.isConfigured().catch(() => false);
+    const remote = String(req.socket?.remoteAddress || '');
+    const local = remote === '127.0.0.1' || remote === '::1' || remote === '::ffff:127.0.0.1';
+    if (!configured && !local && process.env.ALLOW_REMOTE_SETUP !== 'yes') {
+      return res.status(403).send('Remote setup is disabled. Set ALLOW_REMOTE_SETUP=yes temporarily to opt in.');
+    }
+  }
 
   // Public route check
   if (PUBLIC_ROUTES.some(route => req.path.startsWith(route))) {
@@ -213,6 +232,19 @@ router.use(async (req, res, next) => {
   next();
 });
 
+// Cookie-authenticated mutations must originate from this application. API-key
+// clients are not subject to browser CSRF and remain usable without Origin.
+router.use((req, res, next) => {
+  if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) || !req.cookies.jwt || req.headers['x-api-key']) return next();
+  const source = req.headers.origin || req.headers.referer;
+  try {
+    if (!source || new URL(source).host !== req.get('host')) return res.status(403).json({ error: 'Cross-site request rejected' });
+  } catch {
+    return res.status(403).json({ error: 'Cross-site request rejected' });
+  }
+  next();
+});
+
 // Protected route middleware for API endpoints
 const protectApiRoute = (req, res, next) => {
   const token = req.cookies.jwt || req.headers.authorization?.split(' ')[1];
@@ -246,6 +278,11 @@ const allowDuringSetup = async (req, res, next) => {
   try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
+      const remote = String(req.socket?.remoteAddress || '');
+      const local = remote === '127.0.0.1' || remote === '::1' || remote === '::ffff:127.0.0.1';
+      if (!local && process.env.ALLOW_REMOTE_SETUP !== 'yes') {
+        return res.status(403).json({ success: false, error: 'Remote setup is disabled. Set ALLOW_REMOTE_SETUP=yes temporarily to opt in.' });
+      }
       return next();
     }
   } catch (error) {
@@ -387,8 +424,8 @@ router.get('/login', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+router.post('/login', loginLimiter, async (req, res) => {
+  const { username, password, otp } = req.body;
 
   try {
     console.log('Login attempt for user:', username);   
@@ -406,6 +443,9 @@ router.post('/login', async (req, res) => {
     console.log('Password validation result:', isValidPassword);
 
     if (isValidPassword) {
+      if (user.mfa_enabled && (!user.mfa_secret || !totpService.verify(user.mfa_secret, String(otp || '')))) {
+        return res.status(401).render('login', { error: 'A valid six-digit MFA code is required' });
+      }
       const token = jwt.sign(
         { 
           id: user.id, 
@@ -416,7 +456,7 @@ router.post('/login', async (req, res) => {
       );
       res.cookie('jwt', token, {
         httpOnly: true,
-        secure: false,  
+        secure: process.env.COOKIE_SECURE_MODE === 'always' || (process.env.COOKIE_SECURE_MODE !== 'never' && req.secure),
         sameSite: 'lax', 
         path: '/',
         maxAge: 24 * 60 * 60 * 1000 
@@ -872,13 +912,21 @@ router.get('/api/history', async (req, res) => {
     const tagFilter = req.query.tag || '';
     const correspondentFilter = req.query.correspondent || '';
 
-    // Get all documents
-    const allDocs = await documentModel.getAllHistory();
+    const order = req.query.order?.[0] || {};
+    const requestedColumn = req.query.columns?.[order.column]?.data;
+    const historyPage = await documentModel.getHistoryPage({
+      search,
+      tag: tagFilter,
+      correspondent: correspondentFilter,
+      sortColumn: requestedColumn,
+      sortDir: order.dir,
+      limit: length,
+      offset: start
+    });
     const allTags = await paperlessService.getTags();
     const tagMap = new Map(allTags.map(tag => [tag.id, tag]));
 
-    // Format and filter documents
-    let filteredDocs = allDocs.map(doc => {
+    const filteredDocs = historyPage.rows.map(doc => {
       const tagIds = doc.tags === '[]' ? [] : JSON.parse(doc.tags || '[]');
       const resolvedTags = tagIds.map(id => tagMap.get(parseInt(id))).filter(Boolean);
       const baseURL = process.env.PAPERLESS_API_URL.replace(/\/api$/, '');
@@ -893,50 +941,13 @@ router.get('/api/history', async (req, res) => {
         correspondent: doc.correspondent || 'Not assigned',
         link: `${baseURL}/documents/${doc.document_id}/`
       };
-    }).filter(doc => {
-      const matchesSearch = !search || 
-        doc.title.toLowerCase().includes(search.toLowerCase()) ||
-        doc.correspondent.toLowerCase().includes(search.toLowerCase()) ||
-        doc.tags.some(tag => tag.name.toLowerCase().includes(search.toLowerCase()));
-
-      const matchesTag = !tagFilter || doc.tags.some(tag => tag.id === parseInt(tagFilter));
-      const matchesCorrespondent = !correspondentFilter || doc.correspondent === correspondentFilter;
-
-      return matchesSearch && matchesTag && matchesCorrespondent;
     });
-
-    // Sort documents if requested
-    if (req.query.order) {
-      const order = req.query.order[0];
-      const column = req.query.columns[order.column].data;
-      const dir = order.dir === 'asc' ? 1 : -1;
-
-      filteredDocs.sort((a, b) => {
-        if (a[column] == null) return 1;
-        if (b[column] == null) return -1;
-        if (column === 'created_at') {
-          return dir * (new Date(a[column]) - new Date(b[column]));
-        }
-        if (column === 'document_id') {
-          return dir * (a[column] - b[column]);
-        }
-        if (column === 'tags') {
-          let min_len = (a[column].length < b[column].length)? a[column].length : b[column].length;
-          for(let i=0; i < min_len; i+=1) {
-            let cmp = a[column][i].name.localeCompare(b[column][i].name)
-            if(cmp !== 0) return dir * cmp;
-          }
-          return dir * (a[column].length - b[column].length);
-        }
-        return dir * a[column].localeCompare(b[column]);
-      });
-    }
 
     res.json({
       draw: draw,
-      recordsTotal: allDocs.length,
-      recordsFiltered: filteredDocs.length,
-      data: filteredDocs.slice(start, start + length)
+      recordsTotal: historyPage.total,
+      recordsFiltered: historyPage.filtered,
+      data: filteredDocs
     });
   } catch (error) {
     console.error('[ERROR] loading history data:', error);
@@ -1093,15 +1104,31 @@ router.post('/review/:id/apply', express.json(), isAuthenticated, async (req, re
   try {
     const documentId = req.params.id;
     const metadata = req.body || {};
+    reviewProgressService.publish({ documentId, status: 'applying' });
     const result = await reviewService.applyMetadata(documentId, metadata);
     if (!result.ok) {
+      reviewProgressService.publish({ documentId, status: 'skipped', reason: result.reason });
       return res.status(409).json(result);
     }
+    reviewProgressService.publish({ documentId, status: 'applied' });
     res.json({ success: true, documentId, ...result });
   } catch (error) {
+    reviewProgressService.publish({ documentId: req.params.id, status: 'failed', error: error.message });
     console.error('[ERROR] applying review metadata:', error);
     res.status(500).json({ error: 'Error applying metadata' });
   }
+});
+
+router.get('/api/review/progress', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders?.();
+  const send = (event) => res.write(`event: progress\ndata: ${JSON.stringify(event)}\n\n`);
+  send({ status: 'connected' });
+  reviewProgressService.on('progress', send);
+  const keepAlive = setInterval(() => res.write(': keep-alive\n\n'), 15_000);
+  req.on('close', () => { clearInterval(keepAlive); reviewProgressService.off('progress', send); });
 });
 
 /**
@@ -3379,6 +3406,21 @@ router.get('/health', async (req, res) => {
   }
 });
 
+router.get('/api/health', async (req, res) => {
+  const started = Date.now();
+  try {
+    await documentModel.isDocumentProcessed(1);
+    const provider = AIServiceFactory.getService();
+    const providerResult = typeof provider.healthcheck === 'function'
+      ? await Promise.race([provider.healthcheck(), new Promise((resolve) => setTimeout(() => resolve({ ok: false, error: 'Provider healthcheck timed out' }), 5000))])
+      : { ok: null, error: 'Provider does not expose a healthcheck' };
+    const status = providerResult.ok === false ? 'degraded' : 'healthy';
+    res.status(status === 'healthy' ? 200 : 503).json({ status, database: { ok: true }, provider: providerResult, latencyMs: Date.now() - started });
+  } catch (error) {
+    res.status(503).json({ status: 'unhealthy', database: { ok: false }, error: error.message, latencyMs: Date.now() - started });
+  }
+});
+
 /**
  * @swagger
  * /setup:
@@ -4186,6 +4228,14 @@ router.get('/api/processing-status', async (req, res) => {
   }
 });
 
+router.get('/operations', async (req, res) => {
+  res.render('operations', {
+    version: configFile.ARCHIVISTA_AI_VERSION,
+    ocrEnabled: ocrService.isEnabled(),
+    ocrProvider: config.ocr?.provider || 'mistral'
+  });
+});
+
 router.get('/api/rag-test', protectApiRoute, retiredApiRoute('RAG features have been removed from Tagvico AI.'));
 
 router.get('/dashboard/doc/:id', async (req, res) => {
@@ -4204,6 +4254,162 @@ router.get('/dashboard/doc/:id', async (req, res) => {
     console.error('Error fetching document:', error);
     res.status(500).json({ error: 'Failed to fetch document' });
   }
+});
+
+router.post('/api/scan/stop', async (req, res) => {
+  const control = global.__tagvicoScanControl;
+  if (!control?.running) return res.status(409).json({ error: 'No scan is running' });
+  control.stopRequested = true;
+  res.json({ success: true, message: 'The scan will stop before the next document' });
+});
+
+router.get('/api/ocr/queue', async (req, res) => {
+  const page = await documentModel.getOcrQueuePage({
+    search: String(req.query.search || ''),
+    status: String(req.query.status || ''),
+    limit: Number(req.query.limit || 20),
+    offset: Number(req.query.offset || 0)
+  });
+  res.json(page);
+});
+
+router.post('/api/ocr/queue', express.json(), async (req, res) => {
+  const documentId = Number(req.body?.documentId);
+  if (!Number.isInteger(documentId) || documentId <= 0) return res.status(400).json({ error: 'A valid documentId is required' });
+  const document = await paperlessService.getDocument(documentId);
+  await documentModel.addToOcrQueue(documentId, document?.title, 'manual');
+  res.status(201).json({ success: true });
+});
+
+router.delete('/api/ocr/queue/:id', async (req, res) => {
+  const removed = await documentModel.removeFromOcrQueue(Number(req.params.id));
+  res.status(removed ? 200 : 409).json({ success: removed });
+});
+
+router.post('/api/ocr/process/:id', async (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  const send = (step, message, data = {}) => res.write(`data: ${JSON.stringify({ step, message, ...data })}\n\n`);
+  try {
+    await ocrService.process(Number(req.params.id), send);
+  } catch (error) {
+    send('error', error.message);
+  } finally {
+    res.end();
+  }
+});
+
+router.get('/api/failures', async (req, res) => {
+  const page = await documentModel.getFailedDocumentsPage({
+    search: String(req.query.search || ''),
+    limit: Number(req.query.limit || 20),
+    offset: Number(req.query.offset || 0)
+  });
+  res.json(page);
+});
+
+router.post('/api/failures/:id/reset', async (req, res) => {
+  const success = await documentModel.resetFailedDocument(Number(req.params.id));
+  res.status(success ? 200 : 404).json({ success });
+});
+
+router.post('/api/history/:id/rescan', async (req, res) => {
+  const documentId = Number(req.params.id);
+  if (!Number.isInteger(documentId) || documentId <= 0) return res.status(400).json({ error: 'Invalid document ID' });
+  await documentModel.resetForRescan(documentId);
+  res.json({ success: true, message: 'Document queued for the next scan' });
+});
+
+router.post('/api/history/:id/restore', async (req, res) => {
+  const documentId = Number(req.params.id);
+  const original = await documentModel.getOriginalData(documentId);
+  if (!original) return res.status(404).json({ error: 'No original snapshot is available' });
+  let snapshot;
+  try { snapshot = JSON.parse(original.snapshot_json || '{}'); } catch { snapshot = {}; }
+  const update = {
+    title: snapshot.title ?? original.title,
+    tags: snapshot.tags ?? JSON.parse(original.tags || '[]'),
+    correspondent: snapshot.correspondent ?? original.correspondent,
+    document_type: snapshot.document_type ?? original.document_type,
+    created: snapshot.created ?? original.document_date,
+    language: snapshot.language ?? original.language,
+    custom_fields: snapshot.custom_fields ?? JSON.parse(original.custom_fields || '[]'),
+    owner: snapshot.owner ?? original.owner
+  };
+  Object.keys(update).forEach((key) => update[key] === undefined && delete update[key]);
+  const restored = await paperlessService.updateDocument(documentId, update);
+  if (!restored) return res.status(502).json({ error: 'Paperless-ngx rejected the restore' });
+  await documentModel.addToHistory(documentId, update.tags || [], update.title, String(update.correspondent || ''));
+  res.json({ success: true });
+});
+
+router.get('/api/codex/status', async (req, res) => {
+  try {
+    const account = await codexAuthService.account();
+    res.json({ ...(await codexService.getStatus()), account: account.account || null });
+  } catch { res.json(await codexService.getStatus()); }
+});
+
+router.post('/api/codex/login', express.json(), async (req, res) => {
+  try { res.json(await codexAuthService.login(req.body?.type === 'chatgpt' ? 'chatgpt' : 'chatgptDeviceCode')); }
+  catch (error) { res.status(502).json({ error: error.message }); }
+});
+
+router.get('/api/codex/login/:loginId', (req, res) => {
+  const status = codexAuthService.loginStatus(req.params.loginId);
+  if (!status) return res.status(404).json({ error: 'Login flow not found or expired' });
+  res.json(status);
+});
+
+router.post('/api/codex/login/:loginId/cancel', async (req, res) => {
+  try { res.json(await codexAuthService.cancel(req.params.loginId)); }
+  catch (error) { res.status(502).json({ error: error.message }); }
+});
+
+router.post('/api/codex/logout', async (req, res) => {
+  try { await codexAuthService.logout(); res.json({ success: true }); }
+  catch (error) { res.status(502).json({ error: error.message }); }
+});
+
+router.post('/api/settings/clear-tag-cache', async (req, res) => {
+  paperlessService.clearTagCache();
+  res.json({ success: true });
+});
+
+router.get('/api/reconciliation/preview', async (req, res) => {
+  const documentIds = await reconciliationService.preview();
+  res.json({ count: documentIds.length, documentIds });
+});
+
+router.post('/api/reconciliation/run', async (req, res) => {
+  res.json(await reconciliationService.run());
+});
+
+router.post('/api/mfa/setup', async (req, res) => {
+  const username = req.user?.username;
+  if (!username) return res.status(401).json({ error: 'User authentication is required' });
+  const secret = totpService.generateSecret();
+  pendingMfaSecrets.set(username, { secret, expiresAt: Date.now() + 10 * 60 * 1000 });
+  res.json({ secret, provisioningUri: totpService.provisioningUri(secret, username) });
+});
+
+router.post('/api/mfa/verify', express.json(), async (req, res) => {
+  const username = req.user?.username;
+  const pending = pendingMfaSecrets.get(username);
+  if (!pending || pending.expiresAt < Date.now()) return res.status(400).json({ error: 'MFA setup expired' });
+  if (!totpService.verify(pending.secret, String(req.body?.otp || ''))) return res.status(400).json({ error: 'Invalid MFA code' });
+  await documentModel.setUserMfaSettings(username, true, pending.secret);
+  pendingMfaSecrets.delete(username);
+  res.json({ success: true });
+});
+
+router.post('/api/mfa/disable', express.json(), async (req, res) => {
+  const username = req.user?.username;
+  const user = await documentModel.getUser(username);
+  if (!user || !await bcrypt.compare(String(req.body?.password || ''), user.password)) return res.status(403).json({ error: 'Current password is invalid' });
+  await documentModel.setUserMfaSettings(username, false);
+  res.json({ success: true });
 });
 
 module.exports = router;

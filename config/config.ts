@@ -8,7 +8,8 @@ const {
 const currentDir = decodeURIComponent(process.cwd());
 const envPath = path.join(currentDir, 'data', '.env');
 console.log('Loading .env from:', envPath); // Debug log
-require('dotenv').config({ path: envPath, override: true });
+const injectedEnvironment = new Set(Object.keys(process.env));
+require('dotenv').config({ path: envPath, override: false });
 
 // Helper function to parse boolean-like env vars
 const parseEnvBoolean = (value: string | undefined, defaultValue = 'yes') => {
@@ -65,6 +66,12 @@ module.exports = {
   predefinedMode: process.env.PROCESS_PREDEFINED_DOCUMENTS,
   tokenLimit: process.env.TOKEN_LIMIT || 128000,
   responseTokens: process.env.RESPONSE_TOKENS || 1000,
+  minContentLength: Math.max(1, parseInt(process.env.MIN_CONTENT_LENGTH || '10', 10)),
+  maxRetries: Math.max(1, parseInt(process.env.AI_MAX_RETRIES || '3', 10)),
+  ignoreTags: process.env.IGNORE_TAGS || '',
+  tagCacheTtlSeconds: Math.max(30, parseInt(process.env.TAG_CACHE_TTL_SECONDS || '300', 10)),
+  reconciliationEnabled: parseEnvBoolean(process.env.RECONCILIATION_ENABLED, 'yes'),
+  reconciliationInterval: process.env.RECONCILIATION_INTERVAL || '0 * * * *',
   processingMode: normalizeProcessingMode(process.env.AI_PROCESSING_MODE, process.env.AI_PROVIDER),
   addAIProcessedTag: process.env.ADD_AI_PROCESSED_TAG || 'no',
   addAIProcessedTags: process.env.AI_PROCESSED_TAG_NAME || 'ai-processed',
@@ -89,8 +96,20 @@ module.exports = {
     model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5'
   },
   codex: {
-    model: process.env.CODEX_MODEL || 'gpt-5.4-mini'
+    model: process.env.CODEX_MODEL || 'gpt-5.4-mini',
+    home: process.env.CODEX_HOME || path.join(currentDir, 'data', 'codex'),
+    timeoutMs: Math.max(10000, parseInt(process.env.CODEX_TIMEOUT_MS || '120000', 10))
   },
+  ocr: {
+    enabled: parseEnvBoolean(process.env.OCR_ENABLED || process.env.MISTRAL_OCR_ENABLED, 'no'),
+    provider: String(process.env.OCR_PROVIDER || 'mistral').trim().toLowerCase(),
+    apiUrl: String(process.env.OCR_API_URL || '').trim(),
+    apiKey: process.env.OCR_API_KEY || process.env.MISTRAL_API_KEY || '',
+    model: process.env.OCR_MODEL || process.env.MISTRAL_OCR_MODEL || 'mistral-ocr-latest',
+    maxPages: Math.max(1, parseInt(process.env.OCR_MAX_PAGES || '20', 10)),
+    timeoutMs: Math.max(10000, parseInt(process.env.OCR_TIMEOUT_MS || '120000', 10))
+  },
+  injectedEnvironment,
   openrouter: {
     apiKey: process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || '',
     model: process.env.OPENROUTER_MODEL || process.env.AI_MODEL || getDefaultModel('openrouter'),

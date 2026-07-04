@@ -16,7 +16,54 @@ class ConfigFormApp {
     this.initCustomFields();
     this.initToggleCards();
     this.initSecretToggles();
+    this.initCodexStatus();
     this.initSubmit();
+  }
+
+  initCodexStatus() {
+    const button = document.getElementById('codexStatusButton');
+    const output = document.getElementById('codexStatusResult');
+    const refresh = async () => {
+      button.disabled = true;
+      output.textContent = 'Checking…';
+      try {
+        const response = await fetch('/api/codex/status');
+        const status = await response.json();
+        output.textContent = status.account?.type === 'chatgpt'
+          ? `Signed in as ${status.account.email || 'ChatGPT user'} (${status.account.planType}); model ${status.model}`
+          : (status.authenticated ? `Signed in; model ${status.model}` : status.message);
+      } catch {
+        output.textContent = 'Could not read Codex status.';
+      } finally {
+        button.disabled = false;
+      }
+    };
+    button?.addEventListener('click', refresh);
+    const login = document.getElementById('codexLoginButton');
+    const logout = document.getElementById('codexLogoutButton');
+    const loginResult = document.getElementById('codexLoginResult');
+    login?.addEventListener('click', async () => {
+      login.disabled = true;
+      try {
+        const response = await fetch('/api/codex/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type: 'chatgptDeviceCode' }) });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Could not start login');
+        const link = document.createElement('a');
+        link.href = result.verificationUrl; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = result.verificationUrl;
+        loginResult.replaceChildren('Open ', link, ` and enter ${result.userCode}.`);
+        const poll = window.setInterval(async () => {
+          const status = await fetch(`/api/codex/login/${encodeURIComponent(result.loginId)}`).then((r) => r.json());
+          if (!status.completed) return;
+          window.clearInterval(poll);
+          loginResult.textContent = status.success ? 'ChatGPT sign-in completed.' : `Sign-in failed: ${status.error || 'unknown error'}`;
+          login.disabled = false; refresh();
+        }, 1500);
+      } catch (error) { loginResult.textContent = error.message; login.disabled = false; }
+    });
+    logout?.addEventListener('click', async () => {
+      const response = await fetch('/api/codex/logout', { method: 'POST' });
+      if (response.ok) { loginResult.textContent = 'Signed out.'; refresh(); }
+    });
   }
 
   initProviderSelection() {
