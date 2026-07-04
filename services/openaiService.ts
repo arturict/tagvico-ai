@@ -38,7 +38,7 @@ class OpenAIService {
     } else if (provider === 'compatible' && (!this.client || this.clientKey !== `${provider}:${config.compatible.apiUrl}`)) {
       this.client = new OpenAI({
         baseURL: config.compatible.apiUrl,
-        apiKey: config.compatible.apiKey || 'Archivista AI-compatible'
+        apiKey: config.compatible.apiKey || 'Tagvico AI-compatible'
       });
       this.clientKey = `${provider}:${config.compatible.apiUrl}`;
     } else if (provider === 'openrouter' && (!this.client || this.clientKey !== `${provider}:${config.openrouter.baseUrl}`)) {
@@ -47,8 +47,8 @@ class OpenAIService {
           apiKey: config.openrouter.apiKey,
           baseURL: config.openrouter.baseUrl,
           defaultHeaders: {
-            'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER || 'https://github.com/arturict/archivista-ai',
-            'X-Title': 'Archivista AI'
+            'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER || 'https://github.com/arturict/tagvico-ai',
+            'X-Title': 'Tagvico AI'
           }
         });
         this.clientKey = `${provider}:${config.openrouter.baseUrl}`;

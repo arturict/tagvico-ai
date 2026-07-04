@@ -3,7 +3,7 @@
 This page covers LM Studio and any other self-hosted endpoint that
 exposes the OpenAI Chat Completions API. Examples include vLLM,
 text-generation-inference, llama.cpp's `server` mode, LocalAI, and
-custom gateways. They all share the same Archivista adapter, exposed
+custom gateways. They all share the same Tagvico adapter, exposed
 as the `custom` provider.
 
 ## Required env vars
@@ -51,7 +51,7 @@ require 40 GB+ of VRAM.
 - **`ECONNREFUSED`** — the container cannot reach the host. Use
   `host.docker.internal` on Docker Desktop, the bridge IP
   (`172.17.0.1`) on Linux, or run the inference server on the same
-  Docker network as Archivista and use its service name.
+  Docker network as Tagvico and use its service name.
 - **Responses are empty or malformed JSON** — the model is too small
   or not instruction-tuned. Switch to an instruct/chat-tuned model
   such as `Meta-Llama-3.1-8B-Instruct` or `Qwen2.5-7B-Instruct`.

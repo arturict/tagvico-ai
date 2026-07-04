@@ -1,10 +1,10 @@
-# Privacy Policy for the Archivista AI Browser Extension
+# Privacy Policy for the Tagvico AI Browser Extension
 
 Last updated: 16.01.2025
 
 ## 1. General Information
 
-The Archivista AI Browser Extension ("the Extension") is a browser extension designed to connect your Paperless-ngx instance with your Archivista AI server. We are committed to protecting your privacy and personal data.
+The Tagvico AI Browser Extension ("the Extension") is a browser extension designed to connect your Paperless-ngx instance with your Tagvico AI server. We are committed to protecting your privacy and personal data.
 
 ## 2. Data Controller
 
@@ -15,14 +15,14 @@ Email: clusterz[at]protonmail.com
 ### 3.1 Stored Data
 The Extension stores the following data locally in your browser:
 - URL of your Paperless-ngx installation
-- URL of your Archivista AI server
-- API key for the Archivista AI service
+- URL of your Tagvico AI server
+- API key for the Tagvico AI service
 
 This data is stored exclusively in the Chrome Storage Sync API and is only accessible by the Extension.
 
 ### 3.2 Document Content Processing
 - The Extension only accesses document content when you actively use the chat function for a specific document
-- Document contents are transmitted exclusively to your configured Archivista AI server
+- Document contents are transmitted exclusively to your configured Tagvico AI server
 - No document content is transmitted to third parties
 
 ### 3.3 Chat History
@@ -34,7 +34,7 @@ This data is stored exclusively in the Chrome Storage Sync API and is only acces
 
 The Extension transmits data exclusively to:
 - Your self-hosted Paperless-ngx installation
-- Your self-configured Archivista AI server
+- Your self-configured Tagvico AI server
 
 No data is transmitted to the Extension developers or other third parties.
 
@@ -43,7 +43,7 @@ No data is transmitted to the Extension developers or other third parties.
 The Extension requires the following browser permissions:
 - "storage": For saving your configuration settings
 - "activeTab": For integrating chat functionality into the Paperless-ngx interface
-- "host_permissions": For communication with your Paperless-ngx and Archivista AI servers
+- "host_permissions": For communication with your Paperless-ngx and Tagvico AI servers
 
 ## 6. Data Security
 
@@ -86,7 +86,7 @@ All configuration data is stored locally in your browser using Chrome's secure s
 
 ### 11.2 Data Processing
 - Document content is processed only when explicitly requested through the chat interface
-- Processing occurs on your configured Archivista AI server
+- Processing occurs on your configured Tagvico AI server
 - No content caching or storage occurs within the Extension
 
 ### 11.3 Security Measures

@@ -108,8 +108,8 @@ class SetupService {
         apiKey,
         baseURL: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
         defaultHeaders: {
-          'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER || 'https://github.com/arturict/archivista-ai',
-          'X-Title': 'Archivista AI'
+          'HTTP-Referer': process.env.OPENROUTER_HTTP_REFERER || 'https://github.com/arturict/tagvico-ai',
+          'X-Title': 'Tagvico AI'
         }
       });
 
@@ -129,7 +129,7 @@ class SetupService {
   async validateCustomConfig(url, apiKey, model) {
     const config = {
       baseURL: url,
-      apiKey: apiKey || 'Archivista AI-compatible',
+      apiKey: apiKey || 'Tagvico AI-compatible',
       model: model
     };
     console.log('Custom AI config:', config);

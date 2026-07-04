@@ -106,7 +106,7 @@ class DashboardPage {
     const remaining = this.data?.counts?.remaining || 0;
 
     if (total === 0) {
-      this.emptyState('processingChart', 'No documents visible to Archivista AI yet.');
+      this.emptyState('processingChart', 'No documents visible to Tagvico AI yet.');
       return;
     }
 

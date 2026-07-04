@@ -4,21 +4,21 @@
 
 ## What this means
 
-Archivista AI is in **alpha**. We are stabilizing the core filing workflow, the provider adapters, and the TypeScript migration. You can run it for real, and many people do, but the following may change at any time without a deprecation cycle:
+Tagvico AI is in **alpha**. We are stabilizing the core filing workflow, the provider adapters, and the TypeScript migration. You can run it for real, and many people do, but the following may change at any time without a deprecation cycle:
 
 - The HTTP/REST API surface (paths, request bodies, response fields).
 - The configuration schema in `data/.env` and the setup wizard.
-- The SQLite database schema in `data/archivista.db` (migrations are provided, but backwards compatibility is not guaranteed across pre-1.0 releases).
+- The SQLite database schema in `data/tagvico.db` (migrations are provided, but backwards compatibility is not guaranteed across pre-1.0 releases).
 - Provider adapter behavior (Ollama, OpenAI, OpenRouter, Azure OpenAI, OpenAI-compatible, Anthropic, experimental Codex sign-in).
 - Default values, output formats, and confidence thresholds.
 - File paths, filenames, and the on-disk layout inside the persistent volume.
 
 ## Recommendations for alpha users
 
-- **Pin a specific release tag** in `docker-compose.yml` (for example `ghcr.io/arturict/archivista-ai:1.1.0`), never `:latest`. We publish immutable tags per release.
-- **Back up the `archivista_ai_data` volume** before upgrading. The volume holds your admin account, provider settings, and processing history.
+- **Pin a specific release tag** in `docker-compose.yml` (for example `ghcr.io/arturict/tagvico-ai:1.1.0`), never `:latest`. We publish immutable tags per release.
+- **Back up the `tagvico_ai_data` volume** before upgrading. The volume holds your admin account, provider settings, and processing history.
 - **Test upgrades on a non-production instance** if you rely on automatic metadata writes.
-- **Read the release notes** for breaking changes — they are documented per release on the [GitHub releases page](https://github.com/arturict/archivista-ai/releases).
+- **Read the release notes** for breaking changes — they are documented per release on the [GitHub releases page](https://github.com/arturict/tagvico-ai/releases).
 
 ## What is stable enough to rely on
 

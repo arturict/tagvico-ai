@@ -1,7 +1,7 @@
 # Paperless-ngx OCR Language Pack Docs (Issues #4139, #4833)
 
 **Researched:** 2026-06-29
-**Verdict for Archivista:** *Both issues are closed as "not a bug" / "dependencies." The current docs cover how to install Tesseract language packs but do not call out the *character-encoding pitfalls* (umlauts, accents) that motivated both reports. A focused upstream docs PR is worthwhile.*
+**Verdict for Tagvico:** *Both issues are closed as "not a bug" / "dependencies." The current docs cover how to install Tesseract language packs but do not call out the *character-encoding pitfalls* (umlauts, accents) that motivated both reports. A focused upstream docs PR is worthwhile.*
 
 ## Per-issue summary
 

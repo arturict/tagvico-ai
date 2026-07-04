@@ -24,7 +24,7 @@ current default set; check the OpenAI dashboard for the latest names.
 
 ## Privacy and cost
 
-OpenAI receives the OCR text and metadata of every document Archivista
+OpenAI receives the OCR text and metadata of every document Tagvico
 processes while this provider is active. Inputs and outputs are subject
 to OpenAI's [API data usage policies](https://openai.com/policies/api-data-usage-policies);
 by default the API does not retain or train on requests, but enterprise

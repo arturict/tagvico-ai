@@ -41,7 +41,7 @@ class AppShell {
   async loadStars() {
     if (!this.starCount) return;
     try {
-      const response = await fetch('https://api.github.com/repos/arturict/archivista-ai');
+      const response = await fetch('https://api.github.com/repos/arturict/tagvico-ai');
       if (!response.ok) {
         throw new Error('Failed to load stars');
       }

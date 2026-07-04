@@ -26,7 +26,7 @@ class OpenAIBatchService {
     if (!items.length) return;
 
     const client = items[0].client;
-    const tempPath = path.join(os.tmpdir(), `archivista-batch-${crypto.randomUUID()}.jsonl`);
+    const tempPath = path.join(os.tmpdir(), `tagvico-batch-${crypto.randomUUID()}.jsonl`);
     try {
       const jsonl = items.map(({ customId, body }) => JSON.stringify({
         custom_id: customId,
@@ -40,7 +40,7 @@ class OpenAIBatchService {
         input_file_id: input.id,
         endpoint: '/v1/chat/completions',
         completion_window: '24h',
-        metadata: { application: 'archivista-ai' }
+        metadata: { application: 'tagvico-ai' }
       });
 
       const pollMs = Math.max(1000, Number(process.env.BATCH_POLL_INTERVAL_MS || 30000));

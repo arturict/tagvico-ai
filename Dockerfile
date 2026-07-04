@@ -34,7 +34,7 @@ RUN chmod +x start-services.sh
 # Configure persistent data volume
 VOLUME ["/app/data"]
 
-# Configure the Archivista AI application port.
+# Configure the Tagvico AI application port.
 EXPOSE ${ARCHIVISTA_AI_PORT:-3000}
 
 # Add health check with dynamic port

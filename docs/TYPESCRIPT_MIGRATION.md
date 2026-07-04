@@ -1,6 +1,6 @@
 # TypeScript migration
 
-Archivista AI's server runtime is now compiled from TypeScript. All application
+Tagvico AI's server runtime is now compiled from TypeScript. All application
 modules under `services/`, `routes/`, `models/`, and `config/`, plus the server,
 schema, and Swagger entry points, use `.ts` sources. CI type-checks and builds
 the complete runtime before performing a compiled-server smoke test.

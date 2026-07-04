@@ -13,7 +13,7 @@
       <div>
         <p class="section-kicker">Operations overview</p>
         <h1 class="page-title">Dashboard</h1>
-        <p class="page-subtitle">What Archivista AI has processed, how much model budget it burns, and what is still waiting for action.</p>
+        <p class="page-subtitle">What Tagvico AI has processed, how much model budget it burns, and what is still waiting for action.</p>
       </div>
       <div style="display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
         <div id="scanResult" class="success hidden" role="status">Scan triggered successfully.</div>
@@ -23,7 +23,7 @@
 
     <div class="dash-identity" aria-hidden="true">
       <span class="dash-mark"></span>
-      <span>Archivista AI ${version} &middot; live processing state polls every few seconds</span>
+      <span>Tagvico AI ${version} &middot; live processing state polls every few seconds</span>
     </div>
 
     <p class="dash-group-title">Throughput at a glance</p>
@@ -55,7 +55,7 @@
         <div class="chart-head">
           <div>
             <div class="chart-title">Processing progress</div>
-            <div class="chart-sub">Completed vs remaining documents visible to Archivista AI.</div>
+            <div class="chart-sub">Completed vs remaining documents visible to Tagvico AI.</div>
           </div>
         </div>
         <div class="chart-canvas"><canvas id="processingChart"></canvas></div>
@@ -159,7 +159,7 @@
   `;
 %>
 <%- include('partials/app-shell', {
-  title: 'Dashboard | Archivista AI',
+  title: 'Dashboard | Tagvico AI',
   activePage: 'dashboard',
   version,
   includeCharts: true,

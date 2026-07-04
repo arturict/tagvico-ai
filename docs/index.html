@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Archivista AI — AI autopilot for Paperless-ngx</title>
+    <title>Tagvico AI — AI autopilot for Paperless-ngx</title>
     <meta name="description" content="Self-hosted AI autopilot for Paperless-ngx. Automatic document classification, tagging, and owner assignment.">
     <meta name="robots" content="index,follow">
     <style>
@@ -399,19 +399,19 @@
     <header>
       <div class="container">
         <a class="brand" href="/">
-          <img src="/archivista-icon.png" alt="">
-          Archivista AI
+          <img src="/tagvico-icon.png" alt="">
+          Tagvico AI
         </a>
         <nav>
           <a href="#install">Install</a>
           <a href="#how-it-works">How It Works</a>
           <a href="#demo">Demo</a>
-          <a href="https://github.com/arturict/archivista-ai">GitHub</a>
+          <a href="https://github.com/arturict/tagvico-ai">GitHub</a>
         </nav>
       </div>
       <div class="alpha-strip" role="status" aria-label="Project status">
         <span class="alpha-pill">ALPHA</span>
-        <span>Archivista AI is under active development. APIs and the configuration schema may change without notice &mdash; pin a release tag for stability.</span>
+        <span>Tagvico AI is under active development. APIs and the configuration schema may change without notice &mdash; pin a release tag for stability.</span>
       </div>
     </header>
 
@@ -421,19 +421,19 @@
         <div class="container">
           <div class="hero-badges">
             <img src="https://img.shields.io/badge/status-ALPHA-ff6f00.svg" alt="Status: Alpha">
-            <a href="https://github.com/arturict/archivista-ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"></a>
-            <a href="https://github.com/arturict/archivista-ai/releases"><img src="https://img.shields.io/github/v/release/arturict/archivista-ai" alt="Latest release"></a>
-            <a href="https://github.com/arturict/archivista-ai/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/arturict/archivista-ai/ci.yml?branch=main&label=CI" alt="CI"></a>
+            <a href="https://github.com/arturict/tagvico-ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"></a>
+            <a href="https://github.com/arturict/tagvico-ai/releases"><img src="https://img.shields.io/github/v/release/arturict/tagvico-ai" alt="Latest release"></a>
+            <a href="https://github.com/arturict/tagvico-ai/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/arturict/tagvico-ai/ci.yml?branch=main&label=CI" alt="CI"></a>
           </div>
           <h1>AI autopilot for <span>Paperless-ngx</span></h1>
-          <p>Self-hosted document classification, tagging, and owner assignment. Connect your Paperless instance, pick a model provider, and let Archivista AI file your documents.</p>
+          <p>Self-hosted document classification, tagging, and owner assignment. Connect your Paperless instance, pick a model provider, and let Tagvico AI file your documents.</p>
           <div class="hero-actions">
             <a class="btn btn-primary" href="#install">Quick Install</a>
-            <a class="btn btn-secondary" href="https://github.com/arturict/archivista-ai">View on GitHub</a>
+            <a class="btn btn-secondary" href="https://github.com/arturict/tagvico-ai">View on GitHub</a>
           </div>
           <div class="hero-media">
-            <img src="dashboard.png" alt="Archivista AI dashboard — real-time document processing" width="2880" height="1582" loading="eager">
-            <p class="hero-caption">Archivista AI dashboard &mdash; real-time document processing</p>
+            <img src="dashboard.png" alt="Tagvico AI dashboard — real-time document processing" width="2880" height="1582" loading="eager">
+            <p class="hero-caption">Tagvico AI dashboard &mdash; real-time document processing</p>
           </div>
         </div>
       </div>
@@ -450,9 +450,9 @@
               <h3><span class="icon">&#9881;</span> Docker Compose</h3>
               <p>Save as <code>docker-compose.yml</code> and bring up the stack:</p>
 <pre><code>services:
-  archivista-ai:
-    image: ghcr.io/arturict/archivista-ai:latest
-    container_name: archivista-ai
+  tagvico-ai:
+    image: ghcr.io/arturict/tagvico-ai:latest
+    container_name: tagvico-ai
     restart: unless-stopped
     ports:
       - "8080:3000"
@@ -462,10 +462,10 @@
       OPENAI_API_KEY: $&#123;OPENAI_API_KEY&#125;
       OPENAI_MODEL: gpt-5.4-mini
     volumes:
-      - archivista_ai_data:/app/data
+      - tagvico_ai_data:/app/data
 
 volumes:
-  archivista_ai_data:</code></pre>
+  tagvico_ai_data:</code></pre>
               <div class="copy-row">
                 <button class="copy-btn" data-copy="compose" type="button">Copy</button>
               </div>
@@ -476,13 +476,13 @@ volumes:
               <h3><span class="icon">&#9654;</span> One-line Start</h3>
               <p>Prefer a single command? Run the image directly:</p>
 <pre><code>docker run -d \
-  --name archivista-ai \
+  --name tagvico-ai \
   -p 8080:3000 \
   -e PAPERLESS_API_URL=http://paperless:8000 \
   -e AI_PROVIDER=openai \
   -e OPENAI_API_KEY=sk-... \
-  -v archivista_ai_data:/app/data \
-  ghcr.io/arturict/archivista-ai:latest</code></pre>
+  -v tagvico_ai_data:/app/data \
+  ghcr.io/arturict/tagvico-ai:latest</code></pre>
               <div class="copy-row">
                 <button class="copy-btn" data-copy="oneliner" type="button">Copy</button>
               </div>
@@ -492,7 +492,7 @@ volumes:
           <p class="install-more">
             Then open <code>http://localhost:8080/setup</code> to finish onboarding.
             For Ollama, OpenRouter, LM Studio, and Azure providers, see the
-            <a href="https://github.com/arturict/archivista-ai/tree/main/docs/providers">full provider docs</a>.
+            <a href="https://github.com/arturict/tagvico-ai/tree/main/docs/providers">full provider docs</a>.
           </p>
         </div>
       </section>
@@ -508,7 +508,7 @@ volumes:
               <div class="step-num">1</div>
               <div class="step-icon">&#128279;</div>
               <h3>Connect Paperless</h3>
-              <p>Point Archivista at your Paperless-ngx instance and paste an API token. The setup wizard auto-detects your installation.</p>
+              <p>Point Tagvico at your Paperless-ngx instance and paste an API token. The setup wizard auto-detects your installation.</p>
             </div>
             <div class="step">
               <div class="step-num">2</div>
@@ -520,7 +520,7 @@ volumes:
               <div class="step-num">3</div>
               <div class="step-icon">&#10003;</div>
               <h3>Review Results</h3>
-              <p>Archivista polls for new documents, generates titles, tags, correspondents, types, and owners, then writes them back via the Paperless API.</p>
+              <p>Tagvico polls for new documents, generates titles, tags, correspondents, types, and owners, then writes them back via the Paperless API.</p>
             </div>
           </div>
 
@@ -545,17 +545,17 @@ volumes:
       <section id="demo">
         <div class="container">
           <h2>Live Demo</h2>
-          <p class="section-sub">Try Archivista AI in your own environment.</p>
+          <p class="section-sub">Try Tagvico AI in your own environment.</p>
 
           <div class="demo-banner">
             <div>
               <span class="disclaimer">&#9432; Self-hosted only</span>
               <h3>No public demo is available</h3>
-              <p>The public website does not process documents. Archivista AI is designed to run on your own infrastructure alongside your Paperless-ngx instance &mdash; your documents never touch our servers. Spin up a container to see the full workflow end to end.</p>
+              <p>The public website does not process documents. Tagvico AI is designed to run on your own infrastructure alongside your Paperless-ngx instance &mdash; your documents never touch our servers. Spin up a container to see the full workflow end to end.</p>
             </div>
             <div class="demo-actions">
-              <a class="btn btn-primary" href="https://github.com/arturict/archivista-ai">GitHub Repo</a>
-              <a class="btn btn-secondary" href="https://github.com/arturict/archivista-ai#quickstart-docker-compose">Setup Instructions</a>
+              <a class="btn btn-primary" href="https://github.com/arturict/tagvico-ai">GitHub Repo</a>
+              <a class="btn btn-secondary" href="https://github.com/arturict/tagvico-ai#quickstart-docker-compose">Setup Instructions</a>
             </div>
           </div>
         </div>
@@ -564,7 +564,7 @@ volumes:
 
     <footer>
       <div class="container">
-        <p>Archivista AI &middot; <a href="https://github.com/arturict/archivista-ai">GitHub</a> &middot; <a href="https://github.com/arturict/archivista-ai/blob/main/LICENSE">MIT License</a> &middot; <a href="https://github.com/arturict/archivista-ai/blob/main/PRIVACY_POLICY.md">Privacy</a></p>
+        <p>Tagvico AI &middot; <a href="https://github.com/arturict/tagvico-ai">GitHub</a> &middot; <a href="https://github.com/arturict/tagvico-ai/blob/main/LICENSE">MIT License</a> &middot; <a href="https://github.com/arturict/tagvico-ai/blob/main/PRIVACY_POLICY.md">Privacy</a></p>
       </div>
     </footer>
 
@@ -572,9 +572,9 @@ volumes:
       // Copy buttons
       const snippets = {
         compose: `services:
-  archivista-ai:
-    image: ghcr.io/arturict/archivista-ai:latest
-    container_name: archivista-ai
+  tagvico-ai:
+    image: ghcr.io/arturict/tagvico-ai:latest
+    container_name: tagvico-ai
     restart: unless-stopped
     ports:
       - "8080:3000"
@@ -584,18 +584,18 @@ volumes:
       OPENAI_API_KEY: \${OPENAI_API_KEY}
       OPENAI_MODEL: gpt-5.4-mini
     volumes:
-      - archivista_ai_data:/app/data
+      - tagvico_ai_data:/app/data
 
 volumes:
-  archivista_ai_data:`,
+  tagvico_ai_data:`,
         oneliner: `docker run -d \\
-  --name archivista-ai \\
+  --name tagvico-ai \\
   -p 8080:3000 \\
   -e PAPERLESS_API_URL=http://paperless:8000 \\
   -e AI_PROVIDER=openai \\
   -e OPENAI_API_KEY=sk-... \\
-  -v archivista_ai_data:/app/data \\
-  ghcr.io/arturict/archivista-ai:latest`
+  -v tagvico_ai_data:/app/data \\
+  ghcr.io/arturict/tagvico-ai:latest`
       };
 
       document.querySelectorAll('.copy-btn').forEach(btn => {

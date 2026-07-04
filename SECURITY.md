@@ -1,6 +1,6 @@
 # Security Policy
 
-> Archivista AI is currently in **alpha**. The release line in development may change its public surface without a deprecation cycle. For the current development status see [docs/STATUS.md](docs/STATUS.md).
+> Tagvico AI is currently in **alpha**. The release line in development may change its public surface without a deprecation cycle. For the current development status see [docs/STATUS.md](docs/STATUS.md).
 
 ## Supported Versions
 

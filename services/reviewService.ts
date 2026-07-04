@@ -37,7 +37,7 @@ function writeReviewConfig(payload = {}) {
   fs.mkdirSync(path.dirname(REVIEW_PATH), { recursive: true });
   const merged = { ...loadReviewConfig(), ...payload };
   const body = [
-    '# Archivista AI dry-run review settings',
+    '# Tagvico AI dry-run review settings',
     '# DRY_RUN=true (default) means new AI suggestions land in the review queue',
     '# instead of being written back to Paperless-ngx automatically.'
   ];

@@ -1,6 +1,6 @@
 # Model Providers
 
-Archivista AI ships with provider adapters for five backends. Pick one in the
+Tagvico AI ships with provider adapters for five backends. Pick one in the
 setup wizard or by setting `AI_PROVIDER` in `data/.env`.
 
 | Provider     | `AI_PROVIDER` value | Setup guide                          |

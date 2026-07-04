@@ -40,7 +40,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/archivista-ai
+            ghcr.io/${{ github.repository_owner }}/tagvico-ai
           tags: |
             type=raw,value=${{ inputs.tag }}
             type=sha,prefix={{branch}}-
@@ -62,4 +62,4 @@ jobs:
           echo "Successfully built and pushed Docker images with tag: **${{ inputs.tag }}**" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Image pushed to:" >> $GITHUB_STEP_SUMMARY
-          echo "- GitHub Container Registry: \`ghcr.io/${{ github.repository_owner }}/archivista-ai:${{ inputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- GitHub Container Registry: \`ghcr.io/${{ github.repository_owner }}/tagvico-ai:${{ inputs.tag }}\`" >> $GITHUB_STEP_SUMMARY

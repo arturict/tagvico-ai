@@ -18,7 +18,7 @@ const GENERIC_USER_TOKENS = new Set([
   'admin',
   'user',
   'paperless',
-  'archivista',
+  'tagvico',
   'scanner',
   'service',
   'system'

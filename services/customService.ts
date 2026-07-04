@@ -34,7 +34,7 @@ class CustomOpenAIService {
     if ((provider === 'compatible' || provider === 'custom') && (!this.client || this.clientKey !== `${provider}:${apiUrl}`)) {
       this.client = new OpenAI({
         baseURL: apiUrl,
-        apiKey: apiKey || 'Archivista AI-compatible'
+        apiKey: apiKey || 'Tagvico AI-compatible'
       });
       this.clientKey = `${provider}:${apiUrl}`;
     }

@@ -1,9 +1,9 @@
 # Paperless-ngx Custom-Field API Issues
 
 **Researched:** 2026-06-29
-**Verdict for Archivista:** *All three are closed. Behavior around workflow re-application is by design but under-documented; a small upstream docs PR is worthwhile.*
+**Verdict for Tagvico:** *All three are closed. Behavior around workflow re-application is by design but under-documented; a small upstream docs PR is worthwhile.*
 
-This note covers three issues in the paperless-ngx issue tracker that all touch the *custom fields + REST API + workflows* intersection — which is exactly the surface Archivista's `custom fields discovery and validation` feature (commit `c4c11eb`) integrates against.
+This note covers three issues in the paperless-ngx issue tracker that all touch the *custom fields + REST API + workflows* intersection — which is exactly the surface Tagvico's `custom fields discovery and validation` feature (commit `c4c11eb`) integrates against.
 
 ## Per-issue summary
 
@@ -20,7 +20,7 @@ This note covers three issues in the paperless-ngx issue tracker that all touch 
 - **What the reporter saw:** Increasingly slow PATCHes (3s → 30s) on a 3,642-document library. CPU saturated in gunicorn, DB idle. Suspected N+1 queries or per-field validation in the serializer.
 - **Maintainer response:** None visible on the page. The `cant-reproduce` label suggests the maintainers either could not reproduce in a similar-sized test environment or the reporter’s environment had an unstated factor (Gunicorn worker count, sync vs gthread worker class, etc.).
 - **Current behavior (2026-06-29):** No code change shipped for this. The PATCH path on `/api/documents/{id}/` still uses the same DRF serializer; large libraries may still see slower-than-expected updates, but no regression has been reported in the intervening versions.
-- **What Archivista should do:** In our `custom fields discovery and validation` service, *do not* PATCH one field at a time across thousands of documents. Use the bulk `modify_custom_fields` operation exposed by the paperless REST API (`POST /api/documents/bulk_edit/`) and prefer diff-based updates that send only the changed fields.
+- **What Tagvico should do:** In our `custom fields discovery and validation` service, *do not* PATCH one field at a time across thousands of documents. Use the bulk `modify_custom_fields` operation exposed by the paperless REST API (`POST /api/documents/bulk_edit/`) and prefer diff-based updates that send only the changed fields.
 
 ### #9478 — Workflow re-applies and clobbers user values
 
@@ -28,14 +28,14 @@ This note covers three issues in the paperless-ngx issue tracker that all touch 
 - **Root cause (reporter’s logs):** After the user-initiated PUT, the document re-matched the same workflow, which re-applied the empty custom fields and overwrote the user values. The logs show `Document matched WorkflowTrigger 3 from Workflow: Rechnung` and `Applying WorkflowAction 8 from Workflow: Rechnung` right after the save attempt.
 - **Maintainer response:** Closed as duplicate + not a bug. The design is that workflows re-evaluate on save, and a workflow that assigns empty custom fields is interpreted as "reset to empty." The reporter had hoped the workflow would not overwrite fields that already had values.
 - **Current behavior (2026-06-29):** Unchanged. Workflows still re-evaluate on every document update. The merge semantics for `Assign Custom Field` actions are "replace the value with the assigned one," *not* "only set if currently empty." There is no skip-if-set toggle.
-- **What Archivista should do:** In our generated workflow templates, *never* recommend an `Assign Custom Field` action with an empty value as a "default." If a user wants defaults, surface this in our own application layer (Archivista UI) and let the user edit freely afterward, *or* document the gotcha clearly. Consider exposing a "post-workflow review" dry-run mode (which we already do via `routes/review/:id/apply`) so users can see what a workflow will do before it runs.
+- **What Tagvico should do:** In our generated workflow templates, *never* recommend an `Assign Custom Field` action with an empty value as a "default." If a user wants defaults, surface this in our own application layer (Tagvico UI) and let the user edit freely afterward, *or* document the gotcha clearly. Consider exposing a "post-workflow review" dry-run mode (which we already do via `routes/review/:id/apply`) so users can see what a workflow will do before it runs.
 
 ### #5293 — HTTP 500 on save with duplicate custom field assignment
 
 - **What the reporter saw:** A workflow with `Document Added` + `Document Edited` triggers applied a custom field via an action. If the document already had the same custom field, editing the title and saving returned HTTP 500 in the browser but the edit was actually persisted. No server-side error in logs.
 - **Resolution:** **Fixed in PR #5302** (merged before 2.4.0). The fix made the workflow assignment idempotent on the server side, so applying the same custom field a second time no longer raises.
-- **Current behavior (2026-06-29):** Fixed in all currently-supported versions. The 500 response no longer occurs. Archivista can rely on the current behavior.
-- **What Archivista should do:** Nothing — this is a long-resolved bug. Mention it only if a user opens a similar-looking issue against Archivista.
+- **Current behavior (2026-06-29):** Fixed in all currently-supported versions. The 500 response no longer occurs. Tagvico can rely on the current behavior.
+- **What Tagvico should do:** Nothing — this is a long-resolved bug. Mention it only if a user opens a similar-looking issue against Tagvico.
 
 ## Current behavior assessment (2026-06-29)
 

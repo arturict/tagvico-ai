@@ -1,4 +1,4 @@
-# JSDoc/Swagger Documentation Standards for the Archivista AI API
+# JSDoc/Swagger Documentation Standards for the Tagvico AI API
 
 The following detailed standard is what all API route documentation should adhere to:
 
@@ -327,4 +327,4 @@ For authentication-related endpoints:
 - Standard responses (like errors) should be documented identically
 - Terminology should be consistent across all endpoints
 
-This comprehensive standard ensures that all API documentation in the Archivista AI application is thorough, consistent, and user-friendly, providing developers with all the information they need to use the API effectively.
+This comprehensive standard ensures that all API documentation in the Tagvico AI application is thorough, consistent, and user-friendly, providing developers with all the information they need to use the API effectively.

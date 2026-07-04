@@ -2,7 +2,7 @@
 
 **Upstream:** https://github.com/paperless-ngx/paperless-ngx/issues/12117
 **Researched:** 2026-06-29
-**Verdict for Archivista:** *Worth a small docs/discussion nudge upstream; low immediate risk for Archivista users.*
+**Verdict for Tagvico:** *Worth a small docs/discussion nudge upstream; low immediate risk for Tagvico users.*
 
 ## Problem
 
@@ -54,17 +54,17 @@ There are three plausible directions; the first is the safest, the third is the 
 2. **Split the trigger.** Introduce a fifth trigger type, e.g. `Document Matched`, emitted after the auto-match Celery task completes. This would let users express "after matching has run" semantics explicitly. This is a more invasive change and would require a deprecation path for `Document Added` users who relied on the old timing.
 3. **Re-evaluate `Document Added` after matching.** Treat `Document Added` as a deferred event and re-fire the trigger after the matching task has populated metadata. This is the most user-friendly option but risks double-firing actions and complicates idempotency semantics for `Assign` actions.
 
-For Archivista’s purposes, option 1 is the most likely outcome upstream. We should be ready to document the timing semantics clearly in our own integration guides.
+For Tagvico’s purposes, option 1 is the most likely outcome upstream. We should be ready to document the timing semantics clearly in our own integration guides.
 
-## Risk for Archivista users
+## Risk for Tagvico users
 
-**Severity: low to medium, depending on workflow.** Archivista v1 mostly *reads* from paperless-ngx; it does not yet define or evaluate paperless workflows on the user’s behalf. The risk surface is:
+**Severity: low to medium, depending on workflow.** Tagvico v1 mostly *reads* from paperless-ngx; it does not yet define or evaluate paperless workflows on the user’s behalf. The risk surface is:
 
-- **Future Archivista workflow scaffolding.** If we ever auto-generate paperless workflows (e.g. "auto-tag invoices"), we must not assume the `Document Added` trigger sees matched metadata. The integration needs to either: (a) use the trigger anyway and run a second pass after matching, or (b) guide users toward a `Scheduled` trigger that runs every N minutes and re-evaluates pending documents.
-- **Confused users.** Archivista users who follow our "set up these paperless workflows" docs will hit the same surprise as the reporter in #12117. Our own docs must explicitly call this out.
+- **Future Tagvico workflow scaffolding.** If we ever auto-generate paperless workflows (e.g. "auto-tag invoices"), we must not assume the `Document Added` trigger sees matched metadata. The integration needs to either: (a) use the trigger anyway and run a second pass after matching, or (b) guide users toward a `Scheduled` trigger that runs every N minutes and re-evaluates pending documents.
+- **Confused users.** Tagvico users who follow our "set up these paperless workflows" docs will hit the same surprise as the reporter in #12117. Our own docs must explicitly call this out.
 - **No immediate action required upstream.** The issue is closed, the maintainers’ position is firm, and the problem is well-understood. A docs PR or comment on the issue is the only realistic upstream contribution. We should *not* open a duplicate or argue for a behavior change — that would burn good will for no expected outcome.
 
-## Action items for Archivista
+## Action items for Tagvico
 
 - [ ] Add a "Workflow timing caveats" subsection to our `docs/integrations/paperless.md` once it exists.
 - [ ] Avoid auto-generating `Document Added` workflows that depend on matched metadata; prefer `Scheduled` triggers for those cases.

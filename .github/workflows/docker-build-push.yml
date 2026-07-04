@@ -35,7 +35,7 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/${{ github.repository_owner }}/archivista-ai
+            ghcr.io/${{ github.repository_owner }}/tagvico-ai
           tags: |
             type=schedule,pattern=nightly
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}

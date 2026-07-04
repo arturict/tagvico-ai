@@ -1,6 +1,6 @@
 # Documentation
 
-This directory contains the Archivista AI documentation site (`index.html`), provider setup guides, and the project status page.
+This directory contains the Tagvico AI documentation site (`index.html`), provider setup guides, and the project status page.
 
 | File / directory | Purpose |
 | --- | --- |

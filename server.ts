@@ -80,7 +80,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
  *   get:
  *     summary: Retrieve the OpenAPI specification
  *     description: |
- *       Returns the complete OpenAPI specification for the Archivista AI API.
+ *       Returns the complete OpenAPI specification for the Tagvico AI API.
  *       
  *       The OpenAPI specification document contains all API endpoints, parameters,
  *       request bodies, responses, and schemas for the entire application.
@@ -177,7 +177,7 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
   const documentEditable = await paperlessService.getPermissionOfDocument(doc.id);
   if (!documentEditable) {
     console.log(`[DEBUG] Document belongs to: ${documentEditable}, skipping analysis`);
-    console.log(`[DEBUG] Document ${doc.id} not editable by Archivista AI user, skipping analysis`);
+    console.log(`[DEBUG] Document ${doc.id} not editable by Tagvico AI user, skipping analysis`);
     return null;
   }else {
     console.log(`[DEBUG] Document ${doc.id} rights for AI User - processed`);

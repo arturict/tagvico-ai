@@ -17,7 +17,7 @@ OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
 Optional:
 
 ```env
-OPENROUTER_HTTP_REFERER=https://github.com/arturict/archivista-ai
+OPENROUTER_HTTP_REFERER=https://github.com/arturict/tagvico-ai
 ```
 
 `OPENROUTER_MODEL` is a `provider/model` slug — the full list lives in
@@ -48,4 +48,4 @@ are prepaid, so there is no recurring card charge.
 - **`429 rate limit`** — OpenRouter enforces per-key request and token
   limits. Reduce `SCAN_INTERVAL` (the env var holds the *seconds*
   between polls) or split the workload across two API keys running two
-  Archivista instances.
+  Tagvico instances.

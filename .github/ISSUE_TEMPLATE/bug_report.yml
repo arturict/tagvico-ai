@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for helping improve Archivista AI. Please search existing issues first and remove secrets, API keys, document text, and personal data from logs or screenshots.
+        Thanks for helping improve Tagvico AI. Please search existing issues first and remove secrets, API keys, document text, and personal data from logs or screenshots.
   - type: textarea
     id: description
     attributes:
@@ -28,7 +28,7 @@ body:
   - type: input
     id: version
     attributes:
-      label: Archivista AI version
+      label: Tagvico AI version
       description: Use the image tag, release, or commit SHA—not just "latest".
       placeholder: "1.1.0"
     validations:

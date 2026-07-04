@@ -13,7 +13,7 @@ class CodexService {
       const { OPENAI_API_KEY, CODEX_API_KEY, ...subscriptionEnvironment } = process.env;
       void OPENAI_API_KEY;
       void CODEX_API_KEY;
-      workingDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'archivista-codex-'));
+      workingDirectory = await fs.mkdtemp(path.join(os.tmpdir(), 'tagvico-codex-'));
       const codex = new Codex({ env: subscriptionEnvironment });
       const thread = codex.startThread({
         model: config.codex.model,

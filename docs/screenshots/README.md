@@ -1,6 +1,6 @@
 # Product screenshots
 
-These images are captured from a running Archivista AI installation and used in the project README.
+These images are captured from a running Tagvico AI installation and used in the project README.
 
 | File | Screen |
 |---|---|

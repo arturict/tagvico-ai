@@ -3,9 +3,9 @@ const swaggerJSDoc = require('swagger-jsdoc');
 const swaggerDefinition = {
   openapi: '3.0.0',
   info: {
-    title: 'Archivista AI API Documentation',
+    title: 'Tagvico AI API Documentation',
     version: '1.0.0',
-    description: 'API documentation for Archivista AI',
+    description: 'API documentation for Tagvico AI',
     license: {
       name: 'MIT',
       url: 'https://opensource.org/licenses/MIT',

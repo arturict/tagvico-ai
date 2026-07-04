@@ -1,7 +1,7 @@
 /**
- * Archivista AI — sidebar update notification
+ * Tagvico AI — sidebar update notification
  *
- * Polls the GitHub releases API for the latest tag of arturict/archivista-ai and
+ * Polls the GitHub releases API for the latest tag of arturict/tagvico-ai and
  * shows a small banner in the sidebar when a newer release exists than the
  * version reported by the running app. All network and parsing is wrapped in
  * try/catch — a GitHub outage must never break the app.
@@ -9,18 +9,18 @@
 (function () {
   'use strict';
 
-  var REPO = 'arturict/archivista-ai';
+  var REPO = 'arturict/tagvico-ai';
   var API_URL = 'https://api.github.com/repos/' + REPO + '/releases/latest';
   var CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
   var FETCH_TIMEOUT_MS = 5000;
-  var STORAGE_KEY = 'archivista:update:dismissed';
+  var STORAGE_KEY = 'tagvico:update:dismissed';
 
   function $(selector) {
     return document.querySelector(selector);
   }
 
   function readCurrentVersion() {
-    var app = window.ArchivistaAIApp;
+    var app = window.TagvicoAIApp;
     if (!app || typeof app.version !== 'string') {
       return '';
     }
@@ -152,7 +152,7 @@
       .catch(function (err) {
         /* never break the app if GitHub is unreachable */
         if (typeof console !== 'undefined' && console && typeof console.debug === 'function') {
-          console.debug('[archivista] update check failed:', err && err.message ? err.message : err);
+          console.debug('[tagvico] update check failed:', err && err.message ? err.message : err);
         }
       });
   }

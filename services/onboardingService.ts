@@ -38,7 +38,7 @@ function writeOnboardingSnapshot(config: Record<string, unknown>) {
     'OWNER_PROFILES'
   ];
   const body = [
-    '# Archivista AI fast onboarding snapshot',
+    '# Tagvico AI fast onboarding snapshot',
     '# Safe to edit; secrets stay in data/.env, not here.'
   ];
   for (const key of keys) {

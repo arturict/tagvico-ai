@@ -13,7 +13,7 @@ OLLAMA_MODEL=llama3.1:8b-instruct-q5_K_M
 ```
 
 `OLLAMA_API_URL` is the base URL of the Ollama daemon, **without** a
-trailing `/api`. If Ollama runs on the same host as the Archivista
+trailing `/api`. If Ollama runs on the same host as the Tagvico
 container, `http://host.docker.internal:11434` is the correct value on
 Docker Desktop. On Linux without Docker Desktop, use
 `http://172.17.0.1:11434` (the Docker bridge gateway) or run both
@@ -30,7 +30,7 @@ ollama list
 ## Privacy and cost
 
 Document content never leaves the machine running Ollama — the request
-goes from the Archivista container to the Ollama daemon over the local
+goes from the Tagvico container to the Ollama daemon over the local
 network (or the Docker bridge). The trade-off is hardware: a usable
 8B-parameter model needs roughly 8 GB of RAM and a modern CPU or Apple
 Silicon; 70B-class models need 40 GB+ of VRAM. There is no per-token
@@ -48,5 +48,5 @@ cheapest option for large archives.
   output of `ollama list`. Pull it first with `ollama pull <name>`.
 - **`connection reset` during long runs** — Ollama unloaded the model
   after idle timeout. Set `OLLAMA_KEEP_ALIVE=-1` in the Ollama
-  environment, or shorten the Archivista `SCAN_INTERVAL` so requests
+  environment, or shorten the Tagvico `SCAN_INTERVAL` so requests
   keep the model warm.
