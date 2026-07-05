@@ -43,7 +43,7 @@ services:
     ports:
       - "8080:3000"
     environment:
-      ARCHIVISTA_AI_PORT: "3000"
+      TAGVICO_AI_PORT: "3000"
       ALLOW_REMOTE_SETUP: "yes"
     volumes:
       - tagvico_ai_data:/app/data
@@ -79,7 +79,7 @@ docker run -d \
   --cap-drop ALL \
   --security-opt no-new-privileges=true \
   -p 8080:3000 \
-  -e ARCHIVISTA_AI_PORT=3000 \
+  -e TAGVICO_AI_PORT=3000 \
   -v tagvico_ai_data:/app/data \
   ghcr.io/arturict/tagvico-ai:1.3.0
 ```
