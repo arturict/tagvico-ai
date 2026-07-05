@@ -8,7 +8,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const sourceRoots = ['config', 'models', 'routes', 'services'];
 const topLevelSources = ['schemas.ts', 'server.ts', 'swagger.ts'];
-const allowedSuppressions = 20;
+const allowedSuppressions = 0;
 
 function collectTypeScriptFiles(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -31,7 +31,7 @@ const suppressed = files
 console.log(`Strictly checked modules: ${files.length - suppressed.length}/${files.length}`);
 console.log(`Legacy @ts-nocheck modules: ${suppressed.length}/${allowedSuppressions} allowed`);
 
-if (suppressed.length > allowedSuppressions) {
-  console.error('Type debt increased. New @ts-nocheck directives are not allowed.');
+if (suppressed.length !== allowedSuppressions) {
+  console.error('Type debt detected. @ts-nocheck directives are not allowed.');
   process.exitCode = 1;
 }
