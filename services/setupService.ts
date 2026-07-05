@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 import { constants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import axios from 'axios';
