@@ -6,7 +6,7 @@ const {
 } = require('./providerCatalogService');
 
 type Scalar = string | number | boolean | null | undefined;
-type ConfigLike = Record<string, any>;
+type ConfigLike = Record<string, unknown>;
 type Environment = Record<string, string | undefined>;
 
 const warnedLegacyEnvironmentVariables = new Set<string>();
@@ -69,7 +69,7 @@ function parseBooleanFlag(value: Scalar, fallback = 'no'): string {
   return ['yes', 'true', '1', 'on'].includes(normalized) ? 'yes' : 'no';
 }
 
-function buildUiConfig(env: ConfigLike = process.env, version = '') {
+function buildUiConfig(env: Environment = process.env, version = '') {
   const tagGroupService = require('./tagGroupService');
   const provider = normalizeProvider(env.AI_PROVIDER);
   const effectiveModel = getEffectiveModel(env);
