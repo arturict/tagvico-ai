@@ -1,11 +1,23 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 const tiktoken = require('tiktoken');
 const fs = require('fs').promises;
 const path = require('path');
 
+function getErrorMessage(error: unknown): string {
+    if (error instanceof Error) return error.message;
+    return String(error);
+}
+
+function getErrorCode(error: unknown): string | undefined {
+    if (typeof error === 'object' && error !== null && 'code' in error) {
+        const code = (error as { code?: unknown }).code;
+        return typeof code === 'string' ? code : undefined;
+    }
+    return undefined;
+}
+
 // Map non-OpenAI models to compatible OpenAI encodings or use estimation
-function getCompatibleModel(model) {
-    const normalizedModel = String(model || '').split('/').pop();
+function getCompatibleModel(model: string | undefined | null): string | null {
+    const normalizedModel: string = String(model || '').split('/').pop() || '';
     const openaiModels = [
         // GPT-4o family
         'gpt-4o', 'chatgpt-4o-latest', 'gpt-4o-mini', 'gpt-4o-audio-preview',
@@ -42,14 +54,14 @@ function getCompatibleModel(model) {
 }
 
 // Estimate tokens for non-OpenAI models using character-based approximation
-function estimateTokensForNonOpenAI(text) {
+function estimateTokensForNonOpenAI(text: string): number {
     // Rough approximation: 1 token ≈ 4 characters for most models
     // This is conservative and works reasonably well for Llama models
     return Math.ceil(text.length / 4);
 }
 
 // Calculate tokens for a given text
-async function calculateTokens(text, model = process.env.OPENAI_MODEL || "gpt-4o-mini") {
+async function calculateTokens(text: string, model: string = process.env.OPENAI_MODEL || "gpt-4o-mini"): Promise<number> {
     try {
         const compatibleModel = getCompatibleModel(model);
         
@@ -68,13 +80,17 @@ async function calculateTokens(text, model = process.env.OPENAI_MODEL || "gpt-4o
         return tokenCount;
         
     } catch (error) {
-        console.warn(`[WARNING] Tiktoken failed for model ${model}, falling back to character estimation:`, error.message);
+        console.warn(`[WARNING] Tiktoken failed for model ${model}, falling back to character estimation:`, getErrorMessage(error));
         return estimateTokensForNonOpenAI(text);
     }
 }
 
 // Calculate total tokens for a system prompt and additional prompts
-async function calculateTotalPromptTokens(systemPrompt, additionalPrompts = [], model = process.env.OPENAI_MODEL || "gpt-4o-mini") {
+async function calculateTotalPromptTokens(
+    systemPrompt: string,
+    additionalPrompts: (string | null | undefined)[] = [],
+    model: string = process.env.OPENAI_MODEL || "gpt-4o-mini"
+): Promise<number> {
     let totalTokens = 0;
 
     // Count tokens for system prompt
@@ -95,7 +111,7 @@ async function calculateTotalPromptTokens(systemPrompt, additionalPrompts = [], 
 }
 
 // Truncate text to fit within token limit
-async function truncateToTokenLimit(text, maxTokens, model = process.env.OPENAI_MODEL || "gpt-4o-mini") {
+async function truncateToTokenLimit(text: string, maxTokens: number, model: string = process.env.OPENAI_MODEL || "gpt-4o-mini"): Promise<string> {
     try {
         const compatibleModel = getCompatibleModel(model);
         
@@ -139,7 +155,7 @@ async function truncateToTokenLimit(text, maxTokens, model = process.env.OPENAI_
         return truncatedText;
         
     } catch (error) {
-        console.warn(`[WARNING] Token truncation failed for model ${model}, falling back to character estimation:`, error.message);
+        console.warn(`[WARNING] Token truncation failed for model ${model}, falling back to character estimation:`, getErrorMessage(error));
         
         // Fallback to character-based estimation
         const estimatedTokens = estimateTokensForNonOpenAI(text);
@@ -162,7 +178,12 @@ async function truncateToTokenLimit(text, maxTokens, model = process.env.OPENAI_
 }
 
 // Write prompt and content to a file with size management
-async function writePromptToFile(systemPrompt, truncatedContent, filePath = './logs/prompt.txt', maxSize = 10 * 1024 * 1024) {
+async function writePromptToFile(
+    systemPrompt: string,
+    truncatedContent: string,
+    filePath: string = './logs/prompt.txt',
+    maxSize: number = 10 * 1024 * 1024
+): Promise<void> {
     try {
         // Ensure the logs directory exists
         await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -175,7 +196,7 @@ async function writePromptToFile(systemPrompt, truncatedContent, filePath = './l
                 console.log(`[DEBUG] Cleared log file ${filePath} due to size limit`);
             }
         } catch (error) {
-            if (error.code !== 'ENOENT') {
+            if (getErrorCode(error) !== 'ENOENT') {
                 console.warn('[WARNING] Error checking file size:', error);
             }
         }

@@ -8,7 +8,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const sourceRoots = ['config', 'models', 'routes', 'services'];
 const topLevelSources = ['schemas.ts', 'server.ts', 'swagger.ts'];
-const allowedSuppressions = 21;
+const allowedSuppressions = 20;
 
 function collectTypeScriptFiles(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
