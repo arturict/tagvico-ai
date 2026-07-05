@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 const config = require('../config/config');
 const tagGroupService = require('./tagGroupService');
 const confidenceGuard = require('./confidenceGuard');
@@ -9,6 +8,7 @@ const path = require('path');
 // Codex SDK intentionally exposes an ESM-only entrypoint. Preserve Node's
 // native dynamic import at runtime instead.
 const nativeImport = new Function('specifier', 'return import(specifier)');
+const errorMessage = (error: unknown): string => error instanceof Error ? error.message : String(error);
 
 class CodexService {
   async getStatus() {
@@ -26,8 +26,8 @@ class CodexService {
     };
   }
 
-  async analyzeDocument(content, existingTags = [], correspondents = [], documentTypes = []) {
-    let workingDirectory;
+  async analyzeDocument(content: string, existingTags: string[] = [], correspondents: string[] = [], documentTypes: string[] = []) {
+    let workingDirectory: string | undefined;
     try {
       const { Codex } = await nativeImport('@openai/codex-sdk');
       await fs.mkdir(config.codex.home, { recursive: true, mode: 0o700 });
@@ -96,7 +96,7 @@ class CodexService {
       const completionTokens = usage.output_tokens || usage.outputTokens || 0;
       return { document, metrics: { promptTokens, completionTokens, totalTokens: usage.total_tokens || usage.totalTokens || promptTokens + completionTokens }, truncated: false };
     } catch (error) {
-      return { document: { tags: [], correspondent: null }, metrics: null, error: `Codex provider: ${error.message}` };
+      return { document: { tags: [], correspondent: null }, metrics: null, error: `Codex provider: ${errorMessage(error)}` };
     } finally {
       if (workingDirectory) await fs.rm(workingDirectory, { recursive: true, force: true }).catch(() => {});
     }
