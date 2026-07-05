@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 const {
   calculateTokens,
   calculateTotalPromptTokens,
@@ -14,8 +13,14 @@ const tagGroupService = require('./tagGroupService');
 const { normalizeProvider } = require('./providerCatalogService');
 const { loadThumbnail, buildUserMessage } = require('./thumbnailHelper');
 const confidenceGuard = require('./confidenceGuard');
+type AnalysisOptions = { externalApiData?: unknown };
+type CustomField = { value: string };
+const errorMessage = (error: unknown): string => error instanceof Error ? error.message : String(error);
 
 class CustomOpenAIService {
+  client: InstanceType<typeof OpenAI> | null;
+  tokenizer: unknown;
+  clientKey: string | null;
   constructor() {
     this.client = null;
     this.tokenizer = null;
@@ -41,7 +46,7 @@ class CustomOpenAIService {
     }
   }
 
-  async analyzeDocument(content, existingTags = [], existingCorrespondentList = [], existingDocumentTypesList = [], id, customPrompt = null, options = {}) {
+  async analyzeDocument(content: string, existingTags: string[] = [], existingCorrespondentList: string[] = [], existingDocumentTypesList: string[] = [], id: string, customPrompt: string | null = null, options: AnalysisOptions = {}) {
     try {
       this.initialize();
       const now = new Date();
@@ -66,7 +71,7 @@ class CustomOpenAIService {
           validatedExternalApiData = await this._validateAndTruncateExternalApiData(externalApiData);
           console.log('[DEBUG] External API data validated and included');
         } catch (error) {
-          console.warn('[WARNING] External API data validation failed:', error.message);
+          console.warn('[WARNING] External API data validation failed:', errorMessage(error));
           validatedExternalApiData = null;
         }
       }
@@ -78,16 +83,16 @@ class CustomOpenAIService {
       // Parse CUSTOM_FIELDS from environment variable
       let customFieldsObj;
       try {
-        customFieldsObj = JSON.parse(process.env.CUSTOM_FIELDS);
+        customFieldsObj = JSON.parse(process.env.CUSTOM_FIELDS || '{"custom_fields":[]}');
       } catch (error) {
         console.error('Failed to parse CUSTOM_FIELDS:', error);
         customFieldsObj = { custom_fields: [] };
       }
 
       // Generate custom fields template for the prompt
-      const customFieldsTemplate = {};
+      const customFieldsTemplate: Record<number, { field_name: string; value: string }> = {};
 
-      customFieldsObj.custom_fields.forEach((field, index) => {
+      customFieldsObj.custom_fields.forEach((field: CustomField, index: number) => {
         customFieldsTemplate[index] = {
           field_name: field.value,
           value: "Fill in the value based on your analysis"
@@ -129,7 +134,7 @@ class CustomOpenAIService {
       }
 
       if (process.env.USE_PROMPT_TAGS === 'yes') {
-        promptTags = process.env.PROMPT_TAGS;
+        promptTags = process.env.PROMPT_TAGS || '';
         systemPrompt = `
         Take these tags and try to match one or more to the document content.\n\n
         ` + config.specialPromptPreDefinedTags;
@@ -188,7 +193,7 @@ class CustomOpenAIService {
         content: buildUserMessage(truncatedContent, thumbnailAvailable ? thumbnailData : null)
       };
 
-      const responsePayload = {
+      const responsePayload: Record<string, unknown> = {
         model,
         messages: [
           {
@@ -230,7 +235,7 @@ class CustomOpenAIService {
       try {
         parsedResponse = JSON.parse(jsonContent);
         //write to file and append to the file (txt)
-        fs.appendFile('./logs/response.txt', jsonContent, (err) => {
+        fs.appendFile('./logs/response.txt', jsonContent, (err: NodeJS.ErrnoException | null) => {
           if (err) throw err;
         });
       } catch (error) {
@@ -263,7 +268,7 @@ class CustomOpenAIService {
       return {
         document: { tags: [], correspondent: null },
         metrics: null,
-        error: error.message
+        error: errorMessage(error)
       };
     }
   }
@@ -274,7 +279,7 @@ class CustomOpenAIService {
    * @param {number} maxTokens - Maximum tokens allowed for external data (default: 500)
    * @returns {string} - Validated and potentially truncated data string
    */
-  async _validateAndTruncateExternalApiData(apiData, maxTokens = 500) {
+  async _validateAndTruncateExternalApiData(apiData: unknown, maxTokens = 500) {
     if (!apiData) {
       return null;
     }
@@ -295,7 +300,7 @@ class CustomOpenAIService {
     return dataString;
   }
 
-  async analyzePlayground(content, prompt) {
+  async analyzePlayground(content: string, prompt: string) {
     const musthavePrompt = `
     Return the result EXCLUSIVELY as a JSON object. The Tags and Title MUST be in the language that is used in the document.:  
         {
@@ -396,7 +401,7 @@ class CustomOpenAIService {
       return {
         document: { tags: [], correspondent: null },
         metrics: null,
-        error: error.message
+        error: errorMessage(error)
       };
     }
   }
@@ -406,7 +411,7 @@ class CustomOpenAIService {
    * @param {string} prompt - The prompt to generate text from
    * @returns {Promise<string>} - The generated text
    */
-  async generateText(prompt) {
+  async generateText(prompt: string) {
     try {
       this.initialize();
 
