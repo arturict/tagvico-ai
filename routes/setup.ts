@@ -71,7 +71,6 @@ const totpService = require('../services/totpService');
 const pendingMfaSecrets = new Map();
 
 type UnknownRecord = Record<string, unknown>;
-type DynamicRecord = Record<string, unknown>;
 interface NamedItem { id: number; name: string; model?: string; size?: number; modified_at?: string }
 interface DocumentData { id: number; title: string; created?: string; owner?: number; tags?: number[]; correspondent?: number; document_type?: number; custom_fields?: UnknownRecord[]; language?: string }
 interface AnalysisData {
@@ -99,6 +98,7 @@ const {
   normalizeProviderPayload,
   parseBooleanFlag,
   processSystemPrompt,
+  resolveEnv,
   serializeArray
 } = require('../services/configHelpers');
 require('dotenv').config({ path: '../data/.env' });
@@ -276,9 +276,10 @@ router.use(async (req: Req, res: Res, next: Next) => {
     const isApiRequest = req.path.startsWith('/api/') || req.path === '/health';
 
     if (!isApiRequest) {
-      if (!isConfigured && (!process.env.ARCHIVISTA_AI_INITIAL_SETUP || process.env.ARCHIVISTA_AI_INITIAL_SETUP === 'no') && !req.path.startsWith('/setup')) {
+      const initialSetup = resolveEnv('TAGVICO_AI_INITIAL_SETUP', 'ARCHIVISTA_AI_INITIAL_SETUP');
+      if (!isConfigured && (!initialSetup || initialSetup === 'no') && !req.path.startsWith('/setup')) {
         return res.redirect('/setup');
-      } else if (!isConfigured && process.env.ARCHIVISTA_AI_INITIAL_SETUP === 'yes' && !req.path.startsWith('/settings')) {
+      } else if (!isConfigured && initialSetup === 'yes' && !req.path.startsWith('/settings')) {
         return res.redirect('/settings');
       }
     }
@@ -797,7 +798,7 @@ router.get('/history', async (req: Req, res: Res) => {
       .filter(Boolean).sort();
 
     res.render('history', {
-      version: configFile.ARCHIVISTA_AI_VERSION,
+      version: configFile.TAGVICO_AI_VERSION,
       filters: {
         allTags: allTags,
         allCorrespondents: allCorrespondents
@@ -1121,7 +1122,7 @@ router.get('/review', async (req: Req, res: Res) => {
     res.render('review', {
       title: 'Review | Tagvico AI',
       activePage: 'review',
-      version: configFile.ARCHIVISTA_AI_VERSION,
+      version: configFile.TAGVICO_AI_VERSION,
       analyses,
       dryRun: reviewService.isDryRunEnabled()
     });
@@ -1130,7 +1131,7 @@ router.get('/review', async (req: Req, res: Res) => {
     res.status(500).render('review', {
       title: 'Review | Tagvico AI',
       activePage: 'review',
-      version: configFile.ARCHIVISTA_AI_VERSION,
+      version: configFile.TAGVICO_AI_VERSION,
       analyses: [],
       dryRun: reviewService.isDryRunEnabled(),
       error: 'Error loading review queue'
@@ -1395,7 +1396,7 @@ router.post('/api/scan/now', async (req: Req, res: Res) => {
 try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
-      console.log(`Setup not completed. Visit http://your-machine-ip:${process.env.ARCHIVISTA_AI_PORT || 3000}/setup to complete setup.`);
+      console.log(`Setup not completed. Visit http://your-machine-ip:${resolveEnv('TAGVICO_AI_PORT', 'ARCHIVISTA_AI_PORT') || 3000}/setup to complete setup.`);
       return;
     }
 
@@ -1748,7 +1749,7 @@ router.post('/api/key-regenerate', async (req: Req, res: Res) => {
 
 function buildPageConfig() {
   const onboardingDefaults = onboardingService.loadOnboardingDefaults();
-  const config = buildUiConfig({ ...onboardingDefaults, ...process.env }, configFile.ARCHIVISTA_AI_VERSION || '');
+  const config = buildUiConfig({ ...onboardingDefaults, ...process.env }, configFile.TAGVICO_AI_VERSION || '');
   config.SYSTEM_PROMPT = '';
   config.CUSTOM_FIELDS = process.env.CUSTOM_FIELDS || '{"custom_fields":[]}';
   return config;
@@ -1856,7 +1857,7 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
     AZURE_API_VERSION: providerPayload.azureApiVersion || currentConfig.AZURE_API_VERSION || '',
     API_KEY: apiToken,
     JWT_SECRET: jwtToken,
-    ARCHIVISTA_AI_INITIAL_SETUP: 'yes',
+    TAGVICO_AI_INITIAL_SETUP: 'yes',
     ACTIVATE_TAGGING: parseBooleanFlag(payload.activateTagging, currentConfig.ACTIVATE_TAGGING || 'yes'),
     ACTIVATE_CORRESPONDENTS: parseBooleanFlag(payload.activateCorrespondents, currentConfig.ACTIVATE_CORRESPONDENTS || 'yes'),
     ACTIVATE_DOCUMENT_TYPE: parseBooleanFlag(payload.activateDocumentType, currentConfig.ACTIVATE_DOCUMENT_TYPE || 'yes'),
@@ -1934,7 +1935,7 @@ router.get('/setup', async (req: Req, res: Res) => {
     // Load saved config if it exists
     if (isEnvConfigured) {
       const savedConfig = await setupService.loadConfig();
-      config = { ...config, ...buildUiConfig(savedConfig, configFile.ARCHIVISTA_AI_VERSION || '') };
+      config = { ...config, ...buildUiConfig(savedConfig, configFile.TAGVICO_AI_VERSION || '') };
     }
 
     // Check if system is fully configured
@@ -2130,7 +2131,7 @@ router.get('/manual/preview/:id', async (req: Req, res: Res) => {
  *               $ref: '#/components/schemas/Error'
  */
 router.get('/manual', async (req: Req, res: Res) => {
-  const version = configFile.ARCHIVISTA_AI_VERSION || ' ';
+  const version = configFile.TAGVICO_AI_VERSION || ' ';
   const [correspondents, documentTypes, users] = await Promise.all([
     paperlessService.listCorrespondentsNames(),
     paperlessService.listDocumentTypesNames(),
@@ -2626,7 +2627,7 @@ async function processQueue(customPrompt?: string) {
   try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
-      console.log(`Setup not completed. Visit http://your-machine-ip:${process.env.ARCHIVISTA_AI_PORT || 3000}/setup to complete setup.`);
+      console.log(`Setup not completed. Visit http://your-machine-ip:${resolveEnv('TAGVICO_AI_PORT', 'ARCHIVISTA_AI_PORT') || 3000}/setup to complete setup.`);
       return;
     }
 
@@ -2879,7 +2880,7 @@ router.get('/dashboard', async (req: Req, res: Res) => {
     metricCount: metrics.length
   };
   const summary = dashboardMetrics.buildDashboardSummary(paperless_data, openai_data);
-  const version = configFile.ARCHIVISTA_AI_VERSION || ' ';
+  const version = configFile.TAGVICO_AI_VERSION || ' ';
 
   res.render('dashboard', { paperless_data, openai_data, summary, version });
 });
@@ -2931,16 +2932,16 @@ router.get('/dashboard', async (req: Req, res: Res) => {
 router.get('/settings', async (req: Req, res: Res) => {
   let showErrorCheckSettings = false;
   const isConfigured = await setupService.isConfigured();
-  if(!isConfigured && process.env.ARCHIVISTA_AI_INITIAL_SETUP === 'yes') {
+  if(!isConfigured && resolveEnv('TAGVICO_AI_INITIAL_SETUP', 'ARCHIVISTA_AI_INITIAL_SETUP') === 'yes') {
     showErrorCheckSettings = true;
   }
   let config = buildPageConfig();
   
   if (isConfigured) {
     const savedConfig = await setupService.loadConfig();
-    config = { ...config, ...buildUiConfig(savedConfig, configFile.ARCHIVISTA_AI_VERSION || '') };
+    config = { ...config, ...buildUiConfig(savedConfig, configFile.TAGVICO_AI_VERSION || '') };
   }
-  const version = configFile.ARCHIVISTA_AI_VERSION || ' ';
+  const version = configFile.TAGVICO_AI_VERSION || ' ';
   res.render('settings', { 
     ...buildViewModel(config),
     version,
@@ -4321,7 +4322,7 @@ router.get('/api/processing-status', async (req: Req, res: Res) => {
 
 router.get('/operations', async (req: Req, res: Res) => {
   res.render('operations', {
-    version: configFile.ARCHIVISTA_AI_VERSION,
+    version: configFile.TAGVICO_AI_VERSION,
     ocrEnabled: ocrService.isEnabled(),
     ocrProvider: config.ocr?.provider || 'mistral'
   });
