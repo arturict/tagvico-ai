@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 'use strict';
 
 /**
@@ -9,12 +8,32 @@
  * unit-test and reuse from the route layer. Numbers are coerced so empty
  * installations (zero documents / zero metrics) never produce NaN.
  */
-function num(value) {
+type MetricEntry = Record<string, unknown>;
+
+interface PaperlessDashboardData {
+  documentCount?: unknown;
+  processedDocumentCount?: unknown;
+  tokenDistribution?: MetricEntry[];
+  documentTypes?: Array<{ type?: string; count?: unknown }>;
+  processingTimeStats?: MetricEntry[];
+  tagCount?: unknown;
+  correspondentCount?: unknown;
+}
+
+interface OpenAiDashboardData {
+  metricCount?: unknown;
+  averagePromptTokens?: unknown;
+  averageCompletionTokens?: unknown;
+  averageTotalTokens?: unknown;
+  tokensOverall?: unknown;
+}
+
+function num(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
 
-function sumBy(list, key) {
+function sumBy(list: unknown, key: string): number {
   return Array.isArray(list) ? list.reduce((acc, item) => acc + num(item?.[key]), 0) : 0;
 }
 
@@ -35,7 +54,10 @@ function sumBy(list, key) {
  * @param {number} openaiData.tokensOverall
  * @param {number} [openaiData.metricCount] - Number of metric rows backing the averages.
  */
-function buildDashboardSummary(paperlessData = {}, openaiData = {}) {
+function buildDashboardSummary(
+  paperlessData: PaperlessDashboardData = {},
+  openaiData: OpenAiDashboardData = {}
+) {
   const documentCount = num(paperlessData.documentCount);
   const processedCount = num(paperlessData.processedDocumentCount);
   const remaining = Math.max(documentCount - processedCount, 0);
