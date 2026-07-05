@@ -1,7 +1,7 @@
 # Tagvico AI
 
 > **⚠️ Alpha — under active development.**
-> This project is currently in an **alpha** state. APIs, configuration schema, environment variables, the SQLite layout, and the TypeScript migration are subject to change without notice. Things will break. Pin a specific release tag if you need stability, and please open issues for anything that surprises you — feedback during alpha is what shapes the 1.0 API.
+> This project is currently in an **alpha** state. APIs, configuration schema, environment variables, and the SQLite layout are subject to change without notice. Things will break. Pin a specific release tag if you need stability, and please open issues for anything that surprises you — feedback during alpha is what shapes the 1.0 API.
 
 Self-hosted AI filing for [Paperless-ngx](https://docs.paperless-ngx.com/): turn OCR text into clean metadata — titles, tags, correspondents, document types, dates, languages, custom fields, and optional owner assignment — while keeping control of the model, cost mode, and the privacy boundary.
 
@@ -33,7 +33,7 @@ services:
   tagvico-ai:
     # Pin an immutable release tag for upgrades you can rely on.
     # See https://github.com/arturict/tagvico-ai/releases for the current version.
-    image: ghcr.io/arturict/tagvico-ai:1.3.0
+    image: ghcr.io/arturict/tagvico-ai:1.4.0
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -81,7 +81,7 @@ docker run -d \
   -p 8080:3000 \
   -e TAGVICO_AI_PORT=3000 \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:1.3.0
+  ghcr.io/arturict/tagvico-ai:1.4.0
 ```
 
 </details>
@@ -117,6 +117,8 @@ Provider-specific setup and troubleshooting live in [`docs/providers/`](docs/pro
 
 Copy [`.env.example`](.env.example) when deploying without the setup wizard. Variables are grouped into Paperless connection, runtime security, provider credentials and Codex settings. Values saved in the UI are written to `data/.env`; process-level variables take precedence. Never commit populated secrets. `/health` checks the process and database, while `/api/health` also probes the configured provider and returns `503` when it is degraded.
 
+The canonical application variables are `TAGVICO_AI_PORT`, `TAGVICO_AI_HOST_PORT`, `TAGVICO_AI_VERSION`, and `TAGVICO_AI_INITIAL_SETUP`. Their former `ARCHIVISTA_*` names remain supported as deprecated fallbacks for existing deployments and emit a warning when used. Migrate to the `TAGVICO_*` names before the legacy aliases are removed in 2.0.
+
 ### OCR rescue and failure recovery
 
 Documents with insufficient OCR enter a durable rescue queue when `OCR_ENABLED=yes`. Open **Operations** to run Mistral OCR, an OpenAI-compatible vision endpoint, or native Ollama vision. Local PDF OCR renders at most `OCR_MAX_PAGES` pages with `pdftoppm`. Provider failures are retried and then enter a terminal-failure queue so a broken document cannot loop forever.
@@ -126,7 +128,7 @@ History supports explicit rescan and restoration of the first metadata snapshot 
 ## Upgrades
 
 1. Check the latest release at <https://github.com/arturict/tagvico-ai/releases>.
-2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** — for example `ghcr.io/arturict/tagvico-ai:1.3.0`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
+2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** — for example `ghcr.io/arturict/tagvico-ai:1.4.0`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
 3. `docker compose pull && docker compose up -d`.
 
 Tagvico is stateless across restarts: configuration, processing history, and the local admin account live in the `tagvico_ai_data` volume, so upgrades do not touch your settings.
@@ -157,7 +159,7 @@ npm run lint
 npm test
 ```
 
-The development server listens on `http://localhost:3000`. The TypeScript migration is incremental; JavaScript remains the runtime source while typed modules are introduced and verified.
+The development server listens on `http://localhost:3000`. The application source is fully typed with strict TypeScript checks; `npm run typecheck` rejects new type debt.
 
 ## Contributing
 

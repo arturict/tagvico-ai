@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.0 - 2026-07-06
+
+- Completed the strict TypeScript migration across services, routes, configuration, models, and the server; new `@ts-nocheck` suppressions are rejected by the type-debt guard.
+- Finished the Tagvico AI rebranding across shipped code, container configuration, documentation, and user-facing views.
+- Added canonical `TAGVICO_AI_PORT`, `TAGVICO_AI_HOST_PORT`, `TAGVICO_AI_VERSION`, and `TAGVICO_AI_INITIAL_SETUP` environment variables.
+- **Deprecation:** Existing `ARCHIVISTA_*` variables remain supported as warning-emitting fallbacks for compatibility and will be removed in 2.0. Deployments should migrate to `TAGVICO_*` variables now.
+
 ## 1.3.0 - 2026-07-05
 
 - **Project Rebranding**: Renamed the project from **Archivista AI** to **Tagvico AI** due to trademark requests.
