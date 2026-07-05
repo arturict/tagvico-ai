@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 const express = require('express');
 const cron = require('node-cron');
 const path = require('path');
@@ -18,6 +17,18 @@ const swaggerSpec = require('./swagger');
 const ownerProfileService = require('./services/ownerProfileService');
 const historyService = require('./services/historyService');
 const customFieldsService = require('./services/customFieldsService');
+type DynamicRecord = Record<string, any>;
+type HttpRequest = DynamicRecord;
+type NextFunction = () => void;
+interface HttpResponse {
+  setHeader(name: string, value: string): void;
+  send(body: unknown): HttpResponse;
+  redirect(path: string): void;
+  status(code: number): HttpResponse;
+  json(body: unknown): HttpResponse;
+}
+interface ScanControl { running: boolean; stopRequested: boolean; startedAt: string | null; source: string | null }
+const errorMessage = (error: unknown): string => error instanceof Error ? error.message : String(error);
 const { isAuthenticated } = require('./routes/auth');
 const { createRateLimiter } = require('./services/rateLimiter');
 const controlledTaggingService = require('./services/controlledTaggingService');
@@ -39,13 +50,14 @@ const txtLogger = new Logger({
 
 const app = express();
 let runningTask = false;
-const scanControl = global.__tagvicoScanControl || { running: false, stopRequested: false, startedAt: null, source: null };
-global.__tagvicoScanControl = scanControl;
+const globalState = global as typeof global & { __tagvicoScanControl?: ScanControl };
+const scanControl = globalState.__tagvicoScanControl || { running: false, stopRequested: false, startedAt: null, source: null };
+globalState.__tagvicoScanControl = scanControl;
 
 
 const allowedOrigins = String(process.env.CORS_ORIGINS || '').split(',').map((value) => value.trim()).filter(Boolean);
 const corsOptions = {
-  origin(origin, callback) {
+  origin(origin: string | undefined, callback: (error: Error | null, allowed?: boolean) => void) {
     if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
     callback(new Error('Origin is not allowed'));
   },
@@ -62,7 +74,7 @@ if (allowedOrigins.length > 0) app.use(cors(corsOptions));
 
 app.disable('x-powered-by');
 app.set('trust proxy', process.env.TRUST_PROXY === 'yes' ? 1 : false);
-app.use((req, res, next) => {
+app.use((_req: HttpRequest, res: HttpResponse, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'same-origin');
@@ -115,13 +127,13 @@ app.use('/api-docs', isAuthenticated, swaggerUi.serve, swaggerUi.setup(swaggerSp
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-app.get('/api-docs/openapi.json', isAuthenticated, (req, res) => {
+app.get('/api-docs/openapi.json', isAuthenticated, (_req: HttpRequest, res: HttpResponse) => {
   res.setHeader('Content-Type', 'application/json');
   res.send(swaggerSpec);
 });
 
 // Add a redirect for the old endpoint for backward compatibility
-app.get('/api-docs.json', (req, res) => {
+app.get('/api-docs.json', (_req: HttpRequest, res: HttpResponse) => {
   res.redirect('/api-docs/openapi.json');
 });
 
@@ -177,7 +189,7 @@ async function saveOpenApiSpec() {
 }
 
 // Document processing functions
-async function processDocument(doc, existingTags, existingCorrespondentList, existingDocumentTypesList, ownUserId) {
+async function processDocument(doc: DynamicRecord, existingTags: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number | null) {
   const isProcessed = await documentModel.isDocumentProcessed(doc.id);
   if (isProcessed) return null;
   if (await documentModel.isDocumentFailed(doc.id)) return null;
@@ -225,8 +237,8 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
   return { analysis, originalData, content };
 }
 
-async function buildUpdateData(analysis, doc, content = '') {
-  const updateData = {};
+async function buildUpdateData(analysis: DynamicRecord, doc: DynamicRecord, content = '') {
+  const updateData: DynamicRecord = {};
   const heldFields = Array.isArray(analysis?.document?.held_for_review)
     ? analysis.document.held_for_review
     : [];
@@ -292,7 +304,7 @@ async function buildUpdateData(analysis, doc, content = '') {
     try {
       liveFields = await customFieldsService.listFields();
     } catch (error) {
-      console.warn('[WARN] Custom field discovery failed, continuing with legacy lookup:', error.message);
+      console.warn('[WARN] Custom field discovery failed, continuing with legacy lookup:', errorMessage(error));
     }
 
     // Validate + drop invalid values. The model output is sanitized
@@ -331,7 +343,7 @@ async function buildUpdateData(analysis, doc, content = '') {
       if (fieldDetails?.id) {
         const trimmedValue = customField.value.trim();
         const liveField = liveFields.find(
-          (f) => String(f.name).toLowerCase() === String(fieldDetails.name).toLowerCase()
+          (f: DynamicRecord) => String(f.name).toLowerCase() === String(fieldDetails.name).toLowerCase()
         );
         if (liveField) {
           // Re-check the value against the declared type after trimming.
@@ -400,7 +412,7 @@ async function buildUpdateData(analysis, doc, content = '') {
         console.log(`[DEBUG] Assigned owner ${ownerMatch.username} to document ${doc.id} via profile match`, ownerMatch.matched);
       }
     } catch (error) {
-      console.error('[ERROR] Error assigning owner profile:', error.message);
+      console.error('[ERROR] Error assigning owner profile:', errorMessage(error));
     }
   } else if (heldFields.includes('owner')) {
     console.log('[DEBUG] Owner held for review, skipping auto-apply');
@@ -409,7 +421,7 @@ async function buildUpdateData(analysis, doc, content = '') {
   return updateData;
 }
 
-async function saveDocumentChanges(docId, updateData, analysis, originalData) {
+async function saveDocumentChanges(docId: number, updateData: DynamicRecord, analysis: DynamicRecord, originalData: DynamicRecord) {
   await documentModel.saveOriginalSnapshot(docId, originalData);
   await Promise.all([
     paperlessService.updateDocument(docId, updateData),
@@ -424,7 +436,7 @@ async function saveDocumentChanges(docId, updateData, analysis, originalData) {
   ]);
 }
 
-async function processAndSaveDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId) {
+async function processAndSaveDocument(doc: DynamicRecord, existingTagNames: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number | null) {
   for (let attempt = 1; attempt <= config.maxRetries; attempt += 1) {
     try {
       const result = await processDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
@@ -444,8 +456,8 @@ async function processAndSaveDocument(doc, existingTagNames, existingCorresponde
   }
 }
 
-async function processDocumentCollection(documents, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId) {
-  const args = [existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId];
+async function processDocumentCollection(documents: DynamicRecord[], existingTagNames: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number | null) {
+  const args: [string[], string[], string[], number | null] = [existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId];
   if (config.processingMode === 'batch') {
     await Promise.all(documents.map((doc) => processAndSaveDocument(doc, ...args)));
     return;
@@ -473,11 +485,11 @@ async function scanInitial() {
       paperlessService.listDocumentTypesNames()
     ]);
     //get existing correspondent list
-    existingCorrespondentList = existingCorrespondentList.map(correspondent => correspondent.name);
-    let existingDocumentTypesList = existingDocumentTypes.map(docType => docType.name);
+    existingCorrespondentList = existingCorrespondentList.map((correspondent: DynamicRecord) => correspondent.name);
+    let existingDocumentTypesList = existingDocumentTypes.map((docType: DynamicRecord) => docType.name);
     
     // Extract tag names from tag objects
-    const existingTagNames = existingTags.map(tag => tag.name);
+    const existingTagNames = existingTags.map((tag: DynamicRecord) => tag.name);
 
     await processDocumentCollection(documents, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
   } catch (error) {
@@ -506,13 +518,13 @@ async function scanDocuments() {
     ]);
 
     //get existing correspondent list
-    existingCorrespondentList = existingCorrespondentList.map(correspondent => correspondent.name);
+    existingCorrespondentList = existingCorrespondentList.map((correspondent: DynamicRecord) => correspondent.name);
     
     //get existing document types list
-    let existingDocumentTypesList = existingDocumentTypes.map(docType => docType.name);
+    let existingDocumentTypesList = existingDocumentTypes.map((docType: DynamicRecord) => docType.name);
     
     // Extract tag names from tag objects
-    const existingTagNames = existingTags.map(tag => tag.name);
+    const existingTagNames = existingTags.map((tag: DynamicRecord) => tag.name);
 
     await processDocumentCollection(documents, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
   } catch (error) {
@@ -555,7 +567,7 @@ app.use('/', setupRoutes);
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-app.get('/', async (req, res) => {
+app.get('/', async (_req: HttpRequest, res: HttpResponse) => {
   try {
     res.redirect('/dashboard');
   } catch (error) {
@@ -605,7 +617,7 @@ app.get('/', async (req, res) => {
  *                   example: "Application setup not completed"
  *                   description: Detailed error message
  */
-app.get('/health', async (req, res) => {
+app.get('/health', async (_req: HttpRequest, res: HttpResponse) => {
   try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
@@ -621,13 +633,13 @@ app.get('/health', async (req, res) => {
     console.error('Health check failed:', error);
     res.status(503).json({ 
       status: 'error', 
-      message: error.message 
+      message: errorMessage(error)
     });
   }
 });
 
 // Error handler
-app.use((err, req, res, next) => {
+app.use((err: Error, _req: HttpRequest, res: HttpResponse, _next: NextFunction) => {
   console.error(err.stack);
   res.status(500).send('Something broke!');
 });
@@ -663,7 +675,7 @@ async function startScanning() {
           const result = await reconciliationService.run();
           if (result.removed) console.log(`[RECONCILIATION] Removed ${result.removed} stale local document(s)`);
         } catch (error) {
-          console.error('[RECONCILIATION] Failed:', error.message);
+          console.error('[RECONCILIATION] Failed:', errorMessage(error));
         }
       });
     }
@@ -696,7 +708,7 @@ process.on('unhandledRejection', (reason, promise) => {
   process.exit(1);
 });
 
-async function gracefulShutdown(signal) {
+async function gracefulShutdown(signal: NodeJS.Signals) {
   console.log(`[DEBUG] Received ${signal} signal. Starting graceful shutdown...`);
   try {
     console.log('[DEBUG] Closing database...');
