@@ -1,8 +1,13 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 // services/documentsService.js
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const paperlessService = require('./paperlessService');
 
+interface NamedEntity { id: number; name: string }
+interface DocumentSummary { created: string | number | Date }
+
 class DocumentsService {
+  tagCache: Map<number, string>;
+  correspondentCache: Map<number, string>;
   constructor() {
     this.tagCache = new Map();
     this.correspondentCache = new Map();
@@ -11,7 +16,7 @@ class DocumentsService {
   async getTagNames() {
     if (this.tagCache.size === 0) {
       const tags = await paperlessService.getTags();
-      tags.forEach(tag => {
+      tags.forEach((tag: NamedEntity) => {
         this.tagCache.set(tag.id, tag.name);
       });
     }
@@ -21,7 +26,7 @@ class DocumentsService {
   async getCorrespondentNames() {
     if (this.correspondentCache.size === 0) {
       const correspondents = await paperlessService.listCorrespondentsNames();
-      correspondents.forEach(corr => {
+      correspondents.forEach((corr: NamedEntity) => {
         this.correspondentCache.set(corr.id, corr.name);
       });
     }
@@ -36,13 +41,14 @@ class DocumentsService {
     ]);
 
     // Sort documents by created date (newest first)
-    documents.sort((a, b) => new Date(b.created) - new Date(a.created));
+    documents.sort((a: DocumentSummary, b: DocumentSummary) =>
+      new Date(b.created).getTime() - new Date(a.created).getTime());
 
     return {
       documents,
       tagNames,
       correspondentNames,
-      paperlessUrl: process.env.PAPERLESS_API_URL.replace('/api', '')
+      paperlessUrl: (process.env.PAPERLESS_API_URL ?? '').replace('/api', '')
     };
   }
 }
