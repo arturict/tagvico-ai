@@ -1,5 +1,4 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
-const axios = require('axios');
+import axios, { type AxiosRequestConfig } from 'axios';
 const config = require('../config/config');
 
 /**
@@ -40,7 +39,7 @@ class ExternalApiService {
         try {
           parsedHeaders = JSON.parse(headers);
         } catch (error) {
-          console.error('[ERROR] Failed to parse external API headers:', error.message);
+          console.error('[ERROR] Failed to parse external API headers:', error instanceof Error ? error.message : String(error));
           parsedHeaders = {};
         }
       }
@@ -51,13 +50,13 @@ class ExternalApiService {
         try {
           parsedBody = JSON.parse(body);
         } catch (error) {
-          console.error('[ERROR] Failed to parse external API body:', error.message);
+          console.error('[ERROR] Failed to parse external API body:', error instanceof Error ? error.message : String(error));
           parsedBody = {};
         }
       }
 
       // Configure request options
-      const options = {
+      const options: AxiosRequestConfig = {
         method,
         url,
         headers: parsedHeaders,
@@ -81,14 +80,14 @@ class ExternalApiService {
           data = transformFn(data);
           console.log('[DEBUG] Successfully transformed external API data');
         } catch (error) {
-          console.error('[ERROR] Failed to execute transform function:', error.message);
+          console.error('[ERROR] Failed to execute transform function:', error instanceof Error ? error.message : String(error));
         }
       }
 
       return data;
     } catch (error) {
-      console.error('[ERROR] Failed to fetch data from external API:', error.message);
-      if (error.response) {
+      console.error('[ERROR] Failed to fetch data from external API:', error instanceof Error ? error.message : String(error));
+      if (axios.isAxiosError(error) && error.response) {
         console.error('[ERROR] API Response:', error.response.status, error.response.data);
       }
       return null;
