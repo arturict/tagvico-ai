@@ -186,10 +186,12 @@ class SetupService {
     console.log('Endpoint: ', endpoint);
     if (apiKey && endpoint && deploymentName && apiVersion) {
       try {
-        const openai = new AzureOpenAI({ apiKey: apiKey,
-                endpoint: endpoint,
-                deploymentName: deploymentName,
-                apiVersion: apiVersion });
+        const openai = new AzureOpenAI({
+          apiKey,
+          endpoint,
+          deployment: deploymentName,
+          apiVersion
+        });
         const response = await openai.chat.completions.create({
           model: deploymentName,
           messages: [{ role: "user", content: "Test" }],
@@ -328,7 +330,8 @@ class SetupService {
     const freshConfig = require('../config/config');
     Object.keys(runtimeConfig).forEach((key) => delete runtimeConfig[key]);
     Object.assign(runtimeConfig, freshConfig);
-    require.cache[configPath].exports = runtimeConfig;
+    const cachedModule = require.cache[configPath];
+    if (cachedModule) cachedModule.exports = runtimeConfig;
   }
 
   async isConfigured() {
