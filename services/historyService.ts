@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 // services/historyService.js
 //
 // Thin wrapper around the history_documents SQLite table that knows about
@@ -7,8 +6,10 @@
 // and writes and is also responsible for running the small migration that
 // adds the column on startup.
 
-const path = require('path');
-const fs = require('fs');
+import path from 'path';
+import fs from 'fs';
+// better-sqlite3 11 does not bundle TypeScript declarations.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const Database = require('better-sqlite3');
 
 const dataDir = path.join(process.cwd(), 'data');
@@ -23,9 +24,15 @@ db.pragma('journal_mode = WAL');
 // call on first use is what actually creates the table. We keep the
 // prepared statement cache on the module so subsequent calls are still
 // fast.
-let _stmts = null;
+type Statement = ReturnType<typeof db.prepare>;
+interface Statements { insert: Statement; byId: Statement; byDocument: Statement; latestByDocument: Statement }
+interface HistoryRow {
+  id: number; document_id: number; tags: string | null; title: string | null;
+  correspondent: string | null; diff: string | null; created_at: string;
+}
+let _stmts: Statements | null = null;
 
-function getStmts() {
+function getStmts(): Statements {
   if (_stmts) return _stmts;
   _stmts = {
     insert: db.prepare(`
@@ -69,7 +76,8 @@ function migrate() {
   // we probe the table info first. Doing it this way keeps the migration
   // a single round-trip when the column already exists.
   const columns = db.prepare(`PRAGMA table_info(history_documents)`).all();
-  const hasDiff = columns.some((col) => col.name === 'diff');
+  const hasDiff = columns.some((col: unknown) =>
+    typeof col === 'object' && col !== null && 'name' in col && col.name === 'diff');
   if (!hasDiff) {
     db.prepare(`ALTER TABLE history_documents ADD COLUMN diff TEXT`).run();
   }
@@ -88,7 +96,7 @@ function migrate() {
  * @param {Array<object>} [diff] - Output of metadataDiff.compareMetadata
  * @returns {boolean}
  */
-function addToHistory(documentId, tagIds, title, correspondent, diff) {
+function addToHistory(documentId: number | string, tagIds: number[], title: string | null, correspondent: string | null, diff?: object[]) {
   try {
     // Make sure the table exists with the diff column. Cheap on subsequent
     // calls — the PRAGMA + ALTER TABLE both no-op.
@@ -114,13 +122,13 @@ function addToHistory(documentId, tagIds, title, correspondent, diff) {
  * @param {number|string} documentId
  * @returns {object|null}
  */
-function getLatestByDocumentId(documentId) {
+function getLatestByDocumentId(documentId: number | string) {
   try {
     migrate();
     const stmts = getStmts();
     const row = stmts.latestByDocument.get(documentId);
     if (!row) return null;
-    return parseRow(row);
+    return parseRow(row as HistoryRow);
   } catch (error) {
     console.error('[ERROR] loading history for document:', documentId, error);
     return null;
@@ -133,12 +141,12 @@ function getLatestByDocumentId(documentId) {
  * @param {number|string} documentId
  * @returns {Array<object>}
  */
-function getAllByDocumentId(documentId) {
+function getAllByDocumentId(documentId: number | string) {
   try {
     migrate();
     const stmts = getStmts();
     const rows = stmts.byDocument.all(documentId);
-    return rows.map(parseRow);
+    return rows.map((row: unknown) => parseRow(row as HistoryRow));
   } catch (error) {
     console.error('[ERROR] loading history for document:', documentId, error);
     return [];
@@ -151,32 +159,32 @@ function getAllByDocumentId(documentId) {
  * @param {number|string} id
  * @returns {object|null}
  */
-function getById(id) {
+function getById(id: number | string) {
   try {
     migrate();
     const stmts = getStmts();
     const row = stmts.byId.get(id);
     if (!row) return null;
-    return parseRow(row);
+    return parseRow(row as HistoryRow);
   } catch (error) {
     console.error('[ERROR] loading history row:', id, error);
     return null;
   }
 }
 
-function parseRow(row) {
-  let parsedTags = [];
+function parseRow(row: HistoryRow) {
+  let parsedTags: unknown[] = [];
   try {
     parsedTags = row.tags ? JSON.parse(row.tags) : [];
-  } catch (e) {
+  } catch {
     parsedTags = [];
   }
 
-  let parsedDiff = null;
+  let parsedDiff: unknown = null;
   if (row.diff) {
     try {
       parsedDiff = JSON.parse(row.diff);
-    } catch (e) {
+    } catch {
       parsedDiff = null;
     }
   }
