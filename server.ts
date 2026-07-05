@@ -20,6 +20,8 @@ const historyService = require('./services/historyService');
 const customFieldsService = require('./services/customFieldsService');
 const { isAuthenticated } = require('./routes/auth');
 const { createRateLimiter } = require('./services/rateLimiter');
+const controlledTaggingService = require('./services/controlledTaggingService');
+const tagGroupService = require('./services/tagGroupService');
 
 const htmlLogger = new Logger({
   logFile: 'logs.html',
@@ -212,7 +214,9 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
   }
 
   const aiService = AIServiceFactory.getService();
-  const analysis = await aiService.analyzeDocument(content, existingTags, existingCorrespondentList, existingDocumentTypesList, doc.id);
+  const policy = tagGroupService.getConfig();
+  const promptTags = policy.enabled ? policy.vocabulary : existingTags;
+  const analysis = await aiService.analyzeDocument(content, promptTags, existingCorrespondentList, existingDocumentTypesList, doc.id);
   console.log('Response from AI service:', analysis);
   if (analysis.error) {
     throw new Error(`[ERROR] Document analysis failed: ${analysis.error}`);
@@ -223,10 +227,13 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
 
 async function buildUpdateData(analysis, doc, content = '') {
   const updateData = {};
+  const heldFields = Array.isArray(analysis?.document?.held_for_review)
+    ? analysis.document.held_for_review
+    : [];
 
   // Only process tags if tagging is activated and tags are not held for review
   if (config.limitFunctions?.activateTagging !== 'no' && !heldFields.includes('tags')) {
-    const { tagIds, errors } = await paperlessService.processTags(analysis.document.tags);
+    const { tagIds, errors } = await controlledTaggingService.processSuggestions(doc.id, analysis.document.tags);
     if (errors.length > 0) {
       console.warn('[ERROR] Some tags could not be processed:', errors);
     }

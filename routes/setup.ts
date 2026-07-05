@@ -33,6 +33,9 @@ const reviewProgressService = require('../services/reviewProgressService');
 const historyService = require('../services/historyService');
 const ocrService = require('../services/ocrService');
 const reconciliationService = require('../services/reconciliationService');
+const tagGroupService = require('../services/tagGroupService');
+const tagExceptionService = require('../services/tagExceptionService');
+const controlledTaggingService = require('../services/controlledTaggingService');
 const { createRateLimiter } = require('../services/rateLimiter');
 const loginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'login' });
 const totpService = require('../services/totpService');
@@ -169,7 +172,8 @@ let PUBLIC_ROUTES = [
   // These are still gated by the allowDuringSetup middleware (auth required once configured).
   '/api/paperless/discover',
   '/api/paperless/probe',
-  '/api/ollama/models'
+  '/api/ollama/models',
+  '/api/codex'
 ];
 
 // Combined middleware to check authentication and setup
@@ -1437,6 +1441,8 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
   }
 
   const aiService = AIServiceFactory.getService();
+  const tagPolicy = tagGroupService.getConfig();
+  existingTags = tagPolicy.enabled ? tagPolicy.vocabulary : existingTags;
   let analysis;
   if(customPrompt) {
     console.log('[DEBUG] Starting document analysis with custom prompt');
@@ -1465,7 +1471,7 @@ async function buildUpdateData(analysis, doc, content = '') {
 
   // Only process tags if tagging is activated
   if (config.limitFunctions?.activateTagging !== 'no') {
-    const { tagIds, errors } = await paperlessService.processTags(analysis.document.tags, options);
+    const { tagIds, errors } = await controlledTaggingService.processSuggestions(doc.id, analysis.document.tags);
     if (errors.length > 0) {
       console.warn('[ERROR] Some tags could not be processed:', errors);
     }
@@ -1715,6 +1721,27 @@ function resetRuntimeServices() {
   customService.reset?.();
 }
 
+async function provisionControlledTags() {
+  const policy = tagGroupService.getConfig();
+  if (!policy.enabled) return [];
+  try {
+    paperlessService.initialize();
+    await paperlessService.ensureTagCache();
+  } catch (error) {
+    return policy.vocabulary.map((name) => ({ name, ok: false, error: error.message }));
+  }
+  const results = [];
+  for (const name of policy.vocabulary) {
+    try {
+      const tag = await paperlessService.findExistingTag(name) || await paperlessService.createTagSafely(name);
+      results.push({ name, ok: true, id: tag.id });
+    } catch (error) {
+      results.push({ name, ok: false, error: error.message });
+    }
+  }
+  return results;
+}
+
 async function getOllamaModelsForUrl(url) {
   const models = await setupService.getOllamaModels(url || 'http://localhost:11434');
   return models.map((model) => ({
@@ -1742,6 +1769,9 @@ function buildConfigForSave(payload, options = {}) {
     SCAN_INTERVAL: payload.scanInterval || currentConfig.SCAN_INTERVAL || '*/30 * * * *',
     PROCESS_PREDEFINED_DOCUMENTS: parseBooleanFlag(payload.showTags, currentConfig.PROCESS_PREDEFINED_DOCUMENTS || 'no'),
     TAGS: serializeArray(payload.tags),
+    TAG_GROUPS_JSON: JSON.stringify(tagGroupService.parseGroups(payload.tagGroupsJson || currentConfig.TAG_GROUPS_JSON)),
+    CONTROLLED_TAGGING_ENABLED: parseBooleanFlag(payload.controlledTaggingEnabled, currentConfig.CONTROLLED_TAGGING_ENABLED || 'no'),
+    TAG_MAX_PER_DOCUMENT: String(Math.min(10, Math.max(1, parseInt(payload.tagMaxPerDocument || currentConfig.TAG_MAX_PER_DOCUMENT || '3', 10) || 3))),
     ADD_AI_PROCESSED_TAG: parseBooleanFlag(payload.aiProcessedTag, currentConfig.ADD_AI_PROCESSED_TAG || 'no'),
     AI_PROCESSED_TAG_NAME: payload.aiTagName || currentConfig.AI_PROCESSED_TAG_NAME || 'ai-processed',
     ACTIVATE_OWNER_ASSIGNMENT: parseBooleanFlag(payload.activateOwnerAssignment, currentConfig.ACTIVATE_OWNER_ASSIGNMENT || 'yes'),
@@ -3768,6 +3798,7 @@ router.post('/setup', express.json(), async (req, res) => {
     // Save configuration
     await setupService.saveConfig(config);
     resetRuntimeServices();
+    const tagProvisioning = await provisionControlledTags();
     onboardingService.writeOnboardingSnapshot(config);
 
     // Persist dry-run review flag alongside the main config so the review
@@ -3785,7 +3816,8 @@ router.post('/setup', express.json(), async (req, res) => {
     res.json({ 
       success: true,
       message: 'Configuration saved successfully.',
-      restart: false
+      restart: false,
+      tagProvisioning
     });
 
   } catch (error) {
@@ -4124,6 +4156,7 @@ router.post('/settings', express.json(), async (req, res) => {
 
     await setupService.saveConfig(mergedConfig);
     resetRuntimeServices();
+    const tagProvisioning = await provisionControlledTags();
     onboardingService.writeOnboardingSnapshot(mergedConfig);
     try {
       for (const field of processedCustomFields) {
@@ -4136,7 +4169,8 @@ router.post('/settings', express.json(), async (req, res) => {
     res.json({ 
       success: true,
       message: 'Configuration saved successfully.',
-      restart: false
+      restart: false,
+      tagProvisioning
     });
 
   } catch (error) {
@@ -4344,30 +4378,30 @@ router.post('/api/history/:id/restore', async (req, res) => {
   res.json({ success: true });
 });
 
-router.get('/api/codex/status', async (req, res) => {
+router.get('/api/codex/status', allowDuringSetup, async (req, res) => {
   try {
     const account = await codexAuthService.account();
     res.json({ ...(await codexService.getStatus()), account: account.account || null });
   } catch { res.json(await codexService.getStatus()); }
 });
 
-router.post('/api/codex/login', express.json(), async (req, res) => {
+router.post('/api/codex/login', allowDuringSetup, express.json(), async (req, res) => {
   try { res.json(await codexAuthService.login(req.body?.type === 'chatgpt' ? 'chatgpt' : 'chatgptDeviceCode')); }
   catch (error) { res.status(502).json({ error: error.message }); }
 });
 
-router.get('/api/codex/login/:loginId', (req, res) => {
+router.get('/api/codex/login/:loginId', allowDuringSetup, (req, res) => {
   const status = codexAuthService.loginStatus(req.params.loginId);
   if (!status) return res.status(404).json({ error: 'Login flow not found or expired' });
   res.json(status);
 });
 
-router.post('/api/codex/login/:loginId/cancel', async (req, res) => {
+router.post('/api/codex/login/:loginId/cancel', allowDuringSetup, async (req, res) => {
   try { res.json(await codexAuthService.cancel(req.params.loginId)); }
   catch (error) { res.status(502).json({ error: error.message }); }
 });
 
-router.post('/api/codex/logout', async (req, res) => {
+router.post('/api/codex/logout', allowDuringSetup, async (req, res) => {
   try { await codexAuthService.logout(); res.json({ success: true }); }
   catch (error) { res.status(502).json({ error: error.message }); }
 });
@@ -4375,6 +4409,98 @@ router.post('/api/codex/logout', async (req, res) => {
 router.post('/api/settings/clear-tag-cache', async (req, res) => {
   paperlessService.clearTagCache();
   res.json({ success: true });
+});
+
+router.get('/api/tag-groups', async (req, res) => {
+  const policy = tagGroupService.getConfig();
+  res.json({ ...policy, presets: tagGroupService.PRESETS });
+});
+
+router.post('/api/tag-groups', express.json(), async (req, res) => {
+  try {
+    const groups = tagGroupService.parseGroups(req.body.groups);
+    const maximum = Math.min(10, Math.max(1, parseInt(req.body.maximum || '3', 10) || 3));
+    await setupService.saveTagPolicy({
+      TAG_GROUPS_JSON: JSON.stringify(groups),
+      CONTROLLED_TAGGING_ENABLED: req.body.enabled ? 'yes' : 'no',
+      TAG_MAX_PER_DOCUMENT: String(maximum)
+    });
+    resetRuntimeServices();
+    const provisioning = await provisionControlledTags();
+    res.json({ success: true, policy: tagGroupService.getConfig(), provisioning });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+router.get('/api/tags/unmanaged', async (req, res) => {
+  try {
+    const managed = new Set(tagGroupService.getConfig().vocabulary.map(tagGroupService.normalizeTag));
+    const tags = (await paperlessService.getTags()).filter((tag) => !managed.has(tagGroupService.normalizeTag(tag.name)));
+    res.json({ tags });
+  } catch (error) { res.status(502).json({ error: error.message }); }
+});
+
+router.post('/api/tags/unmanaged/cleanup', express.json(), async (req, res) => {
+  const managed = new Set(tagGroupService.getConfig().vocabulary.map(tagGroupService.normalizeTag));
+  const results = [];
+  for (const id of Array.isArray(req.body.ids) ? req.body.ids : []) {
+    try {
+      const current = (await paperlessService.getTags()).find((tag) => Number(tag.id) === Number(id));
+      if (!current) throw new Error('Tag no longer exists');
+      if (managed.has(tagGroupService.normalizeTag(current.name))) throw new Error('Tag is managed');
+      if (Number(current.document_count || 0) !== 0) throw new Error('Tag is assigned to documents');
+      await paperlessService.deleteUnusedTag(id);
+      results.push({ id, ok: true });
+    } catch (error) { results.push({ id, ok: false, error: error.message }); }
+  }
+  res.json({ results });
+});
+
+router.get('/api/tag-exceptions', async (req, res) => {
+  const rows = tagExceptionService.list(String(req.query.status || 'pending'));
+  const tagNames = new Map((await paperlessService.getTags()).map((tag) => [Number(tag.id), tag.name]));
+  const valid = new Set(tagGroupService.getConfig().vocabulary.map(tagGroupService.normalizeTag));
+  const enriched = await Promise.all(rows.map(async (row) => {
+    try {
+      const document = await paperlessService.getDocument(row.document_id);
+      const currentValidTags = (document.tags || []).map((id) => tagNames.get(Number(typeof id === 'object' ? id.id : id))).filter((name) => name && valid.has(tagGroupService.normalizeTag(name)));
+      return { ...row, document: { id: document.id, title: document.title, tags: document.tags }, currentValidTags };
+    } catch { return { ...row, document: null }; }
+  }));
+  res.json({ exceptions: enriched, groups: tagGroupService.getConfig().groups });
+});
+
+router.post('/api/tag-exceptions/:id/reject', (req, res) => {
+  const result = tagExceptionService.resolve(Number(req.params.id), 'rejected');
+  if (!result.changes) return res.status(409).json({ error: 'Exception is no longer pending' });
+  res.json({ success: true });
+});
+
+router.post('/api/tag-exceptions/:id/approve', express.json(), async (req, res) => {
+  try {
+    const exception = tagExceptionService.get(Number(req.params.id));
+    if (!exception || exception.status !== 'pending') return res.status(409).json({ error: 'Exception is no longer pending' });
+    const policy = tagGroupService.getConfig();
+    const group = policy.groups.find((item) => item.id === String(req.body.groupId || ''));
+    if (!group) return res.status(400).json({ error: 'A valid destination group is required' });
+    if (!group.enabled) return res.status(400).json({ error: 'The destination group must be enabled' });
+    group.tags = tagGroupService.cleanTags([...group.tags, exception.suggested_name]);
+    await setupService.saveTagPolicy({ TAG_GROUPS_JSON: JSON.stringify(policy.groups) });
+    resetRuntimeServices();
+    paperlessService.initialize();
+    await paperlessService.ensureTagCache();
+    const tag = await paperlessService.findExistingTag(exception.suggested_name) || await paperlessService.createTagSafely(exception.suggested_name);
+    let applied = false;
+    if (tagExceptionService.assignmentCount(exception.document_id) < policy.maximum) {
+      const updated = await paperlessService.updateDocument(exception.document_id, { tags: [tag.id] });
+      if (!updated) throw new Error('Paperless rejected the document tag update');
+      tagExceptionService.recordAssignments(exception.document_id, [exception.suggested_name], [tag.id]);
+      applied = true;
+    }
+    tagExceptionService.resolve(exception.id, 'approved', group.id);
+    res.json({ success: true, tag, applied });
+  } catch (error) { res.status(500).json({ error: error.message }); }
 });
 
 router.get('/api/reconciliation/preview', async (req, res) => {

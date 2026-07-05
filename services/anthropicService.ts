@@ -2,6 +2,7 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const config = require('../config/config');
 const confidenceGuard = require('./confidenceGuard');
+const tagGroupService = require('./tagGroupService');
 const { ProviderAdapter } = require('./providerAdapter');
 
 class AnthropicService extends ProviderAdapter {
@@ -40,7 +41,7 @@ class AnthropicService extends ProviderAdapter {
     return {
       model: config.anthropic.model,
       max_tokens: Number(config.responseTokens || 1000),
-      system: confidenceGuard.appendConfidencePrompt(`${process.env.SYSTEM_PROMPT || ''}\n${context}\n${config.mustHavePrompt}`),
+      system: confidenceGuard.appendConfidencePrompt(`${process.env.SYSTEM_PROMPT || ''}\n${context}\n${config.mustHavePrompt}\n${tagGroupService.promptContract()}`),
       messages: [{ role: 'user', content }]
     };
   }

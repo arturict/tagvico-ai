@@ -6,6 +6,7 @@ const {
   normalizeProvider
 } = require('../services/providerCatalogService');
 const currentDir = decodeURIComponent(process.cwd());
+const { version: packageVersion } = require(path.join(currentDir, 'package.json'));
 const envPath = path.join(currentDir, 'data', '.env');
 console.log('Loading .env from:', envPath); // Debug log
 const injectedEnvironment = new Set(Object.keys(process.env));
@@ -60,7 +61,7 @@ console.log('Loaded environment variables:', {
 });
 
 module.exports = {
-  ARCHIVISTA_AI_VERSION: '1.1.0',
+  ARCHIVISTA_AI_VERSION: packageVersion,
   CONFIGURED: false,
   disableAutomaticProcessing: process.env.DISABLE_AUTOMATIC_PROCESSING || 'no',
   predefinedMode: process.env.PROCESS_PREDEFINED_DOCUMENTS,
@@ -69,6 +70,9 @@ module.exports = {
   minContentLength: Math.max(1, parseInt(process.env.MIN_CONTENT_LENGTH || '10', 10)),
   maxRetries: Math.max(1, parseInt(process.env.AI_MAX_RETRIES || '3', 10)),
   ignoreTags: process.env.IGNORE_TAGS || '',
+  tagGroupsJson: process.env.TAG_GROUPS_JSON || '',
+  controlledTaggingEnabled: parseEnvBoolean(process.env.CONTROLLED_TAGGING_ENABLED, 'no'),
+  tagMaxPerDocument: Math.min(10, Math.max(1, parseInt(process.env.TAG_MAX_PER_DOCUMENT || '3', 10) || 3)),
   tagCacheTtlSeconds: Math.max(30, parseInt(process.env.TAG_CACHE_TTL_SECONDS || '300', 10)),
   reconciliationEnabled: parseEnvBoolean(process.env.RECONCILIATION_ENABLED, 'yes'),
   reconciliationInterval: process.env.RECONCILIATION_INTERVAL || '0 * * * *',

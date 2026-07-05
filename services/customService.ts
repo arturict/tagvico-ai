@@ -10,6 +10,7 @@ const config = require('../config/config');
 const tiktoken = require('tiktoken');
 const fs = require('fs').promises;
 const RestrictionPromptService = require('./restrictionPromptService');
+const tagGroupService = require('./tagGroupService');
 const { normalizeProvider } = require('./providerCatalogService');
 const { loadThumbnail, buildUserMessage } = require('./thumbnailHelper');
 const confidenceGuard = require('./confidenceGuard');
@@ -139,6 +140,7 @@ class CustomOpenAIService {
         console.log('[DEBUG] Replace system prompt with custom prompt');
         systemPrompt = customPrompt + '\n\n' + config.mustHavePrompt;
       }
+      if (tagGroupService.promptContract() && !systemPrompt.includes('CONTROLLED TAGGING:')) systemPrompt += `\n\n${tagGroupService.promptContract()}`;
 
       // Append the confidence-scoring contract so the model returns per-field
       // scores that the guardrails module can compare against the threshold.

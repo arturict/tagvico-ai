@@ -1,9 +1,14 @@
 // @ts-nocheck — legacy module; tracked for strict typing.
 const config = require('../config/config');
+const tagGroupService = require('./tagGroupService');
 const confidenceGuard = require('./confidenceGuard');
 const fs = require('fs').promises;
 const os = require('os');
 const path = require('path');
+// TypeScript compiles `import()` to `require()` in CommonJS output, but the
+// Codex SDK intentionally exposes an ESM-only entrypoint. Preserve Node's
+// native dynamic import at runtime instead.
+const nativeImport = new Function('specifier', 'return import(specifier)');
 
 class CodexService {
   async getStatus() {
@@ -24,7 +29,7 @@ class CodexService {
   async analyzeDocument(content, existingTags = [], correspondents = [], documentTypes = []) {
     let workingDirectory;
     try {
-      const { Codex } = await import('@openai/codex-sdk');
+      const { Codex } = await nativeImport('@openai/codex-sdk');
       await fs.mkdir(config.codex.home, { recursive: true, mode: 0o700 });
       const subscriptionEnvironment = {
         PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
@@ -61,7 +66,8 @@ class CodexService {
         properties: {
           title: { type: 'string' }, correspondent: { type: 'string' }, tags: { type: 'array', items: { type: 'string' } },
           document_type: { type: 'string' }, document_date: { type: 'string' }, language: { type: 'string' },
-          owner: { type: ['string', 'null'] }, custom_fields: { type: 'object' },
+          owner: { type: ['string', 'null'] },
+          custom_fields: { type: 'object', properties: {}, additionalProperties: false },
           confidence: {
             type: 'object',
             properties: {
@@ -76,10 +82,10 @@ class CodexService {
             additionalProperties: false
           }
         },
-        required: ['title', 'correspondent', 'tags', 'document_type', 'document_date', 'language', 'confidence'],
+        required: ['title', 'correspondent', 'tags', 'document_type', 'document_date', 'language', 'owner', 'custom_fields', 'confidence'],
         additionalProperties: false
       };
-      const prompt = `You are a document metadata extractor. Do not use tools. Analyze only the supplied OCR text and return the requested JSON.\n${process.env.SYSTEM_PROMPT || ''}\n${config.mustHavePrompt}\nExisting tags: ${existingTags.join(', ')}\nExisting correspondents: ${correspondents.join(', ')}\nExisting document types: ${documentTypes.join(', ')}\nDocument OCR:\n${content}`;
+      const prompt = `You are a document metadata extractor. Do not use tools. Analyze only the supplied OCR text and return the requested JSON.\n${process.env.SYSTEM_PROMPT || ''}\n${config.mustHavePrompt}\n${tagGroupService.promptContract()}\nExisting tags: ${existingTags.join(', ')}\nExisting correspondents: ${correspondents.join(', ')}\nExisting document types: ${documentTypes.join(', ')}\nDocument OCR:\n${content}`;
       const result = await Promise.race([
         thread.run(prompt, { outputSchema: schema }),
         new Promise((_, reject) => setTimeout(() => reject(new Error(`Codex timed out after ${config.codex.timeoutMs} ms`)), config.codex.timeoutMs))

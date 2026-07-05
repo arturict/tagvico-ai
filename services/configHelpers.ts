@@ -45,6 +45,7 @@ function parseBooleanFlag(value: Scalar, fallback = 'no'): string {
 }
 
 function buildUiConfig(env: ConfigLike = process.env, version = '') {
+  const tagGroupService = require('./tagGroupService');
   const provider = normalizeProvider(env.AI_PROVIDER);
   const effectiveModel = getEffectiveModel(env);
 
@@ -74,6 +75,11 @@ function buildUiConfig(env: ConfigLike = process.env, version = '') {
     SCAN_INTERVAL: env.SCAN_INTERVAL || '*/30 * * * *',
     PROCESS_PREDEFINED_DOCUMENTS: parseBooleanFlag(env.PROCESS_PREDEFINED_DOCUMENTS, 'no'),
     TAGS: normalizeArray(env.TAGS),
+    TAG_GROUPS_JSON: env.TAG_GROUPS_JSON || '',
+    TAG_GROUPS: tagGroupService.parseGroups(env.TAG_GROUPS_JSON),
+    TAG_GROUP_PRESETS: tagGroupService.PRESETS,
+    CONTROLLED_TAGGING_ENABLED: parseBooleanFlag(env.CONTROLLED_TAGGING_ENABLED, 'no'),
+    TAG_MAX_PER_DOCUMENT: Math.min(10, Math.max(1, parseInt(env.TAG_MAX_PER_DOCUMENT || '3', 10) || 3)),
     ADD_AI_PROCESSED_TAG: parseBooleanFlag(env.ADD_AI_PROCESSED_TAG, 'no'),
     AI_PROCESSED_TAG_NAME: env.AI_PROCESSED_TAG_NAME || 'ai-processed',
     USE_EXISTING_DATA: parseBooleanFlag(env.USE_EXISTING_DATA, 'no'),

@@ -1,32 +1,97 @@
+name: tagvico-test
+
 services:
-  tagvico-ai:
-    # Pin a release tag so upgrades and rollbacks remain predictable.
-    image: ghcr.io/arturict/tagvico-ai:1.1.0
-    container_name: tagvico-ai
-    network_mode: bridge
+  paperless-broker:
+    image: docker.io/library/redis:8
     restart: unless-stopped
+    volumes:
+      - paperless_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  paperless-db:
+    image: docker.io/library/postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: ${PAPERLESS_DB_PASSWORD:-paperless-test-only}
+    volumes:
+      - paperless_postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperless -d paperless"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  paperless-ngx:
+    image: ghcr.io/paperless-ngx/paperless-ngx:2.20.15
+    container_name: paperless-ngx
+    restart: unless-stopped
+    depends_on:
+      paperless-db:
+        condition: service_healthy
+      paperless-broker:
+        condition: service_healthy
+    ports:
+      - "${PAPERLESS_HOST_PORT:-8000}:8000"
+    environment:
+      PAPERLESS_REDIS: redis://paperless-broker:6379
+      PAPERLESS_DBHOST: paperless-db
+      PAPERLESS_DBENGINE: postgresql
+      PAPERLESS_DBPASS: ${PAPERLESS_DB_PASSWORD:-paperless-test-only}
+      PAPERLESS_SECRET_KEY: ${PAPERLESS_SECRET_KEY:-tagvico-local-test-secret-change-me}
+      PAPERLESS_URL: http://localhost:${PAPERLESS_HOST_PORT:-8000}
+      PAPERLESS_TIME_ZONE: ${TZ:-Europe/Zurich}
+      PAPERLESS_OCR_LANGUAGE: ${PAPERLESS_OCR_LANGUAGE:-eng}
+      PAPERLESS_ADMIN_USER: ${PAPERLESS_ADMIN_USER:-admin}
+      PAPERLESS_ADMIN_PASSWORD: ${PAPERLESS_ADMIN_PASSWORD:-tagvico-test}
+      PAPERLESS_ADMIN_MAIL: ${PAPERLESS_ADMIN_MAIL:-admin@example.test}
+      USERMAP_UID: ${PUID:-1000}
+      USERMAP_GID: ${PGID:-1000}
+    volumes:
+      - paperless_data:/usr/src/paperless/data
+      - paperless_media:/usr/src/paperless/media
+      - ./test-stack/export:/usr/src/paperless/export
+      - ./test-stack/consume:/usr/src/paperless/consume
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health/"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 45s
+
+  tagvico-ai:
+    build:
+      context: .
+    image: tagvico-ai:local
+    container_name: tagvico-ai
+    restart: unless-stopped
+    depends_on:
+      paperless-ngx:
+        condition: service_healthy
     cap_drop:
       - ALL
     security_opt:
       - no-new-privileges=true
     environment:
-      - PUID=1000
-      - PGID=1000
-      - ARCHIVISTA_AI_PORT=${ARCHIVISTA_AI_PORT:-3000}
-      - CODEX_HOME=/app/data/codex
-      # Required for first-run setup through Docker bridge networking. Once an
-      # admin exists, setup is authenticated even when this remains enabled.
-      - ALLOW_REMOTE_SETUP=${ALLOW_REMOTE_SETUP:-yes}
-      # Optional durable OCR rescue:
-      # - OCR_ENABLED=yes
-      # - OCR_PROVIDER=mistral
-      # - OCR_API_URL=https://api.mistral.ai/v1
-      # - OCR_API_KEY=replace-me
-      # - OCR_MODEL=mistral-ocr-latest
+      PUID: ${PUID:-1000}
+      PGID: ${PGID:-1000}
+      ARCHIVISTA_AI_PORT: 3000
+      PAPERLESS_API_URL: http://paperless-ngx:8000/api
+      CODEX_HOME: /app/data/codex
+      ALLOW_REMOTE_SETUP: "yes"
     ports:
-      - "${ARCHIVISTA_AI_HOST_PORT:-8080}:${ARCHIVISTA_AI_PORT:-3000}"
+      - "${ARCHIVISTA_AI_HOST_PORT:-8080}:3000"
     volumes:
       - tagvico_ai_data:/app/data
 
 volumes:
   tagvico_ai_data:
+  paperless_data:
+  paperless_media:
+  paperless_postgres:
+  paperless_redis:

@@ -325,6 +325,16 @@ class PaperlessService {
     }
   }
 
+  async deleteUnusedTag(tagId) {
+    this.initialize();
+    const response = await this.client.get(`/tags/${tagId}/`);
+    const tag = response.data;
+    if (Number(tag.document_count || 0) !== 0) throw new Error('Tag is assigned to documents');
+    await this.client.delete(`/tags/${tagId}/`);
+    this.clearTagCache();
+    return tag;
+  }
+
   async processTags(tagNames, options = {}) {
     try {
       this.initialize();
@@ -1232,8 +1242,13 @@ async getOrCreateDocumentType(name) {
         
         if (response.data.results && response.data.results.length > 0) {
             const userInfo = response.data.results;
-            //filter for username by process.env.PAPERLESS_USERNAME
-            const user = userInfo.find(user => user.username === process.env.PAPERLESS_USERNAME);
+            // The API token already scopes `current_user` to its owner. A username
+            // is only needed to disambiguate older Paperless responses that return
+            // more than one entry; setup intentionally allows this field to be blank.
+            const configuredUsername = process.env.PAPERLESS_USERNAME?.trim();
+            const user = configuredUsername
+                ? userInfo.find(user => user.username === configuredUsername)
+                : userInfo[0];
             if (user) {
                 console.log(`[DEBUG] Found own user ID: ${user.id}`);
                 return user.id;

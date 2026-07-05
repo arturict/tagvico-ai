@@ -19,7 +19,9 @@ class RestrictionPromptService {
   ): string {
     void config;
     // Replace placeholders in the original prompt
-    return this._replacePlaceholders(prompt, existingTags, existingCorrespondentList);
+    const processed = this._replacePlaceholders(prompt, existingTags, existingCorrespondentList);
+    const contract = require('./tagGroupService').promptContract();
+    return contract ? `${processed}\n\n${contract}` : processed;
   }
 
   /**

@@ -13,6 +13,7 @@ const paperlessService = require('./paperlessService');
 const os = require('os');
 const OpenAI = require('openai');
 const RestrictionPromptService = require('./restrictionPromptService');
+const tagGroupService = require('./tagGroupService');
 
 /**
  * Service for document analysis using Ollama
@@ -137,7 +138,7 @@ class OllamaService {
                     .map(line => '    ' + line)
                     .join('\n');
 
-                prompt = customPrompt + '\n\n' + config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr) + "\n\n" + JSON.stringify(content);
+                prompt = customPrompt + '\n\n' + config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr) + "\n\n" + tagGroupService.promptContract() + "\n\n" + JSON.stringify(content);
                 console.log('[DEBUG] Ollama Service started with custom prompt');
             }
 
@@ -368,6 +369,7 @@ class OllamaService {
             Take these tags and try to match one or more to the document content.\n\n
             ` + config.specialPromptPreDefinedTags;
         }
+        if (tagGroupService.promptContract() && !systemPrompt.includes('CONTROLLED TAGGING:')) systemPrompt += `\n\n${tagGroupService.promptContract()}`;
 
         return `${systemPrompt}
         ${JSON.stringify(content)}

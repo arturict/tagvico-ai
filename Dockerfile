@@ -20,7 +20,8 @@ FROM node:22-slim AS runtime
 WORKDIR /app
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends curl poppler-utils && \
+    apt-get install -y --no-install-recommends bubblewrap ca-certificates curl poppler-utils && \
+    update-ca-certificates && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/* && \
     npm install pm2 -g && \

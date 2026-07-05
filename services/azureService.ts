@@ -10,6 +10,7 @@ const AzureOpenAI = require('openai').AzureOpenAI;
 const config = require('../config/config');
 const fs = require('fs').promises;
 const RestrictionPromptService = require('./restrictionPromptService');
+const tagGroupService = require('./tagGroupService');
 const { loadThumbnail, buildUserMessage } = require('./thumbnailHelper');
 const confidenceGuard = require('./confidenceGuard');
 
@@ -130,6 +131,7 @@ class AzureOpenAIService {
         console.log('[DEBUG] Replace system prompt with custom prompt via WebHook');
         systemPrompt = customPrompt + '\n\n' + config.mustHavePrompt;
       }
+      if (tagGroupService.promptContract() && !systemPrompt.includes('CONTROLLED TAGGING:')) systemPrompt += `\n\n${tagGroupService.promptContract()}`;
 
       // Append the confidence-scoring contract so the model returns per-field
       // scores that the guardrails module can compare against the threshold.

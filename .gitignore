@@ -19,6 +19,7 @@ delete_all.js
 documents.json
 apitest.js
 logs/*
+/test-stack/
 api_correspondent.js
 prompt.txt
 api_test_r1.js

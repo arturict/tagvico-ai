@@ -305,6 +305,16 @@ class SetupService {
     }
   }
 
+  async saveTagPolicy(policy) {
+    const current = (await this.loadConfig()) || {};
+    const next = { ...current, ...policy };
+    const envContent = Object.entries(next).map(([key, value]) => `${key}=${value}`).join('\n');
+    await fs.writeFile(this.envPath, envContent);
+    Object.entries(policy).forEach(([key, value]) => { process.env[key] = String(value); });
+    this.reloadRuntimeConfig();
+    return next;
+  }
+
   reloadRuntimeConfig() {
     const configPath = require.resolve('../config/config');
     delete require.cache[configPath];

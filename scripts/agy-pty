@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Agy's Bubble Tea UI expects /dev/tty even for commands that are useful in
+# automation. util-linux `script` provides a real pseudo-terminal while still
+# allowing callers to capture stdout and the original exit status.
+
+AGY_BIN="${AGY_BIN:-$(command -v agy || true)}"
+if [[ -z "$AGY_BIN" ]]; then
+  echo "agy-pty: agy is not installed or not on PATH" >&2
+  exit 127
+fi
+if ! command -v script >/dev/null 2>&1; then
+  echo "agy-pty: util-linux 'script' is required" >&2
+  exit 127
+fi
+
+command=("$AGY_BIN" "$@")
+printf -v quoted_command '%q ' "${command[@]}"
+
+if [[ "${AGY_PTY_CLEAN:-0}" == "1" ]]; then
+  # Remove carriage-return spinner frames and common ANSI control sequences.
+  script -qefc "$quoted_command" /dev/null |
+    tr '\r' '\n' |
+    sed -E $'s/\x1B\[[0-?]*[ -\/]*[@-~]//g' |
+    sed '/^[[:space:]]*$/d'
+else
+  exec script -qefc "$quoted_command" /dev/null
+fi
