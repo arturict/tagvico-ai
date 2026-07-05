@@ -1,10 +1,28 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 const fs = require('fs');
 const util = require('util');
 const path = require('path');
 
+interface LoggerOptions {
+    logFile?: string;
+    logDir?: string;
+    timestamp?: boolean;
+    format?: 'txt' | 'html';
+    maxFileSize?: number;
+}
+
+type ConsoleMethodName = 'log' | 'error' | 'warn' | 'info' | 'debug';
+type LogType = 'info' | 'error' | 'warn' | 'debug';
+
 class Logger {
-    constructor(options = {}) {
+    logFile: string;
+    logDir: string;
+    timestamp: boolean;
+    format: 'txt' | 'html';
+    maxFileSize: number;
+    logPath: string;
+    originalConsole: Record<ConsoleMethodName, (...args: unknown[]) => void>;
+
+    constructor(options: LoggerOptions = {}) {
         this.logFile = options.logFile || 'application.log';
         this.logDir = options.logDir || 'logs';
         this.timestamp = options.timestamp !== false;
@@ -31,7 +49,7 @@ class Logger {
         this.overrideConsoleMethods();
     }
 
-    initLogFile() {
+    initLogFile(): void {
         // Prüfe ob die Datei die maximale Größe überschreitet
         if (this.checkFileSize()) {
             // Lösche die alte Datei
@@ -48,7 +66,7 @@ class Logger {
         }
     }
 
-    checkFileSize() {
+    checkFileSize(): boolean {
         if (fs.existsSync(this.logPath)) {
             const stats = fs.statSync(this.logPath);
             return stats.size >= this.maxFileSize;
@@ -56,7 +74,7 @@ class Logger {
         return false;
     }
 
-    initHtmlFile() {
+    initHtmlFile(): void {
         const htmlHeader = `
 <!DOCTYPE html>
 <html>
@@ -140,11 +158,11 @@ class Logger {
         }
     }
 
-    getTimestamp() {
+    getTimestamp(): string {
         return new Date().toISOString();
     }
 
-    formatLogMessage(type, args) {
+    formatLogMessage(type: LogType, args: unknown[]): string {
         const msg = util.format(...args);
         if (this.format === 'html') {
             const timestamp = this.timestamp ? 
@@ -161,7 +179,7 @@ class Logger {
         }
     }
 
-    escapeHtml(unsafe) {
+    escapeHtml(unsafe: string): string {
         return unsafe
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -172,7 +190,7 @@ class Logger {
             .replace(/\s/g, "&nbsp;");
     }
 
-    writeToFile(message) {
+    writeToFile(message: string): void {
         // Prüfe Dateigröße vor dem Schreiben
         if (this.checkFileSize()) {
             // Lösche die alte Datei
@@ -187,39 +205,39 @@ class Logger {
         fs.appendFileSync(this.logPath, message);
     }
 
-    overrideConsoleMethods() {
-        console.log = (...args) => {
+    overrideConsoleMethods(): void {
+        console.log = (...args: unknown[]) => {
             const logMessage = this.formatLogMessage('info', args);
             this.originalConsole.log(...args);
             this.writeToFile(logMessage);
         };
 
-        console.error = (...args) => {
+        console.error = (...args: unknown[]) => {
             const logMessage = this.formatLogMessage('error', args);
             this.originalConsole.error(...args);
             this.writeToFile(logMessage);
         };
 
-        console.warn = (...args) => {
+        console.warn = (...args: unknown[]) => {
             const logMessage = this.formatLogMessage('warn', args);
             this.originalConsole.warn(...args);
             this.writeToFile(logMessage);
         };
 
-        console.info = (...args) => {
+        console.info = (...args: unknown[]) => {
             const logMessage = this.formatLogMessage('info', args);
             this.originalConsole.info(...args);
             this.writeToFile(logMessage);
         };
 
-        console.debug = (...args) => {
+        console.debug = (...args: unknown[]) => {
             const logMessage = this.formatLogMessage('debug', args);
             this.originalConsole.debug(...args);
             this.writeToFile(logMessage);
         };
     }
 
-    closeHtmlFile() {
+    closeHtmlFile(): void {
         if (this.format === 'html') {
             const htmlFooter = `    </div>
     <button class="auto-scroll" id="autoScrollBtn" onclick="toggleAutoScroll()">
@@ -231,7 +249,7 @@ class Logger {
         }
     }
 
-    restore() {
+    restore(): void {
         Object.assign(console, this.originalConsole);
         if (this.format === 'html') {
             this.closeHtmlFile();
