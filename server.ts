@@ -18,8 +18,7 @@ const ownerProfileService = require('./services/ownerProfileService');
 const historyService = require('./services/historyService');
 const customFieldsService = require('./services/customFieldsService');
 const { resolveEnv } = require('./services/configHelpers');
-type DynamicRecord = Record<string, any>;
-type HttpRequest = DynamicRecord;
+type HttpRequest = Record<string, unknown>;
 type NextFunction = () => void;
 interface HttpResponse {
   setHeader(name: string, value: string): void;
@@ -28,6 +27,33 @@ interface HttpResponse {
   status(code: number): HttpResponse;
   json(body: unknown): HttpResponse;
 }
+interface DocumentRecord { id: number; title: string; created?: string; owner?: number }
+interface AnalysisRecord {
+  error?: unknown;
+  document: {
+    held_for_review?: string[];
+    tags?: unknown;
+    title?: string;
+    document_date?: string;
+    document_type?: string;
+    custom_fields?: Record<string, { field_name?: string; value?: string }>;
+    correspondent?: string;
+    language?: string;
+  };
+  metrics?: { promptTokens?: number; completionTokens?: number; totalTokens?: number };
+}
+interface UpdateData {
+  tags?: number[];
+  title?: string;
+  created?: string;
+  document_type?: number;
+  custom_fields?: unknown[];
+  correspondent?: number;
+  language?: string;
+  owner?: number;
+}
+interface NamedResource { name: string }
+type OriginalData = Record<string, unknown>;
 interface ScanControl { running: boolean; stopRequested: boolean; startedAt: string | null; source: string | null }
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : String(error);
 const { isAuthenticated } = require('./routes/auth');
@@ -190,7 +216,7 @@ async function saveOpenApiSpec() {
 }
 
 // Document processing functions
-async function processDocument(doc: DynamicRecord, existingTags: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number | null) {
+async function processDocument(doc: DocumentRecord, existingTags: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number | null) {
   const isProcessed = await documentModel.isDocumentProcessed(doc.id);
   if (isProcessed) return null;
   if (await documentModel.isDocumentFailed(doc.id)) return null;
@@ -238,8 +264,8 @@ async function processDocument(doc: DynamicRecord, existingTags: string[], exist
   return { analysis, originalData, content };
 }
 
-async function buildUpdateData(analysis: DynamicRecord, doc: DynamicRecord, content = '') {
-  const updateData: DynamicRecord = {};
+async function buildUpdateData(analysis: AnalysisRecord, doc: DocumentRecord, content = '') {
+  const updateData: UpdateData = {};
   const heldFields = Array.isArray(analysis?.document?.held_for_review)
     ? analysis.document.held_for_review
     : [];
@@ -344,7 +370,7 @@ async function buildUpdateData(analysis: DynamicRecord, doc: DynamicRecord, cont
       if (fieldDetails?.id) {
         const trimmedValue = customField.value.trim();
         const liveField = liveFields.find(
-          (f: DynamicRecord) => String(f.name).toLowerCase() === String(fieldDetails.name).toLowerCase()
+          (f: NamedResource) => String(f.name).toLowerCase() === String(fieldDetails.name).toLowerCase()
         );
         if (liveField) {
           // Re-check the value against the declared type after trimming.
@@ -422,7 +448,7 @@ async function buildUpdateData(analysis: DynamicRecord, doc: DynamicRecord, cont
   return updateData;
 }
 
-async function saveDocumentChanges(docId: number, updateData: DynamicRecord, analysis: DynamicRecord, originalData: DynamicRecord) {
+async function saveDocumentChanges(docId: number, updateData: UpdateData, analysis: AnalysisRecord, originalData: OriginalData) {
   await documentModel.saveOriginalSnapshot(docId, originalData);
   await Promise.all([
     paperlessService.updateDocument(docId, updateData),
@@ -437,7 +463,7 @@ async function saveDocumentChanges(docId: number, updateData: DynamicRecord, ana
   ]);
 }
 
-async function processAndSaveDocument(doc: DynamicRecord, existingTagNames: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number | null) {
+async function processAndSaveDocument(doc: DocumentRecord, existingTagNames: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number | null) {
   for (let attempt = 1; attempt <= config.maxRetries; attempt += 1) {
     try {
       const result = await processDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
@@ -457,7 +483,7 @@ async function processAndSaveDocument(doc: DynamicRecord, existingTagNames: stri
   }
 }
 
-async function processDocumentCollection(documents: DynamicRecord[], existingTagNames: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number | null) {
+async function processDocumentCollection(documents: DocumentRecord[], existingTagNames: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number | null) {
   const args: [string[], string[], string[], number | null] = [existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId];
   if (config.processingMode === 'batch') {
     await Promise.all(documents.map((doc) => processAndSaveDocument(doc, ...args)));
@@ -486,11 +512,11 @@ async function scanInitial() {
       paperlessService.listDocumentTypesNames()
     ]);
     //get existing correspondent list
-    existingCorrespondentList = existingCorrespondentList.map((correspondent: DynamicRecord) => correspondent.name);
-    let existingDocumentTypesList = existingDocumentTypes.map((docType: DynamicRecord) => docType.name);
+    existingCorrespondentList = existingCorrespondentList.map((correspondent: NamedResource) => correspondent.name);
+    let existingDocumentTypesList = existingDocumentTypes.map((docType: NamedResource) => docType.name);
     
     // Extract tag names from tag objects
-    const existingTagNames = existingTags.map((tag: DynamicRecord) => tag.name);
+    const existingTagNames = existingTags.map((tag: NamedResource) => tag.name);
 
     await processDocumentCollection(documents, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
   } catch (error) {
@@ -519,13 +545,13 @@ async function scanDocuments() {
     ]);
 
     //get existing correspondent list
-    existingCorrespondentList = existingCorrespondentList.map((correspondent: DynamicRecord) => correspondent.name);
+    existingCorrespondentList = existingCorrespondentList.map((correspondent: NamedResource) => correspondent.name);
     
     //get existing document types list
-    let existingDocumentTypesList = existingDocumentTypes.map((docType: DynamicRecord) => docType.name);
+    let existingDocumentTypesList = existingDocumentTypes.map((docType: NamedResource) => docType.name);
     
     // Extract tag names from tag objects
-    const existingTagNames = existingTags.map((tag: DynamicRecord) => tag.name);
+    const existingTagNames = existingTags.map((tag: NamedResource) => tag.name);
 
     await processDocumentCollection(documents, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
   } catch (error) {
