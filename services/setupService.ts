@@ -1,29 +1,37 @@
 // @ts-nocheck — legacy module; tracked for strict typing.
-const fs = require('fs').promises;
-const path = require('path');
-const axios = require('axios');
-const { OpenAI } = require('openai');
+import { constants, promises as fs } from 'node:fs';
+import path from 'node:path';
+import axios from 'axios';
+import { AzureOpenAI, OpenAI } from 'openai';
 const runtimeConfig = require('../config/config');
-const AzureOpenAI = require('openai').AzureOpenAI;
 const { normalizeProvider } = require('./providerCatalogService');
 
-function tokenLimitParam(model, value) {
+type SetupConfig = Record<string, string>;
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function tokenLimitParam(model: string, value: number) {
   return /^gpt-5/i.test(model || '')
     ? { max_completion_tokens: value }
     : { max_tokens: value };
 }
 
 class SetupService {
+  private readonly envPath: string;
+  private configured: boolean | null;
+
   constructor() {
     this.envPath = path.join(process.cwd(), 'data', '.env');
     this.configured = null; // Variable to store the configuration status
   }
 
-  async loadConfig() {
+  async loadConfig(): Promise<SetupConfig | null> {
     try {
       const envContent = await fs.readFile(this.envPath, 'utf8');
-      const config = {};
-      envContent.split('\n').forEach(line => {
+      const config: SetupConfig = {};
+      envContent.split('\n').forEach((line: string) => {
         const [key, value] = line.split('=');
         if (key && value) {
           config[key.trim()] = value.trim();
@@ -31,12 +39,12 @@ class SetupService {
       });
       return config;
     } catch (error) {
-      console.error('Error loading config:', error.message);
+      console.error('Error loading config:', errorMessage(error));
       return null;
     }
   }
 
-  async validatePaperlessConfig(url, token) {
+  async validatePaperlessConfig(url: string, token: string): Promise<boolean> {
     try {
       const baseUrl = String(url || '').replace(/\/+$/, '').replace(/\/api$/i, '');
       console.log('Validating Paperless config for:', baseUrl + '/api/documents/');
@@ -47,12 +55,12 @@ class SetupService {
       });
       return response.status === 200;
     } catch (error) {
-      console.error('Paperless validation error:', error.message);
+      console.error('Paperless validation error:', errorMessage(error));
       return false;
     }
   }
 
-  async validateApiPermissions(url, token) {
+  async validateApiPermissions(url: string, token: string) {
     const baseUrl = String(url || '').replace(/\/+$/, '').replace(/\/api$/i, '');
     for (const endpoint of ['correspondents', 'tags', 'documents', 'document_types', 'custom_fields', 'users']) {
       try {
@@ -68,7 +76,7 @@ class SetupService {
           return { success: false, message: `API permissions validation failed for endpoint '/api/${endpoint}/'` };
         }
       } catch (error) {
-        console.error(`API permissions validation failed for ${endpoint}:`, error.message);
+        console.error(`API permissions validation failed for ${endpoint}:`, errorMessage(error));
         return { success: false, message: `API permissions validation failed for endpoint '/api/${endpoint}/'` };
       }
     }
@@ -76,7 +84,7 @@ class SetupService {
 }
 
 
-  async validateOpenAIConfig(apiKey) {
+  async validateOpenAIConfig(apiKey?: string): Promise<boolean> {
     if (apiKey) {
       try {
         const openai = new OpenAI({ apiKey });
@@ -91,14 +99,14 @@ class SetupService {
         console.log(`[DEBUG] [${timestamp}] OpenAI request sent`);
         return response.choices && response.choices.length > 0;
       } catch (error) {
-        console.error('OpenAI validation error:', error.message);
+        console.error('OpenAI validation error:', errorMessage(error));
         return false;
       }
     }
     return false;
   }
 
-  async validateOpenRouterConfig(apiKey, model = 'openai/gpt-5.4-nano') {
+  async validateOpenRouterConfig(apiKey?: string, model = 'openai/gpt-5.4-nano'): Promise<boolean> {
     if (!apiKey) {
       return false;
     }
@@ -121,12 +129,12 @@ class SetupService {
 
       return !!response?.choices?.length;
     } catch (error) {
-      console.error('OpenRouter validation error:', error.message);
+      console.error('OpenRouter validation error:', errorMessage(error));
       return false;
     }
   }
 
-  async validateCustomConfig(url, apiKey, model) {
+  async validateCustomConfig(url: string, apiKey: string | undefined, model: string) {
     const config = {
       baseURL: url,
       apiKey: apiKey || 'Tagvico AI-compatible',
@@ -149,19 +157,19 @@ class SetupService {
     }
   }
 
-  async getOllamaModels(url) {
+  async getOllamaModels(url: string) {
     try {
       const response = await axios.get(`${url.replace(/\/$/, '')}/api/tags`);
       return Array.isArray(response.data?.models) ? response.data.models : [];
     } catch (error) {
-      console.error('Failed to fetch Ollama models:', error.message);
+      console.error('Failed to fetch Ollama models:', errorMessage(error));
       return [];
     }
   }
 
 
 
-  async validateOllamaConfig(url, model) {
+  async validateOllamaConfig(url: string, model?: string) {
     try {
       const response = await axios.post(`${url}/api/generate`, {
         model: model || 'llama3.2',
@@ -170,12 +178,12 @@ class SetupService {
       });
       return response.data && response.data.response;
     } catch (error) {
-      console.error('Ollama validation error:', error.message);
+      console.error('Ollama validation error:', errorMessage(error));
       return false;
     }
   }
 
-  async validateAzureConfig(apiKey, endpoint, deploymentName, apiVersion) {
+  async validateAzureConfig(apiKey: string, endpoint: string, deploymentName: string, apiVersion: string) {
     console.log('Endpoint: ', endpoint);
     if (apiKey && endpoint && deploymentName && apiVersion) {
       try {
@@ -192,14 +200,14 @@ class SetupService {
         console.log(`[DEBUG] [${timestamp}] OpenAI request sent`);
         return response.choices && response.choices.length > 0;
       } catch (error) {
-        console.error('OpenAI validation error:', error.message);
+        console.error('OpenAI validation error:', errorMessage(error));
         return false;
       }
     }
     return false;
   }
 
-  async validateConfig(config) {
+  async validateConfig(config: SetupConfig): Promise<boolean> {
     // Validate Paperless config
     const paperlessApiUrl = config.PAPERLESS_API_URL.replace(/\/api/g, '');
     const paperlessValid = await this.validatePaperlessConfig(
@@ -262,7 +270,7 @@ class SetupService {
     return true;
   }
 
-  async saveConfig(config) {
+  async saveConfig(config: SetupConfig): Promise<void> {
     try {
       // Validate the new configuration before saving
       await this.validateConfig(config);
@@ -295,17 +303,17 @@ class SetupService {
       
       // Reload environment variables
       Object.entries(config).forEach(([key, value]) => {
-        process.env[key] = value;
+        process.env[key] = String(value);
       });
       this.reloadRuntimeConfig();
       this.configured = true;
     } catch (error) {
-      console.error('Error saving config:', error.message);
+      console.error('Error saving config:', errorMessage(error));
       throw error;
     }
   }
 
-  async saveTagPolicy(policy) {
+  async saveTagPolicy(policy: SetupConfig) {
     const current = (await this.loadConfig()) || {};
     const next = { ...current, ...policy };
     const envContent = Object.entries(next).map(([key, value]) => `${key}=${value}`).join('\n');
@@ -337,7 +345,7 @@ class SetupService {
     try {
       // Check if .env file exists
       try {
-        await fs.access(this.envPath, fs.constants.F_OK);
+        await fs.access(this.envPath, constants.F_OK);
       } catch (err) {
         console.log('No .env file found. Starting setup process...');
         this.configured = false;
@@ -352,7 +360,7 @@ class SetupService {
         return false;
       }
     } catch (error) {
-      console.error('Error checking initial configuration:', error.message);
+      console.error('Error checking initial configuration:', errorMessage(error));
       this.configured = false;
       return false;
     }
@@ -362,7 +370,7 @@ class SetupService {
         // Check data directory and create if needed
         const dataDir = path.dirname(this.envPath);
         try {
-          await fs.access(dataDir, fs.constants.F_OK);
+          await fs.access(dataDir, constants.F_OK);
         } catch (err) {
           console.log('Creating data directory...');
           await fs.mkdir(dataDir, { recursive: true });
@@ -378,7 +386,7 @@ class SetupService {
         this.configured = true;
         return true;
       } catch (error) {
-        console.error('Configuration attempt failed:', error.message);
+        console.error('Configuration attempt failed:', errorMessage(error));
         throw error;
       }
     };
@@ -391,12 +399,12 @@ class SetupService {
       } catch (error) {
         attempts++;
         if (attempts === maxAttempts) {
-          console.error('Max configuration attempts reached. Final error:', error.message);
+          console.error('Max configuration attempts reached. Final error:', errorMessage(error));
           this.configured = false;
           return false;
         }
         console.log(`Retrying configuration (attempt ${attempts}/${maxAttempts}) in 5 seconds...`);
-        await new Promise(resolve => setTimeout(resolve, delayBetweenAttempts));
+        await new Promise<void>((resolve) => setTimeout(resolve, delayBetweenAttempts));
       }
     }
 
