@@ -1,7 +1,7 @@
 // models/document.js
 const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+import path from 'node:path';
+import fs from 'node:fs';
 
 // Ensure data directory exists
 const dataDir = path.join(process.cwd(), 'data');
