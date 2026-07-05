@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { compareMetadata } = require('../dist/services/metadataDiff');
+const { compareMetadata, deepEqual, fingerprint } = require('../dist/services/metadataDiff');
 
 function randomValue(depth = 0) {
   const values = [null, '', Math.random().toString(36).slice(2), Math.floor(Math.random() * 1000), Math.random() > 0.5];
@@ -23,4 +23,23 @@ test('metadataDiff satisfies identity, determinism and patch reconstruction prop
     }
     assert.deepEqual(compareMetadata(reconstructed, after), []);
   }
+});
+
+test('metadataDiff reports explicit field changes and ignores primitive-array ordering', () => {
+  const titleDiff = compareMetadata({ title: 'Old' }, { title: 'New' });
+  assert.deepEqual(titleDiff, [{ field: 'title', before: 'Old', after: 'New', applied: true }]);
+  assert.deepEqual(compareMetadata({ tags: [1, 2, 3] }, { tags: [3, 1, 2] }), []);
+  assert.equal(compareMetadata(
+    { custom_fields: [{ field: 4, value: 'old' }] },
+    { custom_fields: [{ field: 4, value: 'new' }] }
+  )[0].field, 'custom_fields');
+  assert.deepEqual(compareMetadata({ title: 'X' }, { title: 'X', language: 'de' })[0], {
+    field: 'language', before: undefined, after: 'de', applied: true
+  });
+});
+
+test('metadataDiff helper equality and fingerprints are stable', () => {
+  assert.equal(deepEqual({ a: 1, b: { c: 2 } }, { a: 1, b: { c: 2 } }), true);
+  assert.equal(deepEqual({ a: 1 }, { a: 2 }), false);
+  assert.equal(fingerprint([1, 2, 3]), fingerprint([3, 2, 1]));
 });
