@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 const {
     calculateTokens,
     calculateTotalPromptTokens,
@@ -14,11 +13,21 @@ const os = require('os');
 const OpenAI = require('openai');
 const RestrictionPromptService = require('./restrictionPromptService');
 const tagGroupService = require('./tagGroupService');
+type AnalysisOptions = { externalApiData?: unknown };
+type JsonSchema = Record<string, unknown>;
+type NamedValue = string | { name: string };
+type OllamaResponseData = { response?: string | { tags?: unknown; correspondent?: unknown; title?: unknown; document_date?: unknown; document_type?: unknown; language?: unknown; custom_fields?: unknown } };
+const errorMessage = (error: unknown): string => error instanceof Error ? error.message : String(error);
 
 /**
  * Service for document analysis using Ollama
  */
 class OllamaService {
+    apiUrl: string;
+    model: string;
+    client: ReturnType<typeof axios.create>;
+    documentAnalysisSchema: JsonSchema;
+    playgroundSchema: JsonSchema;
     /**
      * Initialize the Ollama service
      */
@@ -88,7 +97,7 @@ class OllamaService {
      * @param {string} customPrompt - Custom prompt (optional)
      * @returns {Object} Analysis results
      */
-    async analyzeDocument(content, existingTags = [], existingCorrespondentList = [], existingDocumentTypesList = [], id, customPrompt = null, options = {}) {
+    async analyzeDocument(content: string, existingTags: string[] = [], existingCorrespondentList: string[] = [], existingDocumentTypesList: string[] = [], id: string, customPrompt: string | null = null, options: AnalysisOptions = {}) {
         try {
             this.refreshConfig();
             // Truncate content if needed
@@ -106,7 +115,7 @@ class OllamaService {
                     validatedExternalApiData = await this._validateAndTruncateExternalApiData(externalApiData);
                     console.log('[DEBUG] External API data validated and included');
                 } catch (error) {
-                    console.warn('[WARNING] External API data validation failed:', error.message);
+                    console.warn('[WARNING] External API data validation failed:', errorMessage(error));
                     validatedExternalApiData = null;
                 }
             }
@@ -119,14 +128,14 @@ class OllamaService {
                 // Parse CUSTOM_FIELDS for custom prompt
                 let customFieldsObj;
                 try {
-                    customFieldsObj = JSON.parse(process.env.CUSTOM_FIELDS);
+                    customFieldsObj = JSON.parse(process.env.CUSTOM_FIELDS || '{"custom_fields":[]}');
                 } catch (error) {
                     console.error('Failed to parse CUSTOM_FIELDS:', error);
                     customFieldsObj = { custom_fields: [] };
                 }
 
-                const customFieldsTemplate = {};
-                customFieldsObj.custom_fields.forEach((field, index) => {
+                const customFieldsTemplate: Record<number, { field_name: string; value: string }> = {};
+                customFieldsObj.custom_fields.forEach((field: { value: string }, index: number) => {
                     customFieldsTemplate[index] = {
                         field_name: field.value,
                         value: "Fill in the value based on your analysis"
@@ -184,7 +193,7 @@ class OllamaService {
             return {
                 document: { tags: [], correspondent: null },
                 metrics: null,
-                error: error.message
+                error: errorMessage(error)
             };
         }
     }
@@ -195,7 +204,7 @@ class OllamaService {
      * @param {string} prompt - User-provided prompt
      * @returns {Object} Analysis results
      */
-    async analyzePlayground(content, prompt) {
+    async analyzePlayground(content: string, prompt: string) {
         try {
             this.refreshConfig();
             // Calculate context window size
@@ -236,7 +245,7 @@ class OllamaService {
             return {
                 document: { tags: [], correspondent: null },
                 metrics: null,
-                error: error.message
+                error: errorMessage(error)
             };
         }
     }
@@ -246,11 +255,11 @@ class OllamaService {
      * @param {string} content - Content to truncate
      * @returns {string} Truncated content
      */
-    _truncateContent(content) {
+    _truncateContent(content: string) {
         try {
             if (process.env.CONTENT_MAX_LENGTH) {
                 console.log('Truncating content to max length:', process.env.CONTENT_MAX_LENGTH);
-                return content.substring(0, process.env.CONTENT_MAX_LENGTH);
+                return content.substring(0, Number(process.env.CONTENT_MAX_LENGTH));
             }
         } catch (error) {
             console.error('Error truncating content:', error);
@@ -266,7 +275,7 @@ class OllamaService {
      * @param {Array} existingDocumentTypes - List of existing document types
      * @returns {string} Formatted prompt
      */
-    _buildPrompt(content, existingTags = [], existingCorrespondent = [], existingDocumentTypes = [], options = {}) {
+    _buildPrompt(content: string, existingTags: string[] = [], existingCorrespondent: NamedValue[] = [], existingDocumentTypes: NamedValue[] = [], options: AnalysisOptions = {}) {
         let systemPrompt;
         let promptTags = '';
 
@@ -278,16 +287,16 @@ class OllamaService {
         // Parse CUSTOM_FIELDS from environment variable
         let customFieldsObj;
         try {
-            customFieldsObj = JSON.parse(process.env.CUSTOM_FIELDS);
+            customFieldsObj = JSON.parse(process.env.CUSTOM_FIELDS || '{"custom_fields":[]}');
         } catch (error) {
             console.error('Failed to parse CUSTOM_FIELDS:', error);
             customFieldsObj = { custom_fields: [] };
         }
 
         // Generate custom fields template for the prompt
-        const customFieldsTemplate = {};
+        const customFieldsTemplate: Record<number, { field_name: string; value: string }> = {};
 
-        customFieldsObj.custom_fields.forEach((field, index) => {
+        customFieldsObj.custom_fields.forEach((field: { value: string }, index: number) => {
             customFieldsTemplate[index] = {
                 field_name: field.value,
                 value: "Fill in the value based on your analysis"
@@ -344,7 +353,7 @@ class OllamaService {
                 validatedExternalApiData = this._validateAndTruncateExternalApiData(options.externalApiData);
                 console.log('[DEBUG] External API data validated and included');
             } catch (error) {
-                console.warn('[WARNING] External API data validation failed:', error.message);
+                console.warn('[WARNING] External API data validation failed:', errorMessage(error));
                 validatedExternalApiData = null;
             }
         }
@@ -364,7 +373,7 @@ class OllamaService {
         }
 
         if (process.env.USE_PROMPT_TAGS === 'yes') {
-            promptTags = process.env.PROMPT_TAGS;
+            promptTags = process.env.PROMPT_TAGS || '';
             systemPrompt = `
             Take these tags and try to match one or more to the document content.\n\n
             ` + config.specialPromptPreDefinedTags;
@@ -382,7 +391,7 @@ class OllamaService {
      * @param {number} maxTokens - Maximum tokens allowed for external data (default: 500)
      * @returns {string} - Validated and potentially truncated data string
      */
-    async _validateAndTruncateExternalApiData(apiData, maxTokens = 500) {
+    async _validateAndTruncateExternalApiData(apiData: unknown, maxTokens = 500) {
         if (!apiData) {
             return null;
         }
@@ -412,16 +421,16 @@ class OllamaService {
     _generateCustomFieldsTemplate() {
         let customFieldsObj;
         try {
-            customFieldsObj = JSON.parse(process.env.CUSTOM_FIELDS);
+            customFieldsObj = JSON.parse(process.env.CUSTOM_FIELDS || '{"custom_fields":[]}');
         } catch (error) {
             console.error('Failed to parse CUSTOM_FIELDS:', error);
             customFieldsObj = { custom_fields: [] };
         }
 
         // Generate custom fields template for the prompt
-        const customFieldsTemplate = {};
+        const customFieldsTemplate: Record<number, { field_name: string; value: string }> = {};
 
-        customFieldsObj.custom_fields.forEach((field, index) => {
+        customFieldsObj.custom_fields.forEach((field: { value: string }, index: number) => {
             customFieldsTemplate[index] = {
                 field_name: field.value,
                 value: "Fill in the value based on your analysis"
@@ -440,7 +449,7 @@ class OllamaService {
      * @param {string} customFieldsStr - Custom fields as a string
      * @returns {string} System prompt
      */
-    _generateSystemPrompt(customFieldsStr) {
+    _generateSystemPrompt(customFieldsStr: string) {
         let systemPromptTemplate = `
             You are a document analyzer. Your task is to analyze documents and extract relevant information. You do not ask back questions. 
             YOU MUSTNOT: Ask for additional information or clarification, or ask questions about the document, or ask for additional context.
@@ -489,7 +498,7 @@ class OllamaService {
      * @param {string} prompt - Prompt text
      * @returns {number} Estimated token count
      */
-    _calculatePromptTokenCount(prompt) {
+    _calculatePromptTokenCount(prompt: string) {
         return Math.ceil(prompt.length / 4);
     }
 
@@ -499,7 +508,7 @@ class OllamaService {
      * @param {number} expectedResponseTokens - Expected response token count
      * @returns {number} Context window size
      */
-    _calculateNumCtx(promptTokenCount, expectedResponseTokens) {
+    _calculateNumCtx(promptTokenCount: number, expectedResponseTokens: number) {
         const totalTokenUsage = promptTokenCount + expectedResponseTokens;
         const maxCtxLimit = Number(config.tokenLimit);
 
@@ -528,7 +537,7 @@ class OllamaService {
      * Handle thumbnail caching for documents
      * @param {string} id - Document ID
      */
-    async _handleThumbnailCaching(id) {
+    async _handleThumbnailCaching(id: string) {
         if (!id) return;
 
         const cachePath = path.join('./public/images', `${id}.png`);
@@ -555,7 +564,7 @@ class OllamaService {
      * @param {Object} schema - Response schema
      * @returns {Object} Ollama API response
      */
-    async _callOllamaAPI(prompt, systemPrompt, numCtx, schema) {
+    async _callOllamaAPI(prompt: string, systemPrompt: string, numCtx: number, schema: JsonSchema) {
         this.refreshConfig();
         const response = await this.client.post(`${this.apiUrl}/api/generate`, {
             model: this.model,
@@ -585,7 +594,7 @@ class OllamaService {
      * @param {Object} responseData - Ollama API response data
      * @returns {Object} Parsed response
      */
-    _processOllamaResponse(responseData) {
+    _processOllamaResponse(responseData: OllamaResponseData) {
         // Check if we got a structured response or need to parse from text
         if (responseData.response && typeof responseData.response === 'object') {
             // We got a structured response directly
@@ -613,7 +622,7 @@ class OllamaService {
      * @param {string} response - Response text
      * @returns {Object} Parsed object
      */
-    _parseResponse(response) {
+    _parseResponse(response: string) {
         try {
             // Find JSON in response using regex
             const jsonMatch = response.match(/\{[\s\S]*\}/);
@@ -640,7 +649,7 @@ class OllamaService {
                 };
 
             } catch (jsonError) {
-                console.warn('Error parsing JSON from response:', jsonError.message);
+                console.warn('Error parsing JSON from response:', errorMessage(jsonError));
                 console.warn('Attempting to sanitize the JSON...');
 
                 // Sanitize the JSON
@@ -661,7 +670,7 @@ class OllamaService {
                 }
             }
         } catch (error) {
-            console.error('Error parsing Ollama response:', error.message);
+            console.error('Error parsing Ollama response:', errorMessage(error));
             return { tags: [], correspondent: null };
         }
     }
@@ -671,7 +680,7 @@ class OllamaService {
      * @param {string} jsonStr - JSON string to sanitize
      * @returns {string} Sanitized JSON string
      */
-    _sanitizeJsonString(jsonStr) {
+    _sanitizeJsonString(jsonStr: string) {
         return jsonStr
             .replace(/,\s*}/g, '}') // Remove trailing commas before closing braces
             .replace(/,\s*]/g, ']') // Remove trailing commas before closing brackets
@@ -683,7 +692,7 @@ class OllamaService {
      * @param {string} prompt - Prompt text
      * @param {Object} response - Response object
      */
-    async _logPromptAndResponse(prompt, response) {
+    async _logPromptAndResponse(prompt: string, response: unknown) {
         const content = '================================================================================'
             + prompt + "\n\n"
             + JSON.stringify(response)
@@ -698,7 +707,7 @@ class OllamaService {
      * @param {string} prompt - The prompt to generate text from
      * @returns {Promise<string>} - The generated text
      */
-    async generateText(prompt) {
+    async generateText(prompt: string) {
         try {
             this.refreshConfig();
             // Calculate context window size based on prompt length
