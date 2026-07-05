@@ -1,9 +1,7 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 // models/document.js
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
-const { get } = require('http');
 
 // Ensure data directory exists
 const dataDir = path.join(process.cwd(), 'data');
@@ -19,8 +17,21 @@ const db = new Database(databasePath, {
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
-const columnExists = (table, column) => db.prepare(`PRAGMA table_info(${table})`).all()
-  .some((entry) => entry.name === column);
+interface OriginalSnapshot {
+  title?: string | null;
+  tags?: unknown;
+  correspondent?: string | number | null;
+  document_type?: string | number | null;
+  created?: string | null;
+  document_date?: string | null;
+  language?: string | null;
+  custom_fields?: unknown;
+  owner?: string | number | null;
+}
+
+const columnExists = (table: string, column: string): boolean =>
+  db.prepare(`PRAGMA table_info(${table})`).all()
+    .some((entry: { name: string }) => entry.name === column);
 
 const MIGRATIONS = [
   {
@@ -180,16 +191,6 @@ const insertMetrics = db.prepare(`
   VALUES (?, ?, ?, ?)
 `);
 
-const insertOriginal = db.prepare(`
-  INSERT INTO original_documents (document_id, title, tags, correspondent)
-  VALUES (?, ?, ?, ?)
-`);
-
-const insertHistory = db.prepare(`
-  INSERT INTO history_documents (document_id, tags, title, correspondent)
-  VALUES (?, ?, ?, ?)
-`);
-
 const insertUser = db.prepare(`
   INSERT INTO users (username, password)
   VALUES (?, ?)
@@ -248,12 +249,12 @@ module.exports = {
     return Number(db.pragma('user_version', { simple: true })) || 0;
   },
 
-  async backupDatabase(targetPath) {
+  async backupDatabase(targetPath: string) {
     await db.backup(targetPath);
     return targetPath;
   },
 
-  async addProcessedDocument(documentId, title) {
+  async addProcessedDocument(documentId: number, title: string) {
     try {
       // Bei UNIQUE constraint failure wird der existierende Eintrag aktualisiert
       const result = insertDocument.run(documentId, title, documentId);
@@ -269,7 +270,7 @@ module.exports = {
     }
   },
 
-  async addOpenAIMetrics(documentId, promptTokens, completionTokens, totalTokens) {
+  async addOpenAIMetrics(documentId: number, promptTokens: number, completionTokens: number, totalTokens: number) {
     try {
       const result = insertMetrics.run(documentId, promptTokens, completionTokens, totalTokens);
       if (result.changes > 0) {
@@ -310,7 +311,7 @@ module.exports = {
     }
   },
 
-  async isDocumentProcessed(documentId) {
+  async isDocumentProcessed(documentId: number) {
     try {
       const row = findDocument.get(documentId);
       return !!row;
@@ -321,7 +322,7 @@ module.exports = {
     }
   },
 
-  async saveOriginalData(documentId, tags, correspondent, title) {
+  async saveOriginalData(documentId: number, tags: unknown, correspondent: string | null, title: string) {
     try {
       const tagsString = JSON.stringify(tags); // Konvertiere Array zu String
       const result = db.prepare(`
@@ -339,7 +340,7 @@ module.exports = {
     }
   },
 
-  async saveOriginalSnapshot(documentId, snapshot = {}) {
+  async saveOriginalSnapshot(documentId: number, snapshot: OriginalSnapshot = {}) {
     const tags = JSON.stringify(snapshot.tags || []);
     const customFields = JSON.stringify(snapshot.custom_fields || []);
     const snapshotJson = JSON.stringify(snapshot);
@@ -363,7 +364,7 @@ module.exports = {
     return result.changes > 0;
   },
 
-  async addToHistory(documentId, tagIds, title, correspondent) {
+  async addToHistory(documentId: number, tagIds: unknown, title: string, correspondent: string | null) {
     try {
       const tagIdsString = JSON.stringify(tagIds); // Konvertiere Array zu String
       const result = db.prepare(`
@@ -381,7 +382,7 @@ module.exports = {
     }
   },
 
-  async getHistory(id) {
+  async getHistory(id?: number) {
     //check if id is provided else get all history
     if (id) {
       try {
@@ -401,7 +402,7 @@ module.exports = {
     }
   },
 
-  async getOriginalData(id) {
+  async getOriginalData(id?: number) {
     //check if id is provided else get all original data
     if (id) {
       try {
@@ -449,7 +450,7 @@ module.exports = {
     }
   },
   
-  async getPaginatedHistory(limit, offset) {
+  async getPaginatedHistory(limit: number, offset: number) {
     try {
       return getPaginatedHistoryDocuments.all(limit, offset);
     } catch (error) {
@@ -485,7 +486,7 @@ module.exports = {
     return { rows, total, filtered };
   },
 
-  async addToOcrQueue(documentId, title, reason = 'manual') {
+  async addToOcrQueue(documentId: number, title: string, reason = 'manual') {
     const result = db.prepare(`
       INSERT INTO ocr_queue (document_id, title, reason, status)
       VALUES (?, ?, ?, 'pending')
@@ -499,7 +500,7 @@ module.exports = {
     return result.changes > 0;
   },
 
-  async getOcrQueueItem(documentId) {
+  async getOcrQueueItem(documentId: number) {
     return db.prepare('SELECT * FROM ocr_queue WHERE document_id = ?').get(documentId);
   },
 
@@ -519,7 +520,7 @@ module.exports = {
     return { rows, total: count };
   },
 
-  async updateOcrQueueStatus(documentId, status, { text = null, error = null, incrementAttempts = false } = {}) {
+  async updateOcrQueueStatus(documentId: number, status: string, { text = null, error = null, incrementAttempts = false }: { text?: string | null; error?: string | null; incrementAttempts?: boolean } = {}) {
     const result = db.prepare(`
       UPDATE ocr_queue SET status = ?, ocr_text = COALESCE(?, ocr_text), last_error = ?,
         attempts = attempts + ?, updated_at = CURRENT_TIMESTAMP,
@@ -537,11 +538,11 @@ module.exports = {
     return result.changes;
   },
 
-  async removeFromOcrQueue(documentId) {
+  async removeFromOcrQueue(documentId: number) {
     return db.prepare('DELETE FROM ocr_queue WHERE document_id = ? AND status != ?').run(documentId, 'processing').changes > 0;
   },
 
-  async addFailedDocument(documentId, title, reason, source = 'ai', lastError = null) {
+  async addFailedDocument(documentId: number, title: string, reason: string, source = 'ai', lastError: string | null = null) {
     db.prepare(`
       INSERT INTO failed_documents (document_id, title, failed_reason, source, last_error)
       VALUES (?, ?, ?, ?, ?)
@@ -553,7 +554,7 @@ module.exports = {
     return true;
   },
 
-  async isDocumentFailed(documentId) {
+  async isDocumentFailed(documentId: number) {
     return Boolean(db.prepare('SELECT 1 FROM failed_documents WHERE document_id = ?').get(documentId));
   },
 
@@ -569,7 +570,7 @@ module.exports = {
     return { rows, total };
   },
 
-  async resetFailedDocument(documentId) {
+  async resetFailedDocument(documentId: number) {
     const transaction = db.transaction(() => {
       const removed = db.prepare('DELETE FROM failed_documents WHERE document_id = ?').run(documentId).changes;
       db.prepare('DELETE FROM processing_status WHERE document_id = ?').run(documentId);
@@ -578,7 +579,7 @@ module.exports = {
     return transaction() > 0;
   },
 
-  async resetForRescan(documentId) {
+  async resetForRescan(documentId: number) {
     return db.transaction(() => {
       db.prepare('DELETE FROM processed_documents WHERE document_id = ?').run(documentId);
       db.prepare('DELETE FROM processing_status WHERE document_id = ?').run(documentId);
@@ -596,10 +597,10 @@ module.exports = {
         SELECT document_id FROM ocr_queue UNION ALL
         SELECT document_id FROM failed_documents
       )
-    `).all().map((row) => Number(row.document_id));
+    `).all().map((row: { document_id: number | string }) => Number(row.document_id));
   },
 
-  async purgeLocalDocument(documentId) {
+  async purgeLocalDocument(documentId: number) {
     db.transaction(() => {
       for (const table of ['processed_documents', 'history_documents', 'original_documents', 'processing_status', 'ocr_queue', 'failed_documents', 'openai_metrics']) {
         db.prepare(`DELETE FROM ${table} WHERE document_id = ?`).run(documentId);
@@ -608,7 +609,7 @@ module.exports = {
     return true;
   },
 
-  async setUserMfaSettings(username, enabled, secret = null) {
+  async setUserMfaSettings(username: string, enabled: boolean, secret: string | null = null) {
     return db.prepare('UPDATE users SET mfa_enabled = ?, mfa_secret = ? WHERE username = ?')
       .run(enabled ? 1 : 0, enabled ? secret : null, username).changes > 0;
   },
@@ -628,11 +629,13 @@ module.exports = {
     }
   },
 
-  async deleteDocumentsIdList(idList) {
+  async deleteDocumentsIdList(idList: unknown) {
     try {
       console.log('[DEBUG] Received idList:', idList);
   
-      const ids = Array.isArray(idList) ? idList : (idList?.ids || []);
+      const ids = Array.isArray(idList)
+        ? idList
+        : ((idList as { ids?: unknown[] } | null)?.ids || []);
   
       if (!Array.isArray(ids) || ids.length === 0) {
         console.error('[ERROR] Invalid input: must provide an array of ids');
@@ -670,7 +673,7 @@ module.exports = {
   },
 
 
-  async addUser(username, password) {
+  async addUser(username: string, password: string) {
     try {
       // Lösche alle vorhandenen Benutzer
       const deleteResult = db.prepare('DELETE FROM users').run();
@@ -689,7 +692,7 @@ module.exports = {
     }
   },
 
-  async getUser(username) {
+  async getUser(username: string) {
     try {
       return db.prepare('SELECT * FROM users WHERE username = ?').get(username);
     } catch (error) {
@@ -762,7 +765,7 @@ module.exports = {
     }
 },
 
-async setProcessingStatus(documentId, title, status) {
+async setProcessingStatus(documentId: number, title: string, status: string) {
   try {
       if (status === 'complete') {
           const result = clearProcessingStatus.run(documentId);
@@ -827,7 +830,7 @@ async getCurrentProcessingStatus() {
 
   // Utility method to close the database connection
   closeDatabase() {
-    return new Promise((resolve, reject) => {
+    return new Promise<void>((resolve, reject) => {
       try {
         db.close();
         console.log('[DEBUG] Database closed successfully');
