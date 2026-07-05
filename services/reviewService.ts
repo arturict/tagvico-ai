@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 // services/reviewService.js
 //
 // Read-only support for the dry-run review mode. Lists the latest auto-analyzed
@@ -6,17 +5,35 @@
 // once the user clicks "Apply" on a single analysis. The diff that the patch
 // returns is persisted via historyService so the history view can render it.
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const documentModel = require('../models/document.js');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const paperlessService = require('./paperlessService.js');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const historyService = require('./historyService.js');
 
 const REVIEW_PATH = path.join(process.cwd(), 'data', '.review');
+type ReviewConfig = Record<string, string>;
+interface Metadata {
+  title?: string | null;
+  correspondent?: string | number | null;
+  tags?: number[];
+  document_type?: number | null;
+  custom_fields?: unknown;
+  owner?: number | null;
+}
+interface PatchResult {
+  ok: boolean;
+  error?: string;
+  after?: { title?: string | null; correspondent?: string | null; tags?: number[] };
+  diff?: object[];
+}
 
-function loadReviewConfig() {
+function loadReviewConfig(): ReviewConfig {
   // Default: dry-run mode is on. Operators opt out by setting DRY_RUN=false.
-  const defaults = { DRY_RUN: 'true' };
+  const defaults: ReviewConfig = { DRY_RUN: 'true' };
   if (!fs.existsSync(REVIEW_PATH)) return defaults;
   const values = { ...defaults };
   String(fs.readFileSync(REVIEW_PATH, 'utf8') || '')
@@ -33,7 +50,7 @@ function loadReviewConfig() {
   return values;
 }
 
-function writeReviewConfig(payload = {}) {
+function writeReviewConfig(payload: ReviewConfig = {}) {
   fs.mkdirSync(path.dirname(REVIEW_PATH), { recursive: true });
   const merged = { ...loadReviewConfig(), ...payload };
   const body = [
@@ -79,7 +96,7 @@ async function listRecentAnalyses(limit = 20) {
       let parsedTags = [];
       try {
         parsedTags = row.tags ? JSON.parse(row.tags) : [];
-      } catch (e) {
+      } catch {
         parsedTags = [];
       }
       return {
@@ -107,7 +124,7 @@ async function listRecentAnalyses(limit = 20) {
  * @returns {Promise<{ok: boolean, reason?: string, dryRun: boolean,
  *   diff?: Array<object>}>}
  */
-async function applyMetadata(documentId, metadata = {}) {
+async function applyMetadata(documentId: number | string, metadata: Metadata = {}) {
   if (!documentId) {
     return { ok: false, reason: 'documentId is required', dryRun: isDryRunEnabled() };
   }
@@ -120,7 +137,7 @@ async function applyMetadata(documentId, metadata = {}) {
     return { ok: false, reason: 'paperlessService.patchDocument not implemented', dryRun: false };
   }
 
-  const result = await paperlessService.patchDocument(documentId, metadata);
+  const result: PatchResult = await paperlessService.patchDocument(documentId, metadata);
   if (!result.ok) {
     return { ok: false, reason: result.error || 'patch failed', dryRun: false };
   }
@@ -134,8 +151,8 @@ async function applyMetadata(documentId, metadata = {}) {
   historyService.addToHistory(
     documentId,
     metadata.tags || (result.after && result.after.tags) || [],
-    title,
-    correspondent,
+    title === null ? '' : title,
+    correspondent === null ? '' : correspondent,
     result.diff || []
   );
 
