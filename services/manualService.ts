@@ -1,28 +1,48 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
-const { 
-    calculateTokens, 
-    calculateTotalPromptTokens, 
-    truncateToTokenLimit, 
-    writePromptToFile 
-} = require('./serviceUtils');
-const axios = require('axios');
-const OpenAI = require('openai');
+import fs from 'fs';
+import axios from 'axios';
+import OpenAI from 'openai';
+import { AzureOpenAI } from 'openai';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { writePromptToFile } = require('./serviceUtils');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const config = require('../config/config');
-const AzureOpenAI = require('openai').AzureOpenAI;
-const emptyVar = null;
+
+interface Tag { name: string }
+interface AnalysisResult {
+    tags: unknown[];
+    correspondent: string | null;
+    title?: unknown;
+    document_date?: unknown;
+    document_type?: unknown;
+    language?: unknown;
+    custom_fields?: unknown;
+}
+type Provider = 'openai' | 'ollama' | 'custom' | 'azure';
+
+function parseAnalysis(value: string): AnalysisResult {
+    const parsed: unknown = JSON.parse(value);
+    if (!parsed || typeof parsed !== 'object') throw new Error('Invalid response structure');
+    const record = parsed as Record<string, unknown>;
+    if (!Array.isArray(record.tags) || typeof record.correspondent !== 'string') {
+        throw new Error('Invalid response structure');
+    }
+    return { ...record, tags: record.tags, correspondent: record.correspondent };
+}
 
 class ManualService {
+    openai: InstanceType<typeof OpenAI>;
+    ollama?: ReturnType<typeof axios.create>;
     constructor() {
         if(config.aiProvider === 'custom'){
             this.openai = new OpenAI({
                 apiKey: config.custom.apiKey,
-                baseUrl: config.custom.apiUrl
+                baseURL: config.custom.apiUrl
             });
         }else if (config.aiProvider === 'azure'){
             this.openai = new AzureOpenAI({
                     apiKey: config.azure.apiKey,
                     endpoint: config.azure.endpoint,
-                    deploymentName: config.azure.deploymentName,
+                    deployment: config.azure.deploymentName,
                     apiVersion: config.azure.apiVersion
                   });
         } else {            
@@ -34,7 +54,7 @@ class ManualService {
     }
 
     
-    async analyzeDocument(content, existingTags, provider) {
+    async analyzeDocument(content: string, existingTags: Tag[], provider: Provider) {
         try {
         if (provider === 'openai') {
             return this._analyzeOpenAI(content, existingTags);
@@ -53,20 +73,18 @@ class ManualService {
         }
     }
     
-    async _analyzeOpenAI(content, existingTags) {
+    async _analyzeOpenAI(content: string, existingTags: Tag[]) {
         try {
-        const existingTagsList = existingTags
-            .map(tag => tag.name)
-            .join(', ');
+        void existingTags;
         const model = process.env.OPENAI_MODEL;
         const systemPrompt = process.env.SYSTEM_PROMPT;
         await writePromptToFile(systemPrompt, content);
         const response = await this.openai.chat.completions.create({
-            model: model,
+            model: model ?? '',
             messages: [
             {
                 role: "system",
-                content: systemPrompt
+                content: systemPrompt ?? ''
             },
             {
                 role: "user",
@@ -76,13 +94,13 @@ class ManualService {
             ...(model !== 'o3-mini' && { temperature: 0.3 }),
         });
     
-        let jsonContent = response.choices[0].message.content;
+        let jsonContent = response.choices[0].message.content ?? '';
         jsonContent = jsonContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         
-        const parsedResponse = JSON.parse(jsonContent);
+        let parsedResponse: AnalysisResult;
         try {
-            parsedResponse = JSON.parse(jsonContent);
-            fs.appendFile('./logs/response.txt', jsonContent, (err) => {
+            parsedResponse = parseAnalysis(jsonContent);
+            fs.appendFile('./logs/response.txt', jsonContent, (err: NodeJS.ErrnoException | null) => {
                 if (err) throw err;
             });
         } catch (error) {
@@ -101,20 +119,18 @@ class ManualService {
         }
     }
 
-    async _analyzeAzure(content, existingTags) {
+    async _analyzeAzure(content: string, existingTags: Tag[]) {
         try {
-        const existingTagsList = existingTags
-            .map(tag => tag.name)
-            .join(', ');
+        void existingTags;
     
         const systemPrompt = process.env.SYSTEM_PROMPT;
         await writePromptToFile(systemPrompt, content);
         const response = await this.openai.chat.completions.create({
-            model: process.env.AZURE_DEPLOYMENT_NAME,
+            model: process.env.AZURE_DEPLOYMENT_NAME ?? '',
             messages: [
             {
                 role: "system",
-                content: systemPrompt
+                content: systemPrompt ?? ''
             },
             {
                 role: "user",
@@ -124,13 +140,13 @@ class ManualService {
             temperature: 0.3,
         });
     
-        let jsonContent = response.choices[0].message.content;
+        let jsonContent = response.choices[0].message.content ?? '';
         jsonContent = jsonContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         
-        const parsedResponse = JSON.parse(jsonContent);
+        let parsedResponse: AnalysisResult;
         try {
-            parsedResponse = JSON.parse(jsonContent);
-            fs.appendFile('./logs/response.txt', jsonContent, (err) => {
+            parsedResponse = parseAnalysis(jsonContent);
+            fs.appendFile('./logs/response.txt', jsonContent, (err: NodeJS.ErrnoException | null) => {
                 if (err) throw err;
             });
         } catch (error) {
@@ -149,11 +165,9 @@ class ManualService {
         }
     }
 
-    async _analyzeCustom(content, existingTags) {
+    async _analyzeCustom(content: string, existingTags: Tag[]) {
         try {
-            const existingTagsList = existingTags
-                .map(tag => tag.name)
-                .join(', ');
+            void existingTags;
         
             const systemPrompt = process.env.SYSTEM_PROMPT;
             const model = config.custom.model;
@@ -162,7 +176,7 @@ class ManualService {
                 messages: [
                 {
                     role: "system",
-                    content: systemPrompt
+                    content: systemPrompt ?? ''
                 },
                 {
                     role: "user",
@@ -172,10 +186,10 @@ class ManualService {
                 ...(model !== 'o3-mini' && { temperature: 0.3 }),
             });
         
-            let jsonContent = response.choices[0].message.content;
+            let jsonContent = response.choices[0].message.content ?? '';
             jsonContent = jsonContent.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
             
-            const parsedResponse = JSON.parse(jsonContent);
+            const parsedResponse = parseAnalysis(jsonContent);
             
             if (!Array.isArray(parsedResponse.tags) || typeof parsedResponse.correspondent !== 'string') {
                 throw new Error('Invalid response structure');
@@ -188,19 +202,13 @@ class ManualService {
             }
     }
     
-    async _analyzeOllama(content, existingTags) {
+    async _analyzeOllama(content: string, existingTags: Tag[]) {
         try {
-        const prompt = process.env.SYSTEM_PROMPT;
-
-        const getAvailableMemory = async () => {
-            const totalMemory = os.totalmem();
-            const freeMemory = os.freemem();
-            const totalMemoryMB = (totalMemory / (1024 * 1024)).toFixed(0);
-            const freeMemoryMB = (freeMemory / (1024 * 1024)).toFixed(0);
-            return { totalMemoryMB, freeMemoryMB };
-        };
+        void content;
+        void existingTags;
+        const prompt = process.env.SYSTEM_PROMPT ?? '';
         
-        const calculateNumCtx = (promptTokenCount, expectedResponseTokens) => {
+        const calculateNumCtx = (promptTokenCount: number, expectedResponseTokens: number) => {
             const totalTokenUsage = promptTokenCount + expectedResponseTokens;
             const maxCtxLimit = Number(config.tokenLimit);
             
@@ -213,17 +221,16 @@ class ManualService {
             return numCtx;
         };
         
-        const calculatePromptTokenCount = (prompt) => {
+        const calculatePromptTokenCount = (prompt: string) => {
             return Math.ceil(prompt.length / 4);
         };
         
-        const { freeMemoryMB } = await getAvailableMemory();
         const expectedResponseTokens = 1024;
         const promptTokenCount = calculatePromptTokenCount(prompt);
         
         const numCtx = calculateNumCtx(promptTokenCount, expectedResponseTokens);
         
-        const response = await this.ollama.post(`${config.ollama.apiUrl}/api/generate`, {
+        const response = await this.ollama!.post(`${config.ollama.apiUrl}/api/generate`, {
             model: config.ollama.model,
             prompt: prompt,
             stream: false,
@@ -244,13 +251,19 @@ class ManualService {
         }
 
         catch (error) {
-        if (error.code === 'ECONNABORTED') {
+        if (typeof error === 'object' && error !== null && 'code' in error && error.code === 'ECONNABORTED') {
             console.error('Timeout bei der Ollama-Anfrage:', error);
             throw new Error('Die Analyse hat zu lange gedauert. Bitte versuchen Sie es erneut.');
         }
         console.error('Error analyzing document with Ollama:', error);
         throw error;
         }
+    }
+
+    _parseResponse(response: string): AnalysisResult {
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) return { tags: [], correspondent: null };
+        return parseAnalysis(jsonMatch[0]);
     }
 }
 
