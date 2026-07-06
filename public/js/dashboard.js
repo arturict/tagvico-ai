@@ -4,13 +4,23 @@ class DashboardPage {
     this.theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
     this.palette = {
       accent: this.theme === 'light' ? '#ff5a1f' : '#c8ff2e',
+      accentSoft: this.theme === 'light' ? 'rgba(255,90,31,0.16)' : 'rgba(200,255,46,0.16)',
       muted: '#8b5cf6',
       prompt: '#8b5cf6',
       completion: '#22c55e',
-      grid: 'rgba(125,125,125,0.18)'
+      track: this.theme === 'light' ? 'rgba(25,21,16,0.10)' : 'rgba(247,241,223,0.10)',
+      grid: this.theme === 'light' ? 'rgba(25,21,16,0.10)' : 'rgba(247,241,223,0.10)',
+      text: this.theme === 'light' ? '#191510' : '#f7f1df',
+      axis: this.theme === 'light' ? '#6d6253' : '#b2a88f',
+      tooltipBg: this.theme === 'light' ? '#fffaf0' : '#171a12',
+      tooltipBorder: this.theme === 'light' ? 'rgba(25,21,16,0.14)' : 'rgba(247,241,223,0.16)',
+      categorical: ['#8b5cf6', '#22c55e', '#f59e0b', '#0ea5e9', '#ef4444', '#ec4899']
     };
+    this.charts = [];
+    this.fontFamily = 'Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif';
     this.renderCharts();
     this.bindActions();
+    this.bindResize();
     this.refreshProcessingStatus();
     this.interval = window.setInterval(() => this.refreshProcessingStatus(), 3000);
   }
@@ -30,6 +40,16 @@ class DashboardPage {
     document.getElementById('showCorrespondentsButton')?.addEventListener('click', () => this.showCollection('/api/correspondentsCount', 'Correspondent activity', 'name'));
     document.querySelectorAll('[data-close-modal]').forEach((button) => {
       button.addEventListener('click', () => this.closeModal());
+    });
+  }
+
+  bindResize() {
+    let frame = null;
+    window.addEventListener('resize', () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        this.charts.forEach((chart) => chart.resize());
+      });
     });
   }
 
@@ -57,39 +77,37 @@ class DashboardPage {
     }
   }
 
-  baseChartOptions(extra = {}) {
+  tooltipStyle(extra = {}) {
     return {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: this.theme === 'light' ? '#191510' : '#171a12',
-          titleColor: '#f7f1df',
-          bodyColor: '#f7f1df',
-          padding: 10,
-          cornerRadius: 4
-        }
-      },
+      backgroundColor: this.palette.tooltipBg,
+      borderColor: this.palette.tooltipBorder,
+      borderWidth: 1,
+      padding: [8, 12],
+      extraCssText: 'border-radius:6px;box-shadow:0 8px 24px rgba(0,0,0,0.18);',
+      textStyle: { color: this.palette.text, fontFamily: this.fontFamily, fontSize: 12 },
       ...extra
     };
   }
 
-  emptyState(canvasId, message) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    canvas.parentNode?.classList.add('empty-state');
-    canvas.parentNode?.setAttribute('role', 'img');
-    canvas.parentNode?.setAttribute('aria-label', message);
-    canvas.parentNode?.insertAdjacentHTML('beforeend', `<span>${message}</span>`);
-    canvas.style.display = 'none';
+  initChart(id) {
+    const el = document.getElementById(id);
+    if (!el || !window.echarts) return null;
+    const chart = window.echarts.init(el, null, { renderer: 'canvas' });
+    this.charts.push(chart);
+    return chart;
+  }
+
+  emptyState(containerId, message) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    el.classList.add('empty-state');
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', message);
+    el.innerHTML = `<span class="empty-title">Nothing to show yet</span><span>${this.escapeHtml(message)}</span>`;
   }
 
   renderCharts() {
-    if (!window.Chart) return;
-    Chart.defaults.color = this.theme === 'light' ? '#6d6253' : '#b2a88f';
+    if (!window.echarts) return;
     this.renderProcessingChart();
     this.renderTokenMixChart();
     this.renderTokenChart();
@@ -97,10 +115,39 @@ class DashboardPage {
     this.renderTimelineChart();
   }
 
-  renderProcessingChart() {
-    const canvas = document.getElementById('processingChart');
-    if (!canvas) return;
+  renderDoughnut(id, segments, cutout = '72%') {
+    const chart = this.initChart(id);
+    if (!chart) return;
+    const total = segments.reduce((acc, seg) => acc + (seg.value || 0), 0);
+    chart.setOption({
+      animationDuration: 600,
+      animationEasing: 'cubicOut',
+      tooltip: this.tooltipStyle({
+        trigger: 'item',
+        formatter: (params) => {
+          const pct = total > 0 ? Math.round((params.value / total) * 100) : 0;
+          return `${params.marker}${params.name}: <strong>${Number(params.value).toLocaleString()}</strong> (${pct}%)`;
+        }
+      }),
+      series: [{
+        type: 'pie',
+        radius: [cutout, '96%'],
+        avoidLabelOverlap: false,
+        padAngle: 2,
+        itemStyle: { borderRadius: 6, borderColor: 'transparent', borderWidth: 0 },
+        label: { show: false },
+        labelLine: { show: false },
+        emphasis: {
+          scale: true,
+          scaleSize: 4,
+          itemStyle: { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.22)' }
+        },
+        data: segments
+      }]
+    });
+  }
 
+  renderProcessingChart() {
     const processed = this.data?.counts?.processed || 0;
     const total = this.data?.counts?.documents || 0;
     const remaining = this.data?.counts?.remaining || 0;
@@ -110,44 +157,22 @@ class DashboardPage {
       return;
     }
 
-    new Chart(canvas, {
-      type: 'doughnut',
-      data: {
-        labels: ['Processed', 'Remaining'],
-        datasets: [{
-          data: [processed, remaining],
-          backgroundColor: [this.palette.accent, 'rgba(125,125,125,0.22)'],
-          borderWidth: 0
-        }]
-      },
-      options: this.baseChartOptions({
-        cutout: '72%',
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                const value = ctx.raw || 0;
-                const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-                return `${ctx.label}: ${value.toLocaleString()} (${pct}%)`;
-              }
-            }
-          }
-        }
-      })
-    });
+    this.renderDoughnut('processingChart', [
+      { name: 'Processed', value: processed, itemStyle: { color: this.palette.accent } },
+      { name: 'Remaining', value: remaining, itemStyle: { color: this.palette.track } }
+    ]);
 
     const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
-    document.getElementById('processingLegend').innerHTML = `
-      <span class="legend-item"><span class="legend-dot" style="background:${this.palette.accent}"></span>Processed ${processed.toLocaleString()} (${pct}%)</span>
-      <span class="legend-item"><span class="legend-dot" style="background:rgba(125,125,125,0.4)"></span>Remaining ${remaining.toLocaleString()}</span>
-    `;
+    const legend = document.getElementById('processingLegend');
+    if (legend) {
+      legend.innerHTML = `
+        <span class="legend-item"><span class="legend-dot" style="background:${this.palette.accent}"></span>Processed ${processed.toLocaleString()} (${pct}%)</span>
+        <span class="legend-item"><span class="legend-dot" style="background:${this.palette.track}"></span>Remaining ${remaining.toLocaleString()}</span>
+      `;
+    }
   }
 
   renderTokenMixChart() {
-    const canvas = document.getElementById('tokenMixChart');
-    if (!canvas) return;
-
     const prompt = this.data?.tokens?.promptTotal || 0;
     const completion = this.data?.tokens?.completionTotal || 0;
     const total = prompt + completion;
@@ -157,105 +182,114 @@ class DashboardPage {
       return;
     }
 
-    new Chart(canvas, {
-      type: 'doughnut',
-      data: {
-        labels: ['Prompt tokens', 'Completion tokens'],
-        datasets: [{
-          data: [prompt, completion],
-          backgroundColor: [this.palette.prompt, this.palette.completion],
-          borderWidth: 0
-        }]
-      },
-      options: this.baseChartOptions({
-        cutout: '68%',
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                const value = ctx.raw || 0;
-                const pct = total > 0 ? Math.round((value / total) * 100) : 0;
-                return `${ctx.label}: ${value.toLocaleString()} (${pct}%)`;
-              }
-            }
-          }
-        }
-      })
-    });
+    this.renderDoughnut('tokenMixChart', [
+      { name: 'Prompt tokens', value: prompt, itemStyle: { color: this.palette.prompt } },
+      { name: 'Completion tokens', value: completion, itemStyle: { color: this.palette.completion } }
+    ], '68%');
 
     const promptPct = this.data?.tokens?.promptPct || 0;
     const completionPct = this.data?.tokens?.completionPct || 0;
-    document.getElementById('tokenMixLegend').innerHTML = `
-      <span class="legend-item"><span class="legend-dot" style="background:${this.palette.prompt}"></span>Prompt ${promptPct}%</span>
-      <span class="legend-item"><span class="legend-dot" style="background:${this.palette.completion}"></span>Completion ${completionPct}%</span>
-    `;
+    const legend = document.getElementById('tokenMixLegend');
+    if (legend) {
+      legend.innerHTML = `
+        <span class="legend-item"><span class="legend-dot" style="background:${this.palette.prompt}"></span>Prompt ${promptPct}%</span>
+        <span class="legend-item"><span class="legend-dot" style="background:${this.palette.completion}"></span>Completion ${completionPct}%</span>
+      `;
+    }
   }
 
   renderTokenChart() {
-    const canvas = document.getElementById('tokenDistributionChart');
-    if (!canvas) return;
-
     const distribution = this.data?.tokenDistribution || [];
     if (!distribution.length) {
       this.emptyState('tokenDistributionChart', 'No token distribution data yet.');
       return;
     }
 
-    new Chart(canvas, {
-      type: 'bar',
-      data: {
-        labels: distribution.map((item) => item.range),
-        datasets: [{
-          label: 'Documents',
-          data: distribution.map((item) => item.count),
-          backgroundColor: this.palette.muted,
-          borderRadius: 6
-        }]
-      },
-      options: this.baseChartOptions({
-        scales: {
-          x: { grid: { display: false } },
-          y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: this.palette.grid } }
+    const chart = this.initChart('tokenDistributionChart');
+    if (!chart) return;
+
+    chart.setOption({
+      animationDuration: 600,
+      animationEasing: 'cubicOut',
+      grid: { top: 12, right: 12, bottom: 24, left: 40, containLabel: true },
+      tooltip: this.tooltipStyle({
+        trigger: 'axis',
+        axisPointer: { type: 'shadow', shadowStyle: { color: this.palette.accentSoft } },
+        formatter: (params) => {
+          const point = params[0];
+          return `${point.axisValue}<br>${point.marker}Documents: <strong>${Number(point.value).toLocaleString()}</strong>`;
         }
-      })
+      }),
+      xAxis: {
+        type: 'category',
+        data: distribution.map((item) => item.range),
+        axisLine: { lineStyle: { color: this.palette.grid } },
+        axisTick: { show: false },
+        axisLabel: { color: this.palette.axis, fontFamily: this.fontFamily, fontSize: 11 }
+      },
+      yAxis: {
+        type: 'value',
+        minInterval: 1,
+        splitLine: { lineStyle: { color: this.palette.grid, type: 'dashed' } },
+        axisLabel: { color: this.palette.axis, fontFamily: this.fontFamily, fontSize: 11 }
+      },
+      series: [{
+        type: 'bar',
+        data: distribution.map((item) => item.count),
+        barMaxWidth: 42,
+        itemStyle: {
+          color: this.palette.muted,
+          borderRadius: [6, 6, 0, 0]
+        },
+        emphasis: { itemStyle: { color: this.palette.accent } }
+      }]
     });
   }
 
   renderDocumentTypeChart() {
-    const canvas = document.getElementById('documentTypeChart');
-    if (!canvas) return;
-
     const docTypes = this.data?.topDocumentTypes || [];
     if (!docTypes.length || docTypes.every((item) => !item.count)) {
       this.emptyState('documentTypeChart', 'No document types recorded yet.');
       return;
     }
 
-    const colors = ['#8b5cf6', '#22c55e', '#f59e0b', '#0ea5e9', '#ef4444', '#ec4899'];
-    new Chart(canvas, {
-      type: 'polarArea',
-      data: {
-        labels: docTypes.map((item) => item.type || 'Unknown'),
-        datasets: [{
-          data: docTypes.map((item) => item.count),
-          backgroundColor: colors.slice(0, docTypes.length).map((c) => `${c}99`)
-        }]
+    const chart = this.initChart('documentTypeChart');
+    if (!chart) return;
+
+    chart.setOption({
+      animationDuration: 600,
+      animationEasing: 'cubicOut',
+      tooltip: this.tooltipStyle({
+        trigger: 'item',
+        formatter: (params) => `${params.marker}${this.escapeHtml(params.name)}: <strong>${Number(params.value).toLocaleString()}</strong> (${params.percent}%)`
+      }),
+      legend: {
+        bottom: 0,
+        icon: 'circle',
+        itemWidth: 10,
+        itemHeight: 10,
+        textStyle: { color: this.palette.axis, fontFamily: this.fontFamily, fontSize: 11 }
       },
-      options: this.baseChartOptions({
-        plugins: {
-          legend: { display: true, position: 'bottom', labels: { boxWidth: 12 } },
-          tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${ctx.raw.toLocaleString()}` } }
-        },
-        scales: { r: { ticks: { display: false }, grid: { color: this.palette.grid } } }
-      })
+      series: [{
+        type: 'pie',
+        radius: ['38%', '68%'],
+        center: ['50%', '44%'],
+        roseType: 'radius',
+        padAngle: 2,
+        itemStyle: { borderRadius: 5 },
+        label: { show: false },
+        labelLine: { show: false },
+        emphasis: { itemStyle: { shadowBlur: 12, shadowColor: 'rgba(0,0,0,0.22)' } },
+        data: docTypes.map((item, index) => ({
+          name: item.type || 'Unknown',
+          value: item.count,
+          itemStyle: { color: this.palette.categorical[index % this.palette.categorical.length] }
+        }))
+      }]
     });
   }
 
   renderTimelineChart() {
-    const canvas = document.getElementById('timelineChart');
-    if (!canvas) return;
-
     const byHour = this.data?.today?.byHour || [];
     const countsByHour = new Map(byHour.map((item) => [item.hour, item.count]));
     const hours = Array.from({ length: 24 }, (_, hour) => String(hour).padStart(2, '0'));
@@ -267,30 +301,61 @@ class DashboardPage {
       return;
     }
 
-    new Chart(canvas, {
-      type: 'line',
-      data: {
-        labels: hours,
-        datasets: [{
-          label: 'Processed today',
-          data: dataPoints,
-          borderColor: this.palette.accent,
-          backgroundColor: this.theme === 'light' ? 'rgba(255,90,31,0.18)' : 'rgba(200,255,46,0.16)',
-          tension: 0.35,
-          fill: true,
-          pointRadius: 2
-        }]
-      },
-      options: this.baseChartOptions({
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { title: (items) => `${items[0].label}:00`, label: (ctx) => `${ctx.raw.toLocaleString()} document(s)` } }
-        },
-        scales: {
-          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
-          y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: this.palette.grid } }
+    const chart = this.initChart('timelineChart');
+    if (!chart) return;
+
+    chart.setOption({
+      animationDuration: 700,
+      animationEasing: 'cubicOut',
+      grid: { top: 16, right: 16, bottom: 24, left: 40, containLabel: true },
+      tooltip: this.tooltipStyle({
+        trigger: 'axis',
+        axisPointer: { type: 'line', lineStyle: { color: this.palette.accent, width: 1, type: 'dashed' } },
+        formatter: (params) => {
+          const point = params[0];
+          return `${point.axisValue}:00<br>${point.marker}<strong>${Number(point.value).toLocaleString()}</strong> document(s)`;
         }
-      })
+      }),
+      xAxis: {
+        type: 'category',
+        boundaryGap: false,
+        data: hours,
+        axisLine: { lineStyle: { color: this.palette.grid } },
+        axisTick: { show: false },
+        axisLabel: {
+          color: this.palette.axis,
+          fontFamily: this.fontFamily,
+          fontSize: 11,
+          interval: 2
+        }
+      },
+      yAxis: {
+        type: 'value',
+        minInterval: 1,
+        splitLine: { lineStyle: { color: this.palette.grid, type: 'dashed' } },
+        axisLabel: { color: this.palette.axis, fontFamily: this.fontFamily, fontSize: 11 }
+      },
+      series: [{
+        type: 'line',
+        data: dataPoints,
+        smooth: 0.35,
+        symbol: 'circle',
+        symbolSize: 6,
+        showSymbol: false,
+        lineStyle: { color: this.palette.accent, width: 2.5 },
+        itemStyle: { color: this.palette.accent },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: this.palette.accentSoft },
+              { offset: 1, color: 'transparent' }
+            ]
+          }
+        },
+        emphasis: { focus: 'series' }
+      }]
     });
   }
 

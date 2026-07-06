@@ -39,12 +39,23 @@
 
 <form id="configForm" class="stack" data-mode="<%= mode %>" data-action="<%= formAction %>">
   <% if (isSetup) { %>
+  <div class="onboarding-progress" id="onboardingProgress" aria-live="polite">
+    <div class="onboarding-progress-head">
+      <span class="onboarding-progress-label">You're almost there &mdash; <strong id="onboardingProgressPct">20%</strong> set up</span>
+      <span class="onboarding-progress-count" id="onboardingProgressCount">1 of 5 steps done</span>
+    </div>
+    <div class="onboarding-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="20" id="onboardingProgressBar">
+      <div class="onboarding-progress-fill" id="onboardingProgressFill" style="width:20%"></div>
+    </div>
+  </div>
   <ol class="onboarding-strip" aria-label="Setup steps">
-    <li class="onboarding-step is-active"><span>1</span><strong>Scan</strong><small>Find Paperless</small></li>
-    <li class="onboarding-step"><span>2</span><strong>Token</strong><small>Paste API key</small></li>
-    <li class="onboarding-step"><span>3</span><strong>Model</strong><small>Pick default</small></li>
-    <li class="onboarding-step"><span>4</span><strong>Run</strong><small>Auto-file docs</small></li>
+    <li class="onboarding-step is-active" data-onboarding-step="start"><span><i class="fa-solid fa-check"></i></span><strong>Start</strong><small>You began setup</small></li>
+    <li class="onboarding-step" data-onboarding-step="paperless"><span>2</span><strong>Connect</strong><small>Find Paperless</small></li>
+    <li class="onboarding-step" data-onboarding-step="login"><span>3</span><strong>Login</strong><small>Local admin</small></li>
+    <li class="onboarding-step" data-onboarding-step="model"><span>4</span><strong>Model</strong><small>Pick default</small></li>
+    <li class="onboarding-step" data-onboarding-step="finish"><span>5</span><strong>Run</strong><small>Auto-file docs</small></li>
   </ol>
+  <p class="onboarding-value-hint"><i class="fa-solid fa-gift"></i> The moment you connect Paperless, Tagvico AI runs your first scan free &mdash; no credit card, no commitment.</p>
   <% } %>
 
   <fieldset class="section-fieldset stack cube-hero">
@@ -75,12 +86,13 @@
 
       <div class="field">
         <label for="paperlessUsername">Paperless username</label>
-        <input id="paperlessUsername" name="paperlessUsername" type="text" value="<%= config.PAPERLESS_USERNAME %>" placeholder="Tagvico AI" autocomplete="username">
+        <input id="paperlessUsername" name="paperlessUsername" type="text" value="<%= config.PAPERLESS_USERNAME || (isSetup ? 'Tagvico AI' : '') %>" placeholder="Tagvico AI" autocomplete="username">
+        <p class="field-hint">Recommended default &mdash; change only if you file under a different Paperless user.</p>
       </div>
 
       <div class="field">
         <label for="scanInterval">Scan interval</label>
-        <input id="scanInterval" name="scanInterval" type="text" value="<%= config.SCAN_INTERVAL %>" placeholder="*/30 * * * *" inputmode="text">
+        <input id="scanInterval" name="scanInterval" type="text" value="<%= config.SCAN_INTERVAL || (isSetup ? '*/30 * * * *' : '') %>" placeholder="*/30 * * * *" inputmode="text">
         <p class="field-hint">Cron syntax. Default scans every 30 minutes.</p>
       </div>
     </div>

@@ -20,6 +20,7 @@ class ConfigFormApp {
     this.initSecretToggles();
     this.initCodexStatus();
     this.initSubmit();
+    this.initOnboardingProgress();
   }
 
   initTagGroups() {
@@ -722,6 +723,65 @@ class ConfigFormApp {
         submit.textContent = previous;
       }
     });
+  }
+
+  // Goal-gradient onboarding progress: never starts at 0%. Simply opening the
+  // setup screen already counts as the first completed step, and the bar fills
+  // as the user connects Paperless, creates a login, and picks a model.
+  initOnboardingProgress() {
+    const bar = document.getElementById('onboardingProgressFill');
+    const pctLabel = document.getElementById('onboardingProgressPct');
+    const countLabel = document.getElementById('onboardingProgressCount');
+    const track = document.getElementById('onboardingProgressBar');
+    if (!bar || !this.form) return;
+
+    // "start" is pre-credited (goal-gradient head start).
+    const steps = [
+      { key: 'start', done: () => true },
+      { key: 'paperless', done: () => {
+        const url = document.getElementById('paperlessUrl')?.value.trim();
+        const token = document.getElementById('paperlessToken')?.value.trim();
+        return Boolean(url && token);
+      } },
+      { key: 'login', done: () => {
+        const user = document.getElementById('username')?.value.trim();
+        const pass = document.getElementById('password')?.value.trim();
+        return Boolean(user && pass);
+      } },
+      { key: 'model', done: () => Boolean(this.modelInput?.value.trim()) },
+      { key: 'finish', done: () => false }
+    ];
+    const stepNodes = new Map(
+      Array.from(document.querySelectorAll('[data-onboarding-step]'))
+        .map((node) => [node.dataset.onboardingStep, node])
+    );
+
+    const render = () => {
+      let completed = 0;
+      let firstIncomplete = null;
+      steps.forEach((step) => {
+        const isDone = step.done();
+        if (isDone) completed += 1;
+        else if (!firstIncomplete) firstIncomplete = step.key;
+        const node = stepNodes.get(step.key);
+        if (node) {
+          node.classList.toggle('is-complete', isDone);
+          node.classList.toggle('is-active', step.key === firstIncomplete);
+        }
+      });
+      // Percentage of the five steps, floored at the head-start value so the
+      // bar never drops back to zero once the page is open.
+      const pct = Math.max(20, Math.round((completed / steps.length) * 100));
+      bar.style.width = `${pct}%`;
+      if (pctLabel) pctLabel.textContent = `${pct}%`;
+      if (track) track.setAttribute('aria-valuenow', String(pct));
+      if (countLabel) {
+        countLabel.textContent = `${completed} of ${steps.length} steps done`;
+      }
+    };
+
+    ['input', 'change'].forEach((evt) => this.form.addEventListener(evt, () => render()));
+    render();
   }
 }
 

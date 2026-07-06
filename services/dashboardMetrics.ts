@@ -10,6 +10,9 @@
  */
 type MetricEntry = Record<string, unknown>;
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { estimateCost } = require('./modelPricing');
+
 interface PaperlessDashboardData {
   documentCount?: unknown;
   processedDocumentCount?: unknown;
@@ -26,6 +29,8 @@ interface OpenAiDashboardData {
   averageCompletionTokens?: unknown;
   averageTotalTokens?: unknown;
   tokensOverall?: unknown;
+  model?: unknown;
+  provider?: unknown;
 }
 
 function num(value: unknown): number {
@@ -94,6 +99,17 @@ function buildDashboardSummary(
   const tagCount = num(paperlessData.tagCount);
   const correspondentCount = num(paperlessData.correspondentCount);
 
+  // Clearly-labelled cost ESTIMATE derived from token totals and the active
+  // model's public list price. Never billed against; hidden when unavailable
+  // (no tokens tracked yet, or a free local model).
+  const cost = estimateCost({
+    promptTotal,
+    completionTotal,
+    metricCount,
+    model: openaiData.model,
+    provider: openaiData.provider
+  });
+
   return {
     counts: {
       documents: documentCount,
@@ -114,6 +130,7 @@ function buildDashboardSummary(
       completionPct,
       promptRatio
     },
+    cost,
     today,
     topDocumentTypes,
     tokenDistribution
