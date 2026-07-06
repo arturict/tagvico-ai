@@ -2,7 +2,14 @@
   const s = summary || {};
   const counts = s.counts || { documents: 0, processed: 0, remaining: 0, processedPct: 0, tags: 0, correspondents: 0 };
   const tokens = s.tokens || { avgPrompt: 0, avgCompletion: 0, avgTotal: 0, overall: 0, promptPct: 0, completionPct: 0, promptRatio: 0 };
+  const cost = s.cost || { available: false, isEstimate: true, source: 'none', model: '', currency: 'USD', rate: { input: 0, output: 0 }, inputCost: 0, outputCost: 0, total: 0, perDocument: 0 };
   const hasMetrics = tokens.overall > 0 || tokens.avgTotal > 0;
+  const fmtUsd = (value, digits = 2) => `$${Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
+  const fmtCents = (value) => {
+    const n = Number(value || 0);
+    if (n > 0 && n < 0.01) return '<$0.01';
+    return fmtUsd(n, n < 1 ? 4 : 2);
+  };
   const dashboardJson = JSON.stringify(summary || {})
     .replace(/</g, '\\u003c')
     .replace(/\u2028/g, '\\u2028')
@@ -38,6 +45,17 @@
         <div class="kpi-value" id="processingToday">0</div>
         <div class="kpi-context">From scheduled and manual scans since midnight.</div>
       </article>
+      ${cost.available ? `
+      <article class="kpi">
+        <div class="kpi-label">Estimated spend${cost.isEstimate ? ' *' : ''}</div>
+        <div class="kpi-value">${fmtUsd(cost.total)}</div>
+        <div class="kpi-context"><strong>${fmtCents(cost.perDocument)}</strong> / document &middot; ${cost.model}</div>
+      </article>` : `
+      <article class="kpi">
+        <div class="kpi-label">Estimated spend</div>
+        <div class="kpi-value">&mdash;</div>
+        <div class="kpi-context">${counts.correspondents >= 0 ? 'No billable model usage tracked yet.' : ''}</div>
+      </article>`}
       <article class="kpi">
         <div class="kpi-label">Tags in Paperless</div>
         <div class="kpi-value">${counts.tags.toLocaleString()}</div>
@@ -127,19 +145,30 @@
       <article class="card chart-card span-4" aria-label="Token efficiency">
         <div class="chart-head">
           <div>
-            <div class="chart-title">Token efficiency</div>
-            <div class="chart-sub">Averages across all tracked analyses.</div>
+            <div class="chart-title">Cost &amp; efficiency</div>
+            <div class="chart-sub">Estimated spend and token averages per document.</div>
           </div>
         </div>
         ${
           hasMetrics
           ? `
           <div class="kpi" style="box-shadow:none;border-color:transparent;background:var(--bg-strong);">
+            ${cost.available ? `
+            <div class="kpi-label">Estimated total${cost.isEstimate ? ' *' : ''}</div>
+            <div class="kpi-value">${fmtUsd(cost.total)}</div>
+            <div class="kpi-context"><strong>${fmtCents(cost.perDocument)}</strong> / document &middot; ${cost.model}</div>
+            <div class="chart-legend" style="margin-top:0.5rem;">
+              <span class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>Input ${fmtCents(cost.inputCost)}</span>
+              <span class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Output ${fmtCents(cost.outputCost)}</span>
+            </div>
+            <div class="kpi-context" style="margin-top:0.5rem;">Avg ${Math.round(tokens.avgTotal).toLocaleString()} tokens/doc &middot; ${tokens.promptPct}% prompt / ${tokens.completionPct}% completion</div>
+            ${cost.isEstimate ? `<div class="kpi-context" style="opacity:0.75;">* Estimate at $${cost.rate.input}/$${cost.rate.output} per 1M input/output tokens. Actual provider billing may differ.</div>` : ''}
+            ` : `
             <div class="kpi-label">Avg tokens / document</div>
             <div class="kpi-value">${Math.round(tokens.avgTotal).toLocaleString()}</div>
             <div class="kpi-context">Prompt ${Math.round(tokens.avgPrompt).toLocaleString()} &middot; Completion ${Math.round(tokens.avgCompletion).toLocaleString()}</div>
-            <div class="kpi-context"><strong>${tokens.promptPct}%</strong> prompt &middot; <strong>${tokens.completionPct}%</strong> completion</div>
-            <div class="kpi-context">Total tracked: <strong>${tokens.overall.toLocaleString()}</strong> tokens</div>
+            <div class="kpi-context">Total tracked: <strong>${tokens.overall.toLocaleString()}</strong> tokens &middot; local model, no cost</div>
+            `}
           </div>`
           : `<div class="empty-state"><span class="empty-title">No token metrics yet</span><span>Run a scan to start collecting per-document token usage.</span></div>`
         }

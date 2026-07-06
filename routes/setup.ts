@@ -2877,7 +2877,9 @@ router.get('/dashboard', async (req: Req, res: Res) => {
     averageCompletionTokens,
     averageTotalTokens,
     tokensOverall,
-    metricCount: metrics.length
+    metricCount: metrics.length,
+    model: configFile.aiModel,
+    provider: configFile.aiProvider
   };
   const summary = dashboardMetrics.buildDashboardSummary(paperless_data, openai_data);
   const version = configFile.TAGVICO_AI_VERSION || ' ';
