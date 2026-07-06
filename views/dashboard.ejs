@@ -10,6 +10,10 @@
     if (n > 0 && n < 0.01) return '<$0.01';
     return fmtUsd(n, n < 1 ? 4 : 2);
   };
+  const escapeHtml = (value) => String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  const costModel = escapeHtml(cost.model);
   const dashboardJson = JSON.stringify(summary || {})
     .replace(/</g, '\\u003c')
     .replace(/\u2028/g, '\\u2028')
@@ -49,7 +53,7 @@
       <article class="kpi">
         <div class="kpi-label">Estimated spend${cost.isEstimate ? ' *' : ''}</div>
         <div class="kpi-value">${fmtUsd(cost.total)}</div>
-        <div class="kpi-context"><strong>${fmtCents(cost.perDocument)}</strong> / document &middot; ${cost.model}</div>
+        <div class="kpi-context"><strong>${fmtCents(cost.perDocument)}</strong> / document &middot; ${costModel}</div>
       </article>` : `
       <article class="kpi">
         <div class="kpi-label">Estimated spend</div>
@@ -156,14 +160,14 @@
             ${cost.available ? `
             <div class="kpi-label">Estimated total${cost.isEstimate ? ' *' : ''}</div>
             <div class="kpi-value">${fmtUsd(cost.total)}</div>
-            <div class="kpi-context"><strong>${fmtCents(cost.perDocument)}</strong> / document &middot; ${cost.model}</div>
+            <div class="kpi-context"><strong>${fmtCents(cost.perDocument)}</strong> / document &middot; ${costModel}</div>
             <div class="chart-legend" style="margin-top:0.5rem;">
               <span class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>Input ${fmtCents(cost.inputCost)}</span>
               <span class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Output ${fmtCents(cost.outputCost)}</span>
             </div>
-            ${cost.savings > 0 ? `<div class="cost-anchor"><span>Manual filing would cost about <s>${fmtUsd(cost.manualEquivalent)}</s></span><strong>You saved ${fmtUsd(cost.savings)}</strong></div>` : ''}
+            ${cost.savings > 0 ? `<div class="cost-anchor"><span>Manual filing (~$1/doc) would cost about <s>${fmtUsd(cost.manualEquivalent)}</s></span><strong>≈ ${fmtUsd(cost.savings)} saved</strong></div>` : ''}
             <div class="kpi-context" style="margin-top:0.5rem;">Avg ${Math.round(tokens.avgTotal).toLocaleString()} tokens/doc &middot; ${tokens.promptPct}% prompt / ${tokens.completionPct}% completion</div>
-            ${cost.isEstimate ? `<div class="kpi-context" style="opacity:0.75;">* Estimate at $${cost.rate.input}/$${cost.rate.output} per 1M input/output tokens. Actual provider billing may differ.</div>` : ''}
+            <div class="kpi-context" style="opacity:0.75;">${cost.isEstimate ? '*' : 'Based on'} list price $${cost.rate.input}/$${cost.rate.output} per 1M input/output tokens. Actual provider billing may differ.</div>
             ` : `
             <div class="kpi-label">Avg tokens / document</div>
             <div class="kpi-value">${Math.round(tokens.avgTotal).toLocaleString()}</div>

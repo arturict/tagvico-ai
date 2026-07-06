@@ -45,3 +45,13 @@ test('resolvePrice prefers the live catalog and flags it as non-estimate', () =>
 test.after(() => {
   try { fs.unlinkSync(cachePath); } catch { /* ignore */ }
 });
+
+test('catalog labels from the cache never contain raw HTML markup', () => {
+  // Labels surface on the dashboard inside a raw HTML string; a sanitized
+  // catalog must not carry angle brackets/quotes through to lookups.
+  for (const key of ['gpt-5.4-mini', 'grok-4', 'deepseek-chat']) {
+    const entry = catalog.lookupPrice(key);
+    assert.ok(entry, `expected a catalog entry for ${key}`);
+    assert.doesNotMatch(entry.label, /[<>"'`]/);
+  }
+});

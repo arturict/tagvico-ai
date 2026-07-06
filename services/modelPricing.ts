@@ -38,6 +38,12 @@ interface PricebookEntry extends ModelPrice {
 }
 
 // USD per 1M tokens (input / output). Snapshot of public list prices.
+//
+// NOTE: This is only an OFFLINE SAFETY NET. At runtime, prices are resolved
+// live from models.dev via ./pricingCatalog and take precedence. This table is
+// consulted only when the dynamic catalog has no entry (e.g. no cache yet /
+// offline), so it does not need routine maintenance - it just guarantees the
+// most common models still price sensibly without a network connection.
 const PRICEBOOK: PricebookEntry[] = [
   { match: 'gpt-5.6-luna', label: 'GPT-5.6 Luna', input: 1, output: 6 },
   { match: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', input: 2.5, output: 15 },
@@ -76,6 +82,12 @@ const PRICEBOOK: PricebookEntry[] = [
 // use: assume an affordable "mini/flash" class model so estimates stay in the
 // right order of magnitude rather than defaulting to an expensive flagship.
 const FALLBACK_PRICE: ModelPrice = { input: 0.3, output: 1.2 };
+
+// Hypothetical cost of manually sorting, tagging and filing a single document
+// (~2 minutes of attention at a modest hourly rate). Used purely as a contrast
+// anchor on the dashboard ("manual filing would cost about ...") so the tiny AI
+// spend becomes legible. Tune here if you want a different reference rate.
+const MANUAL_COST_PER_DOCUMENT_USD = 1;
 
 type PriceSource = 'live' | 'known' | 'local' | 'fallback';
 
@@ -187,11 +199,8 @@ function estimateCost(data: CostInput = {}): CostSummary {
   // Nothing worth surfacing: no tokens, or a genuinely free local model.
   const available = promptTotal + completionTotal > 0 && total > 0;
 
-  // Contrast/anchor value: manually sorting, tagging and filing a document is
-  // conservatively ~2 minutes of attention. At a modest $30/h that is $1.00 per
-  // document. Anchoring the AI cost against this makes the true spend legible.
-  const MANUAL_COST_PER_DOCUMENT = 1;
-  const manualEquivalent = metricCount * MANUAL_COST_PER_DOCUMENT;
+  // Contrast/anchor value (clearly hypothetical): see MANUAL_COST_PER_DOCUMENT_USD.
+  const manualEquivalent = metricCount * MANUAL_COST_PER_DOCUMENT_USD;
   const savings = Math.max(manualEquivalent - total, 0);
 
   return {

@@ -36,6 +36,9 @@ interface CatalogFile {
 const SOURCE_URL = 'https://models.dev/api.json';
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
 const FETCH_TIMEOUT_MS = 8000;
+// Hard ceiling on the response body so a misbehaving/hijacked endpoint cannot
+// stream unbounded data into memory. The real payload is ~3 MB today.
+const MAX_RESPONSE_BYTES = 15 * 1024 * 1024; // 15 MB
 
 const dataDir = path.join(process.cwd(), 'data');
 const cachePath = path.join(dataDir, 'model-pricing-cache.json');
@@ -49,6 +52,14 @@ function normalizeKey(modelId: string): string {
     .trim()
     .replace(/^[a-z0-9.-]+\//, '')
     .replace(/:[a-z0-9-]+$/, '');
+}
+
+// The model label surfaces on the dashboard inside a raw HTML string, and on
+// the live path it originates from a third-party API (models.dev). Strip any
+// angle brackets/quotes so a malformed or hostile label can never inject markup.
+function sanitizeLabel(value: unknown, fallback: string): string {
+  const text = String(value ?? '').replace(/[<>"'`]/g, '').trim();
+  return text || fallback;
 }
 
 function toPrice(value: unknown): number {
@@ -77,12 +88,13 @@ function buildCatalog(raw: unknown): Record<string, CatalogEntry> {
       if (!Number.isFinite(input) || !Number.isFinite(output)) continue;
 
       const label = String((model as { name?: unknown })?.name || modelId);
+      const safeLabel = sanitizeLabel(label, modelId);
       const key = normalizeKey(modelId);
       if (!key) continue;
 
       const existing = models[key];
       if (!existing || input < existing.input) {
-        models[key] = { input, output, label };
+        models[key] = { input, output, label: safeLabel };
       }
     }
   }
@@ -119,7 +131,15 @@ function fetchRaw(url: string): Promise<unknown> {
       }
       let body = '';
       response.setEncoding('utf8');
-      response.on('data', (chunk) => { body += chunk; });
+      let bytes = 0;
+      response.on('data', (chunk) => {
+        bytes += Buffer.byteLength(chunk, 'utf8');
+        if (bytes > MAX_RESPONSE_BYTES) {
+          request.destroy(new Error('Pricing response exceeded size limit'));
+          return;
+        }
+        body += chunk;
+      });
       response.on('end', () => {
         try { resolve(JSON.parse(body)); }
         catch (error) { reject(error); }
