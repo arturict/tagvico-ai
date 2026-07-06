@@ -386,6 +386,28 @@ textarea:focus {
   box-shadow: var(--shadow);
 }
 
+.card {
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+@media (min-width: 900px) {
+  .chart-card:hover,
+  .kpi:hover {
+    transform: translate(-2px, -2px);
+    box-shadow: 10px 10px 0 color-mix(in srgb, var(--accent) 16%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card,
+  .chart-card:hover,
+  .kpi:hover {
+    transition: none;
+    transform: none;
+  }
+}
+
 .cube-hero {
   position: relative;
   overflow: hidden;
@@ -1098,6 +1120,8 @@ kbd { padding: 0.16rem 0.38rem; border: 1px solid var(--border); border-bottom-w
   font-size: 2rem;
   font-weight: 700;
   line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 .kpi .kpi-context {
@@ -1137,6 +1161,11 @@ kbd { padding: 0.16rem 0.38rem; border: 1px solid var(--border); border-bottom-w
   height: 280px;
 }
 
+.chart-canvas.empty-state {
+  height: 280px;
+  align-content: center;
+}
+
 .chart-legend {
   display: flex;
   flex-wrap: wrap;
@@ -1155,6 +1184,7 @@ kbd { padding: 0.16rem 0.38rem; border: 1px solid var(--border); border-bottom-w
   height: 12px;
   border-radius: 3px;
   display: inline-block;
+  flex: 0 0 auto;
 }
 
 .empty-state {

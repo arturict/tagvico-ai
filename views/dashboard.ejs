@@ -58,7 +58,7 @@
             <div class="chart-sub">Completed vs remaining documents visible to Tagvico AI.</div>
           </div>
         </div>
-        <div class="chart-canvas"><canvas id="processingChart"></canvas></div>
+        <div class="chart-canvas" id="processingChart"></div>
         <div id="processingLegend" class="chart-legend" aria-hidden="true"></div>
       </article>
 
@@ -89,7 +89,7 @@
             <div class="chart-sub">Prompt vs completion share of all tracked tokens.</div>
           </div>
         </div>
-        <div class="chart-canvas" style="height:220px;"><canvas id="tokenMixChart"></canvas></div>
+        <div class="chart-canvas" id="tokenMixChart" style="height:220px;"></div>
         <div id="tokenMixLegend" class="chart-legend" aria-hidden="true"></div>
       </article>
 
@@ -100,7 +100,7 @@
             <div class="chart-sub">Documents grouped by total tokens per analysis.</div>
           </div>
         </div>
-        <div class="chart-canvas" style="height:220px;"><canvas id="tokenDistributionChart"></canvas></div>
+        <div class="chart-canvas" id="tokenDistributionChart" style="height:220px;"></div>
       </article>
 
       <article class="card chart-card span-4" aria-label="Document type distribution">
@@ -110,7 +110,7 @@
             <div class="chart-sub">Top types among processed documents.</div>
           </div>
         </div>
-        <div class="chart-canvas" style="height:220px;"><canvas id="documentTypeChart"></canvas></div>
+        <div class="chart-canvas" id="documentTypeChart" style="height:220px;"></div>
       </article>
 
       <article class="card chart-card span-8" aria-label="Today throughput">
@@ -121,7 +121,7 @@
           </div>
           <div class="chart-sub"><strong id="todayTotal">${(s.today && s.today.total) ? s.today.total.toLocaleString() : '0'}</strong> today</div>
         </div>
-        <div class="chart-canvas"><canvas id="timelineChart"></canvas></div>
+        <div class="chart-canvas" id="timelineChart"></div>
       </article>
 
       <article class="card chart-card span-4" aria-label="Token efficiency">
