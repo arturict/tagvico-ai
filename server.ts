@@ -764,6 +764,13 @@ async function startServer() {
     const recovered = await ocrService.recoverInterruptedJobs();
     if (recovered) console.log(`[OCR] Recovered ${recovered} interrupted job(s)`);
     await saveOpenApiSpec(); // Save OpenAPI specification on startup
+    // Warm the dynamic model-pricing catalog (models.dev) in the background so
+    // the dashboard cost estimate uses live prices. Non-blocking and offline-safe.
+    try {
+      require('./services/pricingCatalog').warmUp();
+    } catch (error) {
+      console.warn('[WARNING] Could not warm model pricing catalog:', error instanceof Error ? error.message : String(error));
+    }
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);
       startScanning();

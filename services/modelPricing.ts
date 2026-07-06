@@ -3,6 +3,11 @@
 /**
  * Best-effort token pricing for the models Tagvico AI commonly talks to.
  *
+ * Live prices are pulled from models.dev via ./pricingCatalog (cached on disk,
+ * refreshed in the background, offline-safe). This module keeps a curated
+ * static price book as a fallback for when the dynamic catalog has no entry or
+ * cannot be fetched yet.
+ *
  * Prices are USD per 1,000,000 tokens, split into input (prompt) and output
  * (completion) rates because output tokens are typically several times more
  * expensive than input tokens. Values are intentionally conservative,
@@ -15,6 +20,9 @@
  * still resolve to the right family. Local models (Ollama) resolve to a $0
  * entry so self-hosted setups correctly show no spend.
  */
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pricingCatalog = require('./pricingCatalog');
 
 interface ModelPrice {
   /** USD per 1,000,000 input/prompt tokens. */
@@ -69,7 +77,7 @@ const PRICEBOOK: PricebookEntry[] = [
 // right order of magnitude rather than defaulting to an expensive flagship.
 const FALLBACK_PRICE: ModelPrice = { input: 0.3, output: 1.2 };
 
-type PriceSource = 'known' | 'local' | 'fallback';
+type PriceSource = 'live' | 'known' | 'local' | 'fallback';
 
 interface ResolvedPrice {
   input: number;
@@ -104,6 +112,17 @@ function resolvePrice(model: unknown, provider?: unknown): ResolvedPrice {
 
   if (isLocalModel(provider, normalized)) {
     return { input: 0, output: 0, label: 'Local model', source: 'local' };
+  }
+
+  // Prefer the live models.dev catalog (cached, offline-safe). Falls through to
+  // the curated static book below when the catalog has no entry yet.
+  try {
+    const live = pricingCatalog.lookupPrice(model);
+    if (live && (live.input > 0 || live.output > 0)) {
+      return { input: live.input, output: live.output, label: live.label, source: 'live' };
+    }
+  } catch {
+    // never let a catalog error break cost rendering
   }
 
   if (normalized) {
@@ -177,7 +196,7 @@ function estimateCost(data: CostInput = {}): CostSummary {
 
   return {
     available,
-    isEstimate: resolved.source !== 'known',
+    isEstimate: resolved.source === 'fallback',
     source: available ? resolved.source : 'none',
     model: resolved.label,
     currency: 'USD',
