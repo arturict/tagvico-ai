@@ -112,7 +112,7 @@ code {
 
 .onboarding-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0.8rem;
 }
 
@@ -144,6 +144,74 @@ code {
 .onboarding-step.is-active {
   background: var(--accent-soft);
   border-color: var(--accent);
+}
+
+.onboarding-step.is-complete span {
+  background: var(--success);
+}
+
+.onboarding-progress {
+  display: grid;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.onboarding-progress-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.onboarding-progress-label {
+  font-size: 0.95rem;
+}
+
+.onboarding-progress-label strong {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.onboarding-progress-count {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.onboarding-progress-track {
+  height: 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-strong);
+  overflow: hidden;
+}
+
+.onboarding-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 70%, transparent), var(--accent));
+  border-radius: 999px;
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  min-width: 8%;
+}
+
+.onboarding-value-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  margin: 0.2rem 0 0;
+}
+
+.onboarding-value-hint i {
+  color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-progress-fill {
+    transition: none;
+  }
 }
 
 input:focus,
@@ -1202,6 +1270,33 @@ kbd { padding: 0.16rem 0.38rem; border: 1px solid var(--border); border-bottom-w
 .empty-state .empty-title {
   color: var(--text);
   font-weight: 700;
+}
+
+.cost-anchor {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 0.6rem;
+  padding-top: 0.6rem;
+  border-top: 1px dashed var(--border);
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
+.cost-anchor s {
+  color: var(--muted);
+}
+
+.cost-anchor strong {
+  color: var(--success);
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi-warn {
+  color: var(--warning);
+  font-weight: 600;
 }
 
 .runner-card {

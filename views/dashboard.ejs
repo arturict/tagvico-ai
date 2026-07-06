@@ -38,7 +38,7 @@
       <article class="kpi">
         <div class="kpi-label">Processed</div>
         <div class="kpi-value">${counts.processed.toLocaleString()}</div>
-        <div class="kpi-context"><strong>${counts.processedPct}%</strong> of ${counts.documents.toLocaleString()} visible &middot; ${counts.remaining.toLocaleString()} remaining</div>
+        <div class="kpi-context"><strong>${counts.processedPct}%</strong> of ${counts.documents.toLocaleString()} visible${counts.remaining > 0 ? ` &middot; <span class="kpi-warn">${counts.remaining.toLocaleString()} still unfiled and waiting</span>` : ' &middot; all caught up'}</div>
       </article>
       <article class="kpi">
         <div class="kpi-label">Processed today</div>
@@ -161,6 +161,7 @@
               <span class="legend-item"><span class="legend-dot" style="background:#8b5cf6"></span>Input ${fmtCents(cost.inputCost)}</span>
               <span class="legend-item"><span class="legend-dot" style="background:#22c55e"></span>Output ${fmtCents(cost.outputCost)}</span>
             </div>
+            ${cost.savings > 0 ? `<div class="cost-anchor"><span>Manual filing would cost about <s>${fmtUsd(cost.manualEquivalent)}</s></span><strong>You saved ${fmtUsd(cost.savings)}</strong></div>` : ''}
             <div class="kpi-context" style="margin-top:0.5rem;">Avg ${Math.round(tokens.avgTotal).toLocaleString()} tokens/doc &middot; ${tokens.promptPct}% prompt / ${tokens.completionPct}% completion</div>
             ${cost.isEstimate ? `<div class="kpi-context" style="opacity:0.75;">* Estimate at $${cost.rate.input}/$${cost.rate.output} per 1M input/output tokens. Actual provider billing may differ.</div>` : ''}
             ` : `

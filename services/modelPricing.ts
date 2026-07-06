@@ -31,6 +31,14 @@ interface PricebookEntry extends ModelPrice {
 
 // USD per 1M tokens (input / output). Snapshot of public list prices.
 const PRICEBOOK: PricebookEntry[] = [
+  { match: 'gpt-5.6-luna', label: 'GPT-5.6 Luna', input: 1, output: 6 },
+  { match: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', input: 2.5, output: 15 },
+  { match: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', input: 5, output: 30 },
+  { match: 'gpt-5.5-pro', label: 'GPT-5.5 Pro', input: 30, output: 120 },
+  { match: 'gpt-5.5', label: 'GPT-5.5', input: 2.5, output: 15 },
+  { match: 'gpt-5.4-nano', label: 'GPT-5.4 nano', input: 0.2, output: 1.25 },
+  { match: 'gpt-5.4-mini', label: 'GPT-5.4 mini', input: 0.75, output: 4.5 },
+  { match: 'gpt-5.4', label: 'GPT-5.4', input: 2.5, output: 15 },
   { match: 'gpt-4o-mini', label: 'GPT-4o mini', input: 0.15, output: 0.6 },
   { match: 'gpt-4o', label: 'GPT-4o', input: 2.5, output: 10 },
   { match: 'gpt-4.1-mini', label: 'GPT-4.1 mini', input: 0.4, output: 1.6 },
@@ -131,6 +139,9 @@ interface CostSummary {
   outputCost: number;
   total: number;
   perDocument: number;
+  // Contrast anchor: what the same filing would plausibly cost if done by hand.
+  manualEquivalent: number;
+  savings: number;
 }
 
 function toNumber(value: unknown): number {
@@ -157,6 +168,13 @@ function estimateCost(data: CostInput = {}): CostSummary {
   // Nothing worth surfacing: no tokens, or a genuinely free local model.
   const available = promptTotal + completionTotal > 0 && total > 0;
 
+  // Contrast/anchor value: manually sorting, tagging and filing a document is
+  // conservatively ~2 minutes of attention. At a modest $30/h that is $1.00 per
+  // document. Anchoring the AI cost against this makes the true spend legible.
+  const MANUAL_COST_PER_DOCUMENT = 1;
+  const manualEquivalent = metricCount * MANUAL_COST_PER_DOCUMENT;
+  const savings = Math.max(manualEquivalent - total, 0);
+
   return {
     available,
     isEstimate: resolved.source !== 'known',
@@ -167,7 +185,9 @@ function estimateCost(data: CostInput = {}): CostSummary {
     inputCost,
     outputCost,
     total,
-    perDocument
+    perDocument,
+    manualEquivalent,
+    savings
   };
 }
 

@@ -52,6 +52,24 @@ test('cost estimate multiplies token totals by per-1M rates and derives per-docu
   assert.equal(Math.round(cost.perDocument * 1000) / 1000, 0.009);
 });
 
+test('cost estimate anchors against a manual-filing equivalent and derives savings', () => {
+  const cost = estimateCost({ promptTotal: 2_000_000, completionTotal: 1_000_000, metricCount: 100, model: 'gpt-4o-mini', provider: 'openai' });
+  // 100 documents * $1.00 manual equivalent
+  assert.equal(cost.manualEquivalent, 100);
+  // savings = manual - AI total (0.9), never negative
+  assert.equal(Math.round(cost.savings * 100) / 100, 99.1);
+});
+
+test('gpt-5.4-mini resolves to its known price and is the default OpenAI-family estimate', () => {
+  const price = resolvePrice('gpt-5.4-mini', 'openai');
+  assert.equal(price.label, 'GPT-5.4 mini');
+  assert.equal(price.source, 'known');
+  assert.equal(price.input, 0.75);
+  assert.equal(price.output, 4.5);
+  // must not collapse into the shorter "gpt-5" entry
+  assert.notEqual(resolvePrice('openai/gpt-5.4-mini').label, 'GPT-5');
+});
+
 test('cost estimate is unavailable for free local models and when no tokens exist', () => {
   const local = estimateCost({ promptTotal: 1_000_000, completionTotal: 1_000_000, metricCount: 5, model: 'llama3.1', provider: 'ollama' });
   assert.equal(local.available, false);

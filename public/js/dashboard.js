@@ -261,7 +261,7 @@ class DashboardPage {
       animationEasing: 'cubicOut',
       tooltip: this.tooltipStyle({
         trigger: 'item',
-        formatter: (params) => `${params.marker}${params.name}: <strong>${Number(params.value).toLocaleString()}</strong> (${params.percent}%)`
+        formatter: (params) => `${params.marker}${this.escapeHtml(params.name)}: <strong>${Number(params.value).toLocaleString()}</strong> (${params.percent}%)`
       }),
       legend: {
         bottom: 0,
