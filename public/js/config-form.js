@@ -106,13 +106,20 @@ class ConfigFormApp {
       const exceptionData = await exceptionResponse.json();
       const unmanagedData = await unmanagedResponse.json();
       const enabledGroups = (exceptionData.groups || []).filter((group) => group.enabled);
-      exceptionRoot.innerHTML = `<h3>Pending tag exceptions</h3>${(exceptionData.exceptions || []).map((item) => `
-        <div class="choice-card" data-exception="${item.id}"><strong>${this.escapeHtml(item.suggested_name)}</strong>
-        <span>${this.escapeHtml(item.document?.title || `Document ${item.document_id}`)} · ${this.escapeHtml(item.created_at)}</span>
-        <small>Current valid tags: ${this.escapeHtml((item.currentValidTags || []).join(', ') || 'none')}</small>
-        <select data-exception-group><option value="">Choose destination group</option>${enabledGroups.map((group) => `<option value="${this.escapeHtml(group.id)}">${this.escapeHtml(group.name)}</option>`).join('')}</select>
-        <button type="button" class="button-secondary" data-approve-exception>Approve</button>
-        <button type="button" class="button-danger" data-reject-exception>Reject</button></div>`).join('') || '<p class="field-hint">No pending exceptions.</p>';
+      const exceptionRows = (exceptionData.exceptions || []).map((item) => {
+        const groupOptions = enabledGroups.map((group) =>
+          `<option value="${this.escapeHtml(group.id)}">${this.escapeHtml(group.name)}</option>`
+        ).join('');
+        const title = item.document?.title || `Document ${item.document_id}`;
+        return `
+          <div class="choice-card" data-exception="${item.id}"><strong>${this.escapeHtml(item.suggested_name)}</strong>
+          <span>${this.escapeHtml(title)} · ${this.escapeHtml(item.created_at)}</span>
+          <small>Current valid tags: ${this.escapeHtml((item.currentValidTags || []).join(', ') || 'none')}</small>
+          <select data-exception-group><option value="">Choose destination group</option>${groupOptions}</select>
+          <button type="button" class="button-secondary" data-approve-exception>Approve</button>
+          <button type="button" class="button-danger" data-reject-exception>Reject</button></div>`;
+      }).join('');
+      exceptionRoot.innerHTML = `<h3>Pending tag exceptions</h3>${exceptionRows || '<p class="field-hint">No pending exceptions.</p>'}`;
       unmanagedRoot.innerHTML = `<h3>Unmanaged Paperless tags</h3>${(unmanagedData.tags || []).map((tag) => `<label class="choice-card"><input type="checkbox" data-unmanaged-id="${tag.id}" ${Number(tag.document_count) ? 'disabled' : ''}> ${this.escapeHtml(tag.name)} <span class="badge">${Number(tag.document_count || 0)} documents</span></label>`).join('') || '<p class="field-hint">No unmanaged tags.</p>'}<button type="button" class="button-danger" id="cleanupUnmanaged">Delete selected zero-use tags</button>`;
       exceptionRoot.onclick = async (event) => {
         const row = event.target.closest('[data-exception]'); if (!row) return;

@@ -2334,6 +2334,22 @@ async function probePaperlessInstance(baseUrl: string, timeout = 2500, token = '
       };
     }
 
+    // When a token was explicitly provided but the server rejected it, report
+    // failure immediately instead of falling through to the discovery path that
+    // would flag the instance as "reachable / needs auth" (ok: true).
+    if (token && (response.status === 401 || response.status === 403)) {
+      return {
+        url,
+        ok: false,
+        status: response.status,
+        version,
+        apiVersion,
+        requiresAuth: true,
+        authenticated: false,
+        error: `Authentication failed (HTTP ${response.status}). The API token is invalid or lacks permissions.`
+      };
+    }
+
     // Signal 2: /api/ redirects to the DRF schema view (Paperless-ngx behaviour).
     if (!looksLikePaperless && response.status >= 300 && response.status < 400 &&
         /schema/i.test(location)) {
