@@ -149,9 +149,11 @@ class SetupService {
     }
   }
 
-  async getOllamaModels(url) {
+  async getOllamaModels(url, apiKey = '') {
     try {
-      const response = await axios.get(`${url.replace(/\/$/, '')}/api/tags`);
+      const response = await axios.get(`${url.replace(/\/$/, '')}/api/tags`, {
+        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined
+      });
       return Array.isArray(response.data?.models) ? response.data.models : [];
     } catch (error) {
       console.error('Failed to fetch Ollama models:', error.message);
@@ -161,12 +163,14 @@ class SetupService {
 
 
 
-  async validateOllamaConfig(url, model) {
+  async validateOllamaConfig(url, model, apiKey = '') {
     try {
       const response = await axios.post(`${url}/api/generate`, {
         model: model || 'llama3.2',
         prompt: 'Test',
         stream: false
+      }, {
+        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined
       });
       return response.data && response.data.response;
     } catch (error) {
@@ -219,7 +223,7 @@ class SetupService {
     if (aiProvider === 'openrouter') {
       const openRouterValid = await this.validateOpenRouterConfig(
         config.OPENROUTER_API_KEY || config.OPENAI_API_KEY,
-        config.OPENROUTER_MODEL || config.AI_MODEL || 'openai/gpt-5.4-nano'
+        config.OPENROUTER_MODEL || config.AI_MODEL || 'openai/gpt-5.4-mini'
       );
       if (!openRouterValid) {
         throw new Error('Invalid OpenRouter configuration');
@@ -236,6 +240,24 @@ class SetupService {
       );
       if (!ollamaValid) {
         throw new Error('Invalid Ollama configuration');
+      }
+    } else if (aiProvider === 'ollama-cloud') {
+      const ollamaCloudValid = await this.validateOllamaConfig(
+        config.OLLAMA_CLOUD_API_URL || 'https://ollama.com',
+        config.OLLAMA_CLOUD_MODEL,
+        config.OLLAMA_CLOUD_API_KEY || config.OLLAMA_API_KEY
+      );
+      if (!ollamaCloudValid) {
+        throw new Error('Invalid Ollama Cloud configuration');
+      }
+    } else if (aiProvider === 'opencode') {
+      const opencodeValid = await this.validateCustomConfig(
+        config.OPENCODE_BASE_URL || 'https://console.opencode.ai/inference/openai/v1',
+        config.OPENCODE_API_KEY,
+        config.OPENCODE_MODEL
+      );
+      if (!opencodeValid) {
+        throw new Error('Invalid OpenCode Go configuration');
       }
     } else if (aiProvider === 'compatible' || aiProvider === 'custom') {
       const customValid = await this.validateCustomConfig(

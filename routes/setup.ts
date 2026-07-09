@@ -10,6 +10,7 @@ const azureService = require('../services/azureService.js');
 const anthropicService = require('../services/anthropicService.js');
 const codexService = require('../services/codexService.js');
 const codexAuthService = require('../services/codexAuthService.js');
+const copilotService = require('../services/copilotService.js');
 const documentModel = require('../models/document.js');
 const AIServiceFactory = require('../services/aiServiceFactory');
 const debugService = require('../services/debugService.js');
@@ -1718,6 +1719,7 @@ function resetRuntimeServices() {
   azureService.reset?.();
   anthropicService.reset?.();
   codexService.reset?.();
+  copilotService.reset?.();
   customService.reset?.();
 }
 
@@ -1782,13 +1784,21 @@ function buildConfigForSave(payload, options = {}) {
     OPENROUTER_BASE_URL: process.env.OPENROUTER_BASE_URL || currentConfig.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
     OPENROUTER_MODEL: providerPayload.provider === 'openrouter' ? providerPayload.selectedModel : currentConfig.OPENROUTER_MODEL || providerPayload.selectedModel,
     OPENAI_API_KEY: providerPayload.provider === 'openai' ? providerPayload.openaiApiKey : currentConfig.OPENAI_API_KEY || '',
-    OPENAI_MODEL: providerPayload.provider === 'openai' ? providerPayload.selectedModel : currentConfig.OPENAI_MODEL || 'gpt-4o-mini',
+    OPENAI_MODEL: providerPayload.provider === 'openai' ? providerPayload.selectedModel : currentConfig.OPENAI_MODEL || 'gpt-5.4-mini',
     ANTHROPIC_API_KEY: providerPayload.provider === 'anthropic' ? providerPayload.anthropicApiKey : currentConfig.ANTHROPIC_API_KEY || '',
     ANTHROPIC_MODEL: providerPayload.provider === 'anthropic' ? providerPayload.selectedModel : currentConfig.ANTHROPIC_MODEL || 'claude-haiku-4-5',
     CODEX_MODEL: providerPayload.provider === 'codex' ? providerPayload.selectedModel : currentConfig.CODEX_MODEL || 'gpt-5.4-mini',
     AI_PROCESSING_MODE: ['standard', 'flex', 'batch'].includes(payload.aiProcessingMode) ? payload.aiProcessingMode : (currentConfig.AI_PROCESSING_MODE || 'standard'),
     OLLAMA_API_URL: providerPayload.ollamaUrl || currentConfig.OLLAMA_API_URL || 'http://localhost:11434',
     OLLAMA_MODEL: providerPayload.provider === 'ollama' ? providerPayload.selectedModel : currentConfig.OLLAMA_MODEL || 'llama3.2',
+    OLLAMA_CLOUD_API_KEY: providerPayload.provider === 'ollama-cloud' ? providerPayload.ollamaCloudApiKey : currentConfig.OLLAMA_CLOUD_API_KEY || '',
+    OLLAMA_CLOUD_API_URL: providerPayload.ollamaCloudUrl || currentConfig.OLLAMA_CLOUD_API_URL || 'https://ollama.com',
+    OLLAMA_CLOUD_MODEL: providerPayload.provider === 'ollama-cloud' ? providerPayload.selectedModel : currentConfig.OLLAMA_CLOUD_MODEL || 'gpt-oss:20b-cloud',
+    OPENCODE_API_KEY: providerPayload.provider === 'opencode' ? providerPayload.opencodeApiKey : currentConfig.OPENCODE_API_KEY || '',
+    OPENCODE_BASE_URL: providerPayload.opencodeBaseUrl || currentConfig.OPENCODE_BASE_URL || 'https://console.opencode.ai/inference/openai/v1',
+    OPENCODE_MODEL: providerPayload.provider === 'opencode' ? providerPayload.selectedModel : currentConfig.OPENCODE_MODEL || '',
+    COPILOT_GITHUB_TOKEN: providerPayload.provider === 'copilot' ? providerPayload.copilotGitHubToken : currentConfig.COPILOT_GITHUB_TOKEN || '',
+    COPILOT_MODEL: providerPayload.provider === 'copilot' ? providerPayload.selectedModel : currentConfig.COPILOT_MODEL || 'gpt-5.4',
     COMPATIBLE_BASE_URL: providerPayload.compatibleBaseUrl || currentConfig.COMPATIBLE_BASE_URL || '',
     COMPATIBLE_API_KEY: providerPayload.compatibleApiKey || currentConfig.COMPATIBLE_API_KEY || '',
     COMPATIBLE_MODEL: providerPayload.provider === 'compatible' ? providerPayload.selectedModel : currentConfig.COMPATIBLE_MODEL || '',
@@ -3766,6 +3776,31 @@ router.post('/setup', express.json(), async (req, res) => {
           error: 'Ollama connection failed. Please check URL and model.'
         });
       }
+    } else if (providerConfig.provider === 'ollama-cloud') {
+      const isValid = await setupService.validateOllamaConfig(providerConfig.ollamaCloudUrl, providerConfig.selectedModel, providerConfig.ollamaCloudApiKey);
+      if (!isValid) {
+        return res.status(400).json({
+          error: 'Ollama Cloud connection failed. Check the API key and cloud model.'
+        });
+      }
+    } else if (providerConfig.provider === 'opencode') {
+      const isValid = await setupService.validateCustomConfig(
+        providerConfig.opencodeBaseUrl,
+        providerConfig.opencodeApiKey,
+        providerConfig.selectedModel
+      );
+      if (!isValid) {
+        return res.status(400).json({
+          error: 'OpenCode Go connection failed. Check the service API key, gateway, and model ID.'
+        });
+      }
+    } else if (providerConfig.provider === 'copilot') {
+      const status = await copilotService.healthcheck({ gitHubToken: providerConfig.copilotGitHubToken });
+      if (!status.ok) {
+        return res.status(400).json({
+          error: `GitHub Copilot connection failed: ${status.error || 'sign in with copilot auth login or provide a supported GitHub token.'}`
+        });
+      }
     } else if (providerConfig.provider === 'compatible') {
       const isValid = await setupService.validateCustomConfig(
         providerConfig.compatibleBaseUrl,
@@ -4121,6 +4156,35 @@ router.post('/settings', express.json(), async (req, res) => {
       if (!isValid) {
         return res.status(400).json({
           error: 'Ollama connection failed. Please check URL and model.'
+        });
+      }
+    } else if (providerConfig.provider === 'ollama-cloud') {
+      const isValid = await setupService.validateOllamaConfig(
+        providerConfig.ollamaCloudUrl || currentConfig.OLLAMA_CLOUD_API_URL || 'https://ollama.com',
+        providerConfig.selectedModel || currentConfig.OLLAMA_CLOUD_MODEL,
+        providerConfig.ollamaCloudApiKey || currentConfig.OLLAMA_CLOUD_API_KEY
+      );
+      if (!isValid) {
+        return res.status(400).json({
+          error: 'Ollama Cloud connection failed. Check the API key and cloud model.'
+        });
+      }
+    } else if (providerConfig.provider === 'opencode') {
+      const isValid = await setupService.validateCustomConfig(
+        providerConfig.opencodeBaseUrl || currentConfig.OPENCODE_BASE_URL || 'https://console.opencode.ai/inference/openai/v1',
+        providerConfig.opencodeApiKey || currentConfig.OPENCODE_API_KEY,
+        providerConfig.selectedModel || currentConfig.OPENCODE_MODEL
+      );
+      if (!isValid) {
+        return res.status(400).json({
+          error: 'OpenCode Go connection failed. Check the service API key, gateway, and model ID.'
+        });
+      }
+    } else if (providerConfig.provider === 'copilot') {
+      const status = await copilotService.healthcheck({ gitHubToken: providerConfig.copilotGitHubToken || currentConfig.COPILOT_GITHUB_TOKEN });
+      if (!status.ok) {
+        return res.status(400).json({
+          error: `GitHub Copilot connection failed: ${status.error || 'sign in with copilot auth login or provide a supported GitHub token.'}`
         });
       }
     } else if (providerConfig.provider === 'compatible') {

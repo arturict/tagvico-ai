@@ -14,6 +14,7 @@ const os = require('os');
 const OpenAI = require('openai');
 const RestrictionPromptService = require('./restrictionPromptService');
 const tagGroupService = require('./tagGroupService');
+const { normalizeProvider } = require('./providerCatalogService');
 
 /**
  * Service for document analysis using Ollama
@@ -23,11 +24,11 @@ class OllamaService {
      * Initialize the Ollama service
      */
     constructor() {
-        this.apiUrl = config.ollama.apiUrl;
-        this.model = config.ollama.model;
-        this.client = axios.create({
-            timeout: 1800000 // 30 minutes timeout
-        });
+        this.apiUrl = '';
+        this.model = '';
+        this.apiKey = '';
+        this.client = null;
+        this.reset();
 
         // JSON schema for document analysis output
         this.documentAnalysisSchema = {
@@ -69,12 +70,21 @@ class OllamaService {
     }
 
     reset() {
-        this.apiUrl = config.ollama.apiUrl;
-        this.model = config.ollama.model;
+        const provider = normalizeProvider(config.aiProvider);
+        const runtimeConfig = provider === 'ollama-cloud' ? config.ollamaCloud : config.ollama;
+        this.apiUrl = runtimeConfig.apiUrl.replace(/\/+$/, '');
+        this.model = runtimeConfig.model;
+        this.apiKey = runtimeConfig.apiKey || '';
+        this.client = axios.create({
+            timeout: 1800000,
+            headers: this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : undefined
+        });
     }
 
     refreshConfig() {
-        if (this.apiUrl !== config.ollama.apiUrl || this.model !== config.ollama.model) {
+        const provider = normalizeProvider(config.aiProvider);
+        const runtimeConfig = provider === 'ollama-cloud' ? config.ollamaCloud : config.ollama;
+        if (this.apiUrl !== runtimeConfig.apiUrl.replace(/\/+$/, '') || this.model !== runtimeConfig.model || this.apiKey !== (runtimeConfig.apiKey || '')) {
             this.reset();
         }
     }

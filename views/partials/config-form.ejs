@@ -9,6 +9,9 @@
   const providerLogos = {
     openrouter: { light: 'https://svgl.app/library/openrouter_light.svg', dark: 'https://svgl.app/library/openrouter_dark.svg' },
     ollama: { light: 'https://svgl.app/library/ollama_light.svg', dark: 'https://svgl.app/library/ollama_dark.svg' },
+    'ollama-cloud': { light: 'https://svgl.app/library/ollama_light.svg', dark: 'https://svgl.app/library/ollama_dark.svg' },
+    opencode: { light: 'https://svgl.app/library/openai.svg', dark: 'https://svgl.app/library/openai_dark.svg' },
+    copilot: { light: 'https://svgl.app/library/github.svg', dark: 'https://svgl.app/library/github_dark.svg' },
     compatible: { light: 'https://svgl.app/library/openai.svg', dark: 'https://svgl.app/library/openai_dark.svg' },
     openai: { light: 'https://svgl.app/library/openai.svg', dark: 'https://svgl.app/library/openai_dark.svg' },
     azure: { light: 'https://svgl.app/library/azure.svg', dark: 'https://svgl.app/library/azure.svg' },
@@ -276,6 +279,69 @@
         </div>
       </section>
 
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'ollama-cloud' ? '' : 'hidden' %>" data-provider-panel="ollama-cloud" aria-hidden="<%= providerCatalog.selectedProvider === 'ollama-cloud' ? 'false' : 'true' %>">
+        <h3>Ollama Cloud</h3>
+        <p class="field-hint">Use an Ollama API key for hosted cloud models without exposing a local Ollama instance. Your document text is sent to Ollama Cloud.</p>
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="ollamaCloudUrl">Ollama Cloud URL</label>
+            <input id="ollamaCloudUrl" name="ollamaCloudUrl" type="url" value="<%= config.OLLAMA_CLOUD_API_URL %>" placeholder="https://ollama.com">
+          </div>
+          <div class="field">
+            <label for="ollamaCloudApiKey">Ollama API key</label>
+            <div class="secret-input">
+              <input id="ollamaCloudApiKey" name="ollamaCloudApiKey" type="password" value="<%= config.OLLAMA_CLOUD_API_KEY %>" autocomplete="off">
+              <button type="button" class="secret-toggle" data-toggle-secret="ollamaCloudApiKey" aria-label="Show Ollama Cloud API key"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="ollamaCloudModel">Cloud model</label>
+            <input id="ollamaCloudModel" name="ollamaCloudModel" type="text" value="<%= config.OLLAMA_CLOUD_MODEL %>" placeholder="gpt-oss:20b-cloud">
+          </div>
+        </div>
+      </section>
+
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'opencode' ? '' : 'hidden' %>" data-provider-panel="opencode" aria-hidden="<%= providerCatalog.selectedProvider === 'opencode' ? 'false' : 'true' %>">
+        <h3>OpenCode Go</h3>
+        <p class="field-hint">Use a Console service API key. Tagvico talks to OpenCode’s OpenAI-compatible inference gateway directly—no OpenCode CLI is required.</p>
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="opencodeBaseUrl">Inference gateway</label>
+            <input id="opencodeBaseUrl" name="opencodeBaseUrl" type="url" value="<%= config.OPENCODE_BASE_URL %>" placeholder="https://console.opencode.ai/inference/openai/v1">
+          </div>
+          <div class="field">
+            <label for="opencodeApiKey">OpenCode service API key</label>
+            <div class="secret-input">
+              <input id="opencodeApiKey" name="opencodeApiKey" type="password" value="<%= config.OPENCODE_API_KEY %>" autocomplete="off">
+              <button type="button" class="secret-toggle" data-toggle-secret="opencodeApiKey" aria-label="Show OpenCode service API key"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="opencodeModel">Model ID</label>
+            <input id="opencodeModel" name="opencodeModel" type="text" value="<%= config.OPENCODE_MODEL %>" placeholder="Use a model your Console catalog permits">
+          </div>
+        </div>
+      </section>
+
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'copilot' ? '' : 'hidden' %>" data-provider-panel="copilot" aria-hidden="<%= providerCatalog.selectedProvider === 'copilot' ? 'false' : 'true' %>">
+        <h3>GitHub Copilot <span class="badge">Subscription</span></h3>
+        <p class="field-hint">Runs through GitHub’s official Copilot SDK with all tools disabled. Use a fine-grained GitHub token/OAuth user token, or sign in with <code>copilot auth login</code> in the container and leave this blank.</p>
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="copilotGitHubToken">GitHub access token (optional after CLI sign-in)</label>
+            <div class="secret-input">
+              <input id="copilotGitHubToken" name="copilotGitHubToken" type="password" value="<%= config.COPILOT_GITHUB_TOKEN %>" autocomplete="off">
+              <button type="button" class="secret-toggle" data-toggle-secret="copilotGitHubToken" aria-label="Show GitHub Copilot token"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="copilotModel">Copilot model</label>
+            <input id="copilotModel" name="copilotModel" type="text" value="<%= config.COPILOT_MODEL %>" placeholder="gpt-5.4">
+            <p class="field-hint">Good low-cost options include GPT-5.4 or Claude Haiku 4.5 when your plan exposes them.</p>
+          </div>
+        </div>
+      </section>
+
       <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'compatible' ? '' : 'hidden' %>" data-provider-panel="compatible" aria-hidden="<%= providerCatalog.selectedProvider === 'compatible' ? 'false' : 'true' %>">
         <h3>OpenAI-compatible API</h3>
         <p class="field-hint">Works for LM Studio, LiteLLM, vLLM, FastChat, and most OpenAI-compatible gateways.</p>
@@ -321,7 +387,7 @@
               <option value="<%= model.slug %>" <%= config.OPENAI_MODEL === model.slug || providerCatalog.effectiveModel === model.slug ? 'selected' : '' %>><%= model.name %></option>
               <% }) %>
             </select>
-            <p class="field-hint">OpenAI Direct is intentionally locked to supported GPT-5.x models.</p>
+            <p class="field-hint">OpenAI Direct is intentionally locked to supported GPT-5.x models. GPT-5.6 Sol, Terra, and Luna appear only for trusted-preview organizations with <code>OPENAI_ENABLE_GPT_5_6_PREVIEW=yes</code>.</p>
           </div>
         </div>
       </section>

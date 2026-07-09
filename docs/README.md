@@ -8,6 +8,7 @@ This directory contains the Tagvico AI documentation site (`index.html`), provid
 | `STATUS.md` | Current development status, alpha expectations, upgrade guidance. |
 | `screenshots/` | Product screenshots used in the README and landing page. |
 | `providers/` | Per-provider setup and troubleshooting guides. |
+| `V2_COMPETITIVE_REVIEW.md` | Source-level v2 feature comparison and release gates. |
 | `upstream/` | Research notes on the upstream Paperless-ngx project (issue tracking, not a product dependency). |
 | `launch-post.md` | Drafts for community launch posts (r/selfhosted, r/Paperlessngx). |
 

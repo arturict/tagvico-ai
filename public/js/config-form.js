@@ -396,7 +396,7 @@ class ConfigFormApp {
       });
     });
 
-    ['openrouterCustomModel', 'compatibleModel', 'openaiModel', 'ollamaCustomModel', 'anthropicModel', 'codexModel'].forEach((id) => {
+    ['openrouterCustomModel', 'compatibleModel', 'openaiModel', 'ollamaCustomModel', 'ollamaCloudModel', 'opencodeModel', 'copilotModel', 'anthropicModel', 'codexModel'].forEach((id) => {
       const input = document.getElementById(id);
       input?.addEventListener('input', () => this.syncModelValue());
       input?.addEventListener('input', () => this.updateModelPickerSummary());
@@ -417,12 +417,27 @@ class ConfigFormApp {
     if (provider === 'openrouter') {
       const custom = document.getElementById('openrouterCustomModel')?.value.trim();
       const preset = document.querySelector('[data-model-choice].is-selected')?.dataset.modelChoice;
-      this.modelInput.value = custom || preset || 'openai/gpt-5.4-nano';
+      this.modelInput.value = custom || preset || 'openai/gpt-5.4-mini';
       return;
     }
 
     if (provider === 'ollama') {
       this.modelInput.value = this.ollamaCustomModel?.value.trim() || this.ollamaModelSelect?.value || 'llama3.2';
+      return;
+    }
+
+    if (provider === 'ollama-cloud') {
+      this.modelInput.value = document.getElementById('ollamaCloudModel')?.value.trim() || 'gpt-oss:20b-cloud';
+      return;
+    }
+
+    if (provider === 'opencode') {
+      this.modelInput.value = document.getElementById('opencodeModel')?.value.trim() || '';
+      return;
+    }
+
+    if (provider === 'copilot') {
+      this.modelInput.value = document.getElementById('copilotModel')?.value.trim() || 'gpt-5.4';
       return;
     }
 
