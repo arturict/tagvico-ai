@@ -1047,7 +1047,7 @@ router.get('/api/history/:id/diff', async (req, res) => {
  *   get:
  *     summary: Dry-run review queue
  *     description: |
- *       Renders the dry-run review queue: the latest 20 auto-analyzed documents
+ *       Renders pending, durable AI suggestions from the local review queue
  *       with their proposed title, tags, correspondent, document type, and
  *       custom fields. While DRY_RUN=true (the default), new AI suggestions
  *       land here instead of being written back to Paperless-ngx automatically.
@@ -1060,9 +1060,9 @@ router.get('/api/history/:id/diff', async (req, res) => {
  *       200:
  *         description: Review page rendered successfully
  */
-router.get('/review', async (req, res) => {
+router.get('/review', isAuthenticated, async (req, res) => {
   try {
-    const analyses = await reviewService.listRecentAnalyses(20);
+    const analyses = await reviewService.listPendingSuggestions(100);
     res.render('review', {
       title: 'Review | Tagvico AI',
       activePage: 'review',
@@ -1083,16 +1083,28 @@ router.get('/review', async (req, res) => {
   }
 });
 
+function parseSuggestionId(value) {
+  const raw = String(value || '');
+  if (!/^\d+$/.test(raw)) return null;
+  const id = Number(raw);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+function reviewActor(req) {
+  const user = req.user || {};
+  const value = user.username || user.email || user.sub;
+  if (value) return String(value).slice(0, 200);
+  return user.apiKey ? 'api-key' : 'authenticated-user';
+}
+
 /**
  * /review/:id/apply:
  *   post:
- *     summary: Apply a partial metadata patch to a single document
+ *     summary: Apply one pending review suggestion
  *     description: |
- *       Accepts a partial metadata object (any of title, tags, correspondent,
- *       document_type, custom_fields, owner) and writes it back to Paperless-ngx.
- *       In dry-run mode the request is rejected so operators can stage changes
- *       first. The actual Paperless PATCH call is left as a TODO and lands in
- *       the next commit alongside paperlessService.patchDocument.
+ *       Claims the stored suggestion identified by `id`, resolves its proposed
+ *       metadata, and writes it to the associated Paperless-ngx document. The
+ *       request body cannot replace the stored proposal.
  *     tags:
  *       - Documents
  *     security:
@@ -1105,26 +1117,54 @@ router.get('/review', async (req, res) => {
  *         schema:
  *           type: integer
  */
-router.post('/review/:id/apply', express.json(), isAuthenticated, async (req, res) => {
+router.post('/review/:id/apply', isAuthenticated, express.json(), async (req, res) => {
+  const suggestionId = parseSuggestionId(req.params.id);
+  if (!suggestionId) return res.status(400).json({ error: 'A valid suggestion id is required' });
+
   try {
-    const documentId = req.params.id;
-    const metadata = req.body || {};
-    reviewProgressService.publish({ documentId, status: 'applying' });
-    const result = await reviewService.applyMetadata(documentId, metadata);
+    reviewProgressService.publish({ suggestionId, status: 'applying' });
+    const result = await reviewService.applySuggestion(suggestionId, reviewActor(req));
     if (!result.ok) {
-      reviewProgressService.publish({ documentId, status: 'skipped', reason: result.reason });
-      return res.status(409).json(result);
+      reviewProgressService.publish({
+        suggestionId,
+        status: result.status === 409 ? 'skipped' : 'failed',
+        reason: result.reason
+      });
+      return res.status(result.status || 409).json(result);
     }
-    reviewProgressService.publish({ documentId, status: 'applied' });
-    res.json({ success: true, documentId, ...result });
+    const documentId = result.suggestion.document_id;
+    reviewProgressService.publish({ suggestionId, documentId, status: 'applied' });
+    res.json({ success: true, suggestionId, documentId, ...result });
   } catch (error) {
-    reviewProgressService.publish({ documentId: req.params.id, status: 'failed', error: error.message });
-    console.error('[ERROR] applying review metadata:', error);
-    res.status(500).json({ error: 'Error applying metadata' });
+    reviewProgressService.publish({ suggestionId, status: 'failed', error: error.message });
+    console.error('[ERROR] applying review suggestion:', error);
+    res.status(500).json({ error: 'Error applying review suggestion' });
   }
 });
 
-router.get('/api/review/progress', (req, res) => {
+router.post('/review/:id/reject', isAuthenticated, express.json(), async (req, res) => {
+  const suggestionId = parseSuggestionId(req.params.id);
+  if (!suggestionId) return res.status(400).json({ error: 'A valid suggestion id is required' });
+
+  try {
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 1000) : null;
+    reviewProgressService.publish({ suggestionId, status: 'rejecting' });
+    const result = await reviewService.rejectSuggestion(suggestionId, reviewActor(req), note || null);
+    if (!result.ok) {
+      reviewProgressService.publish({ suggestionId, status: 'skipped', reason: result.reason });
+      return res.status(result.status || 409).json(result);
+    }
+    const documentId = result.suggestion.document_id;
+    reviewProgressService.publish({ suggestionId, documentId, status: 'rejected' });
+    res.json({ success: true, suggestionId, documentId, ...result });
+  } catch (error) {
+    reviewProgressService.publish({ suggestionId, status: 'failed', error: error.message });
+    console.error('[ERROR] rejecting review suggestion:', error);
+    res.status(500).json({ error: 'Error rejecting review suggestion' });
+  }
+});
+
+router.get('/api/review/progress', isAuthenticated, (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
@@ -1373,6 +1413,7 @@ try {
           try {
             const result = await processDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
             if (!result) continue;
+            if (result.reviewSuggestion) continue;
     
             const { analysis, originalData, content } = result;
             const updateData = await buildUpdateData(analysis, doc, content);
@@ -1396,67 +1437,86 @@ try {
 async function processDocument(doc, existingTags, existingCorrespondentList, existingDocumentTypesList, ownUserId, customPrompt = null) {
   const isProcessed = await documentModel.isDocumentProcessed(doc.id);
   if (isProcessed) return null;
+  const dryRun = reviewService.isDryRunEnabled();
+  const reviewReservation = dryRun
+    ? await reviewService.reserveSuggestion(doc, customPrompt ? 'webhook' : 'manual-scan')
+    : null;
+  if (dryRun && !reviewReservation) return null;
+
   await documentModel.setProcessingStatus(doc.id, doc.title, 'processing');
-
-  const documentEditable = await paperlessService.getPermissionOfDocument(doc.id);
-  if (!documentEditable) {
-    console.log(`[DEBUG] Document belongs to: ${documentEditable}, skipping analysis`);
-    console.log(`[DEBUG] Document ${doc.id} not editable by Tagvico AI user, skipping analysis`);
-    return null;
-  }else {
-    console.log(`[DEBUG] Document ${doc.id} rights for AI User - processed`);
-  }
-
-  let [content, originalData] = await Promise.all([
-    paperlessService.getDocumentContent(doc.id),
-    paperlessService.getDocument(doc.id)
-  ]);
-
-  if (!content || !content.length >= 10) {
-    console.log(`[DEBUG] Document ${doc.id} has no content, skipping analysis`);
-    return null;
-  }
-
-  if (content.length > 50000) {
-    content = content.substring(0, 50000);
-  }
-
-  // Prepare options for AI service
-  const options = {
-    restrictToExistingTags: config.restrictToExistingTags === 'yes',
-    restrictToExistingCorrespondents: config.restrictToExistingCorrespondents === 'yes'
-  };
-
-  // Get external API data if enabled
-  if (config.externalApiConfig.enabled === 'yes') {
-    try {
-      const externalApiService = require('../services/externalApiService');
-      const externalData = await externalApiService.fetchData();
-      if (externalData) {
-        options.externalApiData = externalData;
-        console.log('[DEBUG] Retrieved external API data for prompt enrichment');
-      }
-    } catch (error) {
-      console.error('[ERROR] Failed to fetch external API data:', error.message);
+  try {
+    const documentEditable = await paperlessService.getPermissionOfDocument(doc.id);
+    if (!documentEditable) {
+      console.log(`[DEBUG] Document belongs to: ${documentEditable}, skipping analysis`);
+      console.log(`[DEBUG] Document ${doc.id} not editable by Tagvico AI user, skipping analysis`);
+      if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, 'document is not editable');
+      return null;
     }
-  }
+    console.log(`[DEBUG] Document ${doc.id} rights for AI User - processed`);
 
-  const aiService = AIServiceFactory.getService();
-  const tagPolicy = tagGroupService.getConfig();
-  existingTags = tagPolicy.enabled ? tagPolicy.vocabulary : existingTags;
-  let analysis;
-  if(customPrompt) {
-    console.log('[DEBUG] Starting document analysis with custom prompt');
-    analysis = await aiService.analyzeDocument(content, existingTags, existingCorrespondentList, existingDocumentTypesList, doc.id, customPrompt, options);
-  }else{
-    analysis = await aiService.analyzeDocument(content, existingTags, existingCorrespondentList, existingDocumentTypesList, doc.id, null, options);
+    let [content, originalData] = await Promise.all([
+      paperlessService.getDocumentContent(doc.id),
+      paperlessService.getDocument(doc.id)
+    ]);
+
+    if (!content || content.length < config.minContentLength) {
+      console.log(`[DEBUG] Document ${doc.id} has insufficient OCR content, skipping analysis`);
+      await documentModel.setProcessingStatus(doc.id, doc.title, 'failed');
+      if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, 'insufficient OCR content');
+      return null;
+    }
+
+    if (content.length > 50000) content = content.substring(0, 50000);
+
+    const options = {
+      restrictToExistingTags: config.restrictToExistingTags === 'yes',
+      restrictToExistingCorrespondents: config.restrictToExistingCorrespondents === 'yes'
+    };
+
+    if (config.externalApiConfig.enabled === 'yes') {
+      try {
+        const externalApiService = require('../services/externalApiService');
+        const externalData = await externalApiService.fetchData();
+        if (externalData) {
+          options.externalApiData = externalData;
+          console.log('[DEBUG] Retrieved external API data for prompt enrichment');
+        }
+      } catch (error) {
+        console.error('[ERROR] Failed to fetch external API data:', error.message);
+      }
+    }
+
+    const aiService = AIServiceFactory.getService();
+    const tagPolicy = tagGroupService.getConfig();
+    existingTags = tagPolicy.enabled ? tagPolicy.vocabulary : existingTags;
+    let analysis;
+    if (customPrompt) {
+      console.log('[DEBUG] Starting document analysis with custom prompt');
+      analysis = await aiService.analyzeDocument(content, existingTags, existingCorrespondentList, existingDocumentTypesList, doc.id, customPrompt, options);
+    } else {
+      analysis = await aiService.analyzeDocument(content, existingTags, existingCorrespondentList, existingDocumentTypesList, doc.id, null, options);
+    }
+    console.log('Response from AI service:', analysis);
+    if (analysis.error) throw new Error(`[ERROR] Document analysis failed: ${analysis.error}`);
+
+    if (reviewReservation) {
+      const suggestion = await reviewService.stageSuggestion(reviewReservation.id, {
+        doc,
+        analysis,
+        originalData,
+        content
+      });
+      if (!suggestion) throw new Error('Review reservation could not be staged');
+      await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
+      return { reviewSuggestion: suggestion };
+    }
+
+    await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
+    return { analysis, originalData, content };
+  } catch (error) {
+    if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, error.message || error);
+    throw error;
   }
-  console.log('Response from AI service:', analysis);
-  if (analysis.error) {
-    throw new Error(`[ERROR] Document analysis failed: ${analysis.error}`);
-  }
-  await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
-  return { analysis, originalData, content };
 }
 
 async function buildUpdateData(analysis, doc, content = '') {
@@ -2606,6 +2666,7 @@ async function processQueue(customPrompt) {
       try {
         const result = await processDocument(doc, existingTags, existingCorrespondentList, existingDocumentTypesList, ownUserId, customPrompt);
         if (!result) continue;
+        if (result.reviewSuggestion) continue;
 
         const { analysis, originalData, content } = result;
         const updateData = await buildUpdateData(analysis, doc, content);

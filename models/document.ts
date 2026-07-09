@@ -82,6 +82,44 @@ const MIGRATIONS = [
       if (!columnExists('users', 'mfa_enabled')) db.exec('ALTER TABLE users ADD COLUMN mfa_enabled INTEGER DEFAULT 0');
       if (!columnExists('users', 'mfa_secret')) db.exec('ALTER TABLE users ADD COLUMN mfa_secret TEXT');
     }
+  },
+  {
+    version: 4,
+    up() {
+      // A suggestion starts as `staging` before an AI request is made. That
+      // reservation prevents a second scanner from paying to analyze the same
+      // document while the first scanner is still working. Once the model has
+      // returned, the row becomes `pending` and is visible to a human reviewer.
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS review_suggestions (
+          id INTEGER PRIMARY KEY,
+          document_id INTEGER NOT NULL,
+          source TEXT NOT NULL DEFAULT 'automatic',
+          status TEXT NOT NULL DEFAULT 'staging',
+          title TEXT,
+          proposed_metadata TEXT NOT NULL DEFAULT '{}',
+          original_metadata TEXT,
+          diff TEXT,
+          analysis_metrics TEXT,
+          reviewed_by TEXT,
+          review_note TEXT,
+          last_error TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          staged_at DATETIME,
+          reviewed_at DATETIME,
+          applied_at DATETIME,
+          rejected_at DATETIME
+        );
+        CREATE INDEX IF NOT EXISTS idx_review_suggestions_pending
+          ON review_suggestions(status, created_at DESC);
+        CREATE INDEX IF NOT EXISTS idx_review_suggestions_document
+          ON review_suggestions(document_id, created_at DESC);
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_review_suggestions_active_document
+          ON review_suggestions(document_id)
+          WHERE status IN ('staging', 'pending', 'applying');
+      `);
+    }
   }
 ];
 
@@ -319,6 +357,169 @@ module.exports = {
       // Im Zweifelsfall true zurückgeben, um doppelte Verarbeitung zu vermeiden
       return true;
     }
+  },
+
+  /**
+   * Reserve a document before an automatic dry-run sends it to a model. The
+   * partial unique index created by migration 4 makes this atomic across
+   * concurrent scanner processes, so a pending review cannot be charged for a
+   * second analysis.
+   */
+  async reserveReviewSuggestion(documentId, title = null, source = 'automatic') {
+    try {
+      // A process can die after reserving a row but before it has a proposal to
+      // show. Release only old reservations; a live scanner remains protected.
+      db.prepare(`
+        UPDATE review_suggestions
+        SET status = 'failed',
+            last_error = COALESCE(last_error, 'staging interrupted before a suggestion was saved'),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE document_id = ?
+          AND status = 'staging'
+          AND datetime(updated_at) < datetime('now', '-30 minutes')
+      `).run(documentId);
+
+      const result = db.prepare(`
+        INSERT INTO review_suggestions (document_id, source, status, title)
+        VALUES (?, ?, 'staging', ?)
+      `).run(documentId, source || 'automatic', title || null);
+      return db.prepare('SELECT * FROM review_suggestions WHERE id = ?').get(result.lastInsertRowid);
+    } catch (error) {
+      // An active staging/pending/applying row is expected when the scheduler
+      // sees a document again. It is deliberately not an error condition.
+      if (String(error && error.message).includes('UNIQUE constraint failed')) return null;
+      console.error('[ERROR] reserving review suggestion:', error);
+      throw error;
+    }
+  },
+
+  async stageReviewSuggestion(id, {
+    title = null,
+    proposedMetadata = {},
+    originalMetadata = {},
+    diff = [],
+    metrics = null
+  } = {}) {
+    const result = db.prepare(`
+      UPDATE review_suggestions
+      SET status = 'pending',
+          title = ?,
+          proposed_metadata = ?,
+          original_metadata = ?,
+          diff = ?,
+          analysis_metrics = ?,
+          last_error = NULL,
+          staged_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status = 'staging'
+    `).run(
+      title || null,
+      JSON.stringify(proposedMetadata || {}),
+      JSON.stringify(originalMetadata || {}),
+      JSON.stringify(diff || []),
+      metrics == null ? null : JSON.stringify(metrics),
+      id
+    );
+    if (result.changes === 0) return null;
+    return db.prepare('SELECT * FROM review_suggestions WHERE id = ?').get(id);
+  },
+
+  async failReviewSuggestion(id, error) {
+    return db.prepare(`
+      UPDATE review_suggestions
+      SET status = 'failed', last_error = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status IN ('staging', 'applying')
+    `).run(String(error || 'review suggestion failed'), id).changes > 0;
+  },
+
+  async listPendingReviewSuggestions(limit = 50) {
+    const safeLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
+    return db.prepare(`
+      SELECT * FROM review_suggestions
+      WHERE status = 'pending'
+      ORDER BY datetime(staged_at) DESC, id DESC
+      LIMIT ?
+    `).all(safeLimit);
+  },
+
+  async getReviewSuggestion(id) {
+    return db.prepare('SELECT * FROM review_suggestions WHERE id = ?').get(id) || null;
+  },
+
+  async claimReviewSuggestionForApply(id, reviewedBy = null) {
+    const result = db.prepare(`
+      UPDATE review_suggestions
+      SET status = 'applying',
+          reviewed_by = COALESCE(?, reviewed_by),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status = 'pending'
+    `).run(reviewedBy || null, id);
+    if (result.changes === 0) return null;
+    return db.prepare('SELECT * FROM review_suggestions WHERE id = ?').get(id) || null;
+  },
+
+  async completeReviewSuggestion(id, { diff = [], reviewedBy = null } = {}) {
+    return db.transaction(() => {
+      const result = db.prepare(`
+        UPDATE review_suggestions
+        SET status = 'applied',
+            diff = ?,
+            reviewed_by = COALESCE(?, reviewed_by),
+            reviewed_at = CURRENT_TIMESTAMP,
+            applied_at = CURRENT_TIMESTAMP,
+            last_error = NULL,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND status = 'applying'
+      `).run(JSON.stringify(diff || []), reviewedBy || null, id);
+      if (result.changes === 0) return false;
+
+      // Closing a review is also the scanner's durable acknowledgement that
+      // this document has been handled. Keep both writes in one transaction so
+      // a scheduler cannot reserve a fresh inference between them.
+      const suggestion = db.prepare(`
+        SELECT document_id, title FROM review_suggestions WHERE id = ?
+      `).get(id);
+      insertDocument.run(
+        suggestion.document_id,
+        suggestion.title || `Document ${suggestion.document_id}`,
+        suggestion.document_id
+      );
+      return true;
+    })();
+  },
+
+  async releaseReviewSuggestionAfterApplyFailure(id, error) {
+    return db.prepare(`
+      UPDATE review_suggestions
+      SET status = 'pending', last_error = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND status = 'applying'
+    `).run(String(error || 'failed to apply review suggestion'), id).changes > 0;
+  },
+
+  async rejectReviewSuggestion(id, reviewedBy = null, note = null) {
+    return db.transaction(() => {
+      const result = db.prepare(`
+        UPDATE review_suggestions
+        SET status = 'rejected',
+            reviewed_by = COALESCE(?, reviewed_by),
+            review_note = ?,
+            reviewed_at = CURRENT_TIMESTAMP,
+            rejected_at = CURRENT_TIMESTAMP,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ? AND status = 'pending'
+      `).run(reviewedBy || null, note || null, id);
+      if (result.changes === 0) return null;
+
+      const suggestion = db.prepare(`
+        SELECT * FROM review_suggestions WHERE id = ?
+      `).get(id);
+      insertDocument.run(
+        suggestion.document_id,
+        suggestion.title || `Document ${suggestion.document_id}`,
+        suggestion.document_id
+      );
+      return suggestion;
+    })();
   },
 
   async saveOriginalData(documentId, tags, correspondent, title) {
@@ -583,6 +784,7 @@ module.exports = {
       db.prepare('DELETE FROM processed_documents WHERE document_id = ?').run(documentId);
       db.prepare('DELETE FROM processing_status WHERE document_id = ?').run(documentId);
       db.prepare('DELETE FROM failed_documents WHERE document_id = ?').run(documentId);
+      db.prepare('DELETE FROM review_suggestions WHERE document_id = ?').run(documentId);
       return true;
     })();
   },
@@ -594,14 +796,15 @@ module.exports = {
         SELECT document_id FROM history_documents UNION ALL
         SELECT document_id FROM original_documents UNION ALL
         SELECT document_id FROM ocr_queue UNION ALL
-        SELECT document_id FROM failed_documents
+        SELECT document_id FROM failed_documents UNION ALL
+        SELECT document_id FROM review_suggestions
       )
     `).all().map((row) => Number(row.document_id));
   },
 
   async purgeLocalDocument(documentId) {
     db.transaction(() => {
-      for (const table of ['processed_documents', 'history_documents', 'original_documents', 'processing_status', 'ocr_queue', 'failed_documents', 'openai_metrics']) {
+      for (const table of ['processed_documents', 'history_documents', 'original_documents', 'processing_status', 'ocr_queue', 'failed_documents', 'review_suggestions', 'openai_metrics']) {
         db.prepare(`DELETE FROM ${table} WHERE document_id = ?`).run(documentId);
       }
     })();
@@ -621,6 +824,8 @@ module.exports = {
       console.log('[DEBUG] All history_documents deleted');
       db.prepare('DELETE FROM original_documents').run();
       console.log('[DEBUG] All original_documents deleted');
+      db.prepare('DELETE FROM review_suggestions').run();
+      console.log('[DEBUG] All review_suggestions deleted');
       return true;
     } catch (error) {
       console.error('[ERROR] deleting documents:', error);
@@ -646,21 +851,26 @@ module.exports = {
       const query = `DELETE FROM processed_documents WHERE document_id IN (${placeholders})`;
       const query2 = `DELETE FROM history_documents WHERE document_id IN (${placeholders})`;
       const query3 = `DELETE FROM original_documents WHERE document_id IN (${placeholders})`;
+      const query4 = `DELETE FROM review_suggestions WHERE document_id IN (${placeholders})`;
       console.log('[DEBUG] Executing SQL query:', query);
       console.log('[DEBUG] Executing SQL query:', query2);
       console.log('[DEBUG] Executing SQL query:', query3);
+      console.log('[DEBUG] Executing SQL query:', query4);
       console.log('[DEBUG] With parameters:', numericIds);
   
       const stmt = db.prepare(query);
       const stmt2 = db.prepare(query2);
       const stmt3 = db.prepare(query3);
+      const stmt4 = db.prepare(query4);
       const result = stmt.run(...numericIds);
       const result2 = stmt2.run(...numericIds);
       const result3 = stmt3.run(...numericIds);
+      const result4 = stmt4.run(...numericIds);
 
       console.log('[DEBUG] SQL result:', result);
       console.log('[DEBUG] SQL result:', result2);
       console.log('[DEBUG] SQL result:', result3);
+      console.log('[DEBUG] SQL result:', result4);
       console.log(`[DEBUG] Documents with IDs ${numericIds.join(', ')} deleted`);
       return true;
     } catch (error) {

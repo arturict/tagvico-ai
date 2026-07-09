@@ -22,6 +22,7 @@ const { isAuthenticated } = require('./routes/auth');
 const { createRateLimiter } = require('./services/rateLimiter');
 const controlledTaggingService = require('./services/controlledTaggingService');
 const tagGroupService = require('./services/tagGroupService');
+const reviewService = require('./services/reviewService');
 
 const htmlLogger = new Logger({
   logFile: 'logs.html',
@@ -181,48 +182,70 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
   const isProcessed = await documentModel.isDocumentProcessed(doc.id);
   if (isProcessed) return null;
   if (await documentModel.isDocumentFailed(doc.id)) return null;
+  const dryRun = reviewService.isDryRunEnabled();
+  // Reserve before making the paid model request. A pending/staging review row
+  // is an explicit marker that this document has already been analyzed.
+  const reviewReservation = dryRun
+    ? await reviewService.reserveSuggestion(doc, 'automatic')
+    : null;
+  if (dryRun && !reviewReservation) return null;
+
   await documentModel.setProcessingStatus(doc.id, doc.title, 'processing');
-
-  //Check if the Document can be edited
-  const documentEditable = await paperlessService.getPermissionOfDocument(doc.id);
-  if (!documentEditable) {
-    console.log(`[DEBUG] Document belongs to: ${documentEditable}, skipping analysis`);
-    console.log(`[DEBUG] Document ${doc.id} not editable by Tagvico AI user, skipping analysis`);
-    return null;
-  }else {
-    console.log(`[DEBUG] Document ${doc.id} rights for AI User - processed`);
-  }
-
-  let [content, originalData] = await Promise.all([
-    paperlessService.getDocumentContent(doc.id),
-    paperlessService.getDocument(doc.id)
-  ]);
-
-  if (!content || content.length < config.minContentLength) {
-    console.log(`[DEBUG] Document ${doc.id} has insufficient OCR content`);
-    if (config.ocr?.enabled === 'yes') {
-      await documentModel.addToOcrQueue(doc.id, doc.title, 'short_content');
-    } else {
-      await documentModel.addFailedDocument(doc.id, doc.title, 'short_content_ocr_disabled', 'ocr');
+  try {
+    // Check if the Document can be edited
+    const documentEditable = await paperlessService.getPermissionOfDocument(doc.id);
+    if (!documentEditable) {
+      console.log(`[DEBUG] Document belongs to: ${documentEditable}, skipping analysis`);
+      console.log(`[DEBUG] Document ${doc.id} not editable by Tagvico AI user, skipping analysis`);
+      if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, 'document is not editable');
+      return null;
     }
-    await documentModel.setProcessingStatus(doc.id, doc.title, 'failed');
-    return null;
-  }
+    console.log(`[DEBUG] Document ${doc.id} rights for AI User - processed`);
 
-  if (content.length > 50000) {
-    content = content.substring(0, 50000);
-  }
+    let [content, originalData] = await Promise.all([
+      paperlessService.getDocumentContent(doc.id),
+      paperlessService.getDocument(doc.id)
+    ]);
 
-  const aiService = AIServiceFactory.getService();
-  const policy = tagGroupService.getConfig();
-  const promptTags = policy.enabled ? policy.vocabulary : existingTags;
-  const analysis = await aiService.analyzeDocument(content, promptTags, existingCorrespondentList, existingDocumentTypesList, doc.id);
-  console.log('Response from AI service:', analysis);
-  if (analysis.error) {
-    throw new Error(`[ERROR] Document analysis failed: ${analysis.error}`);
+    if (!content || content.length < config.minContentLength) {
+      console.log(`[DEBUG] Document ${doc.id} has insufficient OCR content`);
+      if (config.ocr?.enabled === 'yes') {
+        await documentModel.addToOcrQueue(doc.id, doc.title, 'short_content');
+      } else {
+        await documentModel.addFailedDocument(doc.id, doc.title, 'short_content_ocr_disabled', 'ocr');
+      }
+      await documentModel.setProcessingStatus(doc.id, doc.title, 'failed');
+      if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, 'insufficient OCR content');
+      return null;
+    }
+
+    if (content.length > 50000) content = content.substring(0, 50000);
+
+    const aiService = AIServiceFactory.getService();
+    const policy = tagGroupService.getConfig();
+    const promptTags = policy.enabled ? policy.vocabulary : existingTags;
+    const analysis = await aiService.analyzeDocument(content, promptTags, existingCorrespondentList, existingDocumentTypesList, doc.id);
+    console.log('Response from AI service:', analysis);
+    if (analysis.error) throw new Error(`[ERROR] Document analysis failed: ${analysis.error}`);
+
+    if (reviewReservation) {
+      const suggestion = await reviewService.stageSuggestion(reviewReservation.id, {
+        doc,
+        analysis,
+        originalData,
+        content
+      });
+      if (!suggestion) throw new Error('Review reservation could not be staged');
+      await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
+      return { reviewSuggestion: suggestion };
+    }
+
+    await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
+    return { analysis, originalData, content };
+  } catch (error) {
+    if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, error.message || error);
+    throw error;
   }
-  await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
-  return { analysis, originalData, content };
 }
 
 async function buildUpdateData(analysis, doc, content = '') {
@@ -429,6 +452,7 @@ async function processAndSaveDocument(doc, existingTagNames, existingCorresponde
     try {
       const result = await processDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
       if (!result) return;
+      if (result.reviewSuggestion) return;
       const { analysis, originalData, content } = result;
       const updateData = await buildUpdateData(analysis, doc, content);
       await saveDocumentChanges(doc.id, updateData, analysis, originalData);

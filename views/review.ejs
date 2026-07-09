@@ -11,25 +11,68 @@
 
   const rows = Array.isArray(analyses) ? analyses : [];
   const banner = dryRun
-    ? '<p class="metric-footnote">DRY_RUN is enabled. Apply is paused so you can stage changes before they reach Paperless-ngx.</p>'
-    : '<p class="metric-footnote">DRY_RUN is off. Apply will write directly to Paperless-ngx.</p>';
+    ? 'Automatic writes are paused. Apply sends only the reviewed suggestion to Paperless-ngx.'
+    : 'Automatic writes are enabled. Suggestions already in this queue still require an explicit decision.';
+
+  function hasOwn(object, key) {
+    return Boolean(object) && Object.prototype.hasOwnProperty.call(object, key);
+  }
+
+  function renderValue(value) {
+    if (value === null || value === undefined || value === '') return '<span class="metric-footnote">—</span>';
+    if (Array.isArray(value)) {
+      return value.length > 0
+        ? value.map((item) => `<span class="badge">${escapeHtml(item)}</span>`).join(' ')
+        : '<span class="metric-footnote">None</span>';
+    }
+    if (typeof value === 'object') {
+      return `<code style="white-space:pre-wrap;overflow-wrap:anywhere;">${escapeHtml(JSON.stringify(value))}</code>`;
+    }
+    return escapeHtml(value);
+  }
+
+  function renderOtherChanges(proposal) {
+    const entries = Object.entries(proposal || {})
+      .filter(([key]) => !['title', 'tags', 'correspondent'].includes(key));
+    if (entries.length === 0) return '<span class="metric-footnote">—</span>';
+    return entries.map(([key, value]) => `
+      <div style="margin-bottom:0.35rem;">
+        <strong>${escapeHtml(key.replace(/_/g, ' '))}:</strong> ${renderValue(value)}
+      </div>
+    `).join('');
+  }
 
   const tableBody = rows.length === 0
-    ? '<tr><td colspan="6" style="text-align:center;padding:1.5rem;">No recent analyses yet.</td></tr>'
+    ? '<tr class="review-empty"><td colspan="7" style="text-align:center;padding:1.5rem;">No pending suggestions.</td></tr>'
     : rows.map((row) => {
-        const tagsText = Array.isArray(row.tags) && row.tags.length > 0
-          ? row.tags.map((tag) => `<span class="badge">${escapeHtml(tag)}</span>`).join(' ')
-          : '<span class="metric-footnote">—</span>';
+        const proposal = row.proposed_metadata && typeof row.proposed_metadata === 'object'
+          ? row.proposed_metadata
+          : {};
+        const titleText = hasOwn(proposal, 'title')
+          ? renderValue(proposal.title)
+          : '<span class="metric-footnote">Unchanged</span>';
+        const tagsText = hasOwn(proposal, 'tags')
+          ? renderValue(proposal.tags)
+          : '<span class="metric-footnote">Unchanged</span>';
+        const correspondentText = hasOwn(proposal, 'correspondent')
+          ? renderValue(proposal.correspondent)
+          : '<span class="metric-footnote">Unchanged</span>';
         return `
-          <tr data-document-id="${escapeHtml(row.document_id)}">
-            <td><input type="checkbox" class="review-row-select" data-document-id="${escapeHtml(row.document_id)}"></td>
-            <td><a href="/manual/preview/${escapeHtml(row.document_id)}" target="_blank" rel="noreferrer">#${escapeHtml(row.document_id)}</a></td>
-            <td>${escapeHtml(row.title || '(untitled)')}</td>
-            <td>${tagsText}</td>
-            <td>${escapeHtml(row.correspondent || '—')}</td>
+          <tr data-suggestion-id="${escapeHtml(row.id)}" data-document-id="${escapeHtml(row.document_id)}">
+            <td><input type="checkbox" class="review-row-select" data-suggestion-id="${escapeHtml(row.id)}" data-document-id="${escapeHtml(row.document_id)}" aria-label="Select suggestion ${escapeHtml(row.id)}"></td>
             <td>
-              <button type="button" class="button review-apply" data-document-id="${escapeHtml(row.document_id)}">Apply</button>
-              <button type="button" class="button-secondary review-reject" data-document-id="${escapeHtml(row.document_id)}">Reject</button>
+              <a href="/manual/preview/${escapeHtml(row.document_id)}" target="_blank" rel="noreferrer">#${escapeHtml(row.document_id)}</a>
+              <div class="metric-footnote">Suggestion #${escapeHtml(row.id)}</div>
+            </td>
+            <td>${titleText}</td>
+            <td>${tagsText}</td>
+            <td>${correspondentText}</td>
+            <td>${renderOtherChanges(proposal)}</td>
+            <td>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <button type="button" class="button review-apply" data-suggestion-id="${escapeHtml(row.id)}" data-document-id="${escapeHtml(row.document_id)}">Apply</button>
+                <button type="button" class="button-secondary review-reject" data-suggestion-id="${escapeHtml(row.id)}" data-document-id="${escapeHtml(row.document_id)}">Reject</button>
+              </div>
             </td>
           </tr>
         `;
@@ -40,7 +83,8 @@
       <div>
         <p class="section-kicker">Review queue</p>
         <h1 class="page-title">Dry-run review mode</h1>
-        <p class="page-subtitle">Inspect the latest AI suggestions before they reach Paperless-ngx. ${banner}</p>
+        <p class="page-subtitle">Inspect stored AI suggestions before they reach Paperless-ngx. ${escapeHtml(banner)}</p>
+        ${typeof error !== 'undefined' && error ? `<p class="alert alert-error">${escapeHtml(error)}</p>` : ''}
       </div>
       <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
         <button id="applySelectedBtn" class="button" type="button">Apply selected</button>
@@ -58,6 +102,7 @@
               <th>Title</th>
               <th>Tags</th>
               <th>Correspondent</th>
+              <th>Other changes</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -77,27 +122,45 @@
         const events = new EventSource('/api/review/progress');
         events.addEventListener('progress', function (event) {
           const progress = JSON.parse(event.data || '{}');
-          if (!progress.documentId) return;
-          const row = table.querySelector('tr[data-document-id="' + progress.documentId + '"]');
+          if (!progress.suggestionId) return;
+          const row = table.querySelector('tr[data-suggestion-id="' + progress.suggestionId + '"]');
           if (row) row.dataset.status = progress.status;
         });
 
-        async function applyOne(documentId) {
+        function ensureEmptyState() {
+          if (!table.querySelector('tr[data-suggestion-id]')) {
+            table.innerHTML = '<tr class="review-empty"><td colspan="7" style="text-align:center;padding:1.5rem;">No pending suggestions.</td></tr>';
+          }
+        }
+
+        function setRowBusy(suggestionId, busy) {
+          const row = table.querySelector('tr[data-suggestion-id="' + suggestionId + '"]');
+          if (!row) return;
+          row.querySelectorAll('button, input').forEach(function (control) {
+            control.disabled = busy;
+          });
+        }
+
+        async function decideOne(suggestionId, documentId, action) {
+          setRowBusy(suggestionId, true);
           try {
-            const response = await fetch('/review/' + encodeURIComponent(documentId) + '/apply', {
+            const response = await fetch('/review/' + encodeURIComponent(suggestionId) + '/' + action, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({})
             });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok) {
-              alert('Apply skipped for #' + documentId + ': ' + (payload.reason || payload.error || 'unknown'));
-              return;
+              throw new Error(payload.reason || payload.error || 'unknown error');
             }
-            const row = table.querySelector('tr[data-document-id="' + documentId + '"]');
+            const row = table.querySelector('tr[data-suggestion-id="' + suggestionId + '"]');
             if (row) row.remove();
+            ensureEmptyState();
+            return true;
           } catch (err) {
-            alert('Apply failed for #' + documentId + ': ' + err.message);
+            alert(action.charAt(0).toUpperCase() + action.slice(1) + ' failed for document #' + documentId + ': ' + err.message);
+            setRowBusy(suggestionId, false);
+            return false;
           }
         }
 
@@ -105,23 +168,29 @@
           const target = event.target;
           if (!(target instanceof HTMLElement)) return;
           if (target.classList.contains('review-apply')) {
-            const id = target.getAttribute('data-document-id');
-            if (id) applyOne(id);
+            const suggestionId = target.getAttribute('data-suggestion-id');
+            const documentId = target.getAttribute('data-document-id');
+            if (suggestionId && documentId) decideOne(suggestionId, documentId, 'apply');
           } else if (target.classList.contains('review-reject')) {
-            const id = target.getAttribute('data-document-id');
-            const row = id ? table.querySelector('tr[data-document-id="' + id + '"]') : null;
-            if (row) row.remove();
+            const suggestionId = target.getAttribute('data-suggestion-id');
+            const documentId = target.getAttribute('data-document-id');
+            if (suggestionId && documentId && window.confirm('Reject the suggestion for document #' + documentId + '?')) {
+              decideOne(suggestionId, documentId, 'reject');
+            }
           }
         });
 
         const applySelectedBtn = document.getElementById('applySelectedBtn');
         if (applySelectedBtn) {
-          applySelectedBtn.addEventListener('click', function () {
-            const checkboxes = table.querySelectorAll('.review-row-select:checked');
-            checkboxes.forEach(function (cb) {
-              const id = cb.getAttribute('data-document-id');
-              if (id) applyOne(id);
-            });
+          applySelectedBtn.addEventListener('click', async function () {
+            const checkboxes = Array.from(table.querySelectorAll('.review-row-select:checked'));
+            applySelectedBtn.disabled = true;
+            for (const cb of checkboxes) {
+              const suggestionId = cb.getAttribute('data-suggestion-id');
+              const documentId = cb.getAttribute('data-document-id');
+              if (suggestionId && documentId) await decideOne(suggestionId, documentId, 'apply');
+            }
+            applySelectedBtn.disabled = false;
           });
         }
 
