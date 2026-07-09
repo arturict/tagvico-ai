@@ -140,9 +140,9 @@ const PROVIDERS = [
   {
     id: 'copilot',
     name: 'GitHub Copilot',
-    description: 'Uses the official Copilot SDK and your Copilot entitlement or GitHub access token.',
-    supportsModelDiscovery: false,
-    supportsCustomModelSlug: true
+    description: 'Uses the official Copilot SDK, OAuth device login, and the models exposed by your plan.',
+    supportsModelDiscovery: true,
+    supportsCustomModelSlug: false
   },
   {
     id: 'compatible',
@@ -174,10 +174,10 @@ const PROVIDERS = [
   },
   {
     id: 'codex',
-    name: 'Codex subscription (experimental)',
-    description: 'Uses a local Codex CLI sign-in. Intended for private, low-volume installations.',
-    supportsModelDiscovery: false,
-    supportsCustomModelSlug: true
+    name: 'ChatGPT subscription (experimental)',
+    description: 'Uses a ChatGPT device login and lists only models returned for the signed-in plan.',
+    supportsModelDiscovery: true,
+    supportsCustomModelSlug: false
   }
 ];
 

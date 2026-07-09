@@ -237,7 +237,7 @@ async function materializeProposal(documentId, proposal = {}) {
   }
 
   if (hasOwn(proposal, 'created') && cleanText(proposal.created)) {
-    updateData.created = cleanText(proposal.created);
+    updateData.created = paperlessService.normalizeDocumentDate(cleanText(proposal.created));
   }
 
   if (hasOwn(proposal, 'document_type') && cleanText(proposal.document_type)) {
@@ -258,8 +258,16 @@ async function materializeProposal(documentId, proposal = {}) {
     for (const entry of customFieldEntries(proposal.custom_fields)) {
       const field = fieldsByName.get(entry.name.toLowerCase())
         || await paperlessService.findExistingCustomField(entry.name);
-      if (!field?.id || !Object.prototype.hasOwnProperty.call(valid, field.name)) continue;
-      byId.set(Number(field.id), { field: field.id, value: valid[field.name] });
+      if (!field?.id) continue;
+      let value;
+      if (Object.prototype.hasOwnProperty.call(valid, field.name)) {
+        value = valid[field.name];
+      } else {
+        const reason = customFieldsService.validateValue(field, entry.value);
+        if (reason) continue;
+        value = entry.value;
+      }
+      byId.set(Number(field.id), { field: field.id, value });
     }
     if (byId.size > 0) updateData.custom_fields = [...byId.values()];
   }
@@ -293,7 +301,19 @@ async function mergeWithCurrentDocument(documentId, updateData = {}) {
     patch.tags = [...new Set([...(current?.tags || []), ...patch.tags])];
   }
   if (current?.correspondent && patch.correspondent) delete patch.correspondent;
+  if (current?.owner !== null && current?.owner !== undefined && patch.owner !== undefined) {
+    delete patch.owner;
+  }
   return patch;
+}
+
+async function correspondentDisplayName(patch, after, proposal = {}) {
+  const proposedName = cleanText(proposal.correspondent);
+  if (patch.correspondent && proposedName) return proposedName;
+  const correspondentId = after?.correspondent;
+  if (correspondentId === null || correspondentId === undefined) return null;
+  const correspondent = await paperlessService.getCorrespondentNameById(correspondentId);
+  return cleanText(correspondent?.name) || null;
 }
 
 /**
@@ -319,7 +339,11 @@ async function applySuggestion(id, reviewedBy = null) {
 
     const historyTags = Array.isArray(patch.tags) ? patch.tags : (result.after?.tags || []);
     const historyTitle = patch.title || result.after?.title || parsed.title || null;
-    const historyCorrespondent = patch.correspondent || result.after?.correspondent || null;
+    const historyCorrespondent = await correspondentDisplayName(
+      patch,
+      result.after,
+      parsed.proposed_metadata
+    );
     historyService.addToHistory(
       parsed.document_id,
       historyTags,
@@ -391,6 +415,7 @@ module.exports = {
   isDryRunEnabled,
   parseSuggestion,
   reserveSuggestion,
+  hasActiveSuggestion: documentModel.hasActiveReviewSuggestion,
   stageSuggestion,
   failSuggestion,
   listPendingSuggestions,

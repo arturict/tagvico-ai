@@ -12,6 +12,7 @@ const anthropicService = require('../services/anthropicService.js');
 const codexService = require('../services/codexService.js');
 const codexAuthService = require('../services/codexAuthService.js');
 const copilotService = require('../services/copilotService.js');
+const copilotAuthService = require('../services/copilotAuthService.js');
 const documentModel = require('../models/document.js');
 const AIServiceFactory = require('../services/aiServiceFactory');
 const debugService = require('../services/debugService.js');
@@ -173,7 +174,8 @@ let PUBLIC_ROUTES = [
   '/api/paperless/discover',
   '/api/paperless/probe',
   '/api/ollama/models',
-  '/api/codex'
+  '/api/codex',
+  '/api/copilot'
 ];
 
 // Combined middleware to check authentication and setup
@@ -3731,7 +3733,20 @@ router.post('/setup', express.json(), async (req, res) => {
     } = req.body;
 
     // Log setup request with sensitive data redacted
-    const sensitiveKeys = ['paperlessToken', 'openaiKey', 'customApiKey', 'password', 'confirmPassword'];
+    const sensitiveKeys = [
+      'paperlessToken',
+      'openaiKey',
+      'openrouterApiKey',
+      'ollamaCloudApiKey',
+      'opencodeApiKey',
+      'copilotGitHubToken',
+      'compatibleApiKey',
+      'customApiKey',
+      'anthropicApiKey',
+      'azureApiKey',
+      'password',
+      'confirmPassword'
+    ];
     const redactedBody = Object.fromEntries(
       Object.entries(req.body).map(([key, value]) => [
       key,
@@ -4499,8 +4514,30 @@ router.post('/api/history/:id/restore', async (req, res) => {
 router.get('/api/codex/status', allowDuringSetup, async (req, res) => {
   try {
     const account = await codexAuthService.account();
-    res.json({ ...(await codexService.getStatus()), account: account.account || null });
+    const current = account.account;
+    res.json({
+      ...(await codexService.getStatus()),
+      account: current ? { type: current.type, planType: current.planType || null } : null
+    });
   } catch { res.json(await codexService.getStatus()); }
+});
+
+router.get('/api/codex/models', allowDuringSetup, async (req, res) => {
+  try {
+    const account = await codexAuthService.account();
+    if (account.account?.type !== 'chatgpt') {
+      return res.status(401).json({ success: false, error: 'Sign in with ChatGPT to load subscription models.' });
+    }
+    const models = await codexAuthService.models();
+    res.json({
+      success: true,
+      planType: account.account.planType || null,
+      models,
+      defaultModel: models.find((model) => model.isDefault)?.id || models[0]?.id || null
+    });
+  } catch (error) {
+    res.status(502).json({ success: false, error: error.message || 'Could not load ChatGPT subscription models' });
+  }
 });
 
 router.post('/api/codex/login', allowDuringSetup, express.json(), async (req, res) => {
@@ -4522,6 +4559,38 @@ router.post('/api/codex/login/:loginId/cancel', allowDuringSetup, async (req, re
 router.post('/api/codex/logout', allowDuringSetup, async (req, res) => {
   try { await codexAuthService.logout(); res.json({ success: true }); }
   catch (error) { res.status(502).json({ error: error.message }); }
+});
+
+router.get('/api/copilot/status', allowDuringSetup, async (req, res) => {
+  const status = await copilotService.status();
+  res.status(status.ok ? 200 : 401).json(status);
+});
+
+router.get('/api/copilot/models', allowDuringSetup, async (req, res) => {
+  const status = await copilotService.status();
+  if (!status.ok) return res.status(401).json(status);
+  res.json({ success: true, models: status.models, defaultModel: status.models[0]?.id || null });
+});
+
+router.post('/api/copilot/login', allowDuringSetup, async (req, res) => {
+  try { res.json(await copilotAuthService.login()); }
+  catch (error) { res.status(500).json({ success: false, error: error.message || 'Could not start GitHub Copilot login' }); }
+});
+
+router.get('/api/copilot/login/:loginId', allowDuringSetup, (req, res) => {
+  const status = copilotAuthService.loginStatus(req.params.loginId);
+  if (!status) return res.status(404).json({ success: false, error: 'Unknown GitHub Copilot login' });
+  res.json(status);
+});
+
+router.post('/api/copilot/login/:loginId/cancel', allowDuringSetup, (req, res) => {
+  const cancelled = copilotAuthService.cancel(req.params.loginId);
+  res.status(cancelled ? 200 : 404).json({ success: cancelled });
+});
+
+router.post('/api/copilot/logout', allowDuringSetup, async (req, res) => {
+  try { res.json(await copilotService.logout()); }
+  catch (error) { res.status(500).json({ success: false, error: error.message || 'Could not sign out of GitHub Copilot' }); }
 });
 
 router.post('/api/settings/clear-tag-cache', async (req, res) => {

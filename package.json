@@ -8,6 +8,7 @@
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
+    "auth:copilot": "node scripts/copilot-login.js",
     "dev": "npm run build && nodemon --watch services --watch routes --watch models --watch config --watch server.ts --ext ts,json --exec \"npm run build && node dist/server.js\"",
     "build": "tsc",
     "test": "npm run check && npm run test:unit",

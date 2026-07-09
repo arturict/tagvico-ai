@@ -45,7 +45,7 @@ test('review suggestions apply and reject by durable suggestion id', () => {
       filename: paperlessPath,
       loaded: true,
       exports: {
-        getDocument: async (id) => ({ id, title: 'Before', tags: [7], correspondent: null }),
+        getDocument: async (id) => ({ id, title: 'Before', tags: [7], correspondent: null, owner: 99 }),
         patchDocument: async (id, patch) => {
           patchCall = { id, patch };
           return {
@@ -57,7 +57,10 @@ test('review suggestions apply and reject by durable suggestion id', () => {
         getOrCreateCorrespondent: async () => ({ id: 11 }),
         getOrCreateDocumentType: async () => ({ id: 12 }),
         getExistingCustomFields: async () => [],
-        findExistingCustomField: async () => null,
+        findExistingCustomField: async (name) => name === 'Cost center'
+          ? { id: 13, name: 'Cost center', type: 'string' }
+          : null,
+        normalizeDocumentDate: (value) => value === '10.07.2026' ? '2026-07-10' : value,
         getUsers: async () => []
       }
     };
@@ -81,7 +84,8 @@ test('review suggestions apply and reject by durable suggestion id', () => {
       loaded: true,
       exports: {
         listFields: async () => [],
-        sanitize: () => ({ valid: {}, dropped: [] })
+        sanitize: () => ({ valid: {}, dropped: [] }),
+        validateValue: (field, value) => field.type === 'string' && typeof value === 'string' ? null : 'invalid'
       }
     };
 
@@ -97,7 +101,12 @@ test('review suggestions apply and reject by durable suggestion id', () => {
         proposedMetadata: {
           title: 'Proposed title',
           tags: ['Invoice'],
-          correspondent: 'Acme'
+          correspondent: 'Acme',
+          created: '10.07.2026',
+          owner: 7,
+          custom_fields: {
+            cost_center: { field_name: 'Cost center', value: 'CH-ZH' }
+          }
         },
         originalMetadata: { title: 'Before', tags: [7], correspondent: null }
       });
@@ -112,7 +121,11 @@ test('review suggestions apply and reject by durable suggestion id', () => {
       assert.deepEqual(patchCall.patch.tags, [7, 9]);
       assert.equal(patchCall.patch.title, 'Proposed title');
       assert.equal(patchCall.patch.correspondent, 11);
+      assert.equal(patchCall.patch.created, '2026-07-10');
+      assert.equal(patchCall.patch.owner, undefined);
+      assert.deepEqual(patchCall.patch.custom_fields, [{ field: 13, value: 'CH-ZH' }]);
       assert.equal(historyCall[0], 515);
+      assert.equal(historyCall[3], 'Acme');
 
       const appliedRow = await model.getReviewSuggestion(reservation.id);
       assert.equal(appliedRow.status, 'applied');

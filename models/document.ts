@@ -256,6 +256,20 @@ const createProcessingStatus = db.prepare(`
 createProcessingStatus.run();
 runMigrations();
 
+// An `applying` claim belongs to the previous process. If it exited before
+// finalizing the row, return the suggestion to the visible review queue so it
+// can be retried explicitly instead of blocking the document forever.
+function recoverApplyingReviewSuggestions() {
+  return db.prepare(`
+    UPDATE review_suggestions
+    SET status = 'pending',
+        last_error = COALESCE(last_error, 'Apply interrupted; returned to review queue'),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE status = 'applying'
+  `).run().changes;
+}
+recoverApplyingReviewSuggestions();
+
 // Add with your other prepared statements
 const upsertProcessingStatus = db.prepare(`
   INSERT INTO processing_status (document_id, title, status)
@@ -391,6 +405,18 @@ module.exports = {
       console.error('[ERROR] reserving review suggestion:', error);
       throw error;
     }
+  },
+
+  async hasActiveReviewSuggestion(documentId) {
+    return Boolean(db.prepare(`
+      SELECT 1 FROM review_suggestions
+      WHERE document_id = ? AND status IN ('staging', 'pending', 'applying')
+      LIMIT 1
+    `).get(documentId));
+  },
+
+  async recoverApplyingReviewSuggestions() {
+    return recoverApplyingReviewSuggestions();
   },
 
   async stageReviewSuggestion(id, {

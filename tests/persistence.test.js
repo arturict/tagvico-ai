@@ -19,6 +19,13 @@ test('database migrations and recovery queues are idempotent', () => {
       if (recovered !== 1 || item.status !== 'pending') process.exit(3);
       await model.addFailedDocument(42, 'Test', 'ocr_failed', 'ocr', 'test');
       if (!await model.isDocumentFailed(42)) process.exit(4);
+      const reservation = await model.reserveReviewSuggestion(43, 'Review me');
+      await model.stageReviewSuggestion(reservation.id, { proposedMetadata: { title: 'Reviewed' } });
+      if (!await model.hasActiveReviewSuggestion(43)) process.exit(6);
+      await model.claimReviewSuggestionForApply(reservation.id, 'tester');
+      if (await model.recoverApplyingReviewSuggestions() !== 1) process.exit(7);
+      const recoveredReview = await model.getReviewSuggestion(reservation.id);
+      if (recoveredReview.status !== 'pending') process.exit(8);
       await model.closeDatabase();
     })().catch(() => process.exit(5));
   `;

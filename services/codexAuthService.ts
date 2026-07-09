@@ -5,6 +5,12 @@ import * as fs from 'fs';
 import config = require('../config/config');
 
 type Pending = { resolve(value: any): void; reject(error: Error): void; timer: NodeJS.Timeout };
+type CodexModel = {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  reasoningEfforts: Array<{ id: string; description: string }>;
+};
 
 class CodexAuthService {
   private process: ChildProcessWithoutNullStreams | null = null;
@@ -74,6 +80,25 @@ class CodexAuthService {
   }
 
   async account() { return this.request('account/read', { refreshToken: false }); }
+  normalizeModels(result: any): CodexModel[] {
+    const entries = Array.isArray(result?.data) ? result.data : Array.isArray(result?.models) ? result.models : [];
+    return entries
+      .filter((model: any) => model && model.hidden !== true && (model.id || model.model))
+      .map((model: any) => ({
+        id: String(model.id || model.model),
+        name: String(model.displayName || model.name || model.id || model.model),
+        isDefault: model.isDefault === true || model.default === true,
+        reasoningEfforts: Array.isArray(model.supportedReasoningEfforts)
+          ? model.supportedReasoningEfforts.map((effort: any) => ({
+            id: String(effort.reasoningEffort || effort.id || effort),
+            description: String(effort.description || '')
+          }))
+          : []
+      }));
+  }
+  async models(): Promise<CodexModel[]> {
+    return this.normalizeModels(await this.request('model/list', { limit: 100 }));
+  }
   async login(type: 'chatgpt' | 'chatgptDeviceCode') {
     const result = await this.request('account/login/start', { type }, 30_000);
     if (result.loginId) this.logins.set(result.loginId, { ...result, completed: false });

@@ -7,15 +7,15 @@
     ? 'Connect Paperless-ngx, choose a model, and decide what Tagvico AI may write back. The rest uses smart defaults.'
     : 'Switch providers, refresh model choices, and control how aggressively Tagvico AI updates documents.';
   const providerLogos = {
-    openrouter: { light: 'https://svgl.app/library/openrouter_light.svg', dark: 'https://svgl.app/library/openrouter_dark.svg' },
+    openrouter: { light: '/provider-icons/openrouter.svg', dark: '/provider-icons/openrouter.svg' },
     ollama: { light: 'https://svgl.app/library/ollama_light.svg', dark: 'https://svgl.app/library/ollama_dark.svg' },
-    'ollama-cloud': { light: 'https://svgl.app/library/ollama_light.svg', dark: 'https://svgl.app/library/ollama_dark.svg' },
-    opencode: { light: 'https://svgl.app/library/openai.svg', dark: 'https://svgl.app/library/openai_dark.svg' },
-    copilot: { light: 'https://svgl.app/library/github.svg', dark: 'https://svgl.app/library/github_dark.svg' },
-    compatible: { light: 'https://svgl.app/library/openai.svg', dark: 'https://svgl.app/library/openai_dark.svg' },
-    openai: { light: 'https://svgl.app/library/openai.svg', dark: 'https://svgl.app/library/openai_dark.svg' },
-    azure: { light: 'https://svgl.app/library/azure.svg', dark: 'https://svgl.app/library/azure.svg' },
-    anthropic: { light: 'https://svgl.app/library/anthropic_black.svg', dark: 'https://svgl.app/library/anthropic_white.svg' },
+    'ollama-cloud': { light: '/provider-icons/ollama-cloud.svg', dark: '/provider-icons/ollama-cloud.svg' },
+    opencode: { light: '/provider-icons/opencode-go.svg', dark: '/provider-icons/opencode-go.svg' },
+    copilot: { light: '/provider-icons/github-copilot.svg', dark: '/provider-icons/github-copilot.svg' },
+    compatible: { light: '/provider-icons/inference.svg', dark: '/provider-icons/inference.svg' },
+    openai: { light: '/provider-icons/openai.svg', dark: '/provider-icons/openai.svg' },
+    azure: { light: '/provider-icons/azure.svg', dark: '/provider-icons/azure.svg' },
+    anthropic: { light: '/provider-icons/anthropic.svg', dark: '/provider-icons/anthropic.svg' },
     codex: { light: 'https://svgl.app/library/codex_light.svg', dark: 'https://svgl.app/library/codex_dark.svg' }
   };
 %>
@@ -337,27 +337,55 @@
 
       <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'copilot' ? '' : 'hidden' %>" data-provider-panel="copilot" aria-hidden="<%= providerCatalog.selectedProvider === 'copilot' ? 'false' : 'true' %>">
         <h3>GitHub Copilot <span class="badge">Subscription</span></h3>
-        <p class="field-hint">Runs through GitHub’s official Copilot SDK with all tools disabled. Use a fine-grained GitHub token/OAuth user token, or sign in with <code>copilot auth login</code> in the container and leave this blank.</p>
+        <p class="field-hint">Runs through GitHub’s official Copilot SDK with all tools disabled. The same OAuth device flow works from this web UI, a desktop browser, or the container CLI.</p>
+        <div class="inline-actions">
+          <button id="copilotStatusButton" type="button" class="button-secondary">Check login status</button>
+          <button id="copilotLoginButton" type="button" class="button-secondary">Sign in with GitHub</button>
+          <button id="copilotLogoutButton" type="button" class="button-danger">Sign out</button>
+          <span id="copilotStatusResult" class="field-hint" aria-live="polite"></span>
+        </div>
+        <div id="copilotLoginResult" class="field-hint" aria-live="polite"></div>
+        <div id="copilotLoginChallenge" class="codex-device-card hidden" aria-live="polite">
+          <div class="codex-device-topline">
+            <span class="codex-device-status"><span class="codex-device-pulse"></span> Waiting for GitHub authorization</span>
+            <span class="codex-device-step">Device login</span>
+          </div>
+          <p class="codex-device-label">Your one-time GitHub code</p>
+          <button id="copilotCopyCode" type="button" class="codex-device-code" aria-label="Copy GitHub device code">
+            <span id="copilotDeviceCode"></span>
+            <span class="codex-copy-hint"><kbd>C</kbd> Copy</span>
+          </button>
+          <div class="codex-device-actions">
+            <a id="copilotOpenAuth" class="button-primary" href="#" target="_blank" rel="noopener noreferrer">
+              Open GitHub <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+            <button id="copilotCopyCodeButton" type="button" class="button-secondary"><i class="fa-regular fa-copy"></i> Copy code</button>
+          </div>
+          <p id="copilotCopyFeedback" class="codex-copy-feedback">Open GitHub on this desktop or another device, then enter the code.</p>
+        </div>
         <div class="form-grid">
           <div class="field field-wide">
-            <label for="copilotGitHubToken">GitHub access token (optional after CLI sign-in)</label>
+            <label for="copilotModel">Models available to this Copilot account</label>
+            <div class="inline-actions">
+              <select id="copilotModel" name="copilotModel" data-current-model="<%= config.COPILOT_MODEL %>">
+                <option value="<%= config.COPILOT_MODEL %>"><%= config.COPILOT_MODEL || 'Sign in to load models' %></option>
+              </select>
+              <button id="refreshCopilotModels" type="button" class="button-secondary">Refresh models</button>
+            </div>
+            <p id="copilotModelsStatus" class="field-hint" aria-live="polite">Only models returned for the signed-in Copilot plan are shown.</p>
+          </div>
+        </div>
+        <details class="advanced-panel">
+          <summary><strong>CLI and token alternatives</strong></summary>
+          <p class="field-hint">For SSH or terminal setup, run <code>docker exec -it tagvico-ai npm run auth:copilot</code>. It writes to the same persistent Copilot home used by this page.</p>
+          <div class="field field-wide">
+            <label for="copilotGitHubToken">Fine-grained GitHub token (optional fallback)</label>
             <div class="secret-input">
               <input id="copilotGitHubToken" name="copilotGitHubToken" type="password" value="<%= config.COPILOT_GITHUB_TOKEN %>" autocomplete="off">
               <button type="button" class="secret-toggle" data-toggle-secret="copilotGitHubToken" aria-label="Show GitHub Copilot token"><i class="fa-solid fa-eye"></i></button>
             </div>
           </div>
-          <div class="field">
-            <label for="copilotModel">Copilot model</label>
-            <input id="copilotModel" name="copilotModel" type="text" list="copilotModels" value="<%= config.COPILOT_MODEL %>" placeholder="gpt-5.4-mini">
-            <datalist id="copilotModels">
-              <option value="gpt-5.6-luna">Recommended when your plan exposes the preview</option>
-              <option value="gpt-5.4-mini">Stable quality/cost default</option>
-              <option value="claude-haiku-4.5">Fast repetitive work</option>
-              <option value="kimi-k2.7-code">Open-model alternative</option>
-            </datalist>
-            <p class="field-hint">GPT-5.6 Luna is the preferred preview choice when it appears in your plan. GPT-5.4 Mini is the safer default; Claude Haiku 4.5 and Kimi K2.7 Code are plan-dependent alternatives.</p>
-          </div>
-        </div>
+        </details>
       </section>
 
       <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'compatible' ? '' : 'hidden' %>" data-provider-panel="compatible" aria-hidden="<%= providerCatalog.selectedProvider === 'compatible' ? 'false' : 'true' %>">
@@ -429,8 +457,8 @@
       </section>
 
       <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'codex' ? '' : 'hidden' %>" data-provider-panel="codex" aria-hidden="<%= providerCatalog.selectedProvider === 'codex' ? 'false' : 'true' %>">
-        <h3>Codex subscription <span class="badge">Experimental</span></h3>
-        <p class="field-hint">Uses the official Codex runtime. Tokens stay in the configured Codex home and are never exposed to this page.</p>
+        <h3>ChatGPT subscription <span class="badge">Codex runtime</span></h3>
+        <p class="field-hint">Uses the official Codex runtime. Tokens stay in the configured Codex home, and the model dropdown comes from this account’s live model catalog.</p>
         <div class="inline-actions">
           <button id="codexStatusButton" type="button" class="button-secondary">Check login status</button>
           <button id="codexLoginButton" type="button" class="button-secondary">Sign in with ChatGPT</button>
@@ -459,9 +487,14 @@
           <p id="codexCopyFeedback" class="codex-copy-feedback">Open ChatGPT, then paste the code when asked.</p>
         </div>
         <div class="field">
-          <label for="codexModel">Codex model</label>
-          <input id="codexModel" type="text" value="<%= config.CODEX_MODEL %>" placeholder="gpt-5.4-mini">
-          <p class="field-hint">Codex is optimized for agentic coding, not document classification. Use this only if you accept the experimental quality and latency trade-offs.</p>
+          <label for="codexModel">Models available to this ChatGPT account</label>
+          <div class="inline-actions">
+            <select id="codexModel" data-current-model="<%= config.CODEX_MODEL %>">
+              <option value="<%= config.CODEX_MODEL %>"><%= config.CODEX_MODEL || 'Sign in to load models' %></option>
+            </select>
+            <button id="refreshCodexModels" type="button" class="button-secondary">Refresh models</button>
+          </div>
+          <p id="codexModelsStatus" class="field-hint" aria-live="polite">Only models returned by the signed-in ChatGPT plan are shown. Codex remains experimental for document classification.</p>
         </div>
       </section>
 

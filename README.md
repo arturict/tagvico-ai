@@ -15,7 +15,7 @@ Self-hosted AI filing for [Paperless-ngx](https://docs.paperless-ngx.com/): turn
 ## Why Tagvico AI
 
 - **Useful metadata, automatically** — titles, tags, correspondents, document types, dates, languages, custom fields, and optional owner assignment.
-- **Your choice of model** — Ollama (local or cloud), OpenAI, Anthropic, OpenRouter, OpenCode Go, GitHub Copilot, Azure OpenAI, an OpenAI-compatible endpoint, or an experimental local Codex sign-in.
+- **Your choice of model** — Ollama (local or cloud), OpenAI, Anthropic, OpenRouter, OpenCode Go, GitHub Copilot, Azure OpenAI, an OpenAI-compatible endpoint, or an experimental ChatGPT subscription sign-in.
 - **Cost-aware processing** — pick immediate requests, OpenAI Flex, or asynchronous OpenAI/Anthropic batches.
 - **Designed for homelabs** — one container, one persistent volume, and SQLite for processing history and retries.
 - **Built to recover** — durable OCR and terminal-failure queues, safe rescans, original-metadata restore, and interrupted-job recovery.
@@ -102,10 +102,10 @@ Owner matching is conservative: optional hint profiles add context, and assignme
 | OpenAI direct | Native OpenAI access with Flex and Batch pricing |
 | Anthropic direct | Claude with standard or discounted Message Batches |
 | OpenCode Go | Go subscription API key and OpenAI-compatible inference gateway |
-| GitHub Copilot | Official Copilot SDK using a subscription or supported GitHub token |
+| GitHub Copilot | Official Copilot SDK, OAuth device login, and account-scoped model discovery |
 | OpenAI-compatible | LM Studio, LiteLLM, vLLM, and custom gateways |
 | Azure OpenAI | Existing Azure deployments |
-| Codex subscription | Experimental local provider using the host's Codex CLI sign-in |
+| ChatGPT subscription | Experimental Codex-runtime provider with device login and account-scoped models |
 
 Provider-specific setup and troubleshooting live in [`docs/providers/`](docs/providers/README.md).
 
@@ -114,8 +114,8 @@ Provider-specific setup and troubleshooting live in [`docs/providers/`](docs/pro
 - **Standard** — process each document immediately. Best for interactive feedback and low-volume setups.
 - **OpenAI Flex** — trades latency and guaranteed availability for Batch-level pricing. Available only for supported OpenAI models, selected in the provider step.
 - **Batch** — asynchronous, discounted jobs that may take up to 24 hours. Available for OpenAI direct and Anthropic direct; Tagvico groups all documents discovered in the same scan into one batch.
-- **Codex subscription (experimental)** — sign in with ChatGPT directly from Settings. The official Codex app-server owns OAuth and token refresh; Tagvico does not implement private ChatGPT endpoints or expose tokens to the browser. The extraction runtime stays read-only with tools and approvals disabled.
-- **GitHub Copilot subscription** — uses the official SDK with every agent tool denied. Authenticate with a supported GitHub token or the Copilot CLI's own device login; your plan controls model availability and usage.
+- **ChatGPT subscription (experimental)** — sign in directly from Settings. The official Codex app-server owns OAuth and token refresh, and its live `model/list` response becomes the model dropdown. Tagvico does not implement private ChatGPT endpoints or expose tokens to the browser. The extraction runtime stays read-only with tools and approvals disabled.
+- **GitHub Copilot subscription** — uses the official SDK with every agent tool denied. Authenticate through the Settings device flow, `npm run auth:copilot`, or a supported token. The dropdown is populated with `listModels()` for the authenticated account.
 
 ### Model selection for v2
 
