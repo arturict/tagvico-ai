@@ -7,14 +7,12 @@ const {
 } = require('./serviceUtils');
 const axios = require('axios');
 const config = require('../config/config');
-const fs = require('fs').promises;
-const path = require('path');
-const paperlessService = require('./paperlessService');
 const os = require('os');
 const OpenAI = require('openai');
 const RestrictionPromptService = require('./restrictionPromptService');
 const tagGroupService = require('./tagGroupService');
 const { normalizeProvider } = require('./providerCatalogService');
+const { loadThumbnail } = require('./thumbnailHelper');
 
 /**
  * Service for document analysis using Ollama
@@ -108,10 +106,10 @@ class OllamaService {
             await this._handleThumbnailCaching(id);
 
             // Get external API data if available and validate it
-            let externalApiData = options.externalApiData || null;
+            let externalApiData = options.externalApiData ?? null;
             let validatedExternalApiData = null;
 
-            if (externalApiData) {
+            if (externalApiData !== null && externalApiData !== undefined) {
                 try {
                     validatedExternalApiData = await this._validateAndTruncateExternalApiData(externalApiData);
                     console.log('[DEBUG] External API data validated and included');
@@ -349,7 +347,7 @@ class OllamaService {
 
         // Get validated external API data if available
         let validatedExternalApiData = null;
-        if (options.externalApiData) {
+        if (options.externalApiData !== null && options.externalApiData !== undefined) {
             try {
                 validatedExternalApiData = this._validateAndTruncateExternalApiData(options.externalApiData);
                 console.log('[DEBUG] External API data validated and included');
@@ -369,7 +367,7 @@ class OllamaService {
         );
 
         // Include validated external API data if available
-        if (validatedExternalApiData) {
+        if (validatedExternalApiData !== null && validatedExternalApiData !== undefined) {
             systemPrompt += `\n\nAdditional context from external API:\n${validatedExternalApiData}`;
         }
 
@@ -393,7 +391,7 @@ class OllamaService {
      * @returns {string} - Validated and potentially truncated data string
      */
     async _validateAndTruncateExternalApiData(apiData, maxTokens = 500) {
-        if (!apiData) {
+        if (apiData === null || apiData === undefined) {
             return null;
         }
 
@@ -541,20 +539,8 @@ class OllamaService {
     async _handleThumbnailCaching(id) {
         if (!id) return;
 
-        const cachePath = path.join('./public/images', `${id}.png`);
-        try {
-            await fs.access(cachePath);
-            console.log('[DEBUG] Thumbnail already cached');
-        } catch (err) {
-            console.log('Thumbnail not cached, fetching from Paperless');
-            const thumbnailData = await paperlessService.getThumbnailImage(id);
-            if (!thumbnailData) {
-                console.warn('Thumbnail nicht gefunden');
-                return;
-            }
-            await fs.mkdir(path.dirname(cachePath), { recursive: true });
-            await fs.writeFile(cachePath, thumbnailData);
-        }
+        const { thumbnailAvailable } = await loadThumbnail(id);
+        if (!thumbnailAvailable) console.warn('Thumbnail nicht gefunden');
     }
 
     /**

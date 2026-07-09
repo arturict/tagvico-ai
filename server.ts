@@ -23,6 +23,7 @@ const { createRateLimiter } = require('./services/rateLimiter');
 const controlledTaggingService = require('./services/controlledTaggingService');
 const tagGroupService = require('./services/tagGroupService');
 const reviewService = require('./services/reviewService');
+const { blockLegacyPublicImages, removeLegacyPublicThumbnailCache } = require('./services/staticPathSecurity');
 
 const htmlLogger = new Logger({
   logFile: 'logs.html',
@@ -73,6 +74,10 @@ app.use((req, res, next) => {
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Paperless thumbnails used to be cached below public/images. Block decoded
+// and normalized variants before static middleware so old files cannot be
+// exposed through encoded-path mount bypasses.
+app.use(blockLegacyPublicImages);
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use(cookieParser());
 app.use('/api', createRateLimiter({ windowMs: 15 * 60 * 1000, max: Number(process.env.GLOBAL_RATE_LIMIT_MAX || 1000) }));
@@ -741,6 +746,10 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 async function startServer() {
   const port = process.env.ARCHIVISTA_AI_PORT || 3000;
   try {
+    const removedLegacyThumbnails = await removeLegacyPublicThumbnailCache();
+    if (removedLegacyThumbnails) {
+      console.log(`[SECURITY] Removed ${removedLegacyThumbnails} legacy public thumbnail cache file(s)`);
+    }
     await initializeDataDirectory();
     // Idempotent schema migration for the history.diff JSON column.
     historyService.migrate();

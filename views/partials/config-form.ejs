@@ -688,8 +688,9 @@
       </div>
 
       <div class="field field-wide">
-        <label for="externalApiTransform">Transform function</label>
-        <textarea id="externalApiTransform" name="externalApiTransform" rows="6"><%= config.EXTERNAL_API_TRANSFORM %></textarea>
+        <label for="externalApiTransform">Response selector (optional)</label>
+        <textarea id="externalApiTransform" name="externalApiTransform" rows="2" placeholder="result.invoice.vendor"><%= config.EXTERNAL_API_TRANSFORM %></textarea>
+        <p class="field-hint">Select one response field with a dotted path (for example <code>result.invoice.vendor</code>) or JSON Pointer (for example <code>/result/invoice/vendor</code>). JavaScript is not accepted.</p>
       </div>
     </div>
   </details>

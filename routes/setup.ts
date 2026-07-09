@@ -4,6 +4,7 @@ const router = express.Router();
 const axios = require('axios');
 const setupService = require('../services/setupService.js');
 const paperlessService = require('../services/paperlessService.js');
+const { loadThumbnail, normalizeDocumentId } = require('../services/thumbnailHelper');
 const openaiService = require('../services/openaiService.js');
 const ollamaService = require('../services/ollamaService.js');
 const azureService = require('../services/azureService.js');
@@ -17,8 +18,6 @@ const debugService = require('../services/debugService.js');
 const configFile = require('../config/config.js');
 const ownerProfileService = require('../services/ownerProfileService');
 const onboardingService = require('../services/onboardingService');
-const fs = require('fs').promises;
-const path = require('path');
 const jwt = require('../services/jwtCompat');
 const bcrypt = require('bcryptjs');
 const cookieParser = require('cookie-parser');
@@ -649,41 +648,24 @@ router.get('/playground', protectApiRoute, retiredUiRoute('/manual'));
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/thumb/:documentId', async (req, res) => {
-  const cachePath = path.join('./public/images', `${req.params.documentId}.png`);
+router.get('/thumb/:documentId', authenticateJWT, async (req, res) => {
+  const documentId = normalizeDocumentId(req.params.documentId);
+  if (!documentId) {
+    return res.status(400).json({ error: 'Document id must be a positive integer' });
+  }
 
   try {
-    // Prüfe ob das Bild bereits im Cache existiert
-    try {
-      await fs.access(cachePath);
-      console.log('Serving cached thumbnail');
-      
-      // Wenn ja, sende direkt das gecachte Bild
-      res.setHeader('Content-Type', 'image/png');
-      return res.sendFile(path.resolve(cachePath));
-      
-    } catch (err) {
-      // File existiert nicht im Cache, hole es von Paperless
-      console.log('Thumbnail not cached, fetching from Paperless');
-      
-      const thumbnailData = await paperlessService.getThumbnailImage(req.params.documentId);
-      
-      if (!thumbnailData) {
-        return res.status(404).send('Thumbnail nicht gefunden');
-      }
-
-      // Speichere im Cache
-      await fs.mkdir(path.dirname(cachePath), { recursive: true }); // Erstelle Verzeichnis falls nicht existiert
-      await fs.writeFile(cachePath, thumbnailData);
-
-      // Sende das Bild
-      res.setHeader('Content-Type', 'image/png');
-      res.send(thumbnailData);
+    const { thumbnailData, thumbnailAvailable, thumbnailMediaType } = await loadThumbnail(documentId);
+    if (!thumbnailAvailable || !thumbnailData) {
+      return res.status(404).send('Thumbnail nicht gefunden');
     }
 
+    res.setHeader('Content-Type', thumbnailMediaType || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.send(thumbnailData);
   } catch (error) {
     console.error('Fehler beim Abrufen des Thumbnails:', error);
-    res.status(500).send('Fehler beim Laden des Thumbnails');
+    return res.status(500).send('Fehler beim Laden des Thumbnails');
   }
 });
 
@@ -1477,7 +1459,7 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
       try {
         const externalApiService = require('../services/externalApiService');
         const externalData = await externalApiService.fetchData();
-        if (externalData) {
+        if (externalData !== null && externalData !== undefined) {
           options.externalApiData = externalData;
           console.log('[DEBUG] Retrieved external API data for prompt enrichment');
         }
@@ -1886,7 +1868,9 @@ function buildConfigForSave(payload, options = {}) {
     EXTERNAL_API_HEADERS: payload.externalApiHeaders || currentConfig.EXTERNAL_API_HEADERS || '{}',
     EXTERNAL_API_BODY: payload.externalApiBody || currentConfig.EXTERNAL_API_BODY || '{}',
     EXTERNAL_API_TIMEOUT: payload.externalApiTimeout || currentConfig.EXTERNAL_API_TIMEOUT || '5000',
-    EXTERNAL_API_TRANSFORM: payload.externalApiTransform || currentConfig.EXTERNAL_API_TRANSFORM || '',
+    EXTERNAL_API_TRANSFORM: Object.prototype.hasOwnProperty.call(payload, 'externalApiTransform')
+      ? String(payload.externalApiTransform || '')
+      : currentConfig.EXTERNAL_API_TRANSFORM || '',
     CUSTOM_FIELDS: processedCustomFields.length > 0 ? JSON.stringify({ custom_fields: processedCustomFields }) : (currentConfig.CUSTOM_FIELDS || '{"custom_fields":[]}'),
     SYSTEM_PROMPT: processSystemPrompt(payload.systemPrompt),
     TOKEN_LIMIT: currentConfig.TOKEN_LIMIT || '128000',

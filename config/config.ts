@@ -49,7 +49,7 @@ const externalApiConfig = {
   headers: process.env.EXTERNAL_API_HEADERS || '{}',
   body: process.env.EXTERNAL_API_BODY || '{}',
   timeout: parseInt(process.env.EXTERNAL_API_TIMEOUT || '5000', 10),
-  transformationTemplate: process.env.EXTERNAL_API_TRANSFORM || ''
+  selector: process.env.EXTERNAL_API_TRANSFORM || ''
 };
 
 console.log('Loaded environment variables:', {
