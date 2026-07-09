@@ -1364,13 +1364,13 @@ try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
       console.log(`Setup not completed. Visit http://your-machine-ip:${process.env.ARCHIVISTA_AI_PORT || 3000}/setup to complete setup.`);
-      return;
+      return res.status(409).json({ error: 'Setup is not complete' });
     }
 
     const userId = await paperlessService.getOwnUserID();
     if (!userId) {
       console.error('Failed to get own user ID. Abort scanning.');
-      return;
+      return res.status(502).json({ error: 'Could not resolve the Paperless API user' });
     }
     
       try {
@@ -1406,13 +1406,14 @@ try {
         }
       } catch (error) {
         console.error('[ERROR]  during document scan:', error);
+        if (!res.headersSent) res.status(500).json({ error: 'Error during document scan' });
       } finally {
-        runningTask = false;
         console.log('[INFO] Task completed');
-        res.send('Task completed');
+        if (!res.headersSent) res.send('Task completed');
       }
   } catch (error) {
     console.error('[ERROR] in startScanning:', error);
+    if (!res.headersSent) res.status(500).json({ error: 'Error during document scan' });
   }
 });
 
@@ -1737,6 +1738,7 @@ router.post('/api/key-regenerate', async (req, res) => {
 function buildPageConfig() {
   const onboardingDefaults = onboardingService.loadOnboardingDefaults();
   const config = buildUiConfig({ ...onboardingDefaults, ...process.env }, configFile.ARCHIVISTA_AI_VERSION || '');
+  config.DRY_RUN = reviewService.isDryRunEnabled();
   config.SYSTEM_PROMPT = '';
   config.CUSTOM_FIELDS = process.env.CUSTOM_FIELDS || '{"custom_fields":[]}';
   return config;
@@ -1800,7 +1802,9 @@ function buildConfigForSave(payload, options = {}) {
   const providerPayload = normalizeProviderPayload(payload);
   const currentConfig = options.currentConfig || {};
   const apiToken = options.apiToken || process.env.API_KEY || require('crypto').randomBytes(64).toString('hex');
-  const jwtToken = options.jwtToken || process.env.JWT_SECRET || require('crypto').randomBytes(64).toString('hex');
+  // Persist the same secret that authenticated this setup request. Generating
+  // a second value here invalidates every first-run session after restart.
+  const jwtToken = options.jwtToken || process.env.JWT_SECRET || JWT_SECRET;
   const processedCustomFields = options.processedCustomFields || [];
 
   return {
@@ -1837,10 +1841,10 @@ function buildConfigForSave(payload, options = {}) {
     OLLAMA_CLOUD_API_URL: providerPayload.ollamaCloudUrl || currentConfig.OLLAMA_CLOUD_API_URL || 'https://ollama.com',
     OLLAMA_CLOUD_MODEL: providerPayload.provider === 'ollama-cloud' ? providerPayload.selectedModel : currentConfig.OLLAMA_CLOUD_MODEL || 'gpt-oss:20b-cloud',
     OPENCODE_API_KEY: providerPayload.provider === 'opencode' ? providerPayload.opencodeApiKey : currentConfig.OPENCODE_API_KEY || '',
-    OPENCODE_BASE_URL: providerPayload.opencodeBaseUrl || currentConfig.OPENCODE_BASE_URL || 'https://console.opencode.ai/inference/openai/v1',
-    OPENCODE_MODEL: providerPayload.provider === 'opencode' ? providerPayload.selectedModel : currentConfig.OPENCODE_MODEL || '',
+    OPENCODE_BASE_URL: providerPayload.opencodeBaseUrl || currentConfig.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
+    OPENCODE_MODEL: providerPayload.provider === 'opencode' ? providerPayload.selectedModel : currentConfig.OPENCODE_MODEL || 'deepseek-v4-flash',
     COPILOT_GITHUB_TOKEN: providerPayload.provider === 'copilot' ? providerPayload.copilotGitHubToken : currentConfig.COPILOT_GITHUB_TOKEN || '',
-    COPILOT_MODEL: providerPayload.provider === 'copilot' ? providerPayload.selectedModel : currentConfig.COPILOT_MODEL || 'gpt-5.4',
+    COPILOT_MODEL: providerPayload.provider === 'copilot' ? providerPayload.selectedModel : currentConfig.COPILOT_MODEL || 'gpt-5.4-mini',
     COMPATIBLE_BASE_URL: providerPayload.compatibleBaseUrl || currentConfig.COMPATIBLE_BASE_URL || '',
     COMPATIBLE_API_KEY: providerPayload.compatibleApiKey || currentConfig.COMPATIBLE_API_KEY || '',
     COMPATIBLE_MODEL: providerPayload.provider === 'compatible' ? providerPayload.selectedModel : currentConfig.COMPATIBLE_MODEL || '',
@@ -3884,7 +3888,8 @@ router.post('/setup', express.json(), async (req, res) => {
     // Persist dry-run review flag alongside the main config so the review
     // queue picks it up on the next request without restarting the process.
     if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'dry_run')) {
-      reviewService.writeReviewConfig({ DRY_RUN: req.body.dry_run ? 'true' : 'false' });
+      const dryRunEnabled = parseBooleanFlag(req.body.dry_run, 'yes') === 'yes';
+      reviewService.writeReviewConfig({ DRY_RUN: dryRunEnabled ? 'true' : 'false' });
     } else {
       // Make sure the on-disk default exists so /review can read it.
       reviewService.writeReviewConfig({});
@@ -4216,7 +4221,7 @@ router.post('/settings', express.json(), async (req, res) => {
       }
     } else if (providerConfig.provider === 'opencode') {
       const isValid = await setupService.validateCustomConfig(
-        providerConfig.opencodeBaseUrl || currentConfig.OPENCODE_BASE_URL || 'https://console.opencode.ai/inference/openai/v1',
+        providerConfig.opencodeBaseUrl || currentConfig.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
         providerConfig.opencodeApiKey || currentConfig.OPENCODE_API_KEY,
         providerConfig.selectedModel || currentConfig.OPENCODE_MODEL
       );
@@ -4267,6 +4272,10 @@ router.post('/settings', express.json(), async (req, res) => {
     resetRuntimeServices();
     const tagProvisioning = await provisionControlledTags();
     onboardingService.writeOnboardingSnapshot(mergedConfig);
+    if (Object.prototype.hasOwnProperty.call(req.body, 'dry_run')) {
+      const dryRunEnabled = parseBooleanFlag(req.body.dry_run, 'yes') === 'yes';
+      reviewService.writeReviewConfig({ DRY_RUN: dryRunEnabled ? 'true' : 'false' });
+    }
     try {
       for (const field of processedCustomFields) {
         await paperlessService.createCustomFieldSafely(field.value, field.data_type, field.currency);

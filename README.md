@@ -101,7 +101,7 @@ Owner matching is conservative: optional hint profiles add context, and assignme
 | Ollama Cloud | Hosted Ollama models with an API key |
 | OpenAI direct | Native OpenAI access with Flex and Batch pricing |
 | Anthropic direct | Claude with standard or discounted Message Batches |
-| OpenCode Go | Console service API key and OpenAI-compatible inference gateway |
+| OpenCode Go | Go subscription API key and OpenAI-compatible inference gateway |
 | GitHub Copilot | Official Copilot SDK using a subscription or supported GitHub token |
 | OpenAI-compatible | LM Studio, LiteLLM, vLLM, and custom gateways |
 | Azure OpenAI | Existing Azure deployments |

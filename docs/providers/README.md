@@ -37,12 +37,12 @@ set of your own documents before enabling automatic writes.
 
 | Provider | Start with | Use when | Important caveat |
 | --- | --- | --- | --- |
-| OpenAI direct | `gpt-5.4-mini` | Default quality/cost balance | `gpt-5.4-nano` is better for clean bulk scans; GPT-5.6 Sol/Terra/Luna are trusted-partner preview models and are deliberately gated. |
+| OpenAI direct | `gpt-5.4-mini` | Stable quality/cost balance ($0.75/$4.50 per 1M input/output tokens) | `gpt-5.4-nano` is cheaper ($0.20/$1.25) for clean bulk scans. GPT-5.6 Luna is $1/$6 and the preview recommendation, but the family is deliberately gated to approved organizations. |
 | OpenRouter | `openai/gpt-5.4-mini` | Best default when you want routing/provider choice | `openrouter/free` is useful for a trial, but routes among free models and should not be used as a reliability default. |
-| GitHub Copilot | `gpt-5.4` | A plan already includes compatible access | Claude Haiku 4.5 is often a lower-multiplier option; available models and quotas are plan-controlled. |
+| GitHub Copilot | `gpt-5.4-mini` | Stable balance inside current AI-credit billing | Use GPT-5.6 Luna when your plan exposes it. Haiku 4.5 and Kimi K2.7 Code are useful alternatives; included credits and models are plan-controlled. |
 | Ollama local | Your tested local instruct model | Privacy and predictable local operation | Quality depends on your hardware/model; validate structured JSON before enabling writes. |
-| Ollama Cloud | `gpt-oss:20b-cloud` | No local GPU, Ollama API workflow | Cloud use sends document text to Ollama and availability is account-controlled. |
-| OpenCode Go | A model listed by your Console account | Existing OpenCode Go users | The Console controls which model IDs and quotas your service key can use. |
+| Ollama Cloud | `gpt-oss:20b-cloud` | Lightest published cloud usage level; no local GPU | Free is light use; Pro is currently $20/month and 50× Free usage. Cloud use sends document text to Ollama. |
+| OpenCode Go | `deepseek-v4-flash` | Lowest-cost, highest-throughput Go starting point | `kimi-k2.7-code` or `glm-5.2` are better candidates for harder documents. Go is currently $5 first month, then $10/month. |
 | Codex subscription | `gpt-5.4-mini` | Experimental, private low-volume use | This is Codex-managed access, not a general ChatGPT inference API or API SLA. |
 
 For GPT-5.6 preview organizations only, set
@@ -50,3 +50,12 @@ For GPT-5.6 preview organizations only, set
 `gpt-5.6-terra`, or `gpt-5.6-sol`. Luna is exposed as the preview recommendation
 for accounts that actually have access; it is intentionally not the global
 default.
+
+Pricing and availability above were checked on 2026-07-09 against provider-owned
+sources: [OpenAI GPT-5.4 Mini/Nano](https://openai.com/index/introducing-gpt-5-4-mini-and-nano/),
+[OpenAI GPT-5.6 preview](https://help.openai.com/en/articles/20001325-a-preview-of-gpt-5-6-sol-terra-and-luna),
+[GitHub Copilot model pricing](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing),
+[OpenRouter free router](https://openrouter.ai/docs/guides/routing/routers/free-router),
+[Ollama pricing](https://ollama.com/pricing), and
+[OpenCode Go](https://opencode.ai/docs/go/). Recheck them before each release;
+these catalogs and plan terms are not part of Tagvico's compatibility contract.

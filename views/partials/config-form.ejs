@@ -48,6 +48,10 @@
     <li class="onboarding-step"><span>3</span><strong>Model</strong><small>Pick default</small></li>
     <li class="onboarding-step"><span>4</span><strong>Run</strong><small>Auto-file docs</small></li>
   </ol>
+  <div class="help-card" role="note">
+    <strong>Your first result is a proposal, not an automatic write.</strong>
+    <p>Tagvico starts in dry-run mode. After the first scan, compare the proposed title, tags, correspondent, type, and date in the Review queue before applying anything to Paperless-ngx.</p>
+  </div>
   <% } %>
 
   <fieldset class="section-fieldset stack cube-hero">
@@ -307,7 +311,7 @@
         <div class="form-grid">
           <div class="field field-wide">
             <label for="opencodeBaseUrl">Inference gateway</label>
-            <input id="opencodeBaseUrl" name="opencodeBaseUrl" type="url" value="<%= config.OPENCODE_BASE_URL %>" placeholder="https://console.opencode.ai/inference/openai/v1">
+            <input id="opencodeBaseUrl" name="opencodeBaseUrl" type="url" value="<%= config.OPENCODE_BASE_URL %>" placeholder="https://opencode.ai/zen/go/v1">
           </div>
           <div class="field">
             <label for="opencodeApiKey">OpenCode service API key</label>
@@ -318,7 +322,15 @@
           </div>
           <div class="field">
             <label for="opencodeModel">Model ID</label>
-            <input id="opencodeModel" name="opencodeModel" type="text" value="<%= config.OPENCODE_MODEL %>" placeholder="Use a model your Console catalog permits">
+            <input id="opencodeModel" name="opencodeModel" type="text" list="opencodeModels" value="<%= config.OPENCODE_MODEL %>" placeholder="deepseek-v4-flash">
+            <datalist id="opencodeModels">
+              <option value="deepseek-v4-flash">Budget throughput</option>
+              <option value="mimo-v2.5">Budget alternative</option>
+              <option value="kimi-k2.7-code">Harder documents</option>
+              <option value="glm-5.2">General quality</option>
+              <option value="deepseek-v4-pro">Higher quality</option>
+            </datalist>
+            <p class="field-hint">DeepSeek V4 Flash is the low-cost filing default. Try Kimi K2.7 Code or GLM-5.2 when extraction quality matters more than throughput. The Go catalog can change.</p>
           </div>
         </div>
       </section>
@@ -336,8 +348,14 @@
           </div>
           <div class="field">
             <label for="copilotModel">Copilot model</label>
-            <input id="copilotModel" name="copilotModel" type="text" value="<%= config.COPILOT_MODEL %>" placeholder="gpt-5.4">
-            <p class="field-hint">Good low-cost options include GPT-5.4 or Claude Haiku 4.5 when your plan exposes them.</p>
+            <input id="copilotModel" name="copilotModel" type="text" list="copilotModels" value="<%= config.COPILOT_MODEL %>" placeholder="gpt-5.4-mini">
+            <datalist id="copilotModels">
+              <option value="gpt-5.6-luna">Recommended when your plan exposes the preview</option>
+              <option value="gpt-5.4-mini">Stable quality/cost default</option>
+              <option value="claude-haiku-4.5">Fast repetitive work</option>
+              <option value="kimi-k2.7-code">Open-model alternative</option>
+            </datalist>
+            <p class="field-hint">GPT-5.6 Luna is the preferred preview choice when it appears in your plan. GPT-5.4 Mini is the safer default; Claude Haiku 4.5 and Kimi K2.7 Code are plan-dependent alternatives.</p>
           </div>
         </div>
       </section>
@@ -513,6 +531,12 @@
     </legend>
 
     <div class="segmented" role="group" aria-label="Fields Tagvico AI may write back">
+      <label class="choice-card toggle-card <%= config.DRY_RUN !== false && config.DRY_RUN !== 'false' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="dry_run" <%= config.DRY_RUN !== false && config.DRY_RUN !== 'false' ? 'checked' : '' %> hidden aria-label="Review every suggestion before writing">
+        <div class="choice-title"><span>Review before write</span><span class="badge">Recommended</span></div>
+        <div class="choice-copy">Stage every AI result in the durable Review queue. An authenticated person must apply or reject it.</div>
+      </label>
+
       <label class="choice-card toggle-card <%= config.ACTIVATE_TAGGING === 'yes' ? 'is-selected' : '' %>">
         <input type="checkbox" name="activateTagging" <%= config.ACTIVATE_TAGGING === 'yes' ? 'checked' : '' %> hidden aria-label="Generate and attach tags">
         <div class="choice-title"><span>Tags</span></div>
@@ -549,6 +573,9 @@
         <div class="choice-copy">Assign documents to matching Paperless users. Works automatically from user names; hints are optional.</div>
       </label>
     </div>
+    <% if (!isSetup) { %>
+      <p class="field-hint"><a class="inline-link" href="/review"><i class="fa-solid fa-clipboard-check"></i> Open the current Review queue</a></p>
+    <% } %>
 
     <div class="form-grid">
       <div class="field">

@@ -8,7 +8,8 @@ test('subscription and cloud providers normalize to first-class provider IDs', (
   assert.equal(catalog.normalizeProvider('opencode'), 'opencode');
   assert.equal(catalog.normalizeProvider('copilot'), 'copilot');
   assert.equal(catalog.normalizeProvider('ollama-cloud'), 'ollama-cloud');
-  assert.equal(catalog.getDefaultModel('copilot'), 'gpt-5.4');
+  assert.equal(catalog.getDefaultModel('opencode'), 'deepseek-v4-flash');
+  assert.equal(catalog.getDefaultModel('copilot'), 'gpt-5.4-mini');
 });
 
 test('GPT-5.6 preview models stay gated unless the organization explicitly enables them', () => {

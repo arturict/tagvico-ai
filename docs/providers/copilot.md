@@ -17,14 +17,16 @@ Choose one supported GitHub authentication path:
 ```dotenv
 AI_PROVIDER=copilot
 COPILOT_GITHUB_TOKEN=github_pat_...
-COPILOT_MODEL=gpt-5.4
+COPILOT_MODEL=gpt-5.4-mini
 COPILOT_HOME=/app/data/copilot
 ```
 
-Model access and usage are controlled by your Copilot plan. `gpt-5.4` is a good
-quality default; Claude Haiku 4.5 is often a lower-cost plan option. Kimi K2.7
-Code may be available on some plans, but model availability and multipliers can
-change, so select only models returned by your account.
+Model access and usage are controlled by your Copilot plan. Use
+`gpt-5.6-luna` when the preview is actually returned for your account;
+`gpt-5.4-mini` is the stable default for filing. Under GitHub's current
+usage-based pricing, GPT-5.4 Mini is $0.75/$4.50 per 1M input/output tokens,
+Claude Haiku 4.5 is $1/$5, and Kimi K2.7 Code is $0.95/$4. Model availability,
+included AI credits, and legacy annual-plan multipliers can change.
 
 Official references: [Copilot SDK authentication](https://docs.github.com/en/copilot/how-tos/copilot-sdk/auth/authenticate)
-and [supported models](https://docs.github.com/en/copilot/reference/ai-models/supported-models).
+and [models and pricing](https://docs.github.com/en/copilot/reference/copilot-billing/models-and-pricing).

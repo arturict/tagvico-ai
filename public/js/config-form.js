@@ -432,12 +432,12 @@ class ConfigFormApp {
     }
 
     if (provider === 'opencode') {
-      this.modelInput.value = document.getElementById('opencodeModel')?.value.trim() || '';
+      this.modelInput.value = document.getElementById('opencodeModel')?.value.trim() || 'deepseek-v4-flash';
       return;
     }
 
     if (provider === 'copilot') {
-      this.modelInput.value = document.getElementById('copilotModel')?.value.trim() || 'gpt-5.4';
+      this.modelInput.value = document.getElementById('copilotModel')?.value.trim() || 'gpt-5.4-mini';
       return;
     }
 
@@ -716,6 +716,8 @@ class ConfigFormApp {
       try {
         const formData = new FormData(this.form);
         const payload = Object.fromEntries(formData.entries());
+        const dryRunInput = this.form.querySelector('[name="dry_run"]');
+        if (dryRunInput) payload.dry_run = dryRunInput.checked;
         const response = await fetch(this.form.dataset.action, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

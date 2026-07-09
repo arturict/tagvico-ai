@@ -280,3 +280,67 @@ test('review page renders proposed metadata and durable suggestion ids', async (
   assert.match(html, /decideOne\(suggestionId, documentId, 'reject'\)/);
   assert.doesNotMatch(html, /data-suggestion-id="1234"/);
 });
+
+test('manual scan route completes without scheduler-only state', () => {
+  const script = `
+    const assert = require('node:assert/strict');
+    const path = require('node:path');
+    const root = ${JSON.stringify(repoRoot)};
+    const setupPath = path.join(root, 'dist/services/setupService.js');
+    const paperlessPath = path.join(root, 'dist/services/paperlessService.js');
+    const reviewPath = path.join(root, 'dist/services/reviewService.js');
+
+    require.cache[setupPath] = {
+      id: setupPath,
+      filename: setupPath,
+      loaded: true,
+      exports: { isConfigured: async () => true }
+    };
+    require.cache[paperlessPath] = {
+      id: paperlessPath,
+      filename: paperlessPath,
+      loaded: true,
+      exports: {
+        getOwnUserID: async () => 7,
+        getTags: async () => [],
+        getAllDocuments: async () => [],
+        listCorrespondentsNames: async () => [],
+        listDocumentTypesNames: async () => []
+      }
+    };
+    require.cache[reviewPath] = {
+      id: reviewPath,
+      filename: reviewPath,
+      loaded: true,
+      exports: {
+        isDryRunEnabled: () => true,
+        writeReviewConfig: () => ({ DRY_RUN: 'true' })
+      }
+    };
+
+    const express = require(path.join(root, 'node_modules/express'));
+    const cookieParser = require(path.join(root, 'node_modules/cookie-parser'));
+    const router = require(path.join(root, 'dist/routes/setup.js'));
+
+    (async () => {
+      const app = express();
+      app.use(cookieParser());
+      app.use(router);
+      const server = await new Promise((resolve) => {
+        const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
+      });
+      const response = await fetch('http://127.0.0.1:' + server.address().port + '/api/scan/now', {
+        method: 'POST',
+        headers: { 'x-api-key': 'review-route-key' }
+      });
+      assert.equal(response.status, 200);
+      assert.equal(await response.text(), 'Task completed');
+      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    })().catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
+  `;
+
+  runIsolated(script);
+});

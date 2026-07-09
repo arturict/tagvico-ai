@@ -252,7 +252,7 @@ class SetupService {
       }
     } else if (aiProvider === 'opencode') {
       const opencodeValid = await this.validateCustomConfig(
-        config.OPENCODE_BASE_URL || 'https://console.opencode.ai/inference/openai/v1',
+        config.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
         config.OPENCODE_API_KEY,
         config.OPENCODE_MODEL
       );

@@ -130,7 +130,7 @@ module.exports = {
   },
   opencode: {
     apiKey: process.env.OPENCODE_API_KEY || '',
-    apiUrl: process.env.OPENCODE_BASE_URL || 'https://console.opencode.ai/inference/openai/v1',
+    apiUrl: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
     model: process.env.OPENCODE_MODEL || getDefaultModel('opencode')
   },
   copilot: {

@@ -2,6 +2,9 @@
   "name": "tagvico-ai",
   "version": "2.0.0-alpha.1",
   "description": "Tagvico AI — alpha. Self-hosted AI autopilot for Paperless-ngx (metadata, tagging, classification, owner assignment). Active development; APIs and schema may change without notice.",
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24"
+  },
   "main": "dist/server.js",
   "scripts": {
     "start": "node dist/server.js",
