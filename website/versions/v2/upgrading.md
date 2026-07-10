@@ -6,7 +6,8 @@ and change only the container image during a normal upgrade.
 
 ## Before upgrading
 
-1. Read the release notes and note any v2 migration warnings.
+1. Read the [release notes](https://github.com/arturict/tagvico-ai/releases) and
+   note any v2 migration warnings.
 2. Keep **Review first** enabled if the release changes metadata behavior.
 3. Stop Tagvico and back up its named volume:
 
@@ -29,6 +30,10 @@ docker compose ps
 docker compose logs --tail=100 tagvico-ai
 curl http://localhost:8080/health
 ```
+
+After signing in, confirm the displayed version, test the Paperless connection,
+and check `/api/health`. Process one non-sensitive document in **Review first**
+before re-enabling Automatic mode.
 
 Tagvico checkpoints SQLite and creates a pre-migration database backup before
 schema upgrades. The external volume backup remains the safest rollback point.

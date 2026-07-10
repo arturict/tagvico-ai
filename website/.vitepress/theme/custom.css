@@ -19,7 +19,31 @@
 }
 
 .VPNavBarTitle .logo { border-radius: 7px; }
-.VPHero .image-src { max-width: 190px; max-height: 190px; }
+.VPHero .image-src {
+  max-width: 190px;
+  max-height: 190px;
+  border: 1px solid rgba(200, 255, 46, 0.12);
+  border-radius: 28px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.42);
+}
 .vp-doc img { border: 1px solid var(--vp-c-divider); border-radius: 12px; box-shadow: 0 18px 48px rgba(0, 0, 0, 0.3); }
 .vp-doc table { display: table; width: 100%; }
 .vp-doc .custom-block.tip { border-color: var(--vp-c-brand-1); }
+
+@media (max-width: 640px) {
+  html,
+  body { overflow-x: hidden; }
+
+  .VPHero .container,
+  .VPHero .main { min-width: 0; width: 100%; }
+  .VPHero .heading .text {
+    font-size: clamp(2rem, 9.5vw, 2.5rem);
+    line-height: 1.08;
+    overflow-wrap: anywhere;
+  }
+  .VPHero .tagline { font-size: 1.05rem; }
+  .VPHero .actions {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}

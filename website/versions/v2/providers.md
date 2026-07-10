@@ -2,7 +2,9 @@
 
 Provider choice determines where OCR text is processed, how credentials are
 managed, which models are visible, and which cost modes are available. Validate
-quality with representative documents before enabling Automatic writes.
+quality with representative documents before enabling Automatic writes. See
+[Privacy and security](./privacy) before sending real document text to a hosted
+service.
 
 | Provider | Best for | Authentication / endpoint | Notes |
 | --- | --- | --- | --- |
@@ -38,3 +40,7 @@ Model names, pricing, quotas, subscription entitlements, and regional
 availability are provider-controlled. Recheck the provider catalog before each
 Tagvico release; it is not part of the compatibility contract.
 :::
+
+For current model identifiers and account entitlements, use the catalog shown
+inside Tagvico after authentication. The documentation intentionally does not
+hard-code model names that providers may rename or withdraw.

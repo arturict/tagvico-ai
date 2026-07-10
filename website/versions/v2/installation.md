@@ -57,6 +57,13 @@ contains no credentials, private hostnames, document data, or account details.
 4. Select **Review first** for approval-based filing or **Automatic** for direct
    writes, then choose which metadata fields Tagvico may change.
 
+After saving the provider, verify the complete dependency chain. Unlike
+`/health`, this endpoint also checks the configured model provider:
+
+```bash
+curl --fail http://localhost:8080/api/health
+```
+
 If Paperless runs on the Docker host, use `host.docker.internal` on Docker
 Desktop or the host's LAN address on Linux. If both containers share a Docker
 network, use the Paperless Compose service name.
@@ -84,3 +91,12 @@ docker run -d \
 
 After setup, remove `ALLOW_REMOTE_SETUP=yes` unless you specifically need to
 repeat setup from another machine.
+
+## Next steps
+
+- Compare the [supported providers](./providers) and understand where document
+  text is processed.
+- Review the [privacy and security boundaries](./privacy) before using real
+  documents.
+- Keep the [troubleshooting guide](./troubleshooting) available while validating
+  the first processing run.

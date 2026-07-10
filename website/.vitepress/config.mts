@@ -23,7 +23,9 @@ export default defineConfig({
   lastUpdated: process.env.TAGVICO_DOCS_LAST_UPDATED !== 'false',
   appearance: 'dark',
   head: [
-    ['link', { rel: 'icon', href: `${base}favicon.ico` }],
+    ['link', { rel: 'icon', type: 'image/png', href: `${base}tagvico-icon.png` }],
+    ['link', { rel: 'alternate', type: 'text/plain', href: `${base}llms.txt`, title: 'LLM documentation index' }],
+    ['link', { rel: 'alternate', type: 'text/plain', href: `${base}llms-full.txt`, title: 'Complete LLM documentation' }],
     ['meta', { name: 'theme-color', content: '#c8ff2e' }],
   ],
   themeConfig: {
@@ -62,6 +64,14 @@ export default defineConfig({
           { text: 'Feature showcase', link: '/features' },
           { text: 'Provider overview', link: '/providers' },
           { text: 'Privacy & security', link: '/privacy' },
+          { text: 'Troubleshooting', link: '/troubleshooting' },
+        ],
+      },
+      {
+        text: 'Machine-readable',
+        items: [
+          { text: 'LLM index', link: '/llms.txt' },
+          { text: 'Complete docs for LLMs', link: '/llms-full.txt' },
         ],
       },
     ],
