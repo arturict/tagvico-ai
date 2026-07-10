@@ -10,7 +10,8 @@
   }
 
   const rows = Array.isArray(analyses) ? analyses : [];
-  const banner = dryRun
+  const isReviewFirst = typeof reviewMode === 'boolean' ? reviewMode : dryRun;
+  const banner = isReviewFirst
     ? 'Automatic writes are paused. Apply sends only the reviewed suggestion to Paperless-ngx.'
     : 'Automatic writes are enabled. Suggestions already in this queue still require an explicit decision.';
 
@@ -82,7 +83,7 @@
     <section class="page-header">
       <div>
         <p class="section-kicker">Review queue</p>
-        <h1 class="page-title">Dry-run review mode</h1>
+        <h1 class="page-title">Review queue</h1>
         <p class="page-subtitle">Inspect stored AI suggestions before they reach Paperless-ngx. ${escapeHtml(banner)}</p>
         ${typeof error !== 'undefined' && error ? `<p class="alert alert-error">${escapeHtml(error)}</p>` : ''}
       </div>

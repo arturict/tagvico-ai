@@ -563,13 +563,25 @@
       <span class="legend-title">Decide what Tagvico AI writes back</span>
     </legend>
 
-    <div class="segmented" role="group" aria-label="Fields Tagvico AI may write back">
-      <label class="choice-card toggle-card <%= config.DRY_RUN !== false && config.DRY_RUN !== 'false' ? 'is-selected' : '' %>">
-        <input type="checkbox" name="dry_run" <%= config.DRY_RUN !== false && config.DRY_RUN !== 'false' ? 'checked' : '' %> hidden aria-label="Review every suggestion before writing">
-        <div class="choice-title"><span>Review before write</span><span class="badge">Recommended</span></div>
-        <div class="choice-copy">Stage every AI result in the durable Review queue. An authenticated person must apply or reject it.</div>
-      </label>
+    <div class="field field-wide stack">
+      <label>Choose how Tagvico handles validated suggestions</label>
+      <div class="segmented" role="radiogroup" aria-label="Metadata write mode">
+        <label class="choice-card toggle-card <%= config.WRITE_MODE !== 'automatic' ? 'is-selected' : '' %>">
+          <input type="radio" name="write_mode" value="review" <%= config.WRITE_MODE !== 'automatic' ? 'checked' : '' %> aria-label="Review suggestions before writing">
+          <div class="choice-title"><span>Review first</span><span class="badge">Recommended</span></div>
+          <div class="choice-copy">Put every suggestion in the Review queue. Nothing changes in Paperless-ngx until you apply it.</div>
+        </label>
 
+        <label class="choice-card toggle-card <%= config.WRITE_MODE === 'automatic' ? 'is-selected' : '' %>">
+          <input type="radio" name="write_mode" value="automatic" <%= config.WRITE_MODE === 'automatic' ? 'checked' : '' %> aria-label="Write validated suggestions automatically">
+          <div class="choice-title"><span>Automatic</span><span class="badge">Full access</span></div>
+          <div class="choice-copy">Write validated titles, tags, correspondents, dates, and other enabled fields directly to Paperless-ngx.</div>
+        </label>
+      </div>
+      <p class="field-hint">You can switch modes later in Settings. Existing queued suggestions stay in Review until you apply or reject them.</p>
+    </div>
+
+    <div class="segmented" role="group" aria-label="Fields Tagvico AI may write back">
       <label class="choice-card toggle-card <%= config.ACTIVATE_TAGGING === 'yes' ? 'is-selected' : '' %>">
         <input type="checkbox" name="activateTagging" <%= config.ACTIVATE_TAGGING === 'yes' ? 'checked' : '' %> hidden aria-label="Generate and attach tags">
         <div class="choice-title"><span>Tags</span></div>

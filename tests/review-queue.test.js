@@ -158,6 +158,37 @@ test('review suggestions apply and reject by durable suggestion id', () => {
   runIsolated(script);
 });
 
+test('write mode supports review-first, automatic, environment override, and legacy DRY_RUN', () => {
+  const script = `
+    const assert = require('node:assert/strict');
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const root = ${JSON.stringify(repoRoot)};
+    delete process.env.DRY_RUN;
+    delete process.env.TAGVICO_WRITE_MODE;
+    const review = require(path.join(root, 'dist/services/reviewService.js'));
+
+    assert.equal(review.getWriteMode(), 'review');
+    assert.equal(review.isReviewModeEnabled(), true);
+
+    const automatic = review.writeReviewConfig({ WRITE_MODE: 'automatic' });
+    assert.equal(automatic.WRITE_MODE, 'automatic');
+    assert.equal(automatic.DRY_RUN, 'false');
+    assert.equal(review.getWriteMode(), 'automatic');
+    assert.equal(review.isReviewModeEnabled(), false);
+    assert.match(fs.readFileSync(review.REVIEW_PATH, 'utf8'), /WRITE_MODE=automatic/);
+
+    const legacy = review.writeReviewConfig({ DRY_RUN: 'true' });
+    assert.equal(legacy.WRITE_MODE, 'review');
+    assert.equal(review.getWriteMode(), 'review');
+
+    process.env.TAGVICO_WRITE_MODE = 'full-access';
+    assert.equal(review.getWriteMode(), 'automatic');
+  `;
+
+  runIsolated(script);
+});
+
 test('review routes authenticate and use stored suggestion ids for apply and reject', () => {
   const script = `
     const assert = require('node:assert/strict');
@@ -189,7 +220,12 @@ test('review routes authenticate and use stored suggestion ids for apply and rej
       loaded: true,
       exports: {
         listPendingSuggestions: async (limit) => { calls.push(['list', limit]); return analyses; },
+        WRITE_MODES: { REVIEW: 'review', AUTOMATIC: 'automatic' },
+        normalizeWriteMode: (value) => value === 'automatic' ? 'automatic' : 'review',
+        getWriteMode: () => 'review',
+        isReviewModeEnabled: () => true,
         isDryRunEnabled: () => true,
+        loadReviewConfig: () => ({ WRITE_MODE: 'review', DRY_RUN: 'true' }),
         applySuggestion: async (id, actor) => {
           calls.push(['apply', id, actor]);
           return { ok: true, suggestion: { id, document_id: 900 }, diff: [] };
@@ -294,6 +330,16 @@ test('review page renders proposed metadata and durable suggestion ids', async (
   assert.doesNotMatch(html, /data-suggestion-id="1234"/);
 });
 
+test('settings UI exposes exclusive review-first and automatic write modes', () => {
+  const template = fs.readFileSync(path.join(repoRoot, 'views', 'partials', 'config-form.ejs'), 'utf8');
+  const browserCode = fs.readFileSync(path.join(repoRoot, 'public', 'js', 'config-form.js'), 'utf8');
+  assert.match(template, /type="radio" name="write_mode" value="review"/);
+  assert.match(template, /type="radio" name="write_mode" value="automatic"/);
+  assert.match(template, /Full access/);
+  assert.doesNotMatch(template, /type="checkbox" name="dry_run"/);
+  assert.match(browserCode, /input\[type="radio"\]/);
+});
+
 test('manual scan route completes without scheduler-only state', () => {
   const script = `
     const assert = require('node:assert/strict');
@@ -326,7 +372,12 @@ test('manual scan route completes without scheduler-only state', () => {
       filename: reviewPath,
       loaded: true,
       exports: {
+        WRITE_MODES: { REVIEW: 'review', AUTOMATIC: 'automatic' },
+        normalizeWriteMode: (value) => value === 'automatic' ? 'automatic' : 'review',
+        getWriteMode: () => 'review',
+        isReviewModeEnabled: () => true,
         isDryRunEnabled: () => true,
+        loadReviewConfig: () => ({ WRITE_MODE: 'review', DRY_RUN: 'true' }),
         writeReviewConfig: () => ({ DRY_RUN: 'true' })
       }
     };

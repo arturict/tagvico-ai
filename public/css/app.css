@@ -998,20 +998,22 @@ kbd { padding: 0.16rem 0.38rem; border: 1px solid var(--border); border-bottom-w
   .model-picker-modal.is-provider-step .provider-rail-item { width: 100%; min-width: 0; }
 }
 
-/* Filing behavior toggles: checkbox and card work as one control. */
+/* Filing behavior toggles: input and card work as one control. */
 .toggle-card {
   display: grid;
   gap: 0.4rem;
 }
 
-.toggle-card input[type="checkbox"] {
+.toggle-card input[type="checkbox"],
+.toggle-card input[type="radio"] {
   position: absolute;
   opacity: 0;
   width: 1px;
   height: 1px;
 }
 
-.toggle-card input[type="checkbox"]:focus-visible + .choice-title {
+.toggle-card input[type="checkbox"]:focus-visible + .choice-title,
+.toggle-card input[type="radio"]:focus-visible + .choice-title {
   outline: 2px solid var(--accent);
   outline-offset: 4px;
   border-radius: 4px;

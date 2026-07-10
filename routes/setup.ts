@@ -1029,12 +1029,12 @@ router.get('/api/history/:id/diff', async (req, res) => {
 /**
  * /review:
  *   get:
- *     summary: Dry-run review queue
+ *     summary: Review-first suggestion queue
  *     description: |
  *       Renders pending, durable AI suggestions from the local review queue
  *       with their proposed title, tags, correspondent, document type, and
- *       custom fields. While DRY_RUN=true (the default), new AI suggestions
- *       land here instead of being written back to Paperless-ngx automatically.
+ *       custom fields. In Review first mode, new AI suggestions land here
+ *       instead of being written back to Paperless-ngx automatically.
  *     tags:
  *       - Navigation
  *     security:
@@ -1052,7 +1052,8 @@ router.get('/review', isAuthenticated, async (req, res) => {
       activePage: 'review',
       version: configFile.ARCHIVISTA_AI_VERSION,
       analyses,
-      dryRun: reviewService.isDryRunEnabled()
+      reviewMode: reviewService.isReviewModeEnabled(),
+      dryRun: reviewService.isReviewModeEnabled()
     });
   } catch (error) {
     console.error('[ERROR] loading review page:', error);
@@ -1061,7 +1062,8 @@ router.get('/review', isAuthenticated, async (req, res) => {
       activePage: 'review',
       version: configFile.ARCHIVISTA_AI_VERSION,
       analyses: [],
-      dryRun: reviewService.isDryRunEnabled(),
+      reviewMode: reviewService.isReviewModeEnabled(),
+      dryRun: reviewService.isReviewModeEnabled(),
       error: 'Error loading review queue'
     });
   }
@@ -1422,11 +1424,11 @@ try {
 async function processDocument(doc, existingTags, existingCorrespondentList, existingDocumentTypesList, ownUserId, customPrompt = null) {
   const isProcessed = await documentModel.isDocumentProcessed(doc.id);
   if (isProcessed) return null;
-  const dryRun = reviewService.isDryRunEnabled();
-  const reviewReservation = dryRun
+  const reviewMode = reviewService.isReviewModeEnabled();
+  const reviewReservation = reviewMode
     ? await reviewService.reserveSuggestion(doc, customPrompt ? 'webhook' : 'manual-scan')
     : null;
-  if (dryRun && !reviewReservation) return null;
+  if (reviewMode && !reviewReservation) return null;
 
   await documentModel.setProcessingStatus(doc.id, doc.title, 'processing');
   try {
@@ -1740,10 +1742,26 @@ router.post('/api/key-regenerate', async (req, res) => {
 function buildPageConfig() {
   const onboardingDefaults = onboardingService.loadOnboardingDefaults();
   const config = buildUiConfig({ ...onboardingDefaults, ...process.env }, configFile.ARCHIVISTA_AI_VERSION || '');
-  config.DRY_RUN = reviewService.isDryRunEnabled();
+  config.WRITE_MODE = reviewService.getWriteMode();
+  config.DRY_RUN = reviewService.isReviewModeEnabled();
   config.SYSTEM_PROMPT = '';
   config.CUSTOM_FIELDS = process.env.CUSTOM_FIELDS || '{"custom_fields":[]}';
   return config;
+}
+
+function persistWriteMode(payload, ensureDefault = false) {
+  if (payload && Object.prototype.hasOwnProperty.call(payload, 'write_mode')) {
+    const writeMode = reviewService.normalizeWriteMode(payload.write_mode);
+    return reviewService.writeReviewConfig({ WRITE_MODE: writeMode });
+  }
+  // Accept the v2 preview checkbox payload for backwards compatibility.
+  if (payload && Object.prototype.hasOwnProperty.call(payload, 'dry_run')) {
+    const reviewMode = parseBooleanFlag(payload.dry_run, 'yes') === 'yes';
+    return reviewService.writeReviewConfig({
+      WRITE_MODE: reviewMode ? reviewService.WRITE_MODES.REVIEW : reviewService.WRITE_MODES.AUTOMATIC
+    });
+  }
+  return ensureDefault ? reviewService.writeReviewConfig({}) : reviewService.loadReviewConfig();
 }
 
 function buildViewModel(config) {
@@ -3900,15 +3918,8 @@ router.post('/setup', express.json(), async (req, res) => {
     const tagProvisioning = await provisionControlledTags();
     onboardingService.writeOnboardingSnapshot(config);
 
-    // Persist dry-run review flag alongside the main config so the review
-    // queue picks it up on the next request without restarting the process.
-    if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'dry_run')) {
-      const dryRunEnabled = parseBooleanFlag(req.body.dry_run, 'yes') === 'yes';
-      reviewService.writeReviewConfig({ DRY_RUN: dryRunEnabled ? 'true' : 'false' });
-    } else {
-      // Make sure the on-disk default exists so /review can read it.
-      reviewService.writeReviewConfig({});
-    }
+    // The selected write mode takes effect on the next scan without a restart.
+    persistWriteMode(req.body, true);
 
     const hashedPassword = await bcrypt.hash(password, 15);
     await documentModel.addUser(username, hashedPassword);
@@ -4287,10 +4298,7 @@ router.post('/settings', express.json(), async (req, res) => {
     resetRuntimeServices();
     const tagProvisioning = await provisionControlledTags();
     onboardingService.writeOnboardingSnapshot(mergedConfig);
-    if (Object.prototype.hasOwnProperty.call(req.body, 'dry_run')) {
-      const dryRunEnabled = parseBooleanFlag(req.body.dry_run, 'yes') === 'yes';
-      reviewService.writeReviewConfig({ DRY_RUN: dryRunEnabled ? 'true' : 'false' });
-    }
+    persistWriteMode(req.body);
     try {
       for (const field of processedCustomFields) {
         await paperlessService.createCustomFieldSafely(field.value, field.data_type, field.currency);

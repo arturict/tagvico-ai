@@ -860,10 +860,18 @@ class ConfigFormApp {
   }
 
   initToggleCards() {
-    document.querySelectorAll('.choice-card input[type="checkbox"]').forEach((input) => {
+    document.querySelectorAll('.choice-card input[type="checkbox"], .choice-card input[type="radio"]').forEach((input) => {
       const card = input.closest('.choice-card');
       if (!card) return;
-      const sync = () => card.classList.toggle('is-selected', input.checked);
+      const sync = () => {
+        if (input.type === 'radio' && input.name) {
+          document.querySelectorAll(`.choice-card input[type="radio"][name="${input.name}"]`).forEach((option) => {
+            option.closest('.choice-card')?.classList.toggle('is-selected', option.checked);
+          });
+          return;
+        }
+        card.classList.toggle('is-selected', input.checked);
+      };
       sync();
       // The <label> wrapping the hidden checkbox already toggles the input.
       // We only refresh the visual state after the browser applies the
@@ -889,8 +897,6 @@ class ConfigFormApp {
       try {
         const formData = new FormData(this.form);
         const payload = Object.fromEntries(formData.entries());
-        const dryRunInput = this.form.querySelector('[name="dry_run"]');
-        if (dryRunInput) payload.dry_run = dryRunInput.checked;
         const response = await fetch(this.form.dataset.action, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

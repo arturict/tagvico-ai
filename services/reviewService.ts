@@ -1,9 +1,7 @@
 // @ts-nocheck — legacy module; tracked for strict typing.
 //
-// Durable, SQLite-backed dry-run review queue. A scanner reserves a row before
-// calling an AI provider, stages the resulting proposal locally, and never
-// reaches a Paperless write path until an authenticated person explicitly
-// applies that proposal.
+// Durable, SQLite-backed review-first queue. Operators can instead choose
+// automatic mode, which keeps Tagvico's original direct-write workflow.
 
 const fs = require('fs');
 const path = require('path');
@@ -18,12 +16,44 @@ const ownerProfileService = require('./ownerProfileService.js');
 const { compareMetadata } = require('./metadataDiff.js');
 
 const REVIEW_PATH = path.join(process.cwd(), 'data', '.review');
+const WRITE_MODES = Object.freeze({
+  REVIEW: 'review',
+  AUTOMATIC: 'automatic'
+});
+
+function isEnabled(value) {
+  return ['true', '1', 'yes'].includes(String(value || '').trim().toLowerCase());
+}
+
+function normalizeWriteMode(value, fallback = WRITE_MODES.REVIEW) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (['review', 'review-first', 'review_first', 'queue', 'dry-run', 'dry_run'].includes(normalized)) {
+    return WRITE_MODES.REVIEW;
+  }
+  if (['automatic', 'auto', 'direct', 'full-access', 'full_access'].includes(normalized)) {
+    return WRITE_MODES.AUTOMATIC;
+  }
+  return fallback;
+}
+
+function normalizeReviewConfig(values = {}) {
+  const hasMode = Object.prototype.hasOwnProperty.call(values, 'WRITE_MODE');
+  const hasLegacyFlag = Object.prototype.hasOwnProperty.call(values, 'DRY_RUN');
+  const mode = hasMode
+    ? normalizeWriteMode(values.WRITE_MODE)
+    : hasLegacyFlag
+      ? (isEnabled(values.DRY_RUN) ? WRITE_MODES.REVIEW : WRITE_MODES.AUTOMATIC)
+      : WRITE_MODES.REVIEW;
+  return {
+    ...values,
+    WRITE_MODE: mode,
+    DRY_RUN: mode === WRITE_MODES.REVIEW ? 'true' : 'false'
+  };
+}
 
 function loadReviewConfig() {
-  // Default: dry-run mode is on. Operators opt out by setting DRY_RUN=false.
-  const defaults = { DRY_RUN: 'true' };
-  if (!fs.existsSync(REVIEW_PATH)) return defaults;
-  const values = { ...defaults };
+  if (!fs.existsSync(REVIEW_PATH)) return normalizeReviewConfig();
+  const values = {};
   String(fs.readFileSync(REVIEW_PATH, 'utf8') || '')
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -35,34 +65,48 @@ function loadReviewConfig() {
       const value = line.slice(idx + 1).trim();
       if (key) values[key] = value;
     });
-  return values;
+  return normalizeReviewConfig(values);
 }
 
 function writeReviewConfig(payload = {}) {
   fs.mkdirSync(path.dirname(REVIEW_PATH), { recursive: true });
-  const merged = { ...loadReviewConfig(), ...payload };
+  const normalizedPayload = { ...payload };
+  if (Object.prototype.hasOwnProperty.call(normalizedPayload, 'WRITE_MODE')) {
+    normalizedPayload.WRITE_MODE = normalizeWriteMode(normalizedPayload.WRITE_MODE);
+    normalizedPayload.DRY_RUN = normalizedPayload.WRITE_MODE === WRITE_MODES.REVIEW ? 'true' : 'false';
+  } else if (Object.prototype.hasOwnProperty.call(normalizedPayload, 'DRY_RUN')) {
+    normalizedPayload.WRITE_MODE = isEnabled(normalizedPayload.DRY_RUN)
+      ? WRITE_MODES.REVIEW
+      : WRITE_MODES.AUTOMATIC;
+  }
+  const merged = normalizeReviewConfig({ ...loadReviewConfig(), ...normalizedPayload });
   const body = [
-    '# Tagvico AI dry-run review settings',
-    '# DRY_RUN=true (default) means new AI suggestions land in the review queue',
-    '# instead of being written back to Paperless-ngx automatically.'
+    '# Tagvico AI write behavior',
+    '# WRITE_MODE=review queues suggestions for approval.',
+    '# WRITE_MODE=automatic writes validated metadata directly to Paperless-ngx.',
+    '# DRY_RUN is retained for backwards compatibility.'
   ];
   for (const [key, value] of Object.entries(merged)) body.push(`${key}=${value}`);
   fs.writeFileSync(REVIEW_PATH, `${body.join('\n')}\n`);
   return merged;
 }
 
-function isEnabled(value) {
-  return ['true', '1', 'yes'].includes(String(value || '').trim().toLowerCase());
+function getWriteMode() {
+  if (Object.prototype.hasOwnProperty.call(process.env, 'TAGVICO_WRITE_MODE')) {
+    return normalizeWriteMode(process.env.TAGVICO_WRITE_MODE);
+  }
+  if (Object.prototype.hasOwnProperty.call(process.env, 'DRY_RUN')) {
+    return isEnabled(process.env.DRY_RUN) ? WRITE_MODES.REVIEW : WRITE_MODES.AUTOMATIC;
+  }
+  return loadReviewConfig().WRITE_MODE;
+}
+
+function isReviewModeEnabled() {
+  return getWriteMode() === WRITE_MODES.REVIEW;
 }
 
 function isDryRunEnabled() {
-  // An explicitly injected environment variable is useful for container
-  // deployments and test stacks. Otherwise the persisted settings value is
-  // authoritative and can be changed from the setup page without a restart.
-  if (Object.prototype.hasOwnProperty.call(process.env, 'DRY_RUN')) {
-    return isEnabled(process.env.DRY_RUN);
-  }
-  return isEnabled(loadReviewConfig().DRY_RUN || 'true');
+  return isReviewModeEnabled();
 }
 
 function parseJson(value, fallback) {
@@ -410,8 +454,12 @@ async function applyMetadata(documentId, metadata = {}) {
 
 module.exports = {
   REVIEW_PATH,
+  WRITE_MODES,
+  normalizeWriteMode,
   loadReviewConfig,
   writeReviewConfig,
+  getWriteMode,
+  isReviewModeEnabled,
   isDryRunEnabled,
   parseSuggestion,
   reserveSuggestion,

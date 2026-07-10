@@ -187,16 +187,16 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
   const isProcessed = await documentModel.isDocumentProcessed(doc.id);
   if (isProcessed) return null;
   if (await documentModel.isDocumentFailed(doc.id)) return null;
-  // A queued review remains authoritative even if DRY_RUN is later disabled.
+  // A queued review remains authoritative even if Automatic mode is enabled later.
   // Do not pay for inference again or write around the human review decision.
   if (await reviewService.hasActiveSuggestion(doc.id)) return null;
-  const dryRun = reviewService.isDryRunEnabled();
+  const reviewMode = reviewService.isReviewModeEnabled();
   // Reserve before making the paid model request. A pending/staging review row
   // is an explicit marker that this document has already been analyzed.
-  const reviewReservation = dryRun
+  const reviewReservation = reviewMode
     ? await reviewService.reserveSuggestion(doc, 'automatic')
     : null;
-  if (dryRun && !reviewReservation) return null;
+  if (reviewMode && !reviewReservation) return null;
 
   await documentModel.setProcessingStatus(doc.id, doc.title, 'processing');
   try {

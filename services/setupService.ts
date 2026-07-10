@@ -132,7 +132,11 @@ class SetupService {
       apiKey: apiKey || 'Tagvico AI-compatible',
       model: model
     };
-    console.log('Custom AI config:', config);
+    console.log('Validating OpenAI-compatible endpoint:', {
+      baseURL: config.baseURL,
+      model: config.model,
+      hasApiKey: Boolean(apiKey)
+    });
     try {
       const openai = new OpenAI({ 
         apiKey: config.apiKey, 
@@ -144,7 +148,7 @@ class SetupService {
       });
       return completion.choices && completion.choices.length > 0;
     } catch (error) {
-      console.error('Custom AI validation error:', error);
+      console.error('Custom AI validation error:', error.message || String(error));
       return false;
     }
   }

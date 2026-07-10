@@ -86,7 +86,7 @@ curl http://localhost:8080/health
 1. **Start the container.** Run `docker compose up -d`, then open <http://localhost:8080/setup>.
 2. **Connect Paperless-ngx.** Paste its base URL and an API token (Paperless-ngx → Settings → My API token). Do not add `/api` to the URL. If Paperless runs on the Docker host, use `http://host.docker.internal:<port>` on Docker Desktop or the host's LAN IP on Linux. If both apps share a Docker network, use the Paperless service name.
 3. **Choose a model provider.** Pick OpenRouter for the fastest curated start, Ollama to keep everything on your own hardware, or any other supported provider (see below). Add the required key or endpoint.
-4. **Decide what Tagvico may write.** Toggle tags, title, correspondent, document type, custom fields, and optional owner assignment, then finish setup. Tagvico scans on the configured cron interval — it does not need a restart.
+4. **Choose the write mode and fields.** Pick **Review first** to queue every suggestion for approval, or **Automatic** to let Tagvico write validated metadata directly as it did before. Then choose tags, title, correspondent, document type, custom fields, and optional owner assignment. You can switch modes later without restarting Tagvico.
 
 The first run creates a tiny local admin account, stored in the SQLite database inside the persistent volume.
 
@@ -110,7 +110,7 @@ docker run -d \
 
 ## How it works
 
-Tagvico polls Paperless-ngx for new documents, reads their OCR text and existing metadata, and asks the configured model for a structured filing suggestion. Validated values are written back to the original document. Processing history, token metrics, retries, and manual re-runs are available in the web UI.
+Tagvico polls Paperless-ngx for new documents, reads their OCR text and existing metadata, and asks the configured model for a structured filing suggestion. In **Review first** mode, suggestions wait in the durable Review queue until you apply or reject them. In **Automatic** mode, validated values are written directly to the original document. Existing queued suggestions always remain reviewable when you switch modes. Processing history, token metrics, retries, and manual re-runs are available in the web UI.
 
 Owner matching is conservative: optional hint profiles add context, and assignment only happens when the model output agrees with the available Paperless user information.
 
@@ -155,6 +155,8 @@ to be available to normal API or ChatGPT subscription accounts.
 ## Environment contract
 
 Copy [`.env.example`](.env.example) when deploying without the setup wizard. Variables are grouped into Paperless connection, runtime security, provider credentials and Codex settings. Values saved in the UI are written to `data/.env`; process-level variables take precedence. Never commit populated secrets. `/health` checks the process and database, while `/api/health` also probes the configured provider and returns `503` when it is degraded.
+
+Set `TAGVICO_WRITE_MODE=review` to queue suggestions or `TAGVICO_WRITE_MODE=automatic` for direct writes. The setup and settings pages expose the same two choices. `DRY_RUN=true/false` remains supported for older deployments, but the explicit write-mode variable takes precedence.
 
 ### OCR rescue and failure recovery
 

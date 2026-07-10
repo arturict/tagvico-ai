@@ -53,3 +53,10 @@ test('settings render account-scoped model selects and correct provider icons', 
   const copilotService = fs.readFileSync(path.join(root, 'services', 'copilotService.ts'), 'utf8');
   assert.match(copilotService, /appendConfidencePrompt/);
 });
+
+test('provider validation never logs reusable API keys', () => {
+  const root = path.join(__dirname, '..');
+  const source = fs.readFileSync(path.join(root, 'services', 'setupService.ts'), 'utf8');
+  assert.doesNotMatch(source, /console\.log\(['"]Custom AI config:/);
+  assert.match(source, /hasApiKey:\s*Boolean\(apiKey\)/);
+});
