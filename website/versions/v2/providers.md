@@ -17,7 +17,7 @@ service.
 | GitHub Copilot | Account-scoped model discovery | OAuth device login or supported token | Uses the official SDK; every agent tool is denied. |
 | OpenAI-compatible | LM Studio, LiteLLM, vLLM, custom gateways | Base URL and optional key | Use an endpoint that implements OpenAI Chat Completions. |
 | Azure OpenAI | Existing Azure deployments and governance | Endpoint, deployment, API key | Model availability follows your Azure deployment. |
-| ChatGPT subscription | Experimental private, low-volume use | Codex device login | Uses the official Codex runtime; this is not an API SLA. |
+| ChatGPT subscription | Experimental private, low-volume use | Codex device login | Uses the official Codex runtime and the account's live catalog, which may include GPT-5.6 Luna; this is not an API SLA. |
 
 ## Switching providers
 

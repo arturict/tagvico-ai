@@ -21,7 +21,7 @@ export default defineConfig({
   outDir,
   cleanUrls: true,
   lastUpdated: process.env.TAGVICO_DOCS_LAST_UPDATED !== 'false',
-  appearance: 'dark',
+  appearance: true,
   head: [
     ['link', { rel: 'icon', type: 'image/png', href: `${base}tagvico-icon.png` }],
     ['link', { rel: 'alternate', type: 'text/plain', href: `${base}llms.txt`, title: 'LLM documentation index' }],

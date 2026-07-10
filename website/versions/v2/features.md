@@ -44,7 +44,8 @@ pending queue after restart.
 ## Subscription-backed model discovery
 
 The experimental ChatGPT provider uses the official Codex runtime and shows
-the live model catalog returned for the signed-in account. GitHub Copilot uses
+the live model catalog returned for the signed-in account, including GPT-5.6
+Luna when that account exposes it. GitHub Copilot uses
 the official Copilot SDK and likewise limits choices to account-visible models.
 Agent tools are denied for these document-extraction paths.
 
