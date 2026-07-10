@@ -1,25 +1,18 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const fs = require('node:fs');
-const fsp = require('node:fs/promises');
-const os = require('node:os');
-const path = require('node:path');
-
 const paperlessService = require('../dist/services/paperlessService');
 paperlessService.getThumbnailImage = async () => null;
 const { loadThumbnail, buildUserMessage } = require('../dist/services/thumbnailHelper');
 
-test('thumbnail miss remains text-only and does not create a cache file', async (t) => {
-  const tmpDir = await fsp.mkdtemp(path.join(os.tmpdir(), 'thumbnail-helper-'));
-  t.after(() => fsp.rm(tmpDir, { recursive: true, force: true }));
-  const result = await loadThumbnail('no-thumb', tmpDir);
-  assert.deepEqual(result, { thumbnailData: null, thumbnailAvailable: false });
-  assert.equal(fs.existsSync(path.join(tmpDir, 'no-thumb.png')), false);
+test('thumbnail miss remains text-only', async () => {
+  const result = await loadThumbnail('no-thumb');
+  assert.deepEqual(result, { thumbnailData: null, thumbnailAvailable: false, thumbnailMediaType: null });
   assert.deepEqual(buildUserMessage('hello', null), [{ type: 'text', text: 'hello' }]);
 });
 
 test('thumbnail buffer creates an OpenAI-compatible image entry', () => {
-  const message = buildUserMessage('hello', Buffer.from('fake'));
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const message = buildUserMessage('hello', png);
   const image = message.find((entry) => entry.type === 'image_url');
   assert.ok(image);
   assert.match(image.image_url.url, /^data:image\/png;base64,/);

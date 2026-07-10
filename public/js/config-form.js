@@ -19,6 +19,7 @@ class ConfigFormApp {
     this.initToggleCards();
     this.initSecretToggles();
     this.initCodexStatus();
+    this.initCopilotStatus();
     this.initSubmit();
     this.initOnboardingProgress();
   }
@@ -253,8 +254,10 @@ class ConfigFormApp {
     const providerName = selected?.querySelector('strong')?.textContent || this.providerInput.value;
     const modelName = this.modelInput.value || 'Choose a model';
     const modelOutput = document.getElementById('activeModelName');
+    const defaultModelOutput = document.getElementById('defaultModelName');
     const providerOutput = document.getElementById('activeProviderName');
     if (modelOutput) modelOutput.textContent = modelName;
+    if (defaultModelOutput) defaultModelOutput.textContent = modelName;
     if (providerOutput) providerOutput.textContent = providerName;
   }
 
@@ -276,7 +279,7 @@ class ConfigFormApp {
         const response = await fetch('/api/codex/status');
         const status = await readJson(response);
         output.textContent = status.account?.type === 'chatgpt'
-          ? `Signed in as ${status.account.email || 'ChatGPT user'} (${status.account.planType}); model ${status.model}`
+          ? `ChatGPT ${status.account.planType || 'subscription'} connected`
           : (status.authenticated ? `Signed in; model ${status.model}` : status.message);
       } catch {
         output.textContent = 'Could not read Codex status.';
@@ -340,14 +343,181 @@ class ConfigFormApp {
           activeCode = '';
           challenge.classList.add('hidden');
           loginResult.textContent = status.success ? 'ChatGPT sign-in completed.' : `Sign-in failed: ${status.error || 'unknown error'}`;
-          login.disabled = false; refresh();
+          login.disabled = false;
+          refresh();
+          if (status.success) this.loadCodexModels();
         }, 1500);
       } catch (error) { activeCode = ''; challenge?.classList.add('hidden'); loginResult.textContent = error.message; login.disabled = false; }
     });
     logout?.addEventListener('click', async () => {
       const response = await fetch('/api/codex/logout', { method: 'POST' });
-      if (response.ok) { activeCode = ''; challenge?.classList.add('hidden'); loginResult.textContent = 'Signed out.'; refresh(); }
+      if (response.ok) {
+        activeCode = '';
+        challenge?.classList.add('hidden');
+        loginResult.textContent = 'Signed out.';
+        document.getElementById('codexModelsStatus').textContent = 'Sign in with ChatGPT to load models.';
+        refresh();
+      }
     });
+    document.getElementById('refreshCodexModels')?.addEventListener('click', () => this.loadCodexModels());
+    if (this.providerInput.value === 'codex') {
+      refresh();
+      this.loadCodexModels();
+    }
+  }
+
+  replaceDiscoveredModels(select, models, defaultModel) {
+    const current = select.value || select.dataset.currentModel || '';
+    select.replaceChildren(...models.map((model) => new Option(model.name || model.id, model.id)));
+    select.value = models.some((model) => model.id === current)
+      ? current
+      : (models.some((model) => model.id === defaultModel) ? defaultModel : models[0]?.id || '');
+    this.syncModelValue();
+    this.updateModelPickerSummary();
+  }
+
+  async loadCodexModels() {
+    const select = document.getElementById('codexModel');
+    const output = document.getElementById('codexModelsStatus');
+    if (!select || !output) return;
+    output.textContent = 'Loading models from this ChatGPT account…';
+    try {
+      const response = await fetch('/api/codex/models');
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.error || 'Could not load ChatGPT models');
+      if (!payload.models?.length) throw new Error('This ChatGPT account returned no selectable models');
+      this.replaceDiscoveredModels(select, payload.models, payload.defaultModel);
+      output.textContent = `${payload.models.length} model${payload.models.length === 1 ? '' : 's'} available on this ${payload.planType || 'ChatGPT'} plan.`;
+    } catch (error) {
+      output.textContent = error.message;
+    }
+  }
+
+  initCopilotStatus() {
+    const statusButton = document.getElementById('copilotStatusButton');
+    const statusOutput = document.getElementById('copilotStatusResult');
+    const login = document.getElementById('copilotLoginButton');
+    const logout = document.getElementById('copilotLogoutButton');
+    const loginResult = document.getElementById('copilotLoginResult');
+    const challenge = document.getElementById('copilotLoginChallenge');
+    const deviceCode = document.getElementById('copilotDeviceCode');
+    const authLink = document.getElementById('copilotOpenAuth');
+    const copyFeedback = document.getElementById('copilotCopyFeedback');
+    if (!statusButton) return;
+
+    const readJson = async (response) => {
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) throw new Error(`Server returned ${response.status} instead of JSON`);
+      return response.json();
+    };
+    const refresh = async () => {
+      statusButton.disabled = true;
+      statusOutput.textContent = 'Checking…';
+      try {
+        const response = await fetch('/api/copilot/status');
+        const status = await readJson(response);
+        statusOutput.textContent = status.ok
+          ? `Copilot connected${status.authType ? ` via ${status.authType}` : ''}`
+          : (status.error || 'GitHub Copilot is not signed in');
+      } catch (error) {
+        statusOutput.textContent = error.message;
+      } finally {
+        statusButton.disabled = false;
+      }
+    };
+    statusButton.addEventListener('click', refresh);
+
+    let activeCode = '';
+    const copyCode = async () => {
+      if (!activeCode) return;
+      try {
+        await navigator.clipboard.writeText(activeCode);
+      } catch {
+        const temporary = document.createElement('textarea');
+        temporary.value = activeCode;
+        temporary.style.position = 'fixed';
+        temporary.style.opacity = '0';
+        document.body.appendChild(temporary);
+        temporary.select();
+        document.execCommand('copy');
+        temporary.remove();
+      }
+      copyFeedback.textContent = 'Code copied — enter it on GitHub.';
+      challenge.classList.add('is-copied');
+      window.setTimeout(() => challenge.classList.remove('is-copied'), 1200);
+    };
+    document.getElementById('copilotCopyCode')?.addEventListener('click', copyCode);
+    document.getElementById('copilotCopyCodeButton')?.addEventListener('click', copyCode);
+
+    login?.addEventListener('click', async () => {
+      login.disabled = true;
+      challenge.classList.add('hidden');
+      loginResult.textContent = 'Requesting a GitHub device code from the official Copilot CLI…';
+      try {
+        const response = await fetch('/api/copilot/login', { method: 'POST' });
+        const result = await readJson(response);
+        if (!response.ok) throw new Error(result.error || 'Could not start GitHub Copilot login');
+        activeCode = result.userCode;
+        deviceCode.textContent = result.userCode;
+        authLink.href = result.verificationUrl;
+        loginResult.textContent = '';
+        challenge.classList.remove('hidden');
+        const poll = window.setInterval(async () => {
+          try {
+            const status = await fetch(`/api/copilot/login/${encodeURIComponent(result.loginId)}`).then(readJson);
+            if (!status.completed) return;
+            window.clearInterval(poll);
+            activeCode = '';
+            challenge.classList.add('hidden');
+            loginResult.textContent = status.success ? 'GitHub Copilot sign-in completed.' : `Sign-in failed: ${status.error || 'unknown error'}`;
+            login.disabled = false;
+            refresh();
+            if (status.success) this.loadCopilotModels();
+          } catch (error) {
+            window.clearInterval(poll);
+            loginResult.textContent = error.message;
+            login.disabled = false;
+          }
+        }, 1500);
+      } catch (error) {
+        activeCode = '';
+        challenge.classList.add('hidden');
+        loginResult.textContent = error.message;
+        login.disabled = false;
+      }
+    });
+
+    logout?.addEventListener('click', async () => {
+      const response = await fetch('/api/copilot/logout', { method: 'POST' });
+      const result = await readJson(response);
+      loginResult.textContent = response.ok && result.success ? 'Signed out.' : (result.error || 'Could not sign out');
+      if (response.ok) {
+        document.getElementById('copilotModelsStatus').textContent = 'Sign in with GitHub Copilot to load models.';
+        refresh();
+      }
+    });
+    document.getElementById('refreshCopilotModels')?.addEventListener('click', () => this.loadCopilotModels());
+    if (this.providerInput.value === 'copilot') {
+      refresh();
+      this.loadCopilotModels();
+    }
+  }
+
+  async loadCopilotModels() {
+    const select = document.getElementById('copilotModel');
+    const output = document.getElementById('copilotModelsStatus');
+    if (!select || !output) return;
+    output.textContent = 'Loading models from this Copilot account…';
+    try {
+      const response = await fetch('/api/copilot/models');
+      const payload = await response.json();
+      if (!response.ok || !payload.success) throw new Error(payload.error || 'Could not load Copilot models');
+      if (!payload.models?.length) throw new Error('This Copilot account returned no selectable models');
+      this.replaceDiscoveredModels(select, payload.models, payload.defaultModel);
+      output.textContent = `${payload.models.length} model${payload.models.length === 1 ? '' : 's'} available to this Copilot account.`;
+    } catch (error) {
+      output.textContent = error.message;
+    }
   }
 
   initProviderSelection() {
@@ -372,6 +542,8 @@ class ConfigFormApp {
         if (provider === 'ollama') {
           this.loadOllamaModels();
         }
+        if (provider === 'codex') this.loadCodexModels();
+        if (provider === 'copilot') this.loadCopilotModels();
         this.updateModelPickerSummary();
         this.showProviderDetail(button.querySelector('strong')?.textContent);
       });
@@ -404,7 +576,7 @@ class ConfigFormApp {
       });
     });
 
-    ['openrouterCustomModel', 'compatibleModel', 'openaiModel', 'ollamaCustomModel', 'anthropicModel', 'codexModel'].forEach((id) => {
+    ['openrouterCustomModel', 'compatibleModel', 'openaiModel', 'ollamaCustomModel', 'ollamaCloudModel', 'opencodeModel', 'copilotModel', 'anthropicModel', 'codexModel'].forEach((id) => {
       const input = document.getElementById(id);
       input?.addEventListener('input', () => this.syncModelValue());
       input?.addEventListener('input', () => this.updateModelPickerSummary());
@@ -425,12 +597,27 @@ class ConfigFormApp {
     if (provider === 'openrouter') {
       const custom = document.getElementById('openrouterCustomModel')?.value.trim();
       const preset = document.querySelector('[data-model-choice].is-selected')?.dataset.modelChoice;
-      this.modelInput.value = custom || preset || 'openai/gpt-5.4-nano';
+      this.modelInput.value = custom || preset || 'openai/gpt-5.4-mini';
       return;
     }
 
     if (provider === 'ollama') {
       this.modelInput.value = this.ollamaCustomModel?.value.trim() || this.ollamaModelSelect?.value || 'llama3.2';
+      return;
+    }
+
+    if (provider === 'ollama-cloud') {
+      this.modelInput.value = document.getElementById('ollamaCloudModel')?.value.trim() || 'gpt-oss:20b-cloud';
+      return;
+    }
+
+    if (provider === 'opencode') {
+      this.modelInput.value = document.getElementById('opencodeModel')?.value.trim() || 'deepseek-v4-flash';
+      return;
+    }
+
+    if (provider === 'copilot') {
+      this.modelInput.value = document.getElementById('copilotModel')?.value.trim() || 'gpt-5.4-mini';
       return;
     }
 
@@ -680,10 +867,18 @@ class ConfigFormApp {
   }
 
   initToggleCards() {
-    document.querySelectorAll('.choice-card input[type="checkbox"]').forEach((input) => {
+    document.querySelectorAll('.choice-card input[type="checkbox"], .choice-card input[type="radio"]').forEach((input) => {
       const card = input.closest('.choice-card');
       if (!card) return;
-      const sync = () => card.classList.toggle('is-selected', input.checked);
+      const sync = () => {
+        if (input.type === 'radio' && input.name) {
+          document.querySelectorAll(`.choice-card input[type="radio"][name="${input.name}"]`).forEach((option) => {
+            option.closest('.choice-card')?.classList.toggle('is-selected', option.checked);
+          });
+          return;
+        }
+        card.classList.toggle('is-selected', input.checked);
+      };
       sync();
       // The <label> wrapping the hidden checkbox already toggles the input.
       // We only refresh the visual state after the browser applies the

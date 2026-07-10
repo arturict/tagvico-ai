@@ -12,9 +12,10 @@ interface Req {
   query: Record<string, RequestValue>;
   secure: boolean;
   socket?: { remoteAddress?: string };
-  user?: { username?: string; [key: string]: unknown };
+  user?: { username?: string; email?: string; sub?: string; apiKey?: boolean; [key: string]: unknown };
 }
 interface Res {
+  headersSent: boolean;
   clearCookie(name: string): Res;
   cookie(name: string, value: string, options?: UnknownRecord): Res;
   end(): Res;
@@ -33,20 +34,21 @@ const router = express.Router();
 const axios = require('axios');
 const setupService = require('../services/setupService.js');
 const paperlessService = require('../services/paperlessService.js');
+const { loadThumbnail, normalizeDocumentId } = require('../services/thumbnailHelper');
 const openaiService = require('../services/openaiService.js');
 const ollamaService = require('../services/ollamaService.js');
 const azureService = require('../services/azureService.js');
 const anthropicService = require('../services/anthropicService.js');
 const codexService = require('../services/codexService.js');
 const codexAuthService = require('../services/codexAuthService.js');
+const copilotService = require('../services/copilotService.js');
+const copilotAuthService = require('../services/copilotAuthService.js');
 const documentModel = require('../models/document.js');
 const AIServiceFactory = require('../services/aiServiceFactory');
 const debugService = require('../services/debugService.js');
 const configFile = require('../config/config.js');
 const ownerProfileService = require('../services/ownerProfileService');
 const onboardingService = require('../services/onboardingService');
-const fs = require('fs').promises;
-const path = require('path');
 const jwt = require('../services/jwtCompat');
 const bcrypt = require('bcryptjs');
 const cookieParser = require('cookie-parser');
@@ -226,7 +228,8 @@ let PUBLIC_ROUTES = [
   '/api/paperless/discover',
   '/api/paperless/probe',
   '/api/ollama/models',
-  '/api/codex'
+  '/api/codex',
+  '/api/copilot'
 ];
 declare let runningTask: boolean;
 
@@ -703,41 +706,24 @@ router.get('/playground', protectApiRoute, retiredUiRoute('/manual'));
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/thumb/:documentId', async (req: Req, res: Res) => {
-  const cachePath = path.join('./public/images', `${req.params.documentId}.png`);
+router.get('/thumb/:documentId', authenticateJWT, async (req: Req, res: Res) => {
+  const documentId = normalizeDocumentId(req.params.documentId);
+  if (!documentId) {
+    return res.status(400).json({ error: 'Document id must be a positive integer' });
+  }
 
   try {
-    // Prüfe ob das Bild bereits im Cache existiert
-    try {
-      await fs.access(cachePath);
-      console.log('Serving cached thumbnail');
-      
-      // Wenn ja, sende direkt das gecachte Bild
-      res.setHeader('Content-Type', 'image/png');
-      return res.sendFile(path.resolve(cachePath));
-      
-    } catch (err) {
-      // File existiert nicht im Cache, hole es von Paperless
-      console.log('Thumbnail not cached, fetching from Paperless');
-      
-      const thumbnailData = await paperlessService.getThumbnailImage(req.params.documentId);
-      
-      if (!thumbnailData) {
-        return res.status(404).send('Thumbnail nicht gefunden');
-      }
-
-      // Speichere im Cache
-      await fs.mkdir(path.dirname(cachePath), { recursive: true }); // Erstelle Verzeichnis falls nicht existiert
-      await fs.writeFile(cachePath, thumbnailData);
-
-      // Sende das Bild
-      res.setHeader('Content-Type', 'image/png');
-      res.send(thumbnailData);
+    const { thumbnailData, thumbnailAvailable, thumbnailMediaType } = await loadThumbnail(documentId);
+    if (!thumbnailAvailable || !thumbnailData) {
+      return res.status(404).send('Thumbnail nicht gefunden');
     }
 
+    res.setHeader('Content-Type', thumbnailMediaType || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'private, no-store');
+    return res.send(thumbnailData);
   } catch (error) {
     console.error('Fehler beim Abrufen des Thumbnails:', error);
-    res.status(500).send('Fehler beim Laden des Thumbnails');
+    return res.status(500).send('Fehler beim Laden des Thumbnails');
   }
 });
 
@@ -1101,12 +1087,12 @@ router.get('/api/history/:id/diff', async (req: Req, res: Res) => {
 /**
  * /review:
  *   get:
- *     summary: Dry-run review queue
+ *     summary: Review-first suggestion queue
  *     description: |
- *       Renders the dry-run review queue: the latest 20 auto-analyzed documents
+ *       Renders pending, durable AI suggestions from the local review queue
  *       with their proposed title, tags, correspondent, document type, and
- *       custom fields. While DRY_RUN=true (the default), new AI suggestions
- *       land here instead of being written back to Paperless-ngx automatically.
+ *       custom fields. In Review first mode, new AI suggestions land here
+ *       instead of being written back to Paperless-ngx automatically.
  *     tags:
  *       - Navigation
  *     security:
@@ -1116,15 +1102,16 @@ router.get('/api/history/:id/diff', async (req: Req, res: Res) => {
  *       200:
  *         description: Review page rendered successfully
  */
-router.get('/review', async (req: Req, res: Res) => {
+router.get('/review', isAuthenticated, async (req: Req, res: Res) => {
   try {
-    const analyses = await reviewService.listRecentAnalyses(20);
+    const analyses = await reviewService.listPendingSuggestions(100);
     res.render('review', {
       title: 'Review | Tagvico AI',
       activePage: 'review',
       version: configFile.TAGVICO_AI_VERSION,
       analyses,
-      dryRun: reviewService.isDryRunEnabled()
+      reviewMode: reviewService.isReviewModeEnabled(),
+      dryRun: reviewService.isReviewModeEnabled()
     });
   } catch (error) {
     console.error('[ERROR] loading review page:', error);
@@ -1133,21 +1120,35 @@ router.get('/review', async (req: Req, res: Res) => {
       activePage: 'review',
       version: configFile.TAGVICO_AI_VERSION,
       analyses: [],
-      dryRun: reviewService.isDryRunEnabled(),
+      reviewMode: reviewService.isReviewModeEnabled(),
+      dryRun: reviewService.isReviewModeEnabled(),
       error: 'Error loading review queue'
     });
   }
 });
 
+function parseSuggestionId(value: RequestValue) {
+  const raw = String(value || '');
+  if (!/^\d+$/.test(raw)) return null;
+  const id = Number(raw);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+function reviewActor(req: Req) {
+  const user = req.user || {};
+  const value = user.username || user.email || user.sub;
+  if (value) return String(value).slice(0, 200);
+  return user.apiKey ? 'api-key' : 'authenticated-user';
+}
+
 /**
  * /review/:id/apply:
  *   post:
- *     summary: Apply a partial metadata patch to a single document
+ *     summary: Apply one pending review suggestion
  *     description: |
- *       Accepts a partial metadata object (any of title, tags, correspondent,
- *       document_type, custom_fields, owner) and writes it back to Paperless-ngx.
- *       In dry-run mode the request is rejected so operators can stage changes
- *       first. The update is delegated to paperlessService.patchDocument.
+ *       Claims the stored suggestion identified by `id`, resolves its proposed
+ *       metadata, and writes it to the associated Paperless-ngx document. The
+ *       request body cannot replace the stored proposal.
  *     tags:
  *       - Documents
  *     security:
@@ -1160,26 +1161,53 @@ router.get('/review', async (req: Req, res: Res) => {
  *         schema:
  *           type: integer
  */
-router.post('/review/:id/apply', express.json(), isAuthenticated, async (req: Req, res: Res) => {
+router.post('/review/:id/apply', isAuthenticated, express.json(), async (req: Req, res: Res) => {
+  const suggestionId = parseSuggestionId(req.params.id);
+  if (!suggestionId) return res.status(400).json({ error: 'A valid suggestion id is required' });
   try {
-    const documentId = req.params.id;
-    const metadata = req.body || {};
-    reviewProgressService.publish({ documentId, status: 'applying' });
-    const result = await reviewService.applyMetadata(documentId, metadata);
+    reviewProgressService.publish({ suggestionId, status: 'applying' });
+    const result = await reviewService.applySuggestion(suggestionId, reviewActor(req));
     if (!result.ok) {
-      reviewProgressService.publish({ documentId, status: 'skipped', reason: result.reason });
-      return res.status(409).json(result);
+      reviewProgressService.publish({
+        suggestionId,
+        status: result.status === 409 ? 'skipped' : 'failed',
+        reason: result.reason
+      });
+      return res.status(result.status || 409).json(result);
     }
-    reviewProgressService.publish({ documentId, status: 'applied' });
-    res.json({ success: true, documentId, ...result });
+    const documentId = result.suggestion.document_id;
+    reviewProgressService.publish({ suggestionId, documentId, status: 'applied' });
+    res.json({ success: true, suggestionId, documentId, ...result });
   } catch (error) {
-    reviewProgressService.publish({ documentId: req.params.id, status: 'failed', error: errorMessage(error) });
-    console.error('[ERROR] applying review metadata:', error);
-    res.status(500).json({ error: 'Error applying metadata' });
+    reviewProgressService.publish({ suggestionId, status: 'failed', error: errorMessage(error) });
+    console.error('[ERROR] applying review suggestion:', error);
+    res.status(500).json({ error: 'Error applying review suggestion' });
   }
 });
 
-router.get('/api/review/progress', (req: Req, res: Res) => {
+router.post('/review/:id/reject', isAuthenticated, express.json(), async (req: Req, res: Res) => {
+  const suggestionId = parseSuggestionId(req.params.id);
+  if (!suggestionId) return res.status(400).json({ error: 'A valid suggestion id is required' });
+
+  try {
+    const note = typeof req.body?.note === 'string' ? req.body.note.trim().slice(0, 1000) : null;
+    reviewProgressService.publish({ suggestionId, status: 'rejecting' });
+    const result = await reviewService.rejectSuggestion(suggestionId, reviewActor(req), note || null);
+    if (!result.ok) {
+      reviewProgressService.publish({ suggestionId, status: 'skipped', reason: result.reason });
+      return res.status(result.status || 409).json(result);
+    }
+    const documentId = result.suggestion.document_id;
+    reviewProgressService.publish({ suggestionId, documentId, status: 'rejected' });
+    res.json({ success: true, suggestionId, documentId, ...result });
+  } catch (error) {
+    reviewProgressService.publish({ suggestionId, status: 'failed', error: errorMessage(error) });
+    console.error('[ERROR] rejecting review suggestion:', error);
+    res.status(500).json({ error: 'Error rejecting review suggestion' });
+  }
+});
+
+router.get('/api/review/progress', isAuthenticated, (req: Req, res: Res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
@@ -1397,13 +1425,13 @@ try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
       console.log(`Setup not completed. Visit http://your-machine-ip:${resolveEnv('TAGVICO_AI_PORT', 'ARCHIVISTA_AI_PORT') || 3000}/setup to complete setup.`);
-      return;
+      return res.status(409).json({ error: 'Setup is not complete' });
     }
 
     const userId = await paperlessService.getOwnUserID();
     if (!userId) {
       console.error('Failed to get own user ID. Abort scanning.');
-      return;
+      return res.status(502).json({ error: 'Could not resolve the Paperless API user' });
     }
     
       try {
@@ -1428,6 +1456,7 @@ try {
           try {
             const result = await processDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
             if (!result) continue;
+            if (result.reviewSuggestion) continue;
     
             const { analysis, originalData, content } = result;
             const updateData = await buildUpdateData(analysis, doc, content);
@@ -1438,80 +1467,100 @@ try {
         }
       } catch (error) {
         console.error('[ERROR]  during document scan:', error);
+        if (!res.headersSent) res.status(500).json({ error: 'Error during document scan' });
       } finally {
-        runningTask = false;
         console.log('[INFO] Task completed');
-        res.send('Task completed');
+        if (!res.headersSent) res.send('Task completed');
       }
   } catch (error) {
     console.error('[ERROR] in startScanning:', error);
+    if (!res.headersSent) res.status(500).json({ error: 'Error during document scan' });
   }
 });
 
 async function processDocument(doc: DocumentData, existingTags: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number, customPrompt: string | null = null) {
   const isProcessed = await documentModel.isDocumentProcessed(doc.id);
   if (isProcessed) return null;
+  const reviewMode = reviewService.isReviewModeEnabled();
+  const reviewReservation = reviewMode
+    ? await reviewService.reserveSuggestion(doc, customPrompt ? 'webhook' : 'manual-scan')
+    : null;
+  if (reviewMode && !reviewReservation) return null;
+
   await documentModel.setProcessingStatus(doc.id, doc.title, 'processing');
-
-  const documentEditable = await paperlessService.getPermissionOfDocument(doc.id);
-  if (!documentEditable) {
-    console.log(`[DEBUG] Document belongs to: ${documentEditable}, skipping analysis`);
-    console.log(`[DEBUG] Document ${doc.id} not editable by Tagvico AI user, skipping analysis`);
-    return null;
-  }else {
-    console.log(`[DEBUG] Document ${doc.id} rights for AI User - processed`);
-  }
-
-  let [content, originalData] = await Promise.all([
-    paperlessService.getDocumentContent(doc.id),
-    paperlessService.getDocument(doc.id)
-  ]);
-
-  if (!content || Number(!content.length) >= 10) {
-    console.log(`[DEBUG] Document ${doc.id} has no content, skipping analysis`);
-    return null;
-  }
-
-  if (content.length > 50000) {
-    content = content.substring(0, 50000);
-  }
-
-  // Prepare options for AI service
-  const options: { restrictToExistingTags: boolean; restrictToExistingCorrespondents: boolean; externalApiData?: unknown } = {
-    restrictToExistingTags: config.restrictToExistingTags === 'yes',
-    restrictToExistingCorrespondents: config.restrictToExistingCorrespondents === 'yes'
-  };
-
-  // Get external API data if enabled
-  if (config.externalApiConfig.enabled === 'yes') {
-    try {
-      const externalApiService = require('../services/externalApiService');
-      const externalData = await externalApiService.fetchData();
-      if (externalData) {
-        options.externalApiData = externalData;
-        console.log('[DEBUG] Retrieved external API data for prompt enrichment');
-      }
-    } catch (error) {
-      console.error('[ERROR] Failed to fetch external API data:', errorMessage(error));
+  try {
+    const documentEditable = await paperlessService.getPermissionOfDocument(doc.id);
+    if (!documentEditable) {
+      console.log(`[DEBUG] Document belongs to: ${documentEditable}, skipping analysis`);
+      console.log(`[DEBUG] Document ${doc.id} not editable by Tagvico AI user, skipping analysis`);
+      if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, 'document is not editable');
+      return null;
     }
-  }
+    console.log(`[DEBUG] Document ${doc.id} rights for AI User - processed`);
 
-  const aiService = AIServiceFactory.getService();
-  const tagPolicy = tagGroupService.getConfig();
-  existingTags = tagPolicy.enabled ? tagPolicy.vocabulary : existingTags;
-  let analysis;
-  if(customPrompt) {
-    console.log('[DEBUG] Starting document analysis with custom prompt');
-    analysis = await aiService.analyzeDocument(content, existingTags, existingCorrespondentList, existingDocumentTypesList, doc.id, customPrompt, options);
-  }else{
-    analysis = await aiService.analyzeDocument(content, existingTags, existingCorrespondentList, existingDocumentTypesList, doc.id, null, options);
+    let [content, originalData] = await Promise.all([
+      paperlessService.getDocumentContent(doc.id),
+      paperlessService.getDocument(doc.id)
+    ]);
+
+    if (!content || content.length < config.minContentLength) {
+      console.log(`[DEBUG] Document ${doc.id} has insufficient OCR content, skipping analysis`);
+      await documentModel.setProcessingStatus(doc.id, doc.title, 'failed');
+      if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, 'insufficient OCR content');
+      return null;
+    }
+
+    if (content.length > 50000) content = content.substring(0, 50000);
+
+    const options: { restrictToExistingTags: boolean; restrictToExistingCorrespondents: boolean; externalApiData?: unknown } = {
+      restrictToExistingTags: config.restrictToExistingTags === 'yes',
+      restrictToExistingCorrespondents: config.restrictToExistingCorrespondents === 'yes'
+    };
+
+    if (config.externalApiConfig.enabled === 'yes') {
+      try {
+        const externalApiService = require('../services/externalApiService');
+        const externalData = await externalApiService.fetchData();
+        if (externalData !== null && externalData !== undefined) {
+          options.externalApiData = externalData;
+          console.log('[DEBUG] Retrieved external API data for prompt enrichment');
+        }
+      } catch (error) {
+        console.error('[ERROR] Failed to fetch external API data:', errorMessage(error));
+      }
+    }
+
+    const aiService = AIServiceFactory.getService();
+    const tagPolicy = tagGroupService.getConfig();
+    existingTags = tagPolicy.enabled ? tagPolicy.vocabulary : existingTags;
+    let analysis;
+    if (customPrompt) {
+      console.log('[DEBUG] Starting document analysis with custom prompt');
+      analysis = await aiService.analyzeDocument(content, existingTags, existingCorrespondentList, existingDocumentTypesList, doc.id, customPrompt, options);
+    } else {
+      analysis = await aiService.analyzeDocument(content, existingTags, existingCorrespondentList, existingDocumentTypesList, doc.id, null, options);
+    }
+    console.log('Response from AI service:', analysis);
+    if (analysis.error) throw new Error(`[ERROR] Document analysis failed: ${analysis.error}`);
+
+    if (reviewReservation) {
+      const suggestion = await reviewService.stageSuggestion(reviewReservation.id, {
+        doc,
+        analysis,
+        originalData,
+        content
+      });
+      if (!suggestion) throw new Error('Review reservation could not be staged');
+      await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
+      return { reviewSuggestion: suggestion };
+    }
+
+    await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
+    return { analysis, originalData, content };
+  } catch (error) {
+    if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, errorMessage(error));
+    throw error;
   }
-  console.log('Response from AI service:', analysis);
-  if (analysis.error) {
-    throw new Error(`[ERROR] Document analysis failed: ${analysis.error}`);
-  }
-  await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
-  return { analysis, originalData, content };
 }
 
 async function buildUpdateData(analysis: AnalysisData, doc: DocumentData, content = '') {
@@ -1750,9 +1799,26 @@ router.post('/api/key-regenerate', async (req: Req, res: Res) => {
 function buildPageConfig() {
   const onboardingDefaults = onboardingService.loadOnboardingDefaults();
   const config = buildUiConfig({ ...onboardingDefaults, ...process.env }, configFile.TAGVICO_AI_VERSION || '');
+  config.WRITE_MODE = reviewService.getWriteMode();
+  config.DRY_RUN = reviewService.isReviewModeEnabled();
   config.SYSTEM_PROMPT = '';
   config.CUSTOM_FIELDS = process.env.CUSTOM_FIELDS || '{"custom_fields":[]}';
   return config;
+}
+
+function persistWriteMode(payload: UnknownRecord, ensureDefault = false) {
+  if (payload && Object.prototype.hasOwnProperty.call(payload, 'write_mode')) {
+    const writeMode = reviewService.normalizeWriteMode(payload.write_mode);
+    return reviewService.writeReviewConfig({ WRITE_MODE: writeMode });
+  }
+  // Accept the v2 preview checkbox payload for backwards compatibility.
+  if (payload && Object.prototype.hasOwnProperty.call(payload, 'dry_run')) {
+    const reviewMode = parseBooleanFlag(payload.dry_run, 'yes') === 'yes';
+    return reviewService.writeReviewConfig({
+      WRITE_MODE: reviewMode ? reviewService.WRITE_MODES.REVIEW : reviewService.WRITE_MODES.AUTOMATIC
+    });
+  }
+  return ensureDefault ? reviewService.writeReviewConfig({}) : reviewService.loadReviewConfig();
 }
 
 function buildViewModel(config: UnknownRecord) {
@@ -1774,6 +1840,7 @@ function resetRuntimeServices() {
   azureService.reset?.();
   anthropicService.reset?.();
   codexService.reset?.();
+  copilotService.reset?.();
   customService.reset?.();
 }
 
@@ -1812,7 +1879,9 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
   const providerPayload = normalizeProviderPayload(payload);
   const currentConfig = options.currentConfig || {};
   const apiToken = options.apiToken || process.env.API_KEY || require('crypto').randomBytes(64).toString('hex');
-  const jwtToken = options.jwtToken || process.env.JWT_SECRET || require('crypto').randomBytes(64).toString('hex');
+  // Persist the same secret that authenticated this setup request. Generating
+  // a second value here invalidates every first-run session after restart.
+  const jwtToken = options.jwtToken || process.env.JWT_SECRET || JWT_SECRET;
   const processedCustomFields = options.processedCustomFields || [];
 
   return {
@@ -1845,6 +1914,14 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
     AI_PROCESSING_MODE: ['standard', 'flex', 'batch'].includes(String(payload.aiProcessingMode)) ? String(payload.aiProcessingMode) : (currentConfig.AI_PROCESSING_MODE || 'standard'),
     OLLAMA_API_URL: providerPayload.ollamaUrl || currentConfig.OLLAMA_API_URL || 'http://localhost:11434',
     OLLAMA_MODEL: providerPayload.provider === 'ollama' ? providerPayload.selectedModel : currentConfig.OLLAMA_MODEL || 'llama3.2',
+    OLLAMA_CLOUD_API_KEY: providerPayload.provider === 'ollama-cloud' ? providerPayload.ollamaCloudApiKey : currentConfig.OLLAMA_CLOUD_API_KEY || '',
+    OLLAMA_CLOUD_API_URL: providerPayload.ollamaCloudUrl || currentConfig.OLLAMA_CLOUD_API_URL || 'https://ollama.com',
+    OLLAMA_CLOUD_MODEL: providerPayload.provider === 'ollama-cloud' ? providerPayload.selectedModel : currentConfig.OLLAMA_CLOUD_MODEL || 'gpt-oss:20b-cloud',
+    OPENCODE_API_KEY: providerPayload.provider === 'opencode' ? providerPayload.opencodeApiKey : currentConfig.OPENCODE_API_KEY || '',
+    OPENCODE_BASE_URL: providerPayload.opencodeBaseUrl || currentConfig.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
+    OPENCODE_MODEL: providerPayload.provider === 'opencode' ? providerPayload.selectedModel : currentConfig.OPENCODE_MODEL || 'deepseek-v4-flash',
+    COPILOT_GITHUB_TOKEN: providerPayload.provider === 'copilot' ? providerPayload.copilotGitHubToken : currentConfig.COPILOT_GITHUB_TOKEN || '',
+    COPILOT_MODEL: providerPayload.provider === 'copilot' ? providerPayload.selectedModel : currentConfig.COPILOT_MODEL || 'gpt-5.4-mini',
     COMPATIBLE_BASE_URL: providerPayload.compatibleBaseUrl || currentConfig.COMPATIBLE_BASE_URL || '',
     COMPATIBLE_API_KEY: providerPayload.compatibleApiKey || currentConfig.COMPATIBLE_API_KEY || '',
     COMPATIBLE_MODEL: providerPayload.provider === 'compatible' ? providerPayload.selectedModel : currentConfig.COMPATIBLE_MODEL || '',
@@ -1872,7 +1949,9 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
     EXTERNAL_API_HEADERS: payload.externalApiHeaders || currentConfig.EXTERNAL_API_HEADERS || '{}',
     EXTERNAL_API_BODY: payload.externalApiBody || currentConfig.EXTERNAL_API_BODY || '{}',
     EXTERNAL_API_TIMEOUT: payload.externalApiTimeout || currentConfig.EXTERNAL_API_TIMEOUT || '5000',
-    EXTERNAL_API_TRANSFORM: payload.externalApiTransform || currentConfig.EXTERNAL_API_TRANSFORM || '',
+    EXTERNAL_API_TRANSFORM: Object.prototype.hasOwnProperty.call(payload, 'externalApiTransform')
+      ? String(payload.externalApiTransform || '')
+      : currentConfig.EXTERNAL_API_TRANSFORM || '',
     CUSTOM_FIELDS: processedCustomFields.length > 0 ? JSON.stringify({ custom_fields: processedCustomFields }) : (currentConfig.CUSTOM_FIELDS || '{"custom_fields":[]}'),
     SYSTEM_PROMPT: processSystemPrompt(payload.systemPrompt),
     TOKEN_LIMIT: currentConfig.TOKEN_LIMIT || '128000',
@@ -2669,6 +2748,7 @@ async function processQueue(customPrompt?: string) {
       try {
         const result = await processDocument(doc, existingTags, existingCorrespondentList, existingDocumentTypesList, ownUserId, customPrompt);
         if (!result) continue;
+        if (result.reviewSuggestion) continue;
 
         const { analysis, originalData, content } = result;
         const updateData = await buildUpdateData(analysis, doc, content);
@@ -3748,7 +3828,20 @@ router.post('/setup', express.json(), async (req: Req, res: Res) => {
     } = req.body;
 
     // Log setup request with sensitive data redacted
-    const sensitiveKeys = ['paperlessToken', 'openaiKey', 'customApiKey', 'password', 'confirmPassword'];
+    const sensitiveKeys = [
+      'paperlessToken',
+      'openaiKey',
+      'openrouterApiKey',
+      'ollamaCloudApiKey',
+      'opencodeApiKey',
+      'copilotGitHubToken',
+      'compatibleApiKey',
+      'customApiKey',
+      'anthropicApiKey',
+      'azureApiKey',
+      'password',
+      'confirmPassword'
+    ];
     const redactedBody = Object.fromEntries(
       Object.entries(req.body).map(([key, value]) => [
       key,
@@ -3842,6 +3935,31 @@ router.post('/setup', express.json(), async (req: Req, res: Res) => {
           error: 'Ollama connection failed. Please check URL and model.'
         });
       }
+    } else if (providerConfig.provider === 'ollama-cloud') {
+      const isValid = await setupService.validateOllamaConfig(providerConfig.ollamaCloudUrl, providerConfig.selectedModel, providerConfig.ollamaCloudApiKey);
+      if (!isValid) {
+        return res.status(400).json({
+          error: 'Ollama Cloud connection failed. Check the API key and cloud model.'
+        });
+      }
+    } else if (providerConfig.provider === 'opencode') {
+      const isValid = await setupService.validateCustomConfig(
+        providerConfig.opencodeBaseUrl,
+        providerConfig.opencodeApiKey,
+        providerConfig.selectedModel
+      );
+      if (!isValid) {
+        return res.status(400).json({
+          error: 'OpenCode Go connection failed. Check the service API key, gateway, and model ID.'
+        });
+      }
+    } else if (providerConfig.provider === 'copilot') {
+      const status = await copilotService.healthcheck({ gitHubToken: providerConfig.copilotGitHubToken });
+      if (!status.ok) {
+        return res.status(400).json({
+          error: `GitHub Copilot connection failed: ${status.error || 'sign in with copilot auth login or provide a supported GitHub token.'}`
+        });
+      }
     } else if (providerConfig.provider === 'compatible') {
       const isValid = await setupService.validateCustomConfig(
         providerConfig.compatibleBaseUrl,
@@ -3877,14 +3995,8 @@ router.post('/setup', express.json(), async (req: Req, res: Res) => {
     const tagProvisioning = await provisionControlledTags();
     onboardingService.writeOnboardingSnapshot(config);
 
-    // Persist dry-run review flag alongside the main config so the review
-    // queue picks it up on the next request without restarting the process.
-    if (req.body && Object.prototype.hasOwnProperty.call(req.body, 'dry_run')) {
-      reviewService.writeReviewConfig({ DRY_RUN: req.body.dry_run ? 'true' : 'false' });
-    } else {
-      // Make sure the on-disk default exists so /review can read it.
-      reviewService.writeReviewConfig({});
-    }
+    // The selected write mode takes effect on the next scan without a restart.
+    persistWriteMode(req.body, true);
 
     const hashedPassword = await bcrypt.hash(password, 15);
     await documentModel.addUser(username, hashedPassword);
@@ -4199,6 +4311,35 @@ router.post('/settings', express.json(), async (req: Req, res: Res) => {
           error: 'Ollama connection failed. Please check URL and model.'
         });
       }
+    } else if (providerConfig.provider === 'ollama-cloud') {
+      const isValid = await setupService.validateOllamaConfig(
+        providerConfig.ollamaCloudUrl || currentConfig.OLLAMA_CLOUD_API_URL || 'https://ollama.com',
+        providerConfig.selectedModel || currentConfig.OLLAMA_CLOUD_MODEL,
+        providerConfig.ollamaCloudApiKey || currentConfig.OLLAMA_CLOUD_API_KEY
+      );
+      if (!isValid) {
+        return res.status(400).json({
+          error: 'Ollama Cloud connection failed. Check the API key and cloud model.'
+        });
+      }
+    } else if (providerConfig.provider === 'opencode') {
+      const isValid = await setupService.validateCustomConfig(
+        providerConfig.opencodeBaseUrl || currentConfig.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
+        providerConfig.opencodeApiKey || currentConfig.OPENCODE_API_KEY,
+        providerConfig.selectedModel || currentConfig.OPENCODE_MODEL
+      );
+      if (!isValid) {
+        return res.status(400).json({
+          error: 'OpenCode Go connection failed. Check the service API key, gateway, and model ID.'
+        });
+      }
+    } else if (providerConfig.provider === 'copilot') {
+      const status = await copilotService.healthcheck({ gitHubToken: providerConfig.copilotGitHubToken || currentConfig.COPILOT_GITHUB_TOKEN });
+      if (!status.ok) {
+        return res.status(400).json({
+          error: `GitHub Copilot connection failed: ${status.error || 'sign in with copilot auth login or provide a supported GitHub token.'}`
+        });
+      }
     } else if (providerConfig.provider === 'compatible') {
       const isValid = await setupService.validateCustomConfig(
         providerConfig.compatibleBaseUrl || currentConfig.COMPATIBLE_BASE_URL || currentConfig.CUSTOM_BASE_URL,
@@ -4234,6 +4375,7 @@ router.post('/settings', express.json(), async (req: Req, res: Res) => {
     resetRuntimeServices();
     const tagProvisioning = await provisionControlledTags();
     onboardingService.writeOnboardingSnapshot(mergedConfig);
+    persistWriteMode(req.body);
     try {
       for (const field of processedCustomFields) {
         await paperlessService.createCustomFieldSafely(field.value, field.data_type, field.currency);
@@ -4457,8 +4599,30 @@ router.post('/api/history/:id/restore', async (req: Req, res: Res) => {
 router.get('/api/codex/status', allowDuringSetup, async (req: Req, res: Res) => {
   try {
     const account = await codexAuthService.account();
-    res.json({ ...(await codexService.getStatus()), account: account.account || null });
+    const current = account.account;
+    res.json({
+      ...(await codexService.getStatus()),
+      account: current ? { type: current.type, planType: current.planType || null } : null
+    });
   } catch { res.json(await codexService.getStatus()); }
+});
+
+router.get('/api/codex/models', allowDuringSetup, async (req: Req, res: Res) => {
+  try {
+    const account = await codexAuthService.account();
+    if (account.account?.type !== 'chatgpt') {
+      return res.status(401).json({ success: false, error: 'Sign in with ChatGPT to load subscription models.' });
+    }
+    const models = await codexAuthService.models();
+    res.json({
+      success: true,
+      planType: account.account.planType || null,
+      models,
+      defaultModel: models.find((model: { id: string; isDefault?: boolean }) => model.isDefault)?.id || models[0]?.id || null
+    });
+  } catch (error) {
+    res.status(502).json({ success: false, error: errorMessage(error) || 'Could not load ChatGPT subscription models' });
+  }
 });
 
 router.post('/api/codex/login', allowDuringSetup, express.json(), async (req: Req, res: Res) => {
@@ -4480,6 +4644,38 @@ router.post('/api/codex/login/:loginId/cancel', allowDuringSetup, async (req: Re
 router.post('/api/codex/logout', allowDuringSetup, async (req: Req, res: Res) => {
   try { await codexAuthService.logout(); res.json({ success: true }); }
   catch (error) { res.status(502).json({ error: errorMessage(error) }); }
+});
+
+router.get('/api/copilot/status', allowDuringSetup, async (req: Req, res: Res) => {
+  const status = await copilotService.status();
+  res.status(status.ok ? 200 : 401).json(status);
+});
+
+router.get('/api/copilot/models', allowDuringSetup, async (req: Req, res: Res) => {
+  const status = await copilotService.status();
+  if (!status.ok) return res.status(401).json(status);
+  res.json({ success: true, models: status.models, defaultModel: status.models[0]?.id || null });
+});
+
+router.post('/api/copilot/login', allowDuringSetup, async (req: Req, res: Res) => {
+  try { res.json(await copilotAuthService.login()); }
+  catch (error) { res.status(500).json({ success: false, error: errorMessage(error) || 'Could not start GitHub Copilot login' }); }
+});
+
+router.get('/api/copilot/login/:loginId', allowDuringSetup, (req: Req, res: Res) => {
+  const status = copilotAuthService.loginStatus(req.params.loginId);
+  if (!status) return res.status(404).json({ success: false, error: 'Unknown GitHub Copilot login' });
+  res.json(status);
+});
+
+router.post('/api/copilot/login/:loginId/cancel', allowDuringSetup, (req: Req, res: Res) => {
+  const cancelled = copilotAuthService.cancel(req.params.loginId);
+  res.status(cancelled ? 200 : 404).json({ success: cancelled });
+});
+
+router.post('/api/copilot/logout', allowDuringSetup, async (req: Req, res: Res) => {
+  try { res.json(await copilotService.logout()); }
+  catch (error) { res.status(500).json({ success: false, error: errorMessage(error) || 'Could not sign out of GitHub Copilot' }); }
 });
 
 router.post('/api/settings/clear-tag-cache', async (req: Req, res: Res) => {

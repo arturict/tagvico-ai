@@ -31,7 +31,7 @@ function collectFiles(directory) {
 
 const violations = [];
 for (const file of collectFiles(root)) {
-  const relative = path.relative(root, file);
+  const relative = path.relative(root, file).split(path.sep).join('/');
   const lines = fs.readFileSync(file, 'utf8').split(/\r?\n/);
   lines.forEach((line, index) => {
     if (!/archivista/i.test(line)) return;

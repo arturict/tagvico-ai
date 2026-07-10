@@ -51,7 +51,7 @@ const externalApiConfig = {
   headers: process.env.EXTERNAL_API_HEADERS || '{}',
   body: process.env.EXTERNAL_API_BODY || '{}',
   timeout: parseInt(process.env.EXTERNAL_API_TIMEOUT || '5000', 10),
-  transformationTemplate: process.env.EXTERNAL_API_TRANSFORM || ''
+  selector: process.env.EXTERNAL_API_TRANSFORM || ''
 };
 
 console.log('Loaded environment variables:', {
@@ -124,6 +124,22 @@ module.exports = {
   ollama: {
     apiUrl: process.env.OLLAMA_API_URL || 'http://localhost:11434',
     model: process.env.OLLAMA_MODEL || getDefaultModel('ollama')
+  },
+  ollamaCloud: {
+    apiKey: process.env.OLLAMA_CLOUD_API_KEY || process.env.OLLAMA_API_KEY || '',
+    apiUrl: process.env.OLLAMA_CLOUD_API_URL || 'https://ollama.com',
+    model: process.env.OLLAMA_CLOUD_MODEL || getDefaultModel('ollama-cloud')
+  },
+  opencode: {
+    apiKey: process.env.OPENCODE_API_KEY || '',
+    apiUrl: process.env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
+    model: process.env.OPENCODE_MODEL || getDefaultModel('opencode')
+  },
+  copilot: {
+    githubToken: process.env.COPILOT_GITHUB_TOKEN || process.env.GITHUB_TOKEN || '',
+    model: process.env.COPILOT_MODEL || getDefaultModel('copilot'),
+    home: process.env.COPILOT_HOME || path.join(currentDir, 'data', 'copilot'),
+    timeoutMs: Math.max(10000, parseInt(process.env.COPILOT_TIMEOUT_MS || '120000', 10))
   },
   compatible: {
     apiUrl: process.env.COMPATIBLE_BASE_URL || process.env.CUSTOM_BASE_URL || '',

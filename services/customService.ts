@@ -21,29 +21,40 @@ class CustomOpenAIService {
   client: InstanceType<typeof OpenAI> | null;
   tokenizer: unknown;
   clientKey: string | null;
+  model: string;
   constructor() {
     this.client = null;
     this.tokenizer = null;
     this.clientKey = null;
+    this.model = '';
   }
 
   reset() {
     this.client = null;
     this.clientKey = null;
+    this.model = '';
   }
 
   initialize() {
     const provider = normalizeProvider(config.aiProvider);
-    const apiUrl = config.compatible.apiUrl || config.custom.apiUrl;
-    const apiKey = config.compatible.apiKey || config.custom.apiKey;
+    const providerConfig = provider === 'opencode'
+      ? config.opencode
+      : (config.compatible.apiUrl || config.custom.apiUrl ? {
+          apiUrl: config.compatible.apiUrl || config.custom.apiUrl,
+          apiKey: config.compatible.apiKey || config.custom.apiKey,
+          model: config.compatible.model || config.custom.model
+        } : null);
+    const apiUrl = providerConfig?.apiUrl;
+    const apiKey = providerConfig?.apiKey;
 
-    if ((provider === 'compatible' || provider === 'custom') && (!this.client || this.clientKey !== `${provider}:${apiUrl}`)) {
+    if (['compatible', 'custom', 'opencode'].includes(provider) && apiUrl && (!this.client || this.clientKey !== `${provider}:${apiUrl}:${apiKey || ''}`)) {
       this.client = new OpenAI({
         baseURL: apiUrl,
         apiKey: apiKey || 'Tagvico AI-compatible'
       });
-      this.clientKey = `${provider}:${apiUrl}`;
+      this.clientKey = `${provider}:${apiUrl}:${apiKey || ''}`;
     }
+    this.model = providerConfig?.model || '';
   }
 
   async analyzeDocument(content: string, existingTags: string[] = [], existingCorrespondentList: string[] = [], existingDocumentTypesList: string[] = [], id: string, customPrompt: string | null = null, options: AnalysisOptions = {}) {
@@ -57,16 +68,16 @@ class CustomOpenAIService {
       }
 
       // Handle thumbnail caching
-      const { thumbnailAvailable, thumbnailData } = await loadThumbnail(id, './public/images');
+      const { thumbnailAvailable, thumbnailData } = await loadThumbnail(id);
 
       // Format existing tags
       let existingTagsList = existingTags.join(', ');
 
       // Get external API data if available and validate it
-      let externalApiData = options.externalApiData || null;
+      let externalApiData = options.externalApiData ?? null;
       let validatedExternalApiData = null;
 
-      if (externalApiData) {
+      if (externalApiData !== null && externalApiData !== undefined) {
         try {
           validatedExternalApiData = await this._validateAndTruncateExternalApiData(externalApiData);
           console.log('[DEBUG] External API data validated and included');
@@ -78,7 +89,8 @@ class CustomOpenAIService {
 
       let systemPrompt = '';
       let promptTags = '';
-      const model = config.compatible.model || config.custom.model;
+      const model = this.model;
+      if (!model) throw new Error('Choose an OpenAI-compatible model before processing documents');
 
       // Parse CUSTOM_FIELDS from environment variable
       let customFieldsObj;
@@ -280,7 +292,7 @@ class CustomOpenAIService {
    * @returns {string} - Validated and potentially truncated data string
    */
   async _validateAndTruncateExternalApiData(apiData: unknown, maxTokens = 500) {
-    if (!apiData) {
+    if (apiData === null || apiData === undefined) {
       return null;
     }
 
@@ -289,11 +301,11 @@ class CustomOpenAIService {
       : String(apiData);
 
     // Calculate tokens for the data
-      const dataTokens = await calculateTokens(dataString, config.compatible.model || config.custom.model);
+      const dataTokens = await calculateTokens(dataString, this.model);
 
     if (dataTokens > maxTokens) {
       console.warn(`[WARNING] External API data (${dataTokens} tokens) exceeds limit (${maxTokens}), truncating`);
-      return await truncateToTokenLimit(dataString, maxTokens, config.compatible.model || config.custom.model);
+      return await truncateToTokenLimit(dataString, maxTokens, this.model);
     }
 
     console.log(`[DEBUG] External API data validated: ${dataTokens} tokens`);
@@ -335,7 +347,7 @@ class CustomOpenAIService {
 
       // Make API request
       const response = await this.client.chat.completions.create({
-        model: config.compatible.model || config.custom.model,
+        model: this.model,
         messages: [
           {
             role: "system",
@@ -419,7 +431,7 @@ class CustomOpenAIService {
         throw new Error('Custom OpenAI client not initialized - missing API key');
       }
 
-      const model = config.custom.model;
+      const model = this.model;
 
       const response = await this.client.chat.completions.create({
         model: model,
@@ -452,7 +464,7 @@ class CustomOpenAIService {
         throw new Error('Custom OpenAI client not initialized - missing API key');
       }
 
-      const model = config.custom.model;
+      const model = this.model;
 
       const response = await this.client.chat.completions.create({
         model: model,

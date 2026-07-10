@@ -139,7 +139,11 @@ class SetupService {
       apiKey: apiKey || 'Tagvico AI-compatible',
       model: model
     };
-    console.log('Custom AI config:', config);
+    console.log('Validating OpenAI-compatible endpoint:', {
+      baseURL: config.baseURL,
+      model: config.model,
+      hasApiKey: Boolean(apiKey)
+    });
     try {
       const openai = new OpenAI({ 
         apiKey: config.apiKey, 
@@ -151,14 +155,16 @@ class SetupService {
       });
       return completion.choices && completion.choices.length > 0;
     } catch (error) {
-      console.error('Custom AI validation error:', error);
+      console.error('Custom AI validation error:', errorMessage(error));
       return false;
     }
   }
 
-  async getOllamaModels(url: string) {
+  async getOllamaModels(url: string, apiKey = '') {
     try {
-      const response = await axios.get(`${url.replace(/\/$/, '')}/api/tags`);
+      const response = await axios.get(`${url.replace(/\/$/, '')}/api/tags`, {
+        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined
+      });
       return Array.isArray(response.data?.models) ? response.data.models : [];
     } catch (error) {
       console.error('Failed to fetch Ollama models:', errorMessage(error));
@@ -168,12 +174,14 @@ class SetupService {
 
 
 
-  async validateOllamaConfig(url: string, model?: string) {
+  async validateOllamaConfig(url: string, model?: string, apiKey = '') {
     try {
       const response = await axios.post(`${url}/api/generate`, {
         model: model || 'llama3.2',
         prompt: 'Test',
         stream: false
+      }, {
+        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined
       });
       return response.data && response.data.response;
     } catch (error) {
@@ -228,7 +236,7 @@ class SetupService {
     if (aiProvider === 'openrouter') {
       const openRouterValid = await this.validateOpenRouterConfig(
         config.OPENROUTER_API_KEY || config.OPENAI_API_KEY,
-        config.OPENROUTER_MODEL || config.AI_MODEL || 'openai/gpt-5.4-nano'
+        config.OPENROUTER_MODEL || config.AI_MODEL || 'openai/gpt-5.4-mini'
       );
       if (!openRouterValid) {
         throw new Error('Invalid OpenRouter configuration');
@@ -245,6 +253,24 @@ class SetupService {
       );
       if (!ollamaValid) {
         throw new Error('Invalid Ollama configuration');
+      }
+    } else if (aiProvider === 'ollama-cloud') {
+      const ollamaCloudValid = await this.validateOllamaConfig(
+        config.OLLAMA_CLOUD_API_URL || 'https://ollama.com',
+        config.OLLAMA_CLOUD_MODEL,
+        config.OLLAMA_CLOUD_API_KEY || config.OLLAMA_API_KEY
+      );
+      if (!ollamaCloudValid) {
+        throw new Error('Invalid Ollama Cloud configuration');
+      }
+    } else if (aiProvider === 'opencode') {
+      const opencodeValid = await this.validateCustomConfig(
+        config.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
+        config.OPENCODE_API_KEY,
+        config.OPENCODE_MODEL
+      );
+      if (!opencodeValid) {
+        throw new Error('Invalid OpenCode Go configuration');
       }
     } else if (aiProvider === 'compatible' || aiProvider === 'custom') {
       const customValid = await this.validateCustomConfig(

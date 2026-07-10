@@ -59,6 +59,17 @@ class PaperlessService {
     }
   }
 
+  normalizeDocumentDate(value: unknown) {
+    let dateObject = parseISO(String(value || ''));
+    if (!isValid(dateObject)) dateObject = parse(String(value || ''), 'dd.MM.yyyy', new Date());
+    if (!isValid(dateObject)) dateObject = parse(String(value || ''), 'dd-MM-yyyy', new Date());
+    if (!isValid(dateObject)) {
+      console.warn(`[WARN] Invalid date format: ${value}, using fallback date: 01.01.1990`);
+      dateObject = new Date(1990, 0, 1);
+    }
+    return format(dateObject, 'yyyy-MM-dd');
+  }
+
   async getThumbnailImage(documentId: number | string) {
     this.initialize();
     try { 
@@ -1421,25 +1432,9 @@ async getOrCreateDocumentType(name: string) {
       let updateData: DocumentUpdate;
       try {
         if (updates.created) {
-          let dateObject;
-          
-          dateObject = parseISO(updates.created);
-          
-          if (!isValid(dateObject)) {
-            dateObject = parse(updates.created, 'dd.MM.yyyy', new Date());
-            if (!isValid(dateObject)) {
-              dateObject = parse(updates.created, 'dd-MM-yyyy', new Date());
-            }
-          }
-          
-          if (!isValid(dateObject)) {
-            console.warn(`[WARN] Invalid date format: ${updates.created}, using fallback date: 01.01.1990`);
-            dateObject = new Date(1990, 0, 1);
-          }
-      
           updateData = {
             ...updates,
-            created: format(dateObject, 'yyyy-MM-dd'),
+            created: this.normalizeDocumentDate(updates.created),
           };
         } else {
           updateData = { ...updates };

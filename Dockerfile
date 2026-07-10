@@ -1,5 +1,5 @@
 # Build native dependencies and TypeScript outside the runtime image.
-FROM node:22-slim AS build
+FROM node:22.13-slim AS build
 
 WORKDIR /app
 
@@ -15,7 +15,7 @@ RUN npm ci
 COPY . .
 RUN npm run build && npm prune --omit=dev && npm cache clean --force
 
-FROM node:22-slim AS runtime
+FROM node:22.13-slim AS runtime
 
 WORKDIR /app
 

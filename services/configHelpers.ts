@@ -81,7 +81,7 @@ function buildUiConfig(env: Environment = process.env, version = '') {
     AI_PROVIDER: provider,
     AI_MODEL: env.AI_MODEL || effectiveModel,
     OPENAI_API_KEY: env.OPENAI_API_KEY || '',
-    OPENAI_MODEL: normalizeOpenAIModel(env.OPENAI_MODEL || getDefaultModel('openai')),
+    OPENAI_MODEL: normalizeOpenAIModel(env.OPENAI_MODEL || getDefaultModel('openai'), env),
     ANTHROPIC_API_KEY: env.ANTHROPIC_API_KEY || '',
     ANTHROPIC_MODEL: env.ANTHROPIC_MODEL || getDefaultModel('anthropic'),
     CODEX_MODEL: env.CODEX_MODEL || getDefaultModel('codex'),
@@ -90,6 +90,14 @@ function buildUiConfig(env: Environment = process.env, version = '') {
     OPENROUTER_MODEL: env.OPENROUTER_MODEL || env.AI_MODEL || getDefaultModel('openrouter'),
     OLLAMA_API_URL: env.OLLAMA_API_URL || 'http://localhost:11434',
     OLLAMA_MODEL: env.OLLAMA_MODEL || getDefaultModel('ollama'),
+    OLLAMA_CLOUD_API_KEY: env.OLLAMA_CLOUD_API_KEY || env.OLLAMA_API_KEY || '',
+    OLLAMA_CLOUD_API_URL: env.OLLAMA_CLOUD_API_URL || 'https://ollama.com',
+    OLLAMA_CLOUD_MODEL: env.OLLAMA_CLOUD_MODEL || getDefaultModel('ollama-cloud'),
+    OPENCODE_API_KEY: env.OPENCODE_API_KEY || '',
+    OPENCODE_BASE_URL: env.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
+    OPENCODE_MODEL: env.OPENCODE_MODEL || getDefaultModel('opencode'),
+    COPILOT_GITHUB_TOKEN: env.COPILOT_GITHUB_TOKEN || '',
+    COPILOT_MODEL: env.COPILOT_MODEL || getDefaultModel('copilot'),
     COMPATIBLE_API_KEY: env.COMPATIBLE_API_KEY || env.CUSTOM_API_KEY || '',
     COMPATIBLE_BASE_URL: env.COMPATIBLE_BASE_URL || env.CUSTOM_BASE_URL || '',
     COMPATIBLE_MODEL: env.COMPATIBLE_MODEL || env.CUSTOM_MODEL || '',
@@ -140,6 +148,9 @@ function normalizeProviderPayload(payload: ConfigLike = {}) {
     payload.aiModel ||
     payload.openrouterModel ||
     payload.ollamaModel ||
+    payload.ollamaCloudModel ||
+    payload.opencodeModel ||
+    payload.copilotModel ||
     payload.compatibleModel ||
     payload.openaiModel ||
     payload.anthropicModel ||
@@ -153,7 +164,7 @@ function normalizeProviderPayload(payload: ConfigLike = {}) {
     getDefaultModel(provider);
 
   if (provider === 'openai') {
-    selectedModel = normalizeOpenAIModel(selectedModel);
+    selectedModel = normalizeOpenAIModel(selectedModel, payload);
   }
 
   return {
@@ -161,6 +172,11 @@ function normalizeProviderPayload(payload: ConfigLike = {}) {
     selectedModel,
     openrouterApiKey: payload.openrouterApiKey || payload.OPENROUTER_API_KEY || payload.openaiKey || payload.OPENAI_API_KEY || '',
     ollamaUrl: payload.ollamaUrl || payload.OLLAMA_API_URL || 'http://localhost:11434',
+    ollamaCloudUrl: payload.ollamaCloudUrl || payload.OLLAMA_CLOUD_API_URL || 'https://ollama.com',
+    ollamaCloudApiKey: payload.ollamaCloudApiKey || payload.OLLAMA_CLOUD_API_KEY || payload.OLLAMA_API_KEY || '',
+    opencodeBaseUrl: payload.opencodeBaseUrl || payload.OPENCODE_BASE_URL || 'https://opencode.ai/zen/go/v1',
+    opencodeApiKey: payload.opencodeApiKey || payload.OPENCODE_API_KEY || '',
+    copilotGitHubToken: payload.copilotGitHubToken || payload.COPILOT_GITHUB_TOKEN || payload.GITHUB_TOKEN || '',
     compatibleBaseUrl: payload.compatibleBaseUrl || payload.COMPATIBLE_BASE_URL || payload.customBaseUrl || payload.CUSTOM_BASE_URL || '',
     compatibleApiKey: payload.compatibleApiKey || payload.COMPATIBLE_API_KEY || payload.customApiKey || payload.CUSTOM_API_KEY || '',
     openaiApiKey: payload.openaiKey || payload.OPENAI_API_KEY || '',

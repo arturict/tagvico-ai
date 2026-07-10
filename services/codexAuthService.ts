@@ -4,6 +4,12 @@ import * as path from 'path';
 import * as fs from 'fs';
 import config = require('../config/config');
 
+type CodexModel = {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  reasoningEfforts: Array<{ id: string; description: string }>;
+};
 type JsonObject = Record<string, unknown>;
 type Pending = { resolve(value: unknown): void; reject(error: Error): void; timer: NodeJS.Timeout };
 type RpcMessage = { id?: string | number; method?: string; params?: unknown; result?: unknown; error?: { message?: string } };
@@ -83,6 +89,30 @@ class CodexAuthService {
   }
 
   async account() { return this.request('account/read', { refreshToken: false }); }
+  normalizeModels(result: unknown): CodexModel[] {
+    const payload = result && typeof result === 'object' ? result as Record<string, unknown> : {};
+    const entries = Array.isArray(payload.data) ? payload.data : Array.isArray(payload.models) ? payload.models : [];
+    return entries
+      .filter((model): model is Record<string, unknown> => Boolean(model) && typeof model === 'object')
+      .filter((model) => model.hidden !== true && Boolean(model.id || model.model))
+      .map((model) => ({
+        id: String(model.id || model.model),
+        name: String(model.displayName || model.name || model.id || model.model),
+        isDefault: model.isDefault === true || model.default === true,
+        reasoningEfforts: Array.isArray(model.supportedReasoningEfforts)
+          ? model.supportedReasoningEfforts.map((effort) => {
+            const item = effort && typeof effort === 'object' ? effort as Record<string, unknown> : {};
+            return {
+              id: String(item.reasoningEffort || item.id || effort),
+              description: String(item.description || '')
+            };
+          })
+          : []
+      }));
+  }
+  async models(): Promise<CodexModel[]> {
+    return this.normalizeModels(await this.request('model/list', { limit: 100 }));
+  }
   async login(type: 'chatgpt' | 'chatgptDeviceCode') {
     const result = await this.request<LoginStartResult>('account/login/start', { type }, 30_000);
     if (result.loginId) this.logins.set(result.loginId, { ...result, loginId: result.loginId, completed: false });

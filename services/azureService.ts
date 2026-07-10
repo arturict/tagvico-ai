@@ -48,16 +48,16 @@ class AzureOpenAIService {
       }
 
       // Handle thumbnail caching
-      const { thumbnailAvailable, thumbnailData } = await loadThumbnail(id, './public/images');
+      const { thumbnailAvailable, thumbnailData } = await loadThumbnail(id);
 
       // Format existing tags
       let existingTagsList = existingTags.join(', ');
 
       // Get external API data if available and validate it
-      let externalApiData = options.externalApiData || null;
+      let externalApiData = options.externalApiData ?? null;
       let validatedExternalApiData = null;
 
-      if (externalApiData) {
+      if (externalApiData !== null && externalApiData !== undefined) {
         try {
           validatedExternalApiData = await this._validateAndTruncateExternalApiData(externalApiData);
           console.log('[DEBUG] External API data validated and included');
@@ -247,7 +247,7 @@ class AzureOpenAIService {
    * @returns {string} - Validated and potentially truncated data string
    */
   async _validateAndTruncateExternalApiData(apiData: unknown, maxTokens = 500) {
-    if (!apiData) {
+    if (apiData === null || apiData === undefined) {
       return null;
     }
 

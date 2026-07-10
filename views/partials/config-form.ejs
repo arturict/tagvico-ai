@@ -7,12 +7,15 @@
     ? 'Connect Paperless-ngx, choose a model, and decide what Tagvico AI may write back. The rest uses smart defaults.'
     : 'Switch providers, refresh model choices, and control how aggressively Tagvico AI updates documents.';
   const providerLogos = {
-    openrouter: { light: 'https://svgl.app/library/openrouter_light.svg', dark: 'https://svgl.app/library/openrouter_dark.svg' },
+    openrouter: { light: '/provider-icons/openrouter.svg', dark: '/provider-icons/openrouter.svg' },
     ollama: { light: 'https://svgl.app/library/ollama_light.svg', dark: 'https://svgl.app/library/ollama_dark.svg' },
-    compatible: { light: 'https://svgl.app/library/openai.svg', dark: 'https://svgl.app/library/openai_dark.svg' },
-    openai: { light: 'https://svgl.app/library/openai.svg', dark: 'https://svgl.app/library/openai_dark.svg' },
-    azure: { light: 'https://svgl.app/library/azure.svg', dark: 'https://svgl.app/library/azure.svg' },
-    anthropic: { light: 'https://svgl.app/library/anthropic_black.svg', dark: 'https://svgl.app/library/anthropic_white.svg' },
+    'ollama-cloud': { light: '/provider-icons/ollama-cloud.svg', dark: '/provider-icons/ollama-cloud.svg' },
+    opencode: { light: '/provider-icons/opencode-go.svg', dark: '/provider-icons/opencode-go.svg' },
+    copilot: { light: '/provider-icons/github-copilot.svg', dark: '/provider-icons/github-copilot.svg' },
+    compatible: { light: '/provider-icons/inference.svg', dark: '/provider-icons/inference.svg' },
+    openai: { light: '/provider-icons/openai.svg', dark: '/provider-icons/openai.svg' },
+    azure: { light: '/provider-icons/azure.svg', dark: '/provider-icons/azure.svg' },
+    anthropic: { light: '/provider-icons/anthropic.svg', dark: '/provider-icons/anthropic.svg' },
     codex: { light: 'https://svgl.app/library/codex_light.svg', dark: 'https://svgl.app/library/codex_dark.svg' }
   };
 %>
@@ -25,7 +28,7 @@
   </div>
   <div class="badge-row">
     <span class="badge"><i class="fa-solid fa-code-branch"></i> <%= config.TAGVICO_AI_VERSION %></span>
-    <span class="badge"><i class="fa-solid fa-wand-magic-sparkles"></i> Default model: <%= providerCatalog.recommendedModel %></span>
+    <span class="badge"><i class="fa-solid fa-wand-magic-sparkles"></i> Default model: <span id="defaultModelName"><%= providerCatalog.effectiveModel %></span></span>
   </div>
 </section>
 
@@ -56,6 +59,10 @@
     <li class="onboarding-step" data-onboarding-step="finish"><span>5</span><strong>Run</strong><small>Auto-file docs</small></li>
   </ol>
   <p class="onboarding-value-hint"><i class="fa-solid fa-gift"></i> The moment you connect Paperless, Tagvico AI runs your first scan free &mdash; no credit card, no commitment.</p>
+  <div class="help-card" role="note">
+    <strong>Choose how much control you want.</strong>
+    <p>Review first queues proposed metadata for approval. Automatic writes validated metadata directly to Paperless-ngx. You can switch modes later.</p>
+  </div>
   <% } %>
 
   <fieldset class="section-fieldset stack cube-hero">
@@ -288,6 +295,111 @@
         </div>
       </section>
 
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'ollama-cloud' ? '' : 'hidden' %>" data-provider-panel="ollama-cloud" aria-hidden="<%= providerCatalog.selectedProvider === 'ollama-cloud' ? 'false' : 'true' %>">
+        <h3>Ollama Cloud</h3>
+        <p class="field-hint">Use an Ollama API key for hosted cloud models without exposing a local Ollama instance. Your document text is sent to Ollama Cloud.</p>
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="ollamaCloudUrl">Ollama Cloud URL</label>
+            <input id="ollamaCloudUrl" name="ollamaCloudUrl" type="url" value="<%= config.OLLAMA_CLOUD_API_URL %>" placeholder="https://ollama.com">
+          </div>
+          <div class="field">
+            <label for="ollamaCloudApiKey">Ollama API key</label>
+            <div class="secret-input">
+              <input id="ollamaCloudApiKey" name="ollamaCloudApiKey" type="password" value="<%= config.OLLAMA_CLOUD_API_KEY %>" autocomplete="off">
+              <button type="button" class="secret-toggle" data-toggle-secret="ollamaCloudApiKey" aria-label="Show Ollama Cloud API key"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="ollamaCloudModel">Cloud model</label>
+            <input id="ollamaCloudModel" name="ollamaCloudModel" type="text" value="<%= config.OLLAMA_CLOUD_MODEL %>" placeholder="gpt-oss:20b-cloud">
+          </div>
+        </div>
+      </section>
+
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'opencode' ? '' : 'hidden' %>" data-provider-panel="opencode" aria-hidden="<%= providerCatalog.selectedProvider === 'opencode' ? 'false' : 'true' %>">
+        <h3>OpenCode Go</h3>
+        <p class="field-hint">Use a Console service API key. Tagvico talks to OpenCode’s OpenAI-compatible inference gateway directly—no OpenCode CLI is required.</p>
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="opencodeBaseUrl">Inference gateway</label>
+            <input id="opencodeBaseUrl" name="opencodeBaseUrl" type="url" value="<%= config.OPENCODE_BASE_URL %>" placeholder="https://opencode.ai/zen/go/v1">
+          </div>
+          <div class="field">
+            <label for="opencodeApiKey">OpenCode service API key</label>
+            <div class="secret-input">
+              <input id="opencodeApiKey" name="opencodeApiKey" type="password" value="<%= config.OPENCODE_API_KEY %>" autocomplete="off">
+              <button type="button" class="secret-toggle" data-toggle-secret="opencodeApiKey" aria-label="Show OpenCode service API key"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="opencodeModel">Model ID</label>
+            <input id="opencodeModel" name="opencodeModel" type="text" list="opencodeModels" value="<%= config.OPENCODE_MODEL %>" placeholder="deepseek-v4-flash">
+            <datalist id="opencodeModels">
+              <option value="deepseek-v4-flash">Budget throughput</option>
+              <option value="mimo-v2.5">Budget alternative</option>
+              <option value="kimi-k2.7-code">Harder documents</option>
+              <option value="glm-5.2">General quality</option>
+              <option value="deepseek-v4-pro">Higher quality</option>
+            </datalist>
+            <p class="field-hint">DeepSeek V4 Flash is the low-cost filing default. Try Kimi K2.7 Code or GLM-5.2 when extraction quality matters more than throughput. The Go catalog can change.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'copilot' ? '' : 'hidden' %>" data-provider-panel="copilot" aria-hidden="<%= providerCatalog.selectedProvider === 'copilot' ? 'false' : 'true' %>">
+        <h3>GitHub Copilot <span class="badge">Subscription</span></h3>
+        <p class="field-hint">Runs through GitHub’s official Copilot SDK with all tools disabled. The same OAuth device flow works from this web UI, a desktop browser, or the container CLI.</p>
+        <div class="inline-actions">
+          <button id="copilotStatusButton" type="button" class="button-secondary">Check login status</button>
+          <button id="copilotLoginButton" type="button" class="button-secondary">Sign in with GitHub</button>
+          <button id="copilotLogoutButton" type="button" class="button-danger">Sign out</button>
+          <span id="copilotStatusResult" class="field-hint" aria-live="polite"></span>
+        </div>
+        <div id="copilotLoginResult" class="field-hint" aria-live="polite"></div>
+        <div id="copilotLoginChallenge" class="codex-device-card hidden" aria-live="polite">
+          <div class="codex-device-topline">
+            <span class="codex-device-status"><span class="codex-device-pulse"></span> Waiting for GitHub authorization</span>
+            <span class="codex-device-step">Device login</span>
+          </div>
+          <p class="codex-device-label">Your one-time GitHub code</p>
+          <button id="copilotCopyCode" type="button" class="codex-device-code" aria-label="Copy GitHub device code">
+            <span id="copilotDeviceCode"></span>
+            <span class="codex-copy-hint"><kbd>C</kbd> Copy</span>
+          </button>
+          <div class="codex-device-actions">
+            <a id="copilotOpenAuth" class="button-primary" href="#" target="_blank" rel="noopener noreferrer">
+              Open GitHub <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+            <button id="copilotCopyCodeButton" type="button" class="button-secondary"><i class="fa-regular fa-copy"></i> Copy code</button>
+          </div>
+          <p id="copilotCopyFeedback" class="codex-copy-feedback">Open GitHub on this desktop or another device, then enter the code.</p>
+        </div>
+        <div class="form-grid">
+          <div class="field field-wide">
+            <label for="copilotModel">Models available to this Copilot account</label>
+            <div class="inline-actions">
+              <select id="copilotModel" name="copilotModel" data-current-model="<%= config.COPILOT_MODEL %>">
+                <option value="<%= config.COPILOT_MODEL %>"><%= config.COPILOT_MODEL || 'Sign in to load models' %></option>
+              </select>
+              <button id="refreshCopilotModels" type="button" class="button-secondary">Refresh models</button>
+            </div>
+            <p id="copilotModelsStatus" class="field-hint" aria-live="polite">Only models returned for the signed-in Copilot plan are shown.</p>
+          </div>
+        </div>
+        <details class="advanced-panel">
+          <summary><strong>CLI and token alternatives</strong></summary>
+          <p class="field-hint">For SSH or terminal setup, run <code>docker exec -it tagvico-ai npm run auth:copilot</code>. It writes to the same persistent Copilot home used by this page.</p>
+          <div class="field field-wide">
+            <label for="copilotGitHubToken">Fine-grained GitHub token (optional fallback)</label>
+            <div class="secret-input">
+              <input id="copilotGitHubToken" name="copilotGitHubToken" type="password" value="<%= config.COPILOT_GITHUB_TOKEN %>" autocomplete="off">
+              <button type="button" class="secret-toggle" data-toggle-secret="copilotGitHubToken" aria-label="Show GitHub Copilot token"><i class="fa-solid fa-eye"></i></button>
+            </div>
+          </div>
+        </details>
+      </section>
+
       <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'compatible' ? '' : 'hidden' %>" data-provider-panel="compatible" aria-hidden="<%= providerCatalog.selectedProvider === 'compatible' ? 'false' : 'true' %>">
         <h3>OpenAI-compatible API</h3>
         <p class="field-hint">Works for LM Studio, LiteLLM, vLLM, FastChat, and most OpenAI-compatible gateways.</p>
@@ -333,7 +445,7 @@
               <option value="<%= model.slug %>" <%= config.OPENAI_MODEL === model.slug || providerCatalog.effectiveModel === model.slug ? 'selected' : '' %>><%= model.name %></option>
               <% }) %>
             </select>
-            <p class="field-hint">OpenAI Direct is intentionally locked to supported GPT-5.x models.</p>
+            <p class="field-hint">OpenAI Direct is intentionally locked to supported GPT-5.x models. GPT-5.6 Sol, Terra, and Luna appear only for trusted-preview organizations with <code>OPENAI_ENABLE_GPT_5_6_PREVIEW=yes</code>.</p>
           </div>
         </div>
       </section>
@@ -357,8 +469,8 @@
       </section>
 
       <section class="provider-panel stack section-fieldset <%= providerCatalog.selectedProvider === 'codex' ? '' : 'hidden' %>" data-provider-panel="codex" aria-hidden="<%= providerCatalog.selectedProvider === 'codex' ? 'false' : 'true' %>">
-        <h3>Codex subscription <span class="badge">Experimental</span></h3>
-        <p class="field-hint">Uses the official Codex runtime. Tokens stay in the configured Codex home and are never exposed to this page.</p>
+        <h3>ChatGPT subscription <span class="badge">Codex runtime</span></h3>
+        <p class="field-hint">Uses the official Codex runtime. Tokens stay in the configured Codex home, and the model dropdown comes from this account’s live model catalog.</p>
         <div class="inline-actions">
           <button id="codexStatusButton" type="button" class="button-secondary">Check login status</button>
           <button id="codexLoginButton" type="button" class="button-secondary">Sign in with ChatGPT</button>
@@ -387,9 +499,14 @@
           <p id="codexCopyFeedback" class="codex-copy-feedback">Open ChatGPT, then paste the code when asked.</p>
         </div>
         <div class="field">
-          <label for="codexModel">Codex model</label>
-          <input id="codexModel" type="text" value="<%= config.CODEX_MODEL %>" placeholder="gpt-5.4-mini">
-          <p class="field-hint">Codex is optimized for agentic coding, not document classification. Use this only if you accept the experimental quality and latency trade-offs.</p>
+          <label for="codexModel">Models available to this ChatGPT account</label>
+          <div class="inline-actions">
+            <select id="codexModel" data-current-model="<%= config.CODEX_MODEL %>">
+              <option value="<%= config.CODEX_MODEL %>"><%= config.CODEX_MODEL || 'Sign in to load models' %></option>
+            </select>
+            <button id="refreshCodexModels" type="button" class="button-secondary">Refresh models</button>
+          </div>
+          <p id="codexModelsStatus" class="field-hint" aria-live="polite">Only models returned by the signed-in ChatGPT plan are shown. Codex remains experimental for document classification.</p>
         </div>
       </section>
 
@@ -425,7 +542,7 @@
           </div>
         </div>
         <footer class="model-picker-footer" id="modelPickerFooter">
-          <span><i class="fa-solid fa-circle-info"></i> Credentials stay encrypted in your local configuration.</span>
+          <span><i class="fa-solid fa-circle-info"></i> Credentials stay in your local configuration.</span>
           <button type="button" id="applyModelPicker" class="button-primary">Use this model <i class="fa-solid fa-arrow-right"></i></button>
         </footer>
       </div>
@@ -457,6 +574,24 @@
       <span class="section-kicker"><%= isSetup ? '4. Filing behavior' : 'Filing behavior' %></span>
       <span class="legend-title">Decide what Tagvico AI writes back</span>
     </legend>
+
+    <div class="field field-wide stack">
+      <label>Choose how Tagvico handles validated suggestions</label>
+      <div class="segmented" role="radiogroup" aria-label="Metadata write mode">
+        <label class="choice-card toggle-card <%= config.WRITE_MODE !== 'automatic' ? 'is-selected' : '' %>">
+          <input type="radio" name="write_mode" value="review" <%= config.WRITE_MODE !== 'automatic' ? 'checked' : '' %> aria-label="Review suggestions before writing">
+          <div class="choice-title"><span>Review first</span><span class="badge">Recommended</span></div>
+          <div class="choice-copy">Put every suggestion in the Review queue. Nothing changes in Paperless-ngx until you apply it.</div>
+        </label>
+
+        <label class="choice-card toggle-card <%= config.WRITE_MODE === 'automatic' ? 'is-selected' : '' %>">
+          <input type="radio" name="write_mode" value="automatic" <%= config.WRITE_MODE === 'automatic' ? 'checked' : '' %> aria-label="Write validated suggestions automatically">
+          <div class="choice-title"><span>Automatic</span><span class="badge">Full access</span></div>
+          <div class="choice-copy">Write validated titles, tags, correspondents, dates, and other enabled fields directly to Paperless-ngx.</div>
+        </label>
+      </div>
+      <p class="field-hint">You can switch modes later in Settings. Existing queued suggestions stay in Review until you apply or reject them.</p>
+    </div>
 
     <div class="segmented" role="group" aria-label="Fields Tagvico AI may write back">
       <label class="choice-card toggle-card <%= config.ACTIVATE_TAGGING === 'yes' ? 'is-selected' : '' %>">
@@ -495,6 +630,9 @@
         <div class="choice-copy">Assign documents to matching Paperless users. Works automatically from user names; hints are optional.</div>
       </label>
     </div>
+    <% if (!isSetup) { %>
+      <p class="field-hint"><a class="inline-link" href="/review"><i class="fa-solid fa-clipboard-check"></i> Open the current Review queue</a></p>
+    <% } %>
 
     <div class="form-grid">
       <div class="field">
@@ -634,8 +772,9 @@
       </div>
 
       <div class="field field-wide">
-        <label for="externalApiTransform">Transform function</label>
-        <textarea id="externalApiTransform" name="externalApiTransform" rows="6"><%= config.EXTERNAL_API_TRANSFORM %></textarea>
+        <label for="externalApiTransform">Response selector (optional)</label>
+        <textarea id="externalApiTransform" name="externalApiTransform" rows="2" placeholder="result.invoice.vendor"><%= config.EXTERNAL_API_TRANSFORM %></textarea>
+        <p class="field-hint">Select one response field with a dotted path (for example <code>result.invoice.vendor</code>) or JSON Pointer (for example <code>/result/invoice/vendor</code>). JavaScript is not accepted.</p>
       </div>
     </div>
   </details>

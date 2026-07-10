@@ -60,6 +60,8 @@ const { isAuthenticated } = require('./routes/auth');
 const { createRateLimiter } = require('./services/rateLimiter');
 const controlledTaggingService = require('./services/controlledTaggingService');
 const tagGroupService = require('./services/tagGroupService');
+const reviewService = require('./services/reviewService');
+const { blockLegacyPublicImages, removeLegacyPublicThumbnailCache } = require('./services/staticPathSecurity');
 
 const htmlLogger = new Logger({
   logFile: 'logs.html',
@@ -111,6 +113,10 @@ app.use((_req: HttpRequest, res: HttpResponse, next: NextFunction) => {
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Paperless thumbnails used to be cached below public/images. Block decoded
+// and normalized variants before static middleware so old files cannot be
+// exposed through encoded-path mount bypasses.
+app.use(blockLegacyPublicImages);
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use(cookieParser());
 app.use('/api', createRateLimiter({ windowMs: 15 * 60 * 1000, max: Number(process.env.GLOBAL_RATE_LIMIT_MAX || 1000) }));
@@ -220,48 +226,73 @@ async function processDocument(doc: DocumentRecord, existingTags: string[], exis
   const isProcessed = await documentModel.isDocumentProcessed(doc.id);
   if (isProcessed) return null;
   if (await documentModel.isDocumentFailed(doc.id)) return null;
+  // A queued review remains authoritative even if Automatic mode is enabled later.
+  // Do not pay for inference again or write around the human review decision.
+  if (await reviewService.hasActiveSuggestion(doc.id)) return null;
+  const reviewMode = reviewService.isReviewModeEnabled();
+  // Reserve before making the paid model request. A pending/staging review row
+  // is an explicit marker that this document has already been analyzed.
+  const reviewReservation = reviewMode
+    ? await reviewService.reserveSuggestion(doc, 'automatic')
+    : null;
+  if (reviewMode && !reviewReservation) return null;
+
   await documentModel.setProcessingStatus(doc.id, doc.title, 'processing');
-
-  //Check if the Document can be edited
-  const documentEditable = await paperlessService.getPermissionOfDocument(doc.id);
-  if (!documentEditable) {
-    console.log(`[DEBUG] Document belongs to: ${documentEditable}, skipping analysis`);
-    console.log(`[DEBUG] Document ${doc.id} not editable by Tagvico AI user, skipping analysis`);
-    return null;
-  }else {
-    console.log(`[DEBUG] Document ${doc.id} rights for AI User - processed`);
-  }
-
-  let [content, originalData] = await Promise.all([
-    paperlessService.getDocumentContent(doc.id),
-    paperlessService.getDocument(doc.id)
-  ]);
-
-  if (!content || content.length < config.minContentLength) {
-    console.log(`[DEBUG] Document ${doc.id} has insufficient OCR content`);
-    if (config.ocr?.enabled === 'yes') {
-      await documentModel.addToOcrQueue(doc.id, doc.title, 'short_content');
-    } else {
-      await documentModel.addFailedDocument(doc.id, doc.title, 'short_content_ocr_disabled', 'ocr');
+  try {
+    // Check if the Document can be edited
+    const documentEditable = await paperlessService.getPermissionOfDocument(doc.id);
+    if (!documentEditable) {
+      console.log(`[DEBUG] Document belongs to: ${documentEditable}, skipping analysis`);
+      console.log(`[DEBUG] Document ${doc.id} not editable by Tagvico AI user, skipping analysis`);
+      if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, 'document is not editable');
+      return null;
     }
-    await documentModel.setProcessingStatus(doc.id, doc.title, 'failed');
-    return null;
-  }
+    console.log(`[DEBUG] Document ${doc.id} rights for AI User - processed`);
 
-  if (content.length > 50000) {
-    content = content.substring(0, 50000);
-  }
+    let [content, originalData] = await Promise.all([
+      paperlessService.getDocumentContent(doc.id),
+      paperlessService.getDocument(doc.id)
+    ]);
 
-  const aiService = AIServiceFactory.getService();
-  const policy = tagGroupService.getConfig();
-  const promptTags = policy.enabled ? policy.vocabulary : existingTags;
-  const analysis = await aiService.analyzeDocument(content, promptTags, existingCorrespondentList, existingDocumentTypesList, doc.id);
-  console.log('Response from AI service:', analysis);
-  if (analysis.error) {
-    throw new Error(`[ERROR] Document analysis failed: ${analysis.error}`);
+    if (!content || content.length < config.minContentLength) {
+      console.log(`[DEBUG] Document ${doc.id} has insufficient OCR content`);
+      if (config.ocr?.enabled === 'yes') {
+        await documentModel.addToOcrQueue(doc.id, doc.title, 'short_content');
+      } else {
+        await documentModel.addFailedDocument(doc.id, doc.title, 'short_content_ocr_disabled', 'ocr');
+      }
+      await documentModel.setProcessingStatus(doc.id, doc.title, 'failed');
+      if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, 'insufficient OCR content');
+      return null;
+    }
+
+    if (content.length > 50000) content = content.substring(0, 50000);
+
+    const aiService = AIServiceFactory.getService();
+    const policy = tagGroupService.getConfig();
+    const promptTags = policy.enabled ? policy.vocabulary : existingTags;
+    const analysis = await aiService.analyzeDocument(content, promptTags, existingCorrespondentList, existingDocumentTypesList, doc.id);
+    console.log('Response from AI service:', analysis);
+    if (analysis.error) throw new Error(`[ERROR] Document analysis failed: ${analysis.error}`);
+
+    if (reviewReservation) {
+      const suggestion = await reviewService.stageSuggestion(reviewReservation.id, {
+        doc,
+        analysis,
+        originalData,
+        content
+      });
+      if (!suggestion) throw new Error('Review reservation could not be staged');
+      await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
+      return { reviewSuggestion: suggestion };
+    }
+
+    await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
+    return { analysis, originalData, content };
+  } catch (error) {
+    if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, errorMessage(error));
+    throw error;
   }
-  await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
-  return { analysis, originalData, content };
 }
 
 async function buildUpdateData(analysis: AnalysisRecord, doc: DocumentRecord, content = '') {
@@ -468,6 +499,7 @@ async function processAndSaveDocument(doc: DocumentRecord, existingTagNames: str
     try {
       const result = await processDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
       if (!result) return;
+      if (result.reviewSuggestion) return;
       const { analysis, originalData, content } = result;
       const updateData = await buildUpdateData(analysis, doc, content);
       await saveDocumentChanges(doc.id, updateData, analysis, originalData);
@@ -757,6 +789,10 @@ process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 async function startServer() {
   const port = resolveEnv('TAGVICO_AI_PORT', 'ARCHIVISTA_AI_PORT') || 3000;
   try {
+    const removedLegacyThumbnails = await removeLegacyPublicThumbnailCache();
+    if (removedLegacyThumbnails) {
+      console.log(`[SECURITY] Removed ${removedLegacyThumbnails} legacy public thumbnail cache file(s)`);
+    }
     await initializeDataDirectory();
     // Idempotent schema migration for the history.diff JSON column.
     historyService.migrate();
