@@ -20,7 +20,7 @@ export default defineConfig({
   srcDir: `versions/${version}`,
   outDir,
   cleanUrls: true,
-  lastUpdated: true,
+  lastUpdated: process.env.TAGVICO_DOCS_LAST_UPDATED !== 'false',
   appearance: 'dark',
   head: [
     ['link', { rel: 'icon', href: `${base}favicon.ico` }],
