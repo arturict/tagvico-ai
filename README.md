@@ -22,6 +22,28 @@ Self-hosted AI filing for [Paperless-ngx](https://docs.paperless-ngx.com/): turn
 - **Operationally hardened** — optional MFA, rate limits, same-origin mutation checks, protected setup, and generated JWT secrets.
 - **Clear privacy boundaries** — keep processing on your network with a local endpoint, or explicitly choose a hosted provider.
 
+## See v2 in action
+
+The interface keeps the important decisions visible: what has been processed,
+which account-scoped model is active, and which vocabulary the model may use.
+
+<table>
+  <tr>
+    <td width="50%">
+      <img src="docs/screenshots/chatgpt-models.png" alt="ChatGPT subscription model picker showing GPT-5.6 Luna and seven account-scoped models">
+      <br><strong>Use the subscription you already have.</strong><br>
+      Device-code sign-in, live model discovery, and no ChatGPT token exposed to the browser.
+    </td>
+    <td width="50%">
+      <img src="docs/screenshots/controlled-tagging.png" alt="Controlled Tag Groups in Tagvico AI settings">
+      <br><strong>Keep the archive vocabulary coherent.</strong><br>
+      Tag Groups constrain suggestions instead of allowing near-duplicate labels to accumulate.
+    </td>
+  </tr>
+</table>
+
+<p align="center"><em>Real screens from Tagvico AI v2. Live document names were replaced in the dashboard capture for privacy.</em></p>
+
 ## Quick start (about 2 minutes)
 
 You need Docker Compose, a running Paperless-ngx instance, and a Paperless API token. No source checkout is required.
