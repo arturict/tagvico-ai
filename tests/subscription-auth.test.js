@@ -60,3 +60,15 @@ test('provider validation never logs reusable API keys', () => {
   assert.doesNotMatch(source, /console\.log\(['"]Custom AI config:/);
   assert.match(source, /hasApiKey:\s*Boolean\(apiKey\)/);
 });
+
+test('dashboard loads an available ECharts 5 build', () => {
+  const appHead = fs.readFileSync(path.join(__dirname, '..', 'views', 'partials', 'app-head.ejs'), 'utf8');
+  assert.match(appHead, /echarts\/5\.6\.0\/echarts\.min\.js/);
+  assert.doesNotMatch(appHead, /echarts\/5\.5\.1/);
+});
+
+test('lockfile includes Linux native subscription runtimes for Docker', () => {
+  const lock = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package-lock.json'), 'utf8'));
+  assert.ok(lock.packages['node_modules/@openai/codex-linux-x64']);
+  assert.ok(lock.packages['node_modules/@github/copilot-linux-x64']);
+});
