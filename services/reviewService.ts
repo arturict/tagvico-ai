@@ -1,12 +1,15 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
+// services/reviewService.js
 //
 // Durable, SQLite-backed review-first queue. Operators can instead choose
 // automatic mode, which keeps Tagvico's original direct-write workflow.
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'fs';
+import path from 'path';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const documentModel = require('../models/document.js');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const paperlessService = require('./paperlessService.js');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const historyService = require('./historyService.js');
 const config = require('../config/config.js');
 const controlledTaggingService = require('./controlledTaggingService.js');
@@ -16,16 +19,78 @@ const ownerProfileService = require('./ownerProfileService.js');
 const { compareMetadata } = require('./metadataDiff.js');
 
 const REVIEW_PATH = path.join(process.cwd(), 'data', '.review');
-const WRITE_MODES = Object.freeze({
+const WRITE_MODES = {
   REVIEW: 'review',
   AUTOMATIC: 'automatic'
-});
+} as const;
+type WriteMode = typeof WRITE_MODES[keyof typeof WRITE_MODES];
+type ReviewConfig = Record<string, string>;
+type JsonRecord = Record<string, unknown>;
+interface Metadata extends JsonRecord {
+  title?: string | null;
+  correspondent?: string | number | null;
+  tags?: number[];
+  document_type?: number | null;
+  custom_fields?: unknown;
+  owner?: number | null;
+  created?: string | null;
+  language?: string | null;
+}
+interface PatchResult {
+  ok: boolean;
+  error?: string;
+  after?: { title?: string | null; correspondent?: string | number | null; tags?: number[] };
+  diff?: object[];
+}
+interface AnalysisMetrics {
+  promptTokens?: number;
+  completionTokens?: number;
+  totalTokens?: number;
+}
+interface AnalysisRecord extends JsonRecord {
+  document?: JsonRecord;
+  metrics?: AnalysisMetrics;
+}
+interface DocumentRecord extends JsonRecord {
+  id?: number;
+  document_id?: number;
+  title?: string | null;
+  created?: string | null;
+  owner?: number | null;
+  tags?: number[];
+  correspondent?: number | null;
+}
+interface SuggestionRow extends JsonRecord {
+  id?: number;
+  document_id: number;
+  title?: string | null;
+  proposed_metadata?: string | JsonRecord;
+  original_metadata?: string | JsonRecord;
+  diff?: string | unknown[];
+  analysis_metrics?: string | AnalysisMetrics | null;
+}
+interface ParsedSuggestion extends JsonRecord {
+  document_id: number;
+  title?: string | null;
+  proposed_metadata: JsonRecord;
+  original_metadata: JsonRecord;
+  diff: unknown[];
+  analysis_metrics: AnalysisMetrics | null;
+}
+interface StageSuggestionOptions {
+  doc?: DocumentRecord;
+  analysis?: AnalysisRecord;
+  originalData?: JsonRecord;
+  content?: string;
+}
+interface CustomFieldEntry { name: string; value: unknown }
+const errorMessage = (error: unknown): string => error instanceof Error ? error.message : String(error);
 
-function isEnabled(value) {
+function isEnabled(value: unknown) {
   return ['true', '1', 'yes'].includes(String(value || '').trim().toLowerCase());
 }
 
-function normalizeWriteMode(value, fallback = WRITE_MODES.REVIEW) {
+function normalizeWriteMode(value: unknown, fallback: WriteMode = WRITE_MODES.REVIEW): WriteMode {
   const normalized = String(value || '').trim().toLowerCase();
   if (['review', 'review-first', 'review_first', 'queue', 'dry-run', 'dry_run'].includes(normalized)) {
     return WRITE_MODES.REVIEW;
@@ -36,7 +101,7 @@ function normalizeWriteMode(value, fallback = WRITE_MODES.REVIEW) {
   return fallback;
 }
 
-function normalizeReviewConfig(values = {}) {
+function normalizeReviewConfig(values: ReviewConfig = {}): ReviewConfig {
   const hasMode = Object.prototype.hasOwnProperty.call(values, 'WRITE_MODE');
   const hasLegacyFlag = Object.prototype.hasOwnProperty.call(values, 'DRY_RUN');
   const mode = hasMode
@@ -51,9 +116,9 @@ function normalizeReviewConfig(values = {}) {
   };
 }
 
-function loadReviewConfig() {
+function loadReviewConfig(): ReviewConfig {
   if (!fs.existsSync(REVIEW_PATH)) return normalizeReviewConfig();
-  const values = {};
+  const values: ReviewConfig = {};
   String(fs.readFileSync(REVIEW_PATH, 'utf8') || '')
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -68,7 +133,7 @@ function loadReviewConfig() {
   return normalizeReviewConfig(values);
 }
 
-function writeReviewConfig(payload = {}) {
+function writeReviewConfig(payload: ReviewConfig = {}) {
   fs.mkdirSync(path.dirname(REVIEW_PATH), { recursive: true });
   const normalizedPayload = { ...payload };
   if (Object.prototype.hasOwnProperty.call(normalizedPayload, 'WRITE_MODE')) {
@@ -109,16 +174,16 @@ function isDryRunEnabled() {
   return isReviewModeEnabled();
 }
 
-function parseJson(value, fallback) {
+function parseJson<T>(value: unknown, fallback: T): T {
   if (value === null || value === undefined || value === '') return fallback;
   try {
-    return JSON.parse(value);
-  } catch (error) {
+    return JSON.parse(String(value)) as T;
+  } catch {
     return fallback;
   }
 }
 
-function parseSuggestion(row) {
+function parseSuggestion(row: SuggestionRow | null | undefined): ParsedSuggestion | null {
   if (!row) return null;
   return {
     ...row,
@@ -129,12 +194,12 @@ function parseSuggestion(row) {
   };
 }
 
-function cleanText(value) {
+function cleanText(value: unknown): string | null {
   const text = String(value || '').trim();
   return text || null;
 }
 
-function hasOwn(object, key) {
+function hasOwn(object: unknown, key: string): boolean {
   return Boolean(object) && Object.prototype.hasOwnProperty.call(object, key);
 }
 
@@ -143,9 +208,9 @@ function hasOwn(object, key) {
  * into Paperless ids. Resolution can create Paperless tags, correspondents,
  * and document types, so it intentionally happens only in applySuggestion.
  */
-async function buildSuggestionProposal(analysis = {}, doc = {}, content = '') {
+async function buildSuggestionProposal(analysis: AnalysisRecord = {}, doc: DocumentRecord = {}, content = ''): Promise<JsonRecord> {
   const suggested = analysis?.document || {};
-  const proposal = {};
+  const proposal: JsonRecord = {};
 
   if (config.limitFunctions?.activateTagging !== 'no') {
     // Keep the same controlled-tag vocabulary as the automatic write path,
@@ -193,16 +258,16 @@ async function buildSuggestionProposal(analysis = {}, doc = {}, content = '') {
     } catch (error) {
       // Owner prediction is optional. A read failure must not discard an
       // otherwise useful suggestion.
-      console.warn('[WARN] Could not prepare owner suggestion:', error.message);
+      console.warn('[WARN] Could not prepare owner suggestion:', errorMessage(error));
     }
   }
 
   return proposal;
 }
 
-function previewMetadata(snapshot = {}, proposal = {}) {
-  const before = {};
-  for (const key of Object.keys(proposal || {})) before[key] = snapshot ? snapshot[key] : undefined;
+function previewMetadata(snapshot: JsonRecord = {}, proposal: JsonRecord = {}): JsonRecord {
+  const before: JsonRecord = {};
+  for (const key of Object.keys(proposal || {})) before[key] = snapshot[key];
   return before;
 }
 
@@ -210,17 +275,18 @@ function previewMetadata(snapshot = {}, proposal = {}) {
  * Atomically reserve a slot before an AI request. A null return means a
  * previous automatic scan has already staged (or is staging) this document.
  */
-async function reserveSuggestion(document, source = 'automatic') {
-  const documentId = Number(document?.id || document?.document_id || document);
+async function reserveSuggestion(document: DocumentRecord | number, source = 'automatic') {
+  const record = typeof document === 'object' ? document : null;
+  const documentId = Number(record?.id || record?.document_id || document);
   if (!Number.isFinite(documentId) || documentId <= 0) return null;
-  return documentModel.reserveReviewSuggestion(documentId, document?.title || null, source);
+  return documentModel.reserveReviewSuggestion(documentId, record?.title || null, source);
 }
 
-async function stageSuggestion(reservationId, { doc = {}, analysis = {}, originalData = {}, content = '' } = {}) {
+async function stageSuggestion(reservationId: number, { doc = {}, analysis = {}, originalData = {}, content = '' }: StageSuggestionOptions = {}) {
   const proposal = await buildSuggestionProposal(analysis, doc, content);
   const diff = compareMetadata(previewMetadata(originalData, proposal), proposal);
   const staged = await documentModel.stageReviewSuggestion(reservationId, {
-    title: proposal.title || doc.title || null,
+    title: cleanText(proposal.title) || doc.title || null,
     proposedMetadata: proposal,
     originalMetadata: originalData || {},
     diff,
@@ -241,7 +307,7 @@ async function stageSuggestion(reservationId, { doc = {}, analysis = {}, origina
   return parseSuggestion(staged);
 }
 
-async function failSuggestion(reservationId, error) {
+async function failSuggestion(reservationId: number, error: unknown) {
   if (!reservationId) return false;
   return documentModel.failReviewSuggestion(reservationId, error);
 }
@@ -251,32 +317,33 @@ async function listPendingSuggestions(limit = 50) {
   return rows.map(parseSuggestion);
 }
 
-function customFieldEntries(raw) {
+function customFieldEntries(raw: unknown): CustomFieldEntry[] {
   if (!raw || typeof raw !== 'object') return [];
-  return Object.entries(raw)
-    .map(([key, value]) => {
-      if (!value || typeof value !== 'object') return null;
-      const name = cleanText(value.field_name || value.name || key);
-      if (!name || value.value === undefined) return null;
-      return { name, value: value.value };
-    })
-    .filter(Boolean);
+  const entries: CustomFieldEntry[] = [];
+  for (const [key, value] of Object.entries(raw)) {
+    if (!value || typeof value !== 'object') continue;
+    const record = value as JsonRecord;
+    const name = cleanText(record.field_name || record.name || key);
+    if (!name || record.value === undefined) continue;
+    entries.push({ name, value: record.value });
+  }
+  return entries;
 }
 
 /**
  * Convert a stored, name-oriented proposal into the Paperless PATCH payload.
  * This is deliberately called only after a reviewer presses Apply.
  */
-async function materializeProposal(documentId, proposal = {}) {
-  const updateData = {};
+async function materializeProposal(documentId: number, proposal: JsonRecord = {}): Promise<Metadata> {
+  const updateData: Metadata = {};
 
   if (hasOwn(proposal, 'tags')) {
     const processed = await controlledTaggingService.processSuggestions(documentId, proposal.tags);
     updateData.tags = processed.tagIds || [];
   }
 
-  if (hasOwn(proposal, 'title') && cleanText(proposal.title)) {
-    const title = cleanText(proposal.title);
+  const title = cleanText(proposal.title);
+  if (hasOwn(proposal, 'title') && title) {
     updateData.title = title.length > 128 ? `${title.slice(0, 124)}…` : title;
   }
 
@@ -292,9 +359,9 @@ async function materializeProposal(documentId, proposal = {}) {
   if (hasOwn(proposal, 'custom_fields')) {
     const liveFields = await customFieldsService.listFields();
     const { valid } = customFieldsService.sanitize(liveFields, proposal.custom_fields);
-    const fieldsByName = new Map((liveFields || []).map((field) => [String(field.name).toLowerCase(), field]));
+    const fieldsByName = new Map<string, JsonRecord>((liveFields || []).map((field: JsonRecord) => [String(field.name).toLowerCase(), field]));
     const existing = await paperlessService.getExistingCustomFields(documentId);
-    const byId = new Map();
+    const byId = new Map<number, JsonRecord>();
 
     for (const current of existing || []) {
       if (current && current.field !== undefined) byId.set(Number(current.field), current);
@@ -328,14 +395,14 @@ async function materializeProposal(documentId, proposal = {}) {
     updateData.language = cleanText(proposal.language);
   }
 
-  if (hasOwn(proposal, 'owner') && proposal.owner !== null && proposal.owner !== undefined) {
+  if (hasOwn(proposal, 'owner') && typeof proposal.owner === 'number') {
     updateData.owner = proposal.owner;
   }
 
   return updateData;
 }
 
-async function mergeWithCurrentDocument(documentId, updateData = {}) {
+async function mergeWithCurrentDocument(documentId: number, updateData: Metadata = {}): Promise<Metadata> {
   const current = await paperlessService.getDocument(documentId);
   const patch = { ...updateData };
 
@@ -351,7 +418,7 @@ async function mergeWithCurrentDocument(documentId, updateData = {}) {
   return patch;
 }
 
-async function correspondentDisplayName(patch, after, proposal = {}) {
+async function correspondentDisplayName(patch: Metadata, after: PatchResult['after'], proposal: JsonRecord = {}) {
   const proposedName = cleanText(proposal.correspondent);
   if (patch.correspondent && proposedName) return proposedName;
   const correspondentId = after?.correspondent;
@@ -364,7 +431,7 @@ async function correspondentDisplayName(patch, after, proposal = {}) {
  * Apply an individual stored suggestion. This intentionally ignores DRY_RUN:
  * dry-run blocks automation, never an authenticated human's explicit action.
  */
-async function applySuggestion(id, reviewedBy = null) {
+async function applySuggestion(id: number, reviewedBy: string | null = null) {
   const suggestion = await documentModel.claimReviewSuggestionForApply(id, reviewedBy);
   if (!suggestion) return { ok: false, reason: 'Suggestion is no longer pending', status: 409 };
 
@@ -374,6 +441,7 @@ async function applySuggestion(id, reviewedBy = null) {
     // Preserve the exact Paperless snapshot captured before inference. This is
     // local-only and makes rollback/history useful even if the process exits
     // immediately after Paperless accepts the patch.
+    if (!parsed) throw new Error('Stored review suggestion is invalid');
     await documentModel.saveOriginalSnapshot(parsed.document_id, parsed.original_metadata || {});
     const resolved = await materializeProposal(parsed.document_id, parsed.proposed_metadata);
     const patch = await mergeWithCurrentDocument(parsed.document_id, resolved);
@@ -413,21 +481,21 @@ async function applySuggestion(id, reviewedBy = null) {
       suggestion: { ...parsed, status: 'applied', diff: result.diff || [] },
       diff: result.diff || []
     };
-  } catch (error) {
+  } catch (error: unknown) {
     if (!paperlessApplied) {
-      await documentModel.releaseReviewSuggestionAfterApplyFailure(id, error.message || error);
+      await documentModel.releaseReviewSuggestionAfterApplyFailure(id, errorMessage(error));
     }
     return {
       ok: false,
       reason: paperlessApplied
-        ? `Paperless was updated, but local finalization failed: ${error.message || String(error)}`
-        : (error.message || String(error)),
+        ? `Paperless was updated, but local finalization failed: ${errorMessage(error)}`
+        : errorMessage(error),
       status: paperlessApplied ? 500 : 502
     };
   }
 }
 
-async function rejectSuggestion(id, reviewedBy = null, note = null) {
+async function rejectSuggestion(id: number, reviewedBy: string | null = null, note: string | null = null) {
   const rejected = await documentModel.rejectReviewSuggestion(id, reviewedBy, note);
   if (!rejected) return { ok: false, reason: 'Suggestion is no longer pending', status: 409 };
   return { ok: true, suggestion: parseSuggestion(rejected) };
@@ -435,7 +503,7 @@ async function rejectSuggestion(id, reviewedBy = null, note = null) {
 
 // Kept for compatibility with callers that explicitly submit a manual patch.
 // It is an explicit user action, so DRY_RUN does not block it.
-async function applyMetadata(documentId, metadata = {}) {
+async function applyMetadata(documentId: number, metadata: Metadata = {}) {
   if (!documentId) return { ok: false, reason: 'documentId is required', dryRun: isDryRunEnabled() };
   if (typeof paperlessService.patchDocument !== 'function') {
     return { ok: false, reason: 'paperlessService.patchDocument not implemented', dryRun: isDryRunEnabled() };

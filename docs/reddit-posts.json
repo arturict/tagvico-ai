@@ -1,12 +1,12 @@
 {
   "campaign": {
-    "project": "Archivista AI",
+    "project": "Tagvico AI",
     "author_username": "its_artur1",
-    "repository": "https://github.com/arturict/archivista-ai",
-    "release": "https://github.com/arturict/archivista-ai/releases/tag/v1.1.0",
+    "repository": "https://github.com/arturict/tagvico-ai",
+    "release": "https://github.com/arturict/tagvico-ai/releases/tag/v1.1.0",
     "license": "MIT",
     "status": "draft",
-    "goal": "Introduce Archivista AI to relevant communities and collect practical workflow feedback.",
+    "goal": "Introduce Tagvico AI to relevant communities and collect practical workflow feedback.",
     "voice": [
       "Write in first person.",
       "Lead with what the project does.",
@@ -38,7 +38,7 @@
         "Read the current subreddit rules.",
         "Check whether a recurring showcase or self-promotion thread is required.",
         "Confirm the suggested flair exists.",
-        "Search for a recent Archivista AI post in that subreddit.",
+        "Search for a recent Tagvico AI post in that subreddit.",
         "Stay available to answer comments after posting."
       ]
     }
@@ -51,8 +51,8 @@
       "priority": 1,
       "status": "ready_after_rule_check",
       "suggested_flair": "Project Showcase",
-      "title": "Archivista AI: automatic Paperless-ngx filing with your choice of model",
-      "body": "I built Archivista AI because I wanted Paperless-ngx to file new documents without locking the workflow to one old model or provider.\n\nIt reads the OCR text Paperless already has and writes useful metadata back to the document.\n\nCurrent features:\n\n- Generates titles, tags, correspondents, document types, dates, and languages\n- Fills Paperless custom fields\n- Can assign documents to a Paperless user\n- Supports Ollama, OpenAI, Anthropic, OpenRouter, Azure OpenAI, and OpenAI-compatible endpoints\n- Includes cheaper Flex and batch-processing options where providers support them\n- Shows processing history and lets you manually rerun documents\n\nThe project is MIT licensed and still in alpha, so blunt feedback is useful. One suggestion I am already exploring is limiting generated tags, correspondents, and document types to existing Paperless values, with an Other bucket for anything that needs review.\n\nGitHub: https://github.com/arturict/archivista-ai",
+      "title": "Tagvico AI: automatic Paperless-ngx filing with your choice of model",
+      "body": "I built Tagvico AI because I wanted Paperless-ngx to file new documents without locking the workflow to one old model or provider.\n\nIt reads the OCR text Paperless already has and writes useful metadata back to the document.\n\nCurrent features:\n\n- Generates titles, tags, correspondents, document types, dates, and languages\n- Fills Paperless custom fields\n- Can assign documents to a Paperless user\n- Supports Ollama, OpenAI, Anthropic, OpenRouter, Azure OpenAI, and OpenAI-compatible endpoints\n- Includes cheaper Flex and batch-processing options where providers support them\n- Shows processing history and lets you manually rerun documents\n\nThe project is MIT licensed and still in alpha, so blunt feedback is useful. One suggestion I am already exploring is limiting generated tags, correspondents, and document types to existing Paperless values, with an Other bucket for anything that needs review.\n\nGitHub: https://github.com/arturict/tagvico-ai",
       "call_to_action": "Ask for practical feedback on metadata guardrails and Paperless workflows.",
       "notes": "This community was explicitly suggested by a Reddit commenter. Verify that the subreddit is accessible and accepts project showcases before posting."
     },
@@ -64,7 +64,7 @@
       "status": "ready_on_allowed_day_or_thread",
       "suggested_flair": "New Project",
       "title": "I built a self-hosted AI filing assistant for Paperless-ngx",
-      "body": "I use Paperless-ngx for documents, but I wanted a simpler way to keep its AI classification models current and switch between local and hosted providers. That became Archivista AI.\n\nIt connects to an existing Paperless instance, reads OCR text, and writes the filing metadata back.\n\nWhat it does:\n\n- Suggests titles, tags, correspondents, document types, dates, and languages\n- Supports custom fields and optional owner assignment\n- Works with Ollama and OpenAI-compatible local endpoints\n- Also supports OpenAI, Anthropic, OpenRouter, and Azure OpenAI\n- Offers standard, Flex, and batch processing depending on the provider\n- Keeps a history of changes and supports manual reruns\n\nIt is MIT licensed and currently alpha software. I am now working through feedback about keeping generated metadata consistent, especially restricting results to existing Paperless values and sending unmatched results to an Other review bucket.\n\nGitHub: https://github.com/arturict/archivista-ai\n\nIf you already automate Paperless, I would like to hear what guardrails you use before letting a model update documents.",
+      "body": "I use Paperless-ngx for documents, but I wanted a simpler way to keep its AI classification models current and switch between local and hosted providers. That became Tagvico AI.\n\nIt connects to an existing Paperless instance, reads OCR text, and writes the filing metadata back.\n\nWhat it does:\n\n- Suggests titles, tags, correspondents, document types, dates, and languages\n- Supports custom fields and optional owner assignment\n- Works with Ollama and OpenAI-compatible local endpoints\n- Also supports OpenAI, Anthropic, OpenRouter, and Azure OpenAI\n- Offers standard, Flex, and batch processing depending on the provider\n- Keeps a history of changes and supports manual reruns\n\nIt is MIT licensed and currently alpha software. I am now working through feedback about keeping generated metadata consistent, especially restricting results to existing Paperless values and sending unmatched results to an Other review bucket.\n\nGitHub: https://github.com/arturict/tagvico-ai\n\nIf you already automate Paperless, I would like to hear what guardrails you use before letting a model update documents.",
       "call_to_action": "Ask self-hosters which metadata guardrails work in real installations.",
       "notes": "Young projects may only be allowed on New Project Friday or in a current megathread. The post already includes a description, feature list, user benefit, availability, and documentation link."
     },
@@ -75,8 +75,8 @@
       "priority": 3,
       "status": "ready_after_rule_check",
       "suggested_flair": "Promotional",
-      "title": "Archivista AI is an MIT-licensed filing assistant for Paperless-ngx",
-      "body": "I recently open-sourced Archivista AI, a companion for Paperless-ngx that turns OCR text into filing metadata.\n\nThe useful bits:\n\n- Titles, tags, correspondents, document types, dates, and languages\n- Paperless custom-field support\n- Optional document owner assignment\n- Local models through Ollama or OpenAI-compatible endpoints\n- Hosted providers including OpenAI, Anthropic, OpenRouter, and Azure OpenAI\n- Processing history and manual reruns\n\nIt is MIT licensed and in active alpha development. The main design question I am working on now is consistency: a Paperless user suggested constraining the model to existing metadata values and using Other when nothing fits. That sounds more useful than allowing the model to invent near-duplicate tags.\n\nRepository: https://github.com/arturict/archivista-ai\n\nContributions are welcome, but I would also value opinions on how that fallback and review flow should behave.",
+      "title": "Tagvico AI is an MIT-licensed filing assistant for Paperless-ngx",
+      "body": "I recently open-sourced Tagvico AI, a companion for Paperless-ngx that turns OCR text into filing metadata.\n\nThe useful bits:\n\n- Titles, tags, correspondents, document types, dates, and languages\n- Paperless custom-field support\n- Optional document owner assignment\n- Local models through Ollama or OpenAI-compatible endpoints\n- Hosted providers including OpenAI, Anthropic, OpenRouter, and Azure OpenAI\n- Processing history and manual reruns\n\nIt is MIT licensed and in active alpha development. The main design question I am working on now is consistency: a Paperless user suggested constraining the model to existing metadata values and using Other when nothing fits. That sounds more useful than allowing the model to invent near-duplicate tags.\n\nRepository: https://github.com/arturict/tagvico-ai\n\nContributions are welcome, but I would also value opinions on how that fallback and review flow should behave.",
       "call_to_action": "Invite implementation feedback and contributions around constrained metadata.",
       "notes": "Use the community's promotional flair or recurring promotion thread if required. Keep the open-source license and contribution angle prominent."
     },
@@ -87,8 +87,8 @@
       "priority": 4,
       "status": "ready_after_rule_check",
       "suggested_flair": "Showcase",
-      "title": "Archivista AI – AI-assisted metadata filing for Paperless-ngx",
-      "body": "Archivista AI connects to Paperless-ngx and turns existing OCR text into structured document metadata.\n\nFeatures:\n\n- Titles, tags, correspondents, document types, dates, and languages\n- Custom fields and optional owner assignment\n- Ollama and OpenAI-compatible local endpoints\n- OpenAI, Anthropic, OpenRouter, and Azure OpenAI\n- Lower-cost Flex and batch modes where supported\n- Processing history and manual reruns\n\nIt is MIT licensed and currently in alpha.\n\nRepo: https://github.com/arturict/archivista-ai",
+      "title": "Tagvico AI – AI-assisted metadata filing for Paperless-ngx",
+      "body": "Tagvico AI connects to Paperless-ngx and turns existing OCR text into structured document metadata.\n\nFeatures:\n\n- Titles, tags, correspondents, document types, dates, and languages\n- Custom fields and optional owner assignment\n- Ollama and OpenAI-compatible local endpoints\n- OpenAI, Anthropic, OpenRouter, and Azure OpenAI\n- Lower-cost Flex and batch modes where supported\n- Processing history and manual reruns\n\nIt is MIT licensed and currently in alpha.\n\nRepo: https://github.com/arturict/tagvico-ai",
       "call_to_action": "Keep this post primarily as a concise project showcase.",
       "notes": "Attach a real dashboard screenshot if image posts are preferred. Avoid repeating the longer origin story in this showcase-oriented community."
     },
@@ -99,8 +99,8 @@
       "priority": 5,
       "status": "ready_after_rule_check",
       "suggested_flair": "Open Source",
-      "title": "I built Archivista AI to stop manually filing documents in Paperless-ngx",
-      "body": "I built Archivista AI after getting frustrated with manually cleaning up document metadata and being stuck with outdated model choices in other tools.\n\nThe current version can:\n\n- Generate titles, tags, correspondents, document types, dates, and languages\n- Fill custom fields and optionally assign an owner\n- Use Ollama, OpenAI, Anthropic, OpenRouter, Azure OpenAI, or compatible endpoints\n- Run lower-cost Flex or batch jobs with supported providers\n- Show processing history and rerun documents from the UI\n\nIt is open source, MIT licensed, and still in alpha. Recent feedback raised a good problem: models should probably choose from existing Paperless metadata first and use an Other bucket instead of creating slightly different tags. That is one of the next workflows I am evaluating.\n\nGitHub: https://github.com/arturict/archivista-ai\n\nI would appreciate feedback from anyone who has built classification or document-automation tools: what would you put in the review flow before trusting automatic updates?",
+      "title": "I built Tagvico AI to stop manually filing documents in Paperless-ngx",
+      "body": "I built Tagvico AI after getting frustrated with manually cleaning up document metadata and being stuck with outdated model choices in other tools.\n\nThe current version can:\n\n- Generate titles, tags, correspondents, document types, dates, and languages\n- Fill custom fields and optionally assign an owner\n- Use Ollama, OpenAI, Anthropic, OpenRouter, Azure OpenAI, or compatible endpoints\n- Run lower-cost Flex or batch jobs with supported providers\n- Show processing history and rerun documents from the UI\n\nIt is open source, MIT licensed, and still in alpha. Recent feedback raised a good problem: models should probably choose from existing Paperless metadata first and use an Other bucket instead of creating slightly different tags. That is one of the next workflows I am evaluating.\n\nGitHub: https://github.com/arturict/tagvico-ai\n\nI would appreciate feedback from anyone who has built classification or document-automation tools: what would you put in the review flow before trusting automatic updates?",
       "call_to_action": "Ask builders for concrete review-flow ideas.",
       "notes": "Use a screenshot or short demo if the community currently favors visual posts. Do not frame alpha usage as production-ready."
     }

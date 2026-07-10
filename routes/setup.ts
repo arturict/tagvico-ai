@@ -1,5 +1,35 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 const express = require('express');
+type RequestValue = string | number | boolean | null | undefined | string[] | number[] | UnknownRecord | UnknownRecord[];
+interface Req {
+  body: Record<string, RequestValue>;
+  cookies: Record<string, string | undefined>;
+  get(name: string): string | undefined;
+  headers: Record<string, string | string[] | undefined>;
+  method: string;
+  on(event: string, listener: (data?: unknown) => void): void;
+  params: Record<string, string>;
+  path: string;
+  query: Record<string, RequestValue>;
+  secure: boolean;
+  socket?: { remoteAddress?: string };
+  user?: { username?: string; email?: string; sub?: string; apiKey?: boolean; [key: string]: unknown };
+}
+interface Res {
+  headersSent: boolean;
+  clearCookie(name: string): Res;
+  cookie(name: string, value: string, options?: UnknownRecord): Res;
+  end(): Res;
+  flushHeaders(): void;
+  json(body: unknown): Res;
+  redirect(path: string): Res;
+  render(view: string, options?: unknown): Res;
+  send(body: unknown): Res;
+  sendFile(file: string): Res;
+  setHeader(name: string, value: string): void;
+  status(code: number): Res;
+  write(chunk: string): boolean;
+}
+type Next = () => unknown;
 const router = express.Router();
 const axios = require('axios');
 const setupService = require('../services/setupService.js');
@@ -41,12 +71,36 @@ const { createRateLimiter } = require('../services/rateLimiter');
 const loginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'login' });
 const totpService = require('../services/totpService');
 const pendingMfaSecrets = new Map();
+
+type UnknownRecord = Record<string, unknown>;
+interface NamedItem { id: number; name: string; model?: string; size?: number; modified_at?: string }
+interface DocumentData { id: number; title: string; created?: string; owner?: number; tags?: number[]; correspondent?: number; document_type?: number; custom_fields?: UnknownRecord[]; language?: string }
+interface AnalysisData {
+  error?: string;
+  document: { tags: string[]; title?: string; document_date?: string; document_type?: string; custom_fields?: Record<string, { field_name?: string; value?: string }>; correspondent?: string; language?: string };
+  metrics: { promptTokens: number; completionTokens: number; totalTokens: number };
+}
+interface DocumentUpdate { tags?: number[]; title?: string; created?: string; document_type?: number; custom_fields?: UnknownRecord[]; correspondent?: number; language?: string; owner?: number }
+interface SaveOptions { currentConfig?: Record<string, string | undefined>; apiToken?: string; jwtToken?: string; processedCustomFields?: UnknownRecord[] }
+interface TokenMetric { promptTokens: number; completionTokens: number; totalTokens: number }
+
+const errorMessage = (error: unknown): string =>
+  error instanceof Error ? error.message : String(error);
+
+const errorCode = (error: unknown): string | undefined => {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined;
+  const code = error.code;
+  return typeof code === 'string' ? code : undefined;
+};
+const firstString = (value: RequestValue | string | string[]): string | undefined =>
+  typeof value === 'string' ? value : Array.isArray(value) && typeof value[0] === 'string' ? value[0] : undefined;
 const {
   buildUiConfig,
   normalizeArray,
   normalizeProviderPayload,
   parseBooleanFlag,
   processSystemPrompt,
+  resolveEnv,
   serializeArray
 } = require('../services/configHelpers');
 require('dotenv').config({ path: '../data/.env' });
@@ -177,10 +231,11 @@ let PUBLIC_ROUTES = [
   '/api/codex',
   '/api/copilot'
 ];
+declare let runningTask: boolean;
 
 // Combined middleware to check authentication and setup
-router.use(async (req, res, next) => {
-  const token = req.cookies.jwt || req.headers.authorization?.split(' ')[1];
+router.use(async (req: Req, res: Res, next: Next) => {
+  const token = req.cookies.jwt || firstString(req.headers.authorization)?.split(' ')[1];
   const apiKey = req.headers['x-api-key'];
 
   if (req.path.startsWith('/setup')) {
@@ -224,9 +279,10 @@ router.use(async (req, res, next) => {
     const isApiRequest = req.path.startsWith('/api/') || req.path === '/health';
 
     if (!isApiRequest) {
-      if (!isConfigured && (!process.env.ARCHIVISTA_AI_INITIAL_SETUP || process.env.ARCHIVISTA_AI_INITIAL_SETUP === 'no') && !req.path.startsWith('/setup')) {
+      const initialSetup = resolveEnv('TAGVICO_AI_INITIAL_SETUP', 'ARCHIVISTA_AI_INITIAL_SETUP');
+      if (!isConfigured && (!initialSetup || initialSetup === 'no') && !req.path.startsWith('/setup')) {
         return res.redirect('/setup');
-      } else if (!isConfigured && process.env.ARCHIVISTA_AI_INITIAL_SETUP === 'yes' && !req.path.startsWith('/settings')) {
+      } else if (!isConfigured && initialSetup === 'yes' && !req.path.startsWith('/settings')) {
         return res.redirect('/settings');
       }
     }
@@ -240,11 +296,11 @@ router.use(async (req, res, next) => {
 
 // Cookie-authenticated mutations must originate from this application. API-key
 // clients are not subject to browser CSRF and remain usable without Origin.
-router.use((req, res, next) => {
+router.use((req: Req, res: Res, next: Next) => {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) || !req.cookies.jwt || req.headers['x-api-key']) return next();
   const source = req.headers.origin || req.headers.referer;
   try {
-    if (!source || new URL(source).host !== req.get('host')) return res.status(403).json({ error: 'Cross-site request rejected' });
+    if (!source || new URL(firstString(source) || '').host !== req.get('host')) return res.status(403).json({ error: 'Cross-site request rejected' });
   } catch {
     return res.status(403).json({ error: 'Cross-site request rejected' });
   }
@@ -252,8 +308,8 @@ router.use((req, res, next) => {
 });
 
 // Protected route middleware for API endpoints
-const protectApiRoute = (req, res, next) => {
-  const token = req.cookies.jwt || req.headers.authorization?.split(' ')[1];
+const protectApiRoute = (req: Req, res: Res, next: Next) => {
+  const token = req.cookies.jwt || firstString(req.headers.authorization)?.split(' ')[1];
   
   if (!token) {
     return res.status(401).json({ message: 'Authentication required' });
@@ -271,8 +327,8 @@ const protectApiRoute = (req, res, next) => {
 // Allow a route either when the request carries a valid JWT, or while the app is
 // still in initial-setup state (no admin configured yet). Used for Paperless discovery
 // so the onboarding flow can scan for instances before an admin account exists.
-const allowDuringSetup = async (req, res, next) => {
-  const token = req.cookies.jwt || req.headers.authorization?.split(' ')[1];
+const allowDuringSetup = async (req: Req, res: Res, next: Next) => {
+  const token = req.cookies.jwt || firstString(req.headers.authorization)?.split(' ')[1];
   if (token) {
     try {
       req.user = jwt.verify(token, JWT_SECRET);
@@ -297,11 +353,11 @@ const allowDuringSetup = async (req, res, next) => {
   return res.status(401).json({ success: false, error: 'Authentication required' });
 };
 
-const retiredUiRoute = (target) => (req, res) => {
+const retiredUiRoute = (target: string) => (req: Req, res: Res) => {
   res.redirect(target);
 };
 
-const retiredApiRoute = (message) => (req, res) => {
+const retiredApiRoute = (message: string) => (req: Req, res: Res) => {
   res.status(410).json({ error: message });
 };
 
@@ -342,9 +398,9 @@ const retiredApiRoute = (message) => (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/login', (req, res) => {
+router.get('/login', (req: Req, res: Res) => {
   //check if a user exists beforehand
-  documentModel.getUsers().then((users) => {
+  documentModel.getUsers().then((users: UnknownRecord[]) => {
     if(users.length === 0) {
       res.redirect('setup');
     } else {
@@ -430,7 +486,7 @@ router.get('/login', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/login', loginLimiter, async (req, res) => {
+router.post('/login', loginLimiter, async (req: Req, res: Res) => {
   const { username, password, otp } = req.body;
 
   try {
@@ -513,7 +569,7 @@ router.post('/login', loginLimiter, async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/logout', (req, res) => {
+router.get('/logout', (req: Req, res: Res) => {
   res.clearCookie('jwt');
   res.redirect('/login');
 });
@@ -586,7 +642,7 @@ router.get('/logout', (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/sampleData/:id', async (req, res) => {
+router.get('/sampleData/:id', async (req: Req, res: Res) => {
   try {
     //get all correspondents from one document by id
     const document = await paperlessService.getDocument(req.params.id);
@@ -650,7 +706,7 @@ router.get('/playground', protectApiRoute, retiredUiRoute('/manual'));
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/thumb/:documentId', authenticateJWT, async (req, res) => {
+router.get('/thumb/:documentId', authenticateJWT, async (req: Req, res: Res) => {
   const documentId = normalizeDocumentId(req.params.documentId);
   if (!documentId) {
     return res.status(400).json({ error: 'Document id must be a positive integer' });
@@ -717,18 +773,18 @@ router.get('/chat/init/:documentId', protectApiRoute, retiredApiRoute('Document 
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/history', async (req, res) => {
+router.get('/history', async (req: Req, res: Res) => {
   try {
     const allTags = await paperlessService.getTags();
-    const tagMap = new Map(allTags.map(tag => [tag.id, tag]));
+    const tagMap = new Map(allTags.map((tag: NamedItem) => [tag.id, tag]));
 
     // Get all correspondents for filter dropdown
     const historyDocuments = await documentModel.getAllHistory();
-    const allCorrespondents = [...new Set(historyDocuments.map(doc => doc.correspondent))]
+    const allCorrespondents = [...new Set(historyDocuments.map((doc: UnknownRecord) => doc.correspondent))]
       .filter(Boolean).sort();
 
     res.render('history', {
-      version: configFile.ARCHIVISTA_AI_VERSION,
+      version: configFile.TAGVICO_AI_VERSION,
       filters: {
         allTags: allTags,
         allCorrespondents: allCorrespondents
@@ -892,17 +948,19 @@ router.get('/history', async (req, res) => {
  *                   type: string
  *                   example: "Error loading history data"
  */
-router.get('/api/history', async (req, res) => {
+router.get('/api/history', async (req: Req, res: Res) => {
   try {
-    const draw = parseInt(req.query.draw);
-    const start = parseInt(req.query.start) || 0;
-    const length = parseInt(req.query.length) || 10;
-    const search = req.query.search?.value || '';
-    const tagFilter = req.query.tag || '';
-    const correspondentFilter = req.query.correspondent || '';
+    const draw = parseInt(String(req.query.draw || '0'));
+    const start = parseInt(String(req.query.start || '0')) || 0;
+    const length = parseInt(String(req.query.length || '10')) || 10;
+    const searchQuery = req.query.search;
+    const search = typeof searchQuery === 'object' && searchQuery && !Array.isArray(searchQuery) ? String(searchQuery.value || '') : '';
+    const tagFilter = String(req.query.tag || '');
+    const correspondentFilter = String(req.query.correspondent || '');
 
-    const order = req.query.order?.[0] || {};
-    const requestedColumn = req.query.columns?.[order.column]?.data;
+    const order = (Array.isArray(req.query.order) ? req.query.order[0] : {}) as UnknownRecord;
+    const columns = Array.isArray(req.query.columns) ? req.query.columns as UnknownRecord[] : [];
+    const requestedColumn = columns[Number(order.column)]?.data;
     const historyPage = await documentModel.getHistoryPage({
       search,
       tag: tagFilter,
@@ -913,14 +971,14 @@ router.get('/api/history', async (req, res) => {
       offset: start
     });
     const allTags = await paperlessService.getTags();
-    const tagMap = new Map(allTags.map(tag => [tag.id, tag]));
+    const tagMap = new Map<number, NamedItem>(allTags.map((tag: NamedItem) => [tag.id, tag]));
 
-    const filteredDocs = historyPage.rows.map(doc => {
-      const tagIds = doc.tags === '[]' ? [] : JSON.parse(doc.tags || '[]');
-      const resolvedTags = tagIds.map(id => tagMap.get(parseInt(id))).filter(Boolean);
-      const baseURL = process.env.PAPERLESS_API_URL.replace(/\/api$/, '');
+    const filteredDocs = historyPage.rows.map((doc: UnknownRecord) => {
+      const tagIds: string[] = doc.tags === '[]' ? [] : JSON.parse(String(doc.tags || '[]'));
+      const resolvedTags = tagIds.map((id: string) => tagMap.get(parseInt(id))).filter((tag): tag is NamedItem => Boolean(tag));
+      const baseURL = (process.env.PAPERLESS_API_URL || '').replace(/\/api$/, '');
 
-      resolvedTags.sort((a, b) => a.name.localeCompare(b.name));
+      resolvedTags.sort((a: NamedItem, b: NamedItem) => a.name.localeCompare(b.name));
 
       return {
         document_id: doc.document_id,
@@ -1007,7 +1065,7 @@ router.get('/api/history', async (req, res) => {
  *       404:
  *         description: No history row for this document
  */
-router.get('/api/history/:id/diff', async (req, res) => {
+router.get('/api/history/:id/diff', async (req: Req, res: Res) => {
   try {
     const documentId = req.params.id;
     const row = historyService.getLatestByDocumentId(documentId);
@@ -1044,13 +1102,13 @@ router.get('/api/history/:id/diff', async (req, res) => {
  *       200:
  *         description: Review page rendered successfully
  */
-router.get('/review', isAuthenticated, async (req, res) => {
+router.get('/review', isAuthenticated, async (req: Req, res: Res) => {
   try {
     const analyses = await reviewService.listPendingSuggestions(100);
     res.render('review', {
       title: 'Review | Tagvico AI',
       activePage: 'review',
-      version: configFile.ARCHIVISTA_AI_VERSION,
+      version: configFile.TAGVICO_AI_VERSION,
       analyses,
       reviewMode: reviewService.isReviewModeEnabled(),
       dryRun: reviewService.isReviewModeEnabled()
@@ -1060,7 +1118,7 @@ router.get('/review', isAuthenticated, async (req, res) => {
     res.status(500).render('review', {
       title: 'Review | Tagvico AI',
       activePage: 'review',
-      version: configFile.ARCHIVISTA_AI_VERSION,
+      version: configFile.TAGVICO_AI_VERSION,
       analyses: [],
       reviewMode: reviewService.isReviewModeEnabled(),
       dryRun: reviewService.isReviewModeEnabled(),
@@ -1069,14 +1127,14 @@ router.get('/review', isAuthenticated, async (req, res) => {
   }
 });
 
-function parseSuggestionId(value) {
+function parseSuggestionId(value: RequestValue) {
   const raw = String(value || '');
   if (!/^\d+$/.test(raw)) return null;
   const id = Number(raw);
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
-function reviewActor(req) {
+function reviewActor(req: Req) {
   const user = req.user || {};
   const value = user.username || user.email || user.sub;
   if (value) return String(value).slice(0, 200);
@@ -1103,10 +1161,9 @@ function reviewActor(req) {
  *         schema:
  *           type: integer
  */
-router.post('/review/:id/apply', isAuthenticated, express.json(), async (req, res) => {
+router.post('/review/:id/apply', isAuthenticated, express.json(), async (req: Req, res: Res) => {
   const suggestionId = parseSuggestionId(req.params.id);
   if (!suggestionId) return res.status(400).json({ error: 'A valid suggestion id is required' });
-
   try {
     reviewProgressService.publish({ suggestionId, status: 'applying' });
     const result = await reviewService.applySuggestion(suggestionId, reviewActor(req));
@@ -1122,13 +1179,13 @@ router.post('/review/:id/apply', isAuthenticated, express.json(), async (req, re
     reviewProgressService.publish({ suggestionId, documentId, status: 'applied' });
     res.json({ success: true, suggestionId, documentId, ...result });
   } catch (error) {
-    reviewProgressService.publish({ suggestionId, status: 'failed', error: error.message });
+    reviewProgressService.publish({ suggestionId, status: 'failed', error: errorMessage(error) });
     console.error('[ERROR] applying review suggestion:', error);
     res.status(500).json({ error: 'Error applying review suggestion' });
   }
 });
 
-router.post('/review/:id/reject', isAuthenticated, express.json(), async (req, res) => {
+router.post('/review/:id/reject', isAuthenticated, express.json(), async (req: Req, res: Res) => {
   const suggestionId = parseSuggestionId(req.params.id);
   if (!suggestionId) return res.status(400).json({ error: 'A valid suggestion id is required' });
 
@@ -1144,18 +1201,18 @@ router.post('/review/:id/reject', isAuthenticated, express.json(), async (req, r
     reviewProgressService.publish({ suggestionId, documentId, status: 'rejected' });
     res.json({ success: true, suggestionId, documentId, ...result });
   } catch (error) {
-    reviewProgressService.publish({ suggestionId, status: 'failed', error: error.message });
+    reviewProgressService.publish({ suggestionId, status: 'failed', error: errorMessage(error) });
     console.error('[ERROR] rejecting review suggestion:', error);
     res.status(500).json({ error: 'Error rejecting review suggestion' });
   }
 });
 
-router.get('/api/review/progress', isAuthenticated, (req, res) => {
+router.get('/api/review/progress', isAuthenticated, (req: Req, res: Res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders?.();
-  const send = (event) => res.write(`event: progress\ndata: ${JSON.stringify(event)}\n\n`);
+  const send = (event: unknown) => res.write(`event: progress\ndata: ${JSON.stringify(event)}\n\n`);
   send({ status: 'connected' });
   reviewProgressService.on('progress', send);
   const keepAlive = setInterval(() => res.write(': keep-alive\n\n'), 15_000);
@@ -1211,7 +1268,7 @@ router.get('/api/review/progress', isAuthenticated, (req, res) => {
  *                   type: string
  *                   example: "Error resetting documents"
  */
-router.post('/api/reset-all-documents', async (req, res) => {
+router.post('/api/reset-all-documents', async (req: Req, res: Res) => {
   try {
     await documentModel.deleteAllDocuments();
     res.json({ success: true });
@@ -1296,7 +1353,7 @@ router.post('/api/reset-all-documents', async (req, res) => {
  *                   type: string
  *                   example: "Error resetting documents"
  */
-router.post('/api/reset-documents', async (req, res) => {
+router.post('/api/reset-documents', async (req: Req, res: Res) => {
   try {
     const { ids } = req.body;
     if (!ids || !Array.isArray(ids)) {
@@ -1363,11 +1420,11 @@ router.post('/api/reset-documents', async (req, res) => {
  *                   type: string
  *                   example: "Error during document scan"
  */
-router.post('/api/scan/now', async (req, res) => {
+router.post('/api/scan/now', async (req: Req, res: Res) => {
 try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
-      console.log(`Setup not completed. Visit http://your-machine-ip:${process.env.ARCHIVISTA_AI_PORT || 3000}/setup to complete setup.`);
+      console.log(`Setup not completed. Visit http://your-machine-ip:${resolveEnv('TAGVICO_AI_PORT', 'ARCHIVISTA_AI_PORT') || 3000}/setup to complete setup.`);
       return res.status(409).json({ error: 'Setup is not complete' });
     }
 
@@ -1387,13 +1444,13 @@ try {
         ]);
     
         //get existing correspondent list
-        existingCorrespondentList = existingCorrespondentList.map(correspondent => correspondent.name);
+        existingCorrespondentList = existingCorrespondentList.map((correspondent: NamedItem) => correspondent.name);
         
         //get existing document types list
-        let existingDocumentTypesList = existingDocumentTypes.map(docType => docType.name);
+        let existingDocumentTypesList = existingDocumentTypes.map((docType: NamedItem) => docType.name);
         
         // Extract tag names from tag objects
-        const existingTagNames = existingTags.map(tag => tag.name);
+        const existingTagNames = existingTags.map((tag: NamedItem) => tag.name);
     
         for (const doc of documents) {
           try {
@@ -1421,7 +1478,7 @@ try {
   }
 });
 
-async function processDocument(doc, existingTags, existingCorrespondentList, existingDocumentTypesList, ownUserId, customPrompt = null) {
+async function processDocument(doc: DocumentData, existingTags: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number, customPrompt: string | null = null) {
   const isProcessed = await documentModel.isDocumentProcessed(doc.id);
   if (isProcessed) return null;
   const reviewMode = reviewService.isReviewModeEnabled();
@@ -1455,7 +1512,7 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
 
     if (content.length > 50000) content = content.substring(0, 50000);
 
-    const options = {
+    const options: { restrictToExistingTags: boolean; restrictToExistingCorrespondents: boolean; externalApiData?: unknown } = {
       restrictToExistingTags: config.restrictToExistingTags === 'yes',
       restrictToExistingCorrespondents: config.restrictToExistingCorrespondents === 'yes'
     };
@@ -1469,7 +1526,7 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
           console.log('[DEBUG] Retrieved external API data for prompt enrichment');
         }
       } catch (error) {
-        console.error('[ERROR] Failed to fetch external API data:', error.message);
+        console.error('[ERROR] Failed to fetch external API data:', errorMessage(error));
       }
     }
 
@@ -1501,13 +1558,13 @@ async function processDocument(doc, existingTags, existingCorrespondentList, exi
     await documentModel.setProcessingStatus(doc.id, doc.title, 'complete');
     return { analysis, originalData, content };
   } catch (error) {
-    if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, error.message || error);
+    if (reviewReservation) await reviewService.failSuggestion(reviewReservation.id, errorMessage(error));
     throw error;
   }
 }
 
-async function buildUpdateData(analysis, doc, content = '') {
-  const updateData = {};
+async function buildUpdateData(analysis: AnalysisData, doc: DocumentData, content = '') {
+  const updateData: DocumentUpdate = {};
 
   // Create options object with restriction settings
   const options = {
@@ -1632,14 +1689,14 @@ async function buildUpdateData(analysis, doc, content = '') {
         console.log(`[DEBUG] Assigned owner ${ownerMatch.username} to document ${doc.id} via profile match`, ownerMatch.matched);
       }
     } catch (error) {
-      console.error('[ERROR] Error assigning owner profile:', error.message);
+      console.error('[ERROR] Error assigning owner profile:', errorMessage(error));
     }
   }
 
   return updateData;
 }
 
-async function saveDocumentChanges(docId, updateData, analysis, originalData) {
+async function saveDocumentChanges(docId: number, updateData: DocumentUpdate, analysis: AnalysisData, originalData: DocumentData) {
   const { tags: originalTags, correspondent: originalCorrespondent, title: originalTitle } = originalData;
   
   await Promise.all([
@@ -1708,7 +1765,7 @@ async function saveDocumentChanges(docId, updateData, analysis, originalData) {
  *                   type: string
  *                   example: "Error regenerating API key"
  */
-router.post('/api/key-regenerate', async (req, res) => {
+router.post('/api/key-regenerate', async (req: Req, res: Res) => {
   try {
     const fs = require('fs');
     const path = require('path');
@@ -1741,7 +1798,7 @@ router.post('/api/key-regenerate', async (req, res) => {
 
 function buildPageConfig() {
   const onboardingDefaults = onboardingService.loadOnboardingDefaults();
-  const config = buildUiConfig({ ...onboardingDefaults, ...process.env }, configFile.ARCHIVISTA_AI_VERSION || '');
+  const config = buildUiConfig({ ...onboardingDefaults, ...process.env }, configFile.TAGVICO_AI_VERSION || '');
   config.WRITE_MODE = reviewService.getWriteMode();
   config.DRY_RUN = reviewService.isReviewModeEnabled();
   config.SYSTEM_PROMPT = '';
@@ -1749,7 +1806,7 @@ function buildPageConfig() {
   return config;
 }
 
-function persistWriteMode(payload, ensureDefault = false) {
+function persistWriteMode(payload: UnknownRecord, ensureDefault = false) {
   if (payload && Object.prototype.hasOwnProperty.call(payload, 'write_mode')) {
     const writeMode = reviewService.normalizeWriteMode(payload.write_mode);
     return reviewService.writeReviewConfig({ WRITE_MODE: writeMode });
@@ -1764,7 +1821,7 @@ function persistWriteMode(payload, ensureDefault = false) {
   return ensureDefault ? reviewService.writeReviewConfig({}) : reviewService.loadReviewConfig();
 }
 
-function buildViewModel(config) {
+function buildViewModel(config: UnknownRecord) {
   return {
     config,
     providerCatalog: providerCatalogService.buildCatalog(config),
@@ -1794,7 +1851,7 @@ async function provisionControlledTags() {
     paperlessService.initialize();
     await paperlessService.ensureTagCache();
   } catch (error) {
-    return policy.vocabulary.map((name) => ({ name, ok: false, error: error.message }));
+    return policy.vocabulary.map((name: string) => ({ name, ok: false, error: errorMessage(error) }));
   }
   const results = [];
   for (const name of policy.vocabulary) {
@@ -1802,15 +1859,15 @@ async function provisionControlledTags() {
       const tag = await paperlessService.findExistingTag(name) || await paperlessService.createTagSafely(name);
       results.push({ name, ok: true, id: tag.id });
     } catch (error) {
-      results.push({ name, ok: false, error: error.message });
+      results.push({ name, ok: false, error: errorMessage(error) });
     }
   }
   return results;
 }
 
-async function getOllamaModelsForUrl(url) {
+async function getOllamaModelsForUrl(url: string) {
   const models = await setupService.getOllamaModels(url || 'http://localhost:11434');
-  return models.map((model) => ({
+  return models.map((model: NamedItem) => ({
     name: model.name,
     slug: model.model || model.name,
     size: model.size || null,
@@ -1818,7 +1875,7 @@ async function getOllamaModelsForUrl(url) {
   }));
 }
 
-function buildConfigForSave(payload, options = {}) {
+function buildConfigForSave(payload: Record<string, RequestValue>, options: SaveOptions = {}) {
   const providerPayload = normalizeProviderPayload(payload);
   const currentConfig = options.currentConfig || {};
   const apiToken = options.apiToken || process.env.API_KEY || require('crypto').randomBytes(64).toString('hex');
@@ -1829,7 +1886,7 @@ function buildConfigForSave(payload, options = {}) {
 
   return {
     ...currentConfig,
-    PAPERLESS_API_URL: `${payload.paperlessUrl.replace(/\/api$/, '')}/api`,
+    PAPERLESS_API_URL: `${String(payload.paperlessUrl || '').replace(/\/api$/, '')}/api`,
     PAPERLESS_API_TOKEN: payload.paperlessToken,
     PAPERLESS_USERNAME: payload.paperlessUsername || '',
     AI_PROVIDER: providerPayload.provider,
@@ -1839,7 +1896,7 @@ function buildConfigForSave(payload, options = {}) {
     TAGS: serializeArray(payload.tags),
     TAG_GROUPS_JSON: JSON.stringify(tagGroupService.parseGroups(payload.tagGroupsJson || currentConfig.TAG_GROUPS_JSON)),
     CONTROLLED_TAGGING_ENABLED: parseBooleanFlag(payload.controlledTaggingEnabled, currentConfig.CONTROLLED_TAGGING_ENABLED || 'no'),
-    TAG_MAX_PER_DOCUMENT: String(Math.min(10, Math.max(1, parseInt(payload.tagMaxPerDocument || currentConfig.TAG_MAX_PER_DOCUMENT || '3', 10) || 3))),
+    TAG_MAX_PER_DOCUMENT: String(Math.min(10, Math.max(1, parseInt(String(payload.tagMaxPerDocument || currentConfig.TAG_MAX_PER_DOCUMENT || '3'), 10) || 3))),
     ADD_AI_PROCESSED_TAG: parseBooleanFlag(payload.aiProcessedTag, currentConfig.ADD_AI_PROCESSED_TAG || 'no'),
     AI_PROCESSED_TAG_NAME: payload.aiTagName || currentConfig.AI_PROCESSED_TAG_NAME || 'ai-processed',
     ACTIVATE_OWNER_ASSIGNMENT: parseBooleanFlag(payload.activateOwnerAssignment, currentConfig.ACTIVATE_OWNER_ASSIGNMENT || 'yes'),
@@ -1854,7 +1911,7 @@ function buildConfigForSave(payload, options = {}) {
     ANTHROPIC_API_KEY: providerPayload.provider === 'anthropic' ? providerPayload.anthropicApiKey : currentConfig.ANTHROPIC_API_KEY || '',
     ANTHROPIC_MODEL: providerPayload.provider === 'anthropic' ? providerPayload.selectedModel : currentConfig.ANTHROPIC_MODEL || 'claude-haiku-4-5',
     CODEX_MODEL: providerPayload.provider === 'codex' ? providerPayload.selectedModel : currentConfig.CODEX_MODEL || 'gpt-5.4-mini',
-    AI_PROCESSING_MODE: ['standard', 'flex', 'batch'].includes(payload.aiProcessingMode) ? payload.aiProcessingMode : (currentConfig.AI_PROCESSING_MODE || 'standard'),
+    AI_PROCESSING_MODE: ['standard', 'flex', 'batch'].includes(String(payload.aiProcessingMode)) ? String(payload.aiProcessingMode) : (currentConfig.AI_PROCESSING_MODE || 'standard'),
     OLLAMA_API_URL: providerPayload.ollamaUrl || currentConfig.OLLAMA_API_URL || 'http://localhost:11434',
     OLLAMA_MODEL: providerPayload.provider === 'ollama' ? providerPayload.selectedModel : currentConfig.OLLAMA_MODEL || 'llama3.2',
     OLLAMA_CLOUD_API_KEY: providerPayload.provider === 'ollama-cloud' ? providerPayload.ollamaCloudApiKey : currentConfig.OLLAMA_CLOUD_API_KEY || '',
@@ -1877,7 +1934,7 @@ function buildConfigForSave(payload, options = {}) {
     AZURE_API_VERSION: providerPayload.azureApiVersion || currentConfig.AZURE_API_VERSION || '',
     API_KEY: apiToken,
     JWT_SECRET: jwtToken,
-    ARCHIVISTA_AI_INITIAL_SETUP: 'yes',
+    TAGVICO_AI_INITIAL_SETUP: 'yes',
     ACTIVATE_TAGGING: parseBooleanFlag(payload.activateTagging, currentConfig.ACTIVATE_TAGGING || 'yes'),
     ACTIVATE_CORRESPONDENTS: parseBooleanFlag(payload.activateCorrespondents, currentConfig.ACTIVATE_CORRESPONDENTS || 'yes'),
     ACTIVATE_DOCUMENT_TYPE: parseBooleanFlag(payload.activateDocumentType, currentConfig.ACTIVATE_DOCUMENT_TYPE || 'yes'),
@@ -1944,7 +2001,7 @@ function buildConfigForSave(payload, options = {}) {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/setup', async (req, res) => {
+router.get('/setup', async (req: Req, res: Res) => {
   try {
     let config = buildPageConfig();
 
@@ -1957,7 +2014,7 @@ router.get('/setup', async (req, res) => {
     // Load saved config if it exists
     if (isEnvConfigured) {
       const savedConfig = await setupService.loadConfig();
-      config = { ...config, ...buildUiConfig(savedConfig, configFile.ARCHIVISTA_AI_VERSION || '') };
+      config = { ...config, ...buildUiConfig(savedConfig, configFile.TAGVICO_AI_VERSION || '') };
     }
 
     // Check if system is fully configured
@@ -2065,7 +2122,7 @@ router.get('/setup', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/manual/preview/:id', async (req, res) => {
+router.get('/manual/preview/:id', async (req: Req, res: Res) => {
   try {
     const documentId = req.params.id;
     console.log('Fetching content for document:', documentId);
@@ -2085,7 +2142,7 @@ router.get('/manual/preview/:id', async (req, res) => {
 
     const document = await response.json();
     //map the tags to their names
-    document.tags = await Promise.all(document.tags.map(async tag => {
+    document.tags = await Promise.all(document.tags.map(async (tag: number) => {
       const tagName = await paperlessService.getTagTextFromId(tag);
       return tagName;
     }
@@ -2107,7 +2164,7 @@ router.get('/manual/preview/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Content fetch error:', error);
-    res.status(500).json({ error: `Error fetching document content: ${error.message}` });
+    res.status(500).json({ error: `Error fetching document content: ${errorMessage(error)}` });
   }
 });
 
@@ -2152,8 +2209,8 @@ router.get('/manual/preview/:id', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/manual', async (req, res) => {
-  const version = configFile.ARCHIVISTA_AI_VERSION || ' ';
+router.get('/manual', async (req: Req, res: Res) => {
+  const version = configFile.TAGVICO_AI_VERSION || ' ';
   const [correspondents, documentTypes, users] = await Promise.all([
     paperlessService.listCorrespondentsNames(),
     paperlessService.listDocumentTypesNames(),
@@ -2214,7 +2271,7 @@ router.get('/manual', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/manual/tags', async (req, res) => {
+router.get('/manual/tags', async (req: Req, res: Res) => {
   const getTags = await paperlessService.getTags();
   res.json(getTags);
 });
@@ -2259,12 +2316,12 @@ router.get('/manual/tags', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/manual/documents', async (req, res) => {
+router.get('/manual/documents', async (req: Req, res: Res) => {
   const getDocuments = await paperlessService.getDocuments();
   res.json(getDocuments);
 });
 
-router.get('/api/provider-catalog', async (req, res) => {
+router.get('/api/provider-catalog', async (req: Req, res: Res) => {
   const config = buildPageConfig();
   const catalog = providerCatalogService.buildCatalog(config);
 
@@ -2279,20 +2336,20 @@ router.get('/api/provider-catalog', async (req, res) => {
   });
 });
 
-router.get('/api/ollama/models', allowDuringSetup, async (req, res) => {
+router.get('/api/ollama/models', allowDuringSetup, async (req: Req, res: Res) => {
   try {
     const url = req.query.url || process.env.OLLAMA_API_URL || 'http://localhost:11434';
-    const models = await getOllamaModelsForUrl(url);
+    const models = await getOllamaModelsForUrl(String(url));
     res.json({ success: true, models });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: errorMessage(error) });
   }
 });
 
 /**
  * Normalize a user-supplied Paperless URL to a clean base URL (no trailing slash, no /api).
  */
-function normalizePaperlessBaseUrl(raw) {
+function normalizePaperlessBaseUrl(raw: string | undefined | null) {
   if (!raw) return null;
   let url = String(raw).trim();
   if (!/^https?:\/\//i.test(url)) {
@@ -2314,13 +2371,13 @@ function normalizePaperlessBaseUrl(raw) {
  *      which means the instance is up but token-gated.
  *   4. A JSON API root listing the usual Paperless resources.
  */
-async function probePaperlessInstance(baseUrl, timeout = 2500, token = '') {
+async function probePaperlessInstance(baseUrl: string, timeout = 2500, token = '') {
   const url = normalizePaperlessBaseUrl(baseUrl);
   if (!url) return { url: baseUrl, ok: false };
 
   const tokenHeader = token ? { Authorization: `Token ${token}` } : {};
 
-  const get = (path) => axios.get(`${url}${path}`, {
+  const get = (path: string) => axios.get(`${url}${path}`, {
     timeout,
     validateStatus: () => true,
     maxRedirects: 0,
@@ -2353,6 +2410,22 @@ async function probePaperlessInstance(baseUrl, timeout = 2500, token = '') {
         requiresAuth: false,
         authenticated: permission.success,
         error: permission.success ? null : permission.message
+      };
+    }
+
+    // When a token was explicitly provided but the server rejected it, report
+    // failure immediately instead of falling through to the discovery path that
+    // would flag the instance as "reachable / needs auth" (ok: true).
+    if (token && (response.status === 401 || response.status === 403)) {
+      return {
+        url,
+        ok: false,
+        status: response.status,
+        version,
+        apiVersion,
+        requiresAuth: true,
+        authenticated: false,
+        error: `Authentication failed (HTTP ${response.status}). The API token is invalid or lacks permissions.`
       };
     }
 
@@ -2392,16 +2465,16 @@ async function probePaperlessInstance(baseUrl, timeout = 2500, token = '') {
       requiresAuth
     };
   } catch (error) {
-    return { url, ok: false, error: error.code || error.message };
+    return { url, ok: false, error: errorCode(error) || errorMessage(error) };
   }
 }
 
 /**
  * Build a candidate list of base URLs to probe for Paperless-ngx auto-discovery.
  */
-function buildDiscoveryCandidates(hint) {
+function buildDiscoveryCandidates(hint: string | undefined) {
   const candidates = new Set();
-  const add = (u) => {
+  const add = (u: string | undefined) => {
     const n = normalizePaperlessBaseUrl(u);
     if (n) candidates.add(n);
   };
@@ -2437,7 +2510,7 @@ function buildDiscoveryCandidates(hint) {
   return Array.from(candidates);
 }
 
-async function validatePaperlessTokenPermissions(baseUrl, token, timeout = 3500) {
+async function validatePaperlessTokenPermissions(baseUrl: string, token: string, timeout = 3500) {
   if (!token) {
     return { success: false, message: 'API token is required.' };
   }
@@ -2456,7 +2529,7 @@ async function validatePaperlessTokenPermissions(baseUrl, token, timeout = 3500)
         return { success: false, message: `Token check failed at /api/${endpoint}/ with HTTP ${response.status}.` };
       }
     } catch (error) {
-      return { success: false, message: `Token check failed at /api/${endpoint}/: ${error.code || error.message}` };
+      return { success: false, message: `Token check failed at /api/${endpoint}/: ${errorCode(error) || errorMessage(error)}` };
     }
   }
 
@@ -2468,18 +2541,18 @@ async function validatePaperlessTokenPermissions(baseUrl, token, timeout = 3500)
  * Scans a curated set of candidate URLs (plus an optional hint) for reachable
  * Paperless-ngx instances and returns the ones that respond with the Paperless fingerprint.
  */
-router.post('/api/paperless/discover', allowDuringSetup, express.json(), async (req, res) => {
+router.post('/api/paperless/discover', allowDuringSetup, express.json(), async (req: Req, res: Res) => {
   try {
-    const hint = (req.body && req.body.hint) || (req.query && req.query.hint) || '';
+    const hint = String((req.body && req.body.hint) || (req.query && req.query.hint) || '');
     const candidates = buildDiscoveryCandidates(hint);
-    const results = await Promise.all(candidates.map((url) => probePaperlessInstance(url)));
+    const results = await Promise.all(candidates.map((url) => probePaperlessInstance(String(url))));
     const instances = results
       .filter((r) => r.ok)
       // de-duplicate by normalized url
       .filter((r, i, arr) => arr.findIndex((x) => x.url === r.url) === i);
     res.json({ success: true, scanned: candidates.length, instances });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: errorMessage(error) });
   }
 });
 
@@ -2487,22 +2560,22 @@ router.post('/api/paperless/discover', allowDuringSetup, express.json(), async (
  * GET /api/paperless/probe?url=...
  * Probes a single URL on demand (used by the "Test connection" / quick-add UI).
  */
-router.get('/api/paperless/probe', allowDuringSetup, async (req, res) => {
+router.get('/api/paperless/probe', allowDuringSetup, async (req: Req, res: Res) => {
   const url = req.query.url;
   if (!url) {
     return res.status(400).json({ success: false, error: 'url query parameter is required' });
   }
-  const result = await probePaperlessInstance(url);
+  const result = await probePaperlessInstance(String(url));
   res.json({ success: result.ok, instance: result });
 });
 
-router.post('/api/paperless/probe', allowDuringSetup, express.json(), async (req, res) => {
+router.post('/api/paperless/probe', allowDuringSetup, express.json(), async (req: Req, res: Res) => {
   const url = req.body?.url;
   const token = req.body?.token;
   if (!url) {
     return res.status(400).json({ success: false, error: 'url is required' });
   }
-  const result = await probePaperlessInstance(url, 3500, token || '');
+  const result = await probePaperlessInstance(String(url), 3500, String(token || ''));
   res.json({ success: result.ok, instance: result });
 });
 
@@ -2561,7 +2634,7 @@ router.post('/api/paperless/probe', allowDuringSetup, express.json(), async (req
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/api/correspondentsCount', async (req, res) => {
+router.get('/api/correspondentsCount', async (req: Req, res: Res) => {
   const correspondents = await paperlessService.listCorrespondentsNames();
   res.json(correspondents);
 });
@@ -2621,15 +2694,15 @@ router.get('/api/correspondentsCount', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/api/tagsCount', async (req, res) => {
+router.get('/api/tagsCount', async (req: Req, res: Res) => {
   const tags = await paperlessService.listTagNames();
   res.json(tags);
 });
 
-const documentQueue = [];
+const documentQueue: DocumentData[] = [];
 let isProcessing = false;
 
-function extractDocumentId(url) {
+function extractDocumentId(url: string) {
   const match = url.match(/\/documents\/(\d+)\//);
   if (match && match[1]) {
     return parseInt(match[1], 10);
@@ -2637,7 +2710,7 @@ function extractDocumentId(url) {
   throw new Error('Could not extract document ID from URL');
 }
 
-async function processQueue(customPrompt) {
+async function processQueue(customPrompt?: string) {
   if (customPrompt) {
     console.log('Using custom prompt:', customPrompt);
   }
@@ -2649,7 +2722,7 @@ async function processQueue(customPrompt) {
   try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
-      console.log(`Setup not completed. Visit http://your-machine-ip:${process.env.ARCHIVISTA_AI_PORT || 3000}/setup to complete setup.`);
+      console.log(`Setup not completed. Visit http://your-machine-ip:${resolveEnv('TAGVICO_AI_PORT', 'ARCHIVISTA_AI_PORT') || 3000}/setup to complete setup.`);
       return;
     }
 
@@ -2666,10 +2739,11 @@ async function processQueue(customPrompt) {
       paperlessService.getOwnUserID()
     ]);
 
-    const existingDocumentTypesList = existingDocumentTypes.map(docType => docType.name);
+    const existingDocumentTypesList = existingDocumentTypes.map((docType: NamedItem) => docType.name);
 
     while (documentQueue.length > 0) {
       const doc = documentQueue.shift();
+      if (!doc) continue;
       
       try {
         const result = await processDocument(doc, existingTags, existingCorrespondentList, existingDocumentTypesList, ownUserId, customPrompt);
@@ -2786,7 +2860,7 @@ async function processQueue(customPrompt) {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/api/webhook/document', async (req, res) => {
+router.post('/api/webhook/document', async (req: Req, res: Res) => {
   try {
     const { url, prompt } = req.body;
     let usePrompt = false;
@@ -2795,7 +2869,7 @@ router.post('/api/webhook/document', async (req, res) => {
     }
     
     try {
-      const documentId = extractDocumentId(url);
+      const documentId = extractDocumentId(String(url));
       const document = await paperlessService.getDocument(documentId);
       
       if (!document) {
@@ -2806,7 +2880,7 @@ router.post('/api/webhook/document', async (req, res) => {
       if (prompt) {
         usePrompt = true;
         console.log('[DEBUG] Using custom prompt:', prompt);
-        await processQueue(prompt);
+        await processQueue(String(prompt));
       } else {
         await processQueue();
       }
@@ -2870,20 +2944,20 @@ router.post('/api/webhook/document', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/dashboard', async (req, res) => {
+router.get('/dashboard', async (req: Req, res: Res) => {
   const tagCount = await paperlessService.getTagCount();
   const correspondentCount = await paperlessService.getCorrespondentCount();
   const documentCount = await paperlessService.getDocumentCount();
   const processedDocumentCount = await documentModel.getProcessedDocumentsCount();
-  const metrics = await documentModel.getMetrics();
+  const metrics: TokenMetric[] = await documentModel.getMetrics();
   const processingTimeStats = await documentModel.getProcessingTimeStats();
   const tokenDistribution = await documentModel.getTokenDistribution();
   const documentTypes = await documentModel.getDocumentTypeStats();
 
-  const averagePromptTokens = metrics.length > 0 ? Math.round(metrics.reduce((acc, cur) => acc + cur.promptTokens, 0) / metrics.length) : 0;
-  const averageCompletionTokens = metrics.length > 0 ? Math.round(metrics.reduce((acc, cur) => acc + cur.completionTokens, 0) / metrics.length) : 0;
-  const averageTotalTokens = metrics.length > 0 ? Math.round(metrics.reduce((acc, cur) => acc + cur.totalTokens, 0) / metrics.length) : 0;
-  const tokensOverall = metrics.length > 0 ? metrics.reduce((acc, cur) => acc + cur.totalTokens, 0) : 0;
+  const averagePromptTokens = metrics.length > 0 ? Math.round(metrics.reduce((acc: number, cur: TokenMetric) => acc + cur.promptTokens, 0) / metrics.length) : 0;
+  const averageCompletionTokens = metrics.length > 0 ? Math.round(metrics.reduce((acc: number, cur: TokenMetric) => acc + cur.completionTokens, 0) / metrics.length) : 0;
+  const averageTotalTokens = metrics.length > 0 ? Math.round(metrics.reduce((acc: number, cur: TokenMetric) => acc + cur.totalTokens, 0) / metrics.length) : 0;
+  const tokensOverall = metrics.length > 0 ? metrics.reduce((acc: number, cur: TokenMetric) => acc + cur.totalTokens, 0) : 0;
 
   const paperless_data = {
     tagCount,
@@ -2899,10 +2973,12 @@ router.get('/dashboard', async (req, res) => {
     averageCompletionTokens,
     averageTotalTokens,
     tokensOverall,
-    metricCount: metrics.length
+    metricCount: metrics.length,
+    model: configFile.aiModel,
+    provider: configFile.aiProvider
   };
   const summary = dashboardMetrics.buildDashboardSummary(paperless_data, openai_data);
-  const version = configFile.ARCHIVISTA_AI_VERSION || ' ';
+  const version = configFile.TAGVICO_AI_VERSION || ' ';
 
   res.render('dashboard', { paperless_data, openai_data, summary, version });
 });
@@ -2951,19 +3027,19 @@ router.get('/dashboard', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/settings', async (req, res) => {
+router.get('/settings', async (req: Req, res: Res) => {
   let showErrorCheckSettings = false;
   const isConfigured = await setupService.isConfigured();
-  if(!isConfigured && process.env.ARCHIVISTA_AI_INITIAL_SETUP === 'yes') {
+  if(!isConfigured && resolveEnv('TAGVICO_AI_INITIAL_SETUP', 'ARCHIVISTA_AI_INITIAL_SETUP') === 'yes') {
     showErrorCheckSettings = true;
   }
   let config = buildPageConfig();
   
   if (isConfigured) {
     const savedConfig = await setupService.loadConfig();
-    config = { ...config, ...buildUiConfig(savedConfig, configFile.ARCHIVISTA_AI_VERSION || '') };
+    config = { ...config, ...buildUiConfig(savedConfig, configFile.TAGVICO_AI_VERSION || '') };
   }
-  const version = configFile.ARCHIVISTA_AI_VERSION || ' ';
+  const version = configFile.TAGVICO_AI_VERSION || ' ';
   res.render('settings', { 
     ...buildViewModel(config),
     version,
@@ -3014,7 +3090,7 @@ router.get('/settings', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/debug', async (req, res) => {
+router.get('/debug', async (req: Req, res: Res) => {
   //const isConfigured = await setupService.isConfigured();
   //if (!isConfigured) {
   //   return res.status(503).json({ 
@@ -3025,7 +3101,7 @@ router.get('/debug', async (req, res) => {
   res.render('debug');
 });
 
-// router.get('/test/:correspondent', async (req, res) => {
+// router.get('/test/:correspondent', async (req: Req, res: Res) => {
 //   //create a const for the correspondent that is base64 encoded and decode it
 //   const correspondentx = Buffer.from(req.params.correspondent, 'base64').toString('ascii');
 //   const correspondent = await paperlessService.searchForExistingCorrespondent(correspondentx);
@@ -3071,7 +3147,7 @@ router.get('/debug', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/debug/tags', async (req, res) => {
+router.get('/debug/tags', async (req: Req, res: Res) => {
   const tags = await debugService.getTags();
   res.json(tags);
 });
@@ -3115,7 +3191,7 @@ router.get('/debug/tags', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/debug/documents', async (req, res) => {
+router.get('/debug/documents', async (req: Req, res: Res) => {
   const documents = await debugService.getDocuments();
   res.json(documents);
 });
@@ -3159,7 +3235,7 @@ router.get('/debug/documents', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/debug/correspondents', async (req, res) => {
+router.get('/debug/correspondents', async (req: Req, res: Res) => {
   const correspondents = await debugService.getCorrespondents();
   res.json(correspondents);
 });
@@ -3255,15 +3331,15 @@ router.get('/debug/correspondents', async (req, res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/manual/analyze', express.json(), async (req, res) => {
+router.post('/manual/analyze', express.json(), async (req: Req, res: Res) => {
   try {
     const { content, existingTags, id } = req.body;
     let existingCorrespondentList = await paperlessService.listCorrespondentsNames();
-    existingCorrespondentList = existingCorrespondentList.map(correspondent => correspondent.name);
+    existingCorrespondentList = existingCorrespondentList.map((correspondent: NamedItem) => correspondent.name);
     let existingTagsList = await paperlessService.listTagNames();
-    existingTagsList = existingTagsList.map(tags => tags.name);
+    existingTagsList = existingTagsList.map((tags: NamedItem) => tags.name);
     let existingDocumentTypes = await paperlessService.listDocumentTypesNames();
-    let existingDocumentTypesList = existingDocumentTypes.map(docType => docType.name);
+    let existingDocumentTypesList = existingDocumentTypes.map((docType: NamedItem) => docType.name);
     
     if (!content || typeof content !== 'string') {
       console.log('Invalid content received:', content);
@@ -3287,14 +3363,14 @@ router.post('/manual/analyze', express.json(), async (req, res) => {
           analyzeDocument.metrics.totalTokens
         );
       } catch (metricsError) {
-        console.warn('Could not persist token metrics:', metricsError.message);
+        console.warn('Could not persist token metrics:', errorMessage(metricsError));
       }
     }
 
     return res.json(analyzeDocument);
   } catch (error) {
     console.error('Analysis error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: errorMessage(error) });
   }
 });
 
@@ -3378,14 +3454,15 @@ router.post('/manual/playground', protectApiRoute, retiredApiRoute('Playground m
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/manual/updateDocument', express.json(), async (req, res) => {
+router.post('/manual/updateDocument', express.json(), async (req: Req, res: Res) => {
   try {
-    var { documentId, tags, correspondent, title, documentType, ownerId } = req.body;
+    const { documentId, correspondent, title, documentType, ownerId } = req.body;
+    let tags: Array<string | number> = Array.isArray(req.body.tags) ? req.body.tags as Array<string | number> : [];
     console.log("TITLE: ", title);
     // Convert all tags to names if they are IDs
-    tags = await Promise.all(tags.map(async tag => {
+    tags = await Promise.all(tags.map(async (tag: string | number) => {
       console.log('Processing tag:', tag);
-      if (!isNaN(tag)) {
+      if (!isNaN(Number(tag))) {
         const tagName = await paperlessService.getTagTextFromId(Number(tag));
         console.log('Converted tag ID:', tag, 'to name:', tagName);
         return tagName;
@@ -3394,7 +3471,7 @@ router.post('/manual/updateDocument', express.json(), async (req, res) => {
     }));
 
     // Filter out any null or undefined tags
-    tags = tags.filter(tag => tag != null);
+    tags = tags.filter((tag: string | number) => tag != null);
 
     // Process new tags to get their IDs
     const { tagIds, errors } = await paperlessService.processTags(tags);
@@ -3429,7 +3506,7 @@ router.post('/manual/updateDocument', express.json(), async (req, res) => {
     res.json(updateDocument);
   } catch (error) {
     console.error('Update error:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: errorMessage(error) });
   }
 });
 
@@ -3487,7 +3564,7 @@ router.post('/manual/updateDocument', express.json(), async (req, res) => {
  *                   description: Details about the service unavailability
  *                   example: "Database check failed"
  */
-router.get('/health', async (req, res) => {
+router.get('/health', async (req: Req, res: Res) => {
   try {
     // const isConfigured = await setupService.isConfigured();
     // if (!isConfigured) {
@@ -3510,12 +3587,12 @@ router.get('/health', async (req, res) => {
     console.error('Health check failed:', error);
     res.status(500).json({ 
       status: 'error', 
-      message: error.message 
+      message: errorMessage(error)
     });
   }
 });
 
-router.get('/api/health', async (req, res) => {
+router.get('/api/health', async (req: Req, res: Res) => {
   const started = Date.now();
   try {
     await documentModel.isDocumentProcessed(1);
@@ -3526,7 +3603,7 @@ router.get('/api/health', async (req, res) => {
     const status = providerResult.ok === false ? 'degraded' : 'healthy';
     res.status(status === 'healthy' ? 200 : 503).json({ status, database: { ok: true }, provider: providerResult, latencyMs: Date.now() - started });
   } catch (error) {
-    res.status(503).json({ status: 'unhealthy', database: { ok: false }, error: error.message, latencyMs: Date.now() - started });
+    res.status(503).json({ status: 'unhealthy', database: { ok: false }, error: errorMessage(error), latencyMs: Date.now() - started });
   }
 });
 
@@ -3710,7 +3787,7 @@ router.get('/api/health', async (req, res) => {
  *                   type: string
  *                   example: "Failed to save configuration: Database error"
  */
-router.post('/setup', express.json(), async (req, res) => {
+router.post('/setup', express.json(), async (req: Req, res: Res) => {
   try {
     const { 
       paperlessUrl, 
@@ -3934,7 +4011,7 @@ router.post('/setup', express.json(), async (req, res) => {
   } catch (error) {
     console.error('[ERROR] Setup error:', error);
     res.status(500).json({ 
-      error: 'An error occurred: ' + error.message
+      error: 'An error occurred: ' + errorMessage(error)
     });
   }
 });
@@ -4124,7 +4201,7 @@ router.post('/setup', express.json(), async (req, res) => {
  *                   type: string
  *                   example: "Failed to update settings: Database error"
  */
-router.post('/settings', express.json(), async (req, res) => {
+router.post('/settings', express.json(), async (req: Req, res: Res) => {
   try {
     const { 
       paperlessUrl, 
@@ -4161,7 +4238,7 @@ router.post('/settings', express.json(), async (req, res) => {
       azureDeploymentName,
       azureApiVersion
     } = req.body;
-    const currentConfig = {
+    const currentConfig: Record<string, string | undefined> = {
       ...process.env,
       PAPERLESS_API_URL: process.env.PAPERLESS_API_URL || '',
       PAPERLESS_API_TOKEN: process.env.PAPERLESS_API_TOKEN || '',
@@ -4169,14 +4246,14 @@ router.post('/settings', express.json(), async (req, res) => {
     };
 
     // Process custom fields
-    let processedCustomFields = [];
+    let processedCustomFields: Array<{ value: string; data_type: string; currency?: string }> = [];
     if (customFields) {
       try {
         const parsedFields = typeof customFields === 'string' 
           ? JSON.parse(customFields) 
           : customFields;
         
-        processedCustomFields = parsedFields.custom_fields.map(field => ({
+        processedCustomFields = parsedFields.custom_fields.map((field: { value: string; data_type: string; currency?: string }) => ({
           value: field.value,
           data_type: field.data_type,
           ...(field.currency && { currency: field.currency })
@@ -4317,7 +4394,7 @@ router.post('/settings', express.json(), async (req, res) => {
   } catch (error) {
     console.error('Settings update error:', error);
     res.status(500).json({ 
-      error: 'An error occurred: ' + error.message
+      error: 'An error occurred: ' + errorMessage(error)
     });
   }
 });
@@ -4394,7 +4471,7 @@ router.post('/settings', express.json(), async (req, res) => {
  *                   type: string
  *                   example: "Failed to fetch processing status"
  */
-router.get('/api/processing-status', async (req, res) => {
+router.get('/api/processing-status', async (req: Req, res: Res) => {
   try {
       const status = await documentModel.getCurrentProcessingStatus();
       res.json(status);
@@ -4403,9 +4480,9 @@ router.get('/api/processing-status', async (req, res) => {
   }
 });
 
-router.get('/operations', async (req, res) => {
+router.get('/operations', async (req: Req, res: Res) => {
   res.render('operations', {
-    version: configFile.ARCHIVISTA_AI_VERSION,
+    version: configFile.TAGVICO_AI_VERSION,
     ocrEnabled: ocrService.isEnabled(),
     ocrProvider: config.ocr?.provider || 'mistral'
   });
@@ -4413,7 +4490,7 @@ router.get('/operations', async (req, res) => {
 
 router.get('/api/rag-test', protectApiRoute, retiredApiRoute('RAG features have been removed from Tagvico AI.'));
 
-router.get('/dashboard/doc/:id', async (req, res) => {
+router.get('/dashboard/doc/:id', async (req: Req, res: Res) => {
   const docId = req.params.id;
   if (!docId) {
     return res.status(400).json({ error: 'Document ID is required' });
@@ -4421,7 +4498,7 @@ router.get('/dashboard/doc/:id', async (req, res) => {
   try {
     // Redirect to paperless-ngx and show detail page of the document (for example https://paperless.example.com/documents/887/details)
     const paperlessUrl = process.env.PAPERLESS_API_URL;
-    const paperlessUrlWithoutApi = paperlessUrl.replace('/api', '');
+    const paperlessUrlWithoutApi = (paperlessUrl || '').replace('/api', '');
     const redirectUrl = `${paperlessUrlWithoutApi}/documents/${docId}/details`;
     console.log('Redirecting to Paperless-ngx URL:', redirectUrl);
     res.redirect(redirectUrl);
@@ -4431,14 +4508,14 @@ router.get('/dashboard/doc/:id', async (req, res) => {
   }
 });
 
-router.post('/api/scan/stop', async (req, res) => {
-  const control = global.__tagvicoScanControl;
+router.post('/api/scan/stop', async (req: Req, res: Res) => {
+  const control = (global as typeof global & { __tagvicoScanControl?: { running: boolean; stopRequested: boolean } }).__tagvicoScanControl;
   if (!control?.running) return res.status(409).json({ error: 'No scan is running' });
   control.stopRequested = true;
   res.json({ success: true, message: 'The scan will stop before the next document' });
 });
 
-router.get('/api/ocr/queue', async (req, res) => {
+router.get('/api/ocr/queue', async (req: Req, res: Res) => {
   const page = await documentModel.getOcrQueuePage({
     search: String(req.query.search || ''),
     status: String(req.query.status || ''),
@@ -4448,7 +4525,7 @@ router.get('/api/ocr/queue', async (req, res) => {
   res.json(page);
 });
 
-router.post('/api/ocr/queue', express.json(), async (req, res) => {
+router.post('/api/ocr/queue', express.json(), async (req: Req, res: Res) => {
   const documentId = Number(req.body?.documentId);
   if (!Number.isInteger(documentId) || documentId <= 0) return res.status(400).json({ error: 'A valid documentId is required' });
   const document = await paperlessService.getDocument(documentId);
@@ -4456,26 +4533,26 @@ router.post('/api/ocr/queue', express.json(), async (req, res) => {
   res.status(201).json({ success: true });
 });
 
-router.delete('/api/ocr/queue/:id', async (req, res) => {
+router.delete('/api/ocr/queue/:id', async (req: Req, res: Res) => {
   const removed = await documentModel.removeFromOcrQueue(Number(req.params.id));
   res.status(removed ? 200 : 409).json({ success: removed });
 });
 
-router.post('/api/ocr/process/:id', async (req, res) => {
+router.post('/api/ocr/process/:id', async (req: Req, res: Res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  const send = (step, message, data = {}) => res.write(`data: ${JSON.stringify({ step, message, ...data })}\n\n`);
+  const send = (step: string, message: string, data: UnknownRecord = {}) => res.write(`data: ${JSON.stringify({ step, message, ...data })}\n\n`);
   try {
     await ocrService.process(Number(req.params.id), send);
   } catch (error) {
-    send('error', error.message);
+    send('error', errorMessage(error));
   } finally {
     res.end();
   }
 });
 
-router.get('/api/failures', async (req, res) => {
+router.get('/api/failures', async (req: Req, res: Res) => {
   const page = await documentModel.getFailedDocumentsPage({
     search: String(req.query.search || ''),
     limit: Number(req.query.limit || 20),
@@ -4484,25 +4561,25 @@ router.get('/api/failures', async (req, res) => {
   res.json(page);
 });
 
-router.post('/api/failures/:id/reset', async (req, res) => {
+router.post('/api/failures/:id/reset', async (req: Req, res: Res) => {
   const success = await documentModel.resetFailedDocument(Number(req.params.id));
   res.status(success ? 200 : 404).json({ success });
 });
 
-router.post('/api/history/:id/rescan', async (req, res) => {
+router.post('/api/history/:id/rescan', async (req: Req, res: Res) => {
   const documentId = Number(req.params.id);
   if (!Number.isInteger(documentId) || documentId <= 0) return res.status(400).json({ error: 'Invalid document ID' });
   await documentModel.resetForRescan(documentId);
   res.json({ success: true, message: 'Document queued for the next scan' });
 });
 
-router.post('/api/history/:id/restore', async (req, res) => {
+router.post('/api/history/:id/restore', async (req: Req, res: Res) => {
   const documentId = Number(req.params.id);
   const original = await documentModel.getOriginalData(documentId);
   if (!original) return res.status(404).json({ error: 'No original snapshot is available' });
-  let snapshot;
+  let snapshot: Record<string, unknown>;
   try { snapshot = JSON.parse(original.snapshot_json || '{}'); } catch { snapshot = {}; }
-  const update = {
+  const update: Record<string, unknown> = {
     title: snapshot.title ?? original.title,
     tags: snapshot.tags ?? JSON.parse(original.tags || '[]'),
     correspondent: snapshot.correspondent ?? original.correspondent,
@@ -4519,7 +4596,7 @@ router.post('/api/history/:id/restore', async (req, res) => {
   res.json({ success: true });
 });
 
-router.get('/api/codex/status', allowDuringSetup, async (req, res) => {
+router.get('/api/codex/status', allowDuringSetup, async (req: Req, res: Res) => {
   try {
     const account = await codexAuthService.account();
     const current = account.account;
@@ -4530,7 +4607,7 @@ router.get('/api/codex/status', allowDuringSetup, async (req, res) => {
   } catch { res.json(await codexService.getStatus()); }
 });
 
-router.get('/api/codex/models', allowDuringSetup, async (req, res) => {
+router.get('/api/codex/models', allowDuringSetup, async (req: Req, res: Res) => {
   try {
     const account = await codexAuthService.account();
     if (account.account?.type !== 'chatgpt') {
@@ -4541,80 +4618,80 @@ router.get('/api/codex/models', allowDuringSetup, async (req, res) => {
       success: true,
       planType: account.account.planType || null,
       models,
-      defaultModel: models.find((model) => model.isDefault)?.id || models[0]?.id || null
+      defaultModel: models.find((model: { id: string; isDefault?: boolean }) => model.isDefault)?.id || models[0]?.id || null
     });
   } catch (error) {
-    res.status(502).json({ success: false, error: error.message || 'Could not load ChatGPT subscription models' });
+    res.status(502).json({ success: false, error: errorMessage(error) || 'Could not load ChatGPT subscription models' });
   }
 });
 
-router.post('/api/codex/login', allowDuringSetup, express.json(), async (req, res) => {
+router.post('/api/codex/login', allowDuringSetup, express.json(), async (req: Req, res: Res) => {
   try { res.json(await codexAuthService.login(req.body?.type === 'chatgpt' ? 'chatgpt' : 'chatgptDeviceCode')); }
-  catch (error) { res.status(502).json({ error: error.message }); }
+  catch (error) { res.status(502).json({ error: errorMessage(error) }); }
 });
 
-router.get('/api/codex/login/:loginId', allowDuringSetup, (req, res) => {
+router.get('/api/codex/login/:loginId', allowDuringSetup, (req: Req, res: Res) => {
   const status = codexAuthService.loginStatus(req.params.loginId);
   if (!status) return res.status(404).json({ error: 'Login flow not found or expired' });
   res.json(status);
 });
 
-router.post('/api/codex/login/:loginId/cancel', allowDuringSetup, async (req, res) => {
+router.post('/api/codex/login/:loginId/cancel', allowDuringSetup, async (req: Req, res: Res) => {
   try { res.json(await codexAuthService.cancel(req.params.loginId)); }
-  catch (error) { res.status(502).json({ error: error.message }); }
+  catch (error) { res.status(502).json({ error: errorMessage(error) }); }
 });
 
-router.post('/api/codex/logout', allowDuringSetup, async (req, res) => {
+router.post('/api/codex/logout', allowDuringSetup, async (req: Req, res: Res) => {
   try { await codexAuthService.logout(); res.json({ success: true }); }
-  catch (error) { res.status(502).json({ error: error.message }); }
+  catch (error) { res.status(502).json({ error: errorMessage(error) }); }
 });
 
-router.get('/api/copilot/status', allowDuringSetup, async (req, res) => {
+router.get('/api/copilot/status', allowDuringSetup, async (req: Req, res: Res) => {
   const status = await copilotService.status();
   res.status(status.ok ? 200 : 401).json(status);
 });
 
-router.get('/api/copilot/models', allowDuringSetup, async (req, res) => {
+router.get('/api/copilot/models', allowDuringSetup, async (req: Req, res: Res) => {
   const status = await copilotService.status();
   if (!status.ok) return res.status(401).json(status);
   res.json({ success: true, models: status.models, defaultModel: status.models[0]?.id || null });
 });
 
-router.post('/api/copilot/login', allowDuringSetup, async (req, res) => {
+router.post('/api/copilot/login', allowDuringSetup, async (req: Req, res: Res) => {
   try { res.json(await copilotAuthService.login()); }
-  catch (error) { res.status(500).json({ success: false, error: error.message || 'Could not start GitHub Copilot login' }); }
+  catch (error) { res.status(500).json({ success: false, error: errorMessage(error) || 'Could not start GitHub Copilot login' }); }
 });
 
-router.get('/api/copilot/login/:loginId', allowDuringSetup, (req, res) => {
+router.get('/api/copilot/login/:loginId', allowDuringSetup, (req: Req, res: Res) => {
   const status = copilotAuthService.loginStatus(req.params.loginId);
   if (!status) return res.status(404).json({ success: false, error: 'Unknown GitHub Copilot login' });
   res.json(status);
 });
 
-router.post('/api/copilot/login/:loginId/cancel', allowDuringSetup, (req, res) => {
+router.post('/api/copilot/login/:loginId/cancel', allowDuringSetup, (req: Req, res: Res) => {
   const cancelled = copilotAuthService.cancel(req.params.loginId);
   res.status(cancelled ? 200 : 404).json({ success: cancelled });
 });
 
-router.post('/api/copilot/logout', allowDuringSetup, async (req, res) => {
+router.post('/api/copilot/logout', allowDuringSetup, async (req: Req, res: Res) => {
   try { res.json(await copilotService.logout()); }
-  catch (error) { res.status(500).json({ success: false, error: error.message || 'Could not sign out of GitHub Copilot' }); }
+  catch (error) { res.status(500).json({ success: false, error: errorMessage(error) || 'Could not sign out of GitHub Copilot' }); }
 });
 
-router.post('/api/settings/clear-tag-cache', async (req, res) => {
+router.post('/api/settings/clear-tag-cache', async (req: Req, res: Res) => {
   paperlessService.clearTagCache();
   res.json({ success: true });
 });
 
-router.get('/api/tag-groups', async (req, res) => {
+router.get('/api/tag-groups', async (req: Req, res: Res) => {
   const policy = tagGroupService.getConfig();
   res.json({ ...policy, presets: tagGroupService.PRESETS });
 });
 
-router.post('/api/tag-groups', express.json(), async (req, res) => {
+router.post('/api/tag-groups', express.json(), async (req: Req, res: Res) => {
   try {
     const groups = tagGroupService.parseGroups(req.body.groups);
-    const maximum = Math.min(10, Math.max(1, parseInt(req.body.maximum || '3', 10) || 3));
+  const maximum = Math.min(10, Math.max(1, parseInt(String(req.body.maximum || '3'), 10) || 3));
     await setupService.saveTagPolicy({
       TAG_GROUPS_JSON: JSON.stringify(groups),
       CONTROLLED_TAGGING_ENABLED: req.body.enabled ? 'yes' : 'no',
@@ -4624,60 +4701,60 @@ router.post('/api/tag-groups', express.json(), async (req, res) => {
     const provisioning = await provisionControlledTags();
     res.json({ success: true, policy: tagGroupService.getConfig(), provisioning });
   } catch (error) {
-    res.status(400).json({ success: false, error: error.message });
+    res.status(400).json({ success: false, error: errorMessage(error) });
   }
 });
 
-router.get('/api/tags/unmanaged', async (req, res) => {
+router.get('/api/tags/unmanaged', async (req: Req, res: Res) => {
   try {
     const managed = new Set(tagGroupService.getConfig().vocabulary.map(tagGroupService.normalizeTag));
-    const tags = (await paperlessService.getTags()).filter((tag) => !managed.has(tagGroupService.normalizeTag(tag.name)));
+    const tags = (await paperlessService.getTags()).filter((tag: NamedItem) => !managed.has(tagGroupService.normalizeTag(tag.name)));
     res.json({ tags });
-  } catch (error) { res.status(502).json({ error: error.message }); }
+  } catch (error) { res.status(502).json({ error: errorMessage(error) }); }
 });
 
-router.post('/api/tags/unmanaged/cleanup', express.json(), async (req, res) => {
+router.post('/api/tags/unmanaged/cleanup', express.json(), async (req: Req, res: Res) => {
   const managed = new Set(tagGroupService.getConfig().vocabulary.map(tagGroupService.normalizeTag));
   const results = [];
   for (const id of Array.isArray(req.body.ids) ? req.body.ids : []) {
     try {
-      const current = (await paperlessService.getTags()).find((tag) => Number(tag.id) === Number(id));
+      const current = (await paperlessService.getTags()).find((tag: NamedItem & { document_count?: number }) => Number(tag.id) === Number(id));
       if (!current) throw new Error('Tag no longer exists');
       if (managed.has(tagGroupService.normalizeTag(current.name))) throw new Error('Tag is managed');
       if (Number(current.document_count || 0) !== 0) throw new Error('Tag is assigned to documents');
       await paperlessService.deleteUnusedTag(id);
       results.push({ id, ok: true });
-    } catch (error) { results.push({ id, ok: false, error: error.message }); }
+    } catch (error) { results.push({ id, ok: false, error: errorMessage(error) }); }
   }
   res.json({ results });
 });
 
-router.get('/api/tag-exceptions', async (req, res) => {
+router.get('/api/tag-exceptions', async (req: Req, res: Res) => {
   const rows = tagExceptionService.list(String(req.query.status || 'pending'));
-  const tagNames = new Map((await paperlessService.getTags()).map((tag) => [Number(tag.id), tag.name]));
+  const tagNames = new Map<number, string>((await paperlessService.getTags()).map((tag: NamedItem) => [Number(tag.id), tag.name]));
   const valid = new Set(tagGroupService.getConfig().vocabulary.map(tagGroupService.normalizeTag));
-  const enriched = await Promise.all(rows.map(async (row) => {
+  const enriched = await Promise.all(rows.map(async (row: UnknownRecord) => {
     try {
       const document = await paperlessService.getDocument(row.document_id);
-      const currentValidTags = (document.tags || []).map((id) => tagNames.get(Number(typeof id === 'object' ? id.id : id))).filter((name) => name && valid.has(tagGroupService.normalizeTag(name)));
+      const currentValidTags = (document.tags || []).map((id: number | { id: number }) => tagNames.get(Number(typeof id === 'object' ? id.id : id))).filter((name: string | undefined): name is string => Boolean(name && valid.has(tagGroupService.normalizeTag(name))));
       return { ...row, document: { id: document.id, title: document.title, tags: document.tags }, currentValidTags };
     } catch { return { ...row, document: null }; }
   }));
   res.json({ exceptions: enriched, groups: tagGroupService.getConfig().groups });
 });
 
-router.post('/api/tag-exceptions/:id/reject', (req, res) => {
+router.post('/api/tag-exceptions/:id/reject', (req: Req, res: Res) => {
   const result = tagExceptionService.resolve(Number(req.params.id), 'rejected');
   if (!result.changes) return res.status(409).json({ error: 'Exception is no longer pending' });
   res.json({ success: true });
 });
 
-router.post('/api/tag-exceptions/:id/approve', express.json(), async (req, res) => {
+router.post('/api/tag-exceptions/:id/approve', express.json(), async (req: Req, res: Res) => {
   try {
     const exception = tagExceptionService.get(Number(req.params.id));
     if (!exception || exception.status !== 'pending') return res.status(409).json({ error: 'Exception is no longer pending' });
     const policy = tagGroupService.getConfig();
-    const group = policy.groups.find((item) => item.id === String(req.body.groupId || ''));
+    const group = policy.groups.find((item: { id: string; enabled: boolean; tags: string[] }) => item.id === String(req.body.groupId || ''));
     if (!group) return res.status(400).json({ error: 'A valid destination group is required' });
     if (!group.enabled) return res.status(400).json({ error: 'The destination group must be enabled' });
     group.tags = tagGroupService.cleanTags([...group.tags, exception.suggested_name]);
@@ -4695,19 +4772,19 @@ router.post('/api/tag-exceptions/:id/approve', express.json(), async (req, res) 
     }
     tagExceptionService.resolve(exception.id, 'approved', group.id);
     res.json({ success: true, tag, applied });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) { res.status(500).json({ error: errorMessage(error) }); }
 });
 
-router.get('/api/reconciliation/preview', async (req, res) => {
+router.get('/api/reconciliation/preview', async (req: Req, res: Res) => {
   const documentIds = await reconciliationService.preview();
   res.json({ count: documentIds.length, documentIds });
 });
 
-router.post('/api/reconciliation/run', async (req, res) => {
+router.post('/api/reconciliation/run', async (req: Req, res: Res) => {
   res.json(await reconciliationService.run());
 });
 
-router.post('/api/mfa/setup', async (req, res) => {
+router.post('/api/mfa/setup', async (req: Req, res: Res) => {
   const username = req.user?.username;
   if (!username) return res.status(401).json({ error: 'User authentication is required' });
   const secret = totpService.generateSecret();
@@ -4715,7 +4792,7 @@ router.post('/api/mfa/setup', async (req, res) => {
   res.json({ secret, provisioningUri: totpService.provisioningUri(secret, username) });
 });
 
-router.post('/api/mfa/verify', express.json(), async (req, res) => {
+router.post('/api/mfa/verify', express.json(), async (req: Req, res: Res) => {
   const username = req.user?.username;
   const pending = pendingMfaSecrets.get(username);
   if (!pending || pending.expiresAt < Date.now()) return res.status(400).json({ error: 'MFA setup expired' });
@@ -4725,7 +4802,7 @@ router.post('/api/mfa/verify', express.json(), async (req, res) => {
   res.json({ success: true });
 });
 
-router.post('/api/mfa/disable', express.json(), async (req, res) => {
+router.post('/api/mfa/disable', express.json(), async (req: Req, res: Res) => {
   const username = req.user?.username;
   const user = await documentModel.getUser(username);
   if (!user || !await bcrypt.compare(String(req.body?.password || ''), user.password)) return res.status(403).json({ error: 'Current password is invalid' });

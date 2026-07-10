@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 // services/customFieldsService.js
 //
 // Discovers and validates the custom fields defined in the connected
@@ -7,8 +6,26 @@
 // and used locally to drop values that don't match the declared type
 // before we issue a PATCH.
 
-const axios = require('axios');
+import axios from 'axios';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const config = require('../config/config');
+
+interface RawCustomField {
+  id?: string | number;
+  name?: string;
+  data_type?: string;
+  dataType?: string;
+  extra_data?: { select_options?: unknown[]; default_currency?: unknown };
+}
+interface CustomField {
+  id?: string | number;
+  name: string;
+  type: string;
+  allowed_values?: string[];
+  currency?: string;
+}
+interface ModelFieldValue { field_name?: unknown; name?: unknown; value?: unknown }
+interface DroppedField { field: string; reason: string }
 
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const VALID_DATA_TYPES = new Set([
@@ -23,14 +40,14 @@ const VALID_DATA_TYPES = new Set([
   'select'
 ]);
 
-let cache = {
+let cache: { fetchedAt: number; url: string | null; token: string | null; fields: CustomField[] } = {
   fetchedAt: 0,
   url: null,
   token: null,
   fields: []
 };
 
-function buildClient(paperlessUrl, token) {
+function buildClient(paperlessUrl: string, token: string) {
   return axios.create({
     baseURL: paperlessUrl,
     headers: {
@@ -40,29 +57,31 @@ function buildClient(paperlessUrl, token) {
   });
 }
 
-function normalizeField(raw) {
+function normalizeField(raw: unknown): CustomField | null {
   if (!raw || typeof raw !== 'object') return null;
 
-  const dataType = String(raw.data_type || raw.dataType || 'string').toLowerCase();
+  const field = raw as RawCustomField;
+
+  const dataType = String(field.data_type || field.dataType || 'string').toLowerCase();
   const normalizedType = VALID_DATA_TYPES.has(dataType) ? dataType : 'string';
 
-  const out = {
-    id: raw.id,
-    name: raw.name,
+  const out: CustomField = {
+    id: field.id,
+    name: String(field.name ?? ''),
     type: normalizedType
   };
 
   // Paperless exposes extra_data.select_options for `select` fields.
-  if (normalizedType === 'select' && raw.extra_data && Array.isArray(raw.extra_data.select_options)) {
-    out.allowed_values = raw.extra_data.select_options.map((opt) => String(opt));
-  } else if (Array.isArray(raw.extra_data?.select_options)) {
-    out.allowed_values = raw.extra_data.select_options.map((opt) => String(opt));
+  if (normalizedType === 'select' && field.extra_data && Array.isArray(field.extra_data.select_options)) {
+    out.allowed_values = field.extra_data.select_options.map((opt: unknown) => String(opt));
+  } else if (Array.isArray(field.extra_data?.select_options)) {
+    out.allowed_values = field.extra_data.select_options.map((opt: unknown) => String(opt));
   }
 
   // Currency hint for monetary fields — used by the test cases and by
   // any future locale-aware parsing.
-  if (normalizedType === 'monetary' && raw.extra_data?.default_currency) {
-    out.currency = String(raw.extra_data.default_currency);
+  if (normalizedType === 'monetary' && field.extra_data?.default_currency) {
+    out.currency = String(field.extra_data.default_currency);
   }
 
   return out;
@@ -77,7 +96,7 @@ function normalizeField(raw) {
  * @param {string} [token] - Override the configured API token.
  * @returns {Promise<Array<{id, name, type, allowed_values?, currency?}>>}
  */
-async function listFields(paperlessUrl, token) {
+async function listFields(paperlessUrl?: string, token?: string): Promise<CustomField[]> {
   const url = paperlessUrl || config.paperless?.apiUrl;
   const tk = token || config.paperless?.apiToken;
   if (!url || !tk) return [];
@@ -93,11 +112,11 @@ async function listFields(paperlessUrl, token) {
   }
 
   const client = buildClient(url, tk);
-  const collected = [];
-  let next = '/custom_fields/';
+  const collected: CustomField[] = [];
+  let next: string | null = '/custom_fields/';
   try {
     while (next) {
-      const response = await client.get(next);
+      const response: { data?: { results?: unknown[]; next?: string | null } } = await client.get(next);
       const results = response?.data?.results;
       if (!Array.isArray(results)) break;
       for (const raw of results) {
@@ -107,7 +126,7 @@ async function listFields(paperlessUrl, token) {
       next = response?.data?.next || null;
     }
   } catch (error) {
-    console.warn('[WARN] Failed to list custom fields:', error.message);
+    console.warn('[WARN] Failed to list custom fields:', error instanceof Error ? error.message : String(error));
     return cache.fields;
   }
 
@@ -137,9 +156,9 @@ function invalidate() {
  * @param {Array<object>} fields
  * @returns {string} Pretty-printed JSON
  */
-function formatForPrompt(fields) {
+function formatForPrompt(fields: CustomField[]): string {
   const minimal = (fields || []).map((f) => {
-    const entry = { id: f.id, name: f.name, type: f.type };
+    const entry: CustomField = { id: f.id, name: f.name, type: f.type };
     if (f.allowed_values && f.allowed_values.length) {
       entry.allowed_values = f.allowed_values;
     }
@@ -159,14 +178,12 @@ function formatForPrompt(fields) {
  * @param {*} value - The value the model produced.
  * @returns {string|null}
  */
-function validateValue(field, value) {
+function validateValue(field: CustomField | undefined, value: unknown): string | null {
   if (!field) return 'unknown field';
   if (value === undefined) return 'missing value';
   if (value === null) return null; // null is the universal "clear" sentinel
 
   const type = field.type;
-  const stringValue = typeof value === 'string' ? value.trim() : value;
-
   switch (type) {
     case 'string':
       // Any string is acceptable.
@@ -224,10 +241,9 @@ function validateValue(field, value) {
       if (typeof value !== 'string') return `expected url string, got ${typeof value}`;
       try {
         // new URL rejects bare strings like "not a url".
-        // eslint-disable-next-line no-new
         new URL(value);
         return null;
-      } catch (e) {
+      } catch {
         return `expected url, got ${JSON.stringify(value)}`;
       }
     }
@@ -260,9 +276,9 @@ function validateValue(field, value) {
  * @param {object} modelOutput - { field_name: { field_name, value } | { name, value } }
  * @returns {{ valid: object, dropped: Array<{ field: string, reason: string }> }}
  */
-function sanitize(fields, modelOutput) {
-  const valid = {};
-  const dropped = [];
+function sanitize(fields: CustomField[], modelOutput: unknown): { valid: Record<string, unknown>; dropped: DroppedField[] } {
+  const valid: Record<string, unknown> = {};
+  const dropped: DroppedField[] = [];
   if (!modelOutput || typeof modelOutput !== 'object') {
     return { valid, dropped };
   }
@@ -273,20 +289,21 @@ function sanitize(fields, modelOutput) {
 
   for (const [key, raw] of Object.entries(modelOutput)) {
     if (!raw || typeof raw !== 'object') continue;
-    const name = String(raw.field_name || raw.name || key).toLowerCase();
+    const value = raw as ModelFieldValue;
+    const name = String(value.field_name || value.name || key).toLowerCase();
     const field = byName.get(name);
     if (!field) {
       dropped.push({ field: name, reason: 'unknown field' });
       continue;
     }
-    const reason = validateValue(field, raw.value);
+    const reason = validateValue(field, value.value);
     if (reason) {
       // Logging only field name + reason, never the value or document body.
       console.warn(`[WARN] Custom field "${field.name}" value rejected: ${reason}`);
       dropped.push({ field: field.name, reason });
       continue;
     }
-    valid[field.name] = raw.value;
+    valid[field.name] = value.value;
   }
 
   return { valid, dropped };

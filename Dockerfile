@@ -36,11 +36,11 @@ RUN chmod +x start-services.sh
 VOLUME ["/app/data"]
 
 # Configure the Tagvico AI application port.
-EXPOSE ${ARCHIVISTA_AI_PORT:-3000}
+EXPOSE ${TAGVICO_AI_PORT:-3000}
 
 # Add health check with dynamic port
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:${ARCHIVISTA_AI_PORT:-3000}/health || exit 1
+    CMD port="${TAGVICO_AI_PORT:-${ARCHIVISTA_AI_PORT:-3000}}"; curl -f "http://localhost:${port}/health" || exit 1
 
 # Set production environment
 ENV NODE_ENV=production

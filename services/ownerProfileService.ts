@@ -1,5 +1,27 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
-function normalize(value) {
+interface PaperlessUser {
+  id: number;
+  username: string;
+  email?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+interface OwnerHint {
+  value: string;
+  weight: number;
+  kind: string;
+}
+
+interface OwnerCandidate {
+  user: PaperlessUser;
+  score: number;
+  matched: OwnerHint[];
+}
+
+type ProfileMap = Map<string, string[]>;
+type AnalysisValue = Record<string, unknown> & { document?: Record<string, unknown> };
+
+function normalize(value: unknown): string {
   return String(value || '')
     .toLowerCase()
     .normalize('NFKD')
@@ -8,7 +30,7 @@ function normalize(value) {
     .trim();
 }
 
-function tokenize(value) {
+function tokenize(value: unknown): string[] {
   return normalize(value)
     .split(/\s+/)
     .filter((part) => part.length >= 3);
@@ -24,8 +46,8 @@ const GENERIC_USER_TOKENS = new Set([
   'system'
 ]);
 
-function parseProfileLines(rawProfiles = '') {
-  const map = new Map();
+function parseProfileLines(rawProfiles = ''): ProfileMap {
+  const map: ProfileMap = new Map();
   String(rawProfiles || '')
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -43,8 +65,8 @@ function parseProfileLines(rawProfiles = '') {
   return map;
 }
 
-function uniqueHints(hints) {
-  const seen = new Set();
+function uniqueHints(hints: OwnerHint[]): OwnerHint[] {
+  const seen = new Set<string>();
   return hints.filter((hint) => {
     if (!hint.value || seen.has(hint.value)) return false;
     seen.add(hint.value);
@@ -52,13 +74,13 @@ function uniqueHints(hints) {
   });
 }
 
-function hint(value, weight, kind) {
+function hint(value: unknown, weight: number, kind: string): OwnerHint | null {
   const normalized = normalize(value);
   if (normalized.length < 3) return null;
   return { value: normalized, weight, kind };
 }
 
-function userHints(user, profileMap) {
+function userHints(user: PaperlessUser, profileMap: ProfileMap): OwnerHint[] {
   const username = normalize(user.username);
   const profileHints = profileMap.get(username) || [];
   const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
@@ -72,15 +94,15 @@ function userHints(user, profileMap) {
       hint(profileHint, profileHint.includes(' ') ? 6 : 4, 'profile'),
       ...tokenize(profileHint).map((token) => hint(token, 2, 'profile-token'))
     ])
-  ].filter(Boolean);
+  ].filter((item): item is OwnerHint => item !== null);
 
   return uniqueHints(hints);
 }
 
-function scoreProfile(text, hints) {
+function scoreProfile(text: string, hints: OwnerHint[]): { score: number; matched: OwnerHint[] } {
   const haystack = ` ${normalize(text)} `;
   let score = 0;
-  const matched = [];
+  const matched: OwnerHint[] = [];
   for (const item of hints) {
     const needle = ` ${item.value} `;
     if (haystack.includes(needle)) {
@@ -91,7 +113,7 @@ function scoreProfile(text, hints) {
   return { score, matched };
 }
 
-function isClearWinner(candidates) {
+function isClearWinner(candidates: OwnerCandidate[]): boolean {
   if (!candidates.length) return false;
   const [winner, runnerUp] = candidates;
   if (winner.score < 7) return false;
@@ -101,8 +123,12 @@ function isClearWinner(candidates) {
   return winner.score - runnerUp.score >= 3 && winner.score >= runnerUp.score * 1.5;
 }
 
-function buildContext(content, analysis = {}, doc = {}) {
-  const analyzed = analysis.document || analysis || {};
+function buildContext(
+  content: string,
+  analysis: AnalysisValue = {},
+  doc: Record<string, unknown> = {}
+): string {
+  const analyzed = analysis.document || analysis;
   return [
     doc.title,
     analyzed.title,
@@ -113,7 +139,19 @@ function buildContext(content, analysis = {}, doc = {}) {
   ].filter(Boolean).join('\n');
 }
 
-function findOwnerMatch({ content = '', analysis = {}, doc = {}, users = [], rawProfiles = '' }) {
+function findOwnerMatch({
+  content = '',
+  analysis = {},
+  doc = {},
+  users = [],
+  rawProfiles = ''
+}: {
+  content?: string;
+  analysis?: AnalysisValue;
+  doc?: Record<string, unknown>;
+  users?: PaperlessUser[];
+  rawProfiles?: string;
+}) {
   const profileMap = parseProfileLines(rawProfiles);
   const context = buildContext(content, analysis, doc);
   const candidates = users

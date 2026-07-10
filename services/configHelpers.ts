@@ -6,7 +6,32 @@ const {
 } = require('./providerCatalogService');
 
 type Scalar = string | number | boolean | null | undefined;
-type ConfigLike = Record<string, any>;
+type ConfigLike = Record<string, unknown>;
+type Environment = Record<string, string | undefined>;
+
+const warnedLegacyEnvironmentVariables = new Set<string>();
+
+/**
+ * Resolve a canonical environment variable while retaining a legacy fallback
+ * until the next major release. Warnings are emitted once per process and use
+ * console.warn deliberately: configHelpers is loaded by the central config
+ * module, so importing loggerService here would introduce a dependency cycle.
+ */
+function resolveEnv(
+  canonical: string,
+  legacy: string,
+  env: Environment = process.env
+): string | undefined {
+  const canonicalValue = env[canonical];
+  if (canonicalValue !== undefined) return canonicalValue;
+
+  const legacyValue = env[legacy];
+  if (legacyValue !== undefined && !warnedLegacyEnvironmentVariables.has(legacy)) {
+    warnedLegacyEnvironmentVariables.add(legacy);
+    console.warn(`[DEPRECATION] ${legacy} is deprecated; use ${canonical}. Support will be removed in 2.0.`);
+  }
+  return legacyValue;
+}
 
 function normalizeArray(value: Scalar | string[] = ''): string[] {
   if (!value) return [];
@@ -44,7 +69,7 @@ function parseBooleanFlag(value: Scalar, fallback = 'no'): string {
   return ['yes', 'true', '1', 'on'].includes(normalized) ? 'yes' : 'no';
 }
 
-function buildUiConfig(env: ConfigLike = process.env, version = '') {
+function buildUiConfig(env: Environment = process.env, version = '') {
   const tagGroupService = require('./tagGroupService');
   const provider = normalizeProvider(env.AI_PROVIDER);
   const effectiveModel = getEffectiveModel(env);
@@ -112,7 +137,7 @@ function buildUiConfig(env: ConfigLike = process.env, version = '') {
     CUSTOM_FIELDS: env.CUSTOM_FIELDS || '{"custom_fields":[]}',
     API_KEY: env.API_KEY || '',
     AI_REASONING_EFFORT: env.AI_REASONING_EFFORT || 'low',
-    ARCHIVISTA_AI_VERSION: version,
+    TAGVICO_AI_VERSION: version || resolveEnv('TAGVICO_AI_VERSION', 'ARCHIVISTA_AI_VERSION', env) || '',
     SYSTEM_PROMPT: ''
   };
 }
@@ -169,5 +194,6 @@ export = {
   normalizeProviderPayload,
   parseBooleanFlag,
   processSystemPrompt,
+  resolveEnv,
   serializeArray
 };

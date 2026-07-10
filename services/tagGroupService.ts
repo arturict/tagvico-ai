@@ -1,4 +1,9 @@
 type TagGroup = { id: string; name: string; preset?: boolean; permanent?: boolean; enabled: boolean; tags: string[] };
+type Environment = Record<string, unknown>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 
 const PRESETS: Array<Omit<TagGroup, 'enabled'>> = [
   { id: 'finance', name: 'Finance', preset: true, tags: ['Invoice', 'Receipt', 'Bank Statement', 'Tax', 'Payment', 'Budget'] },
@@ -32,8 +37,11 @@ function defaults(): TagGroup[] {
 }
 
 function parseGroups(value: unknown): TagGroup[] {
-  let supplied: any[] = [];
-  try { supplied = Array.isArray(value) ? value : JSON.parse(String(value || '[]')); } catch { supplied = []; }
+  let supplied: Record<string, unknown>[] = [];
+  try {
+    const parsed: unknown = Array.isArray(value) ? value : JSON.parse(String(value || '[]'));
+    supplied = Array.isArray(parsed) ? parsed.filter(isRecord) : [];
+  } catch { supplied = []; }
   const byId = new Map(supplied.filter(Boolean).map((group) => [String(group.id || ''), group]));
   const groups = defaults().map((base) => {
     const override = byId.get(base.id);
@@ -58,13 +66,13 @@ function flattenVocabulary(groups: TagGroup[]): string[] {
   return [...vocabulary.values()];
 }
 
-function getConfig(env: Record<string, any> = process.env) {
+function getConfig(env: Environment = process.env) {
   const groups = parseGroups(env.TAG_GROUPS_JSON);
   const maximum = Math.min(10, Math.max(1, Number.parseInt(String(env.TAG_MAX_PER_DOCUMENT || '3'), 10) || 3));
   return { enabled: String(env.CONTROLLED_TAGGING_ENABLED || 'no') === 'yes', maximum, groups, vocabulary: flattenVocabulary(groups) };
 }
 
-function enforceSuggestions(suggestions: unknown, env: Record<string, any> = process.env) {
+function enforceSuggestions(suggestions: unknown, env: Environment = process.env) {
   const policy = getConfig(env);
   const unknown: string[] = [];
   if (!policy.enabled) return { valid: cleanTags(suggestions), unknown, policy };
@@ -82,7 +90,7 @@ function enforceSuggestions(suggestions: unknown, env: Record<string, any> = pro
   return { valid, unknown, policy };
 }
 
-function promptContract(env: Record<string, any> = process.env): string {
+function promptContract(env: Environment = process.env): string {
   const policy = getConfig(env);
   if (!policy.enabled) return '';
   return `CONTROLLED TAGGING: Return at most ${policy.maximum} tags. Use only exact, case-sensitive names from this JSON vocabulary: ${JSON.stringify(policy.vocabulary)}. Never translate, alter, or invent a tag.`;

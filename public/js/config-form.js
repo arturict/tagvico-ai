@@ -21,6 +21,7 @@ class ConfigFormApp {
     this.initCodexStatus();
     this.initCopilotStatus();
     this.initSubmit();
+    this.initOnboardingProgress();
   }
 
   initTagGroups() {
@@ -106,13 +107,19 @@ class ConfigFormApp {
       const exceptionData = await exceptionResponse.json();
       const unmanagedData = await unmanagedResponse.json();
       const enabledGroups = (exceptionData.groups || []).filter((group) => group.enabled);
-      const exceptionRows = (exceptionData.exceptions || []).map((item) => `
-        <div class="choice-card" data-exception="${item.id}"><strong>${this.escapeHtml(item.suggested_name)}</strong>
-        <span>${this.escapeHtml(item.document?.title || `Document ${item.document_id}`)} · ${this.escapeHtml(item.created_at)}</span>
-        <small>Current valid tags: ${this.escapeHtml((item.currentValidTags || []).join(', ') || 'none')}</small>
-        <select data-exception-group><option value="">Choose destination group</option>${enabledGroups.map((group) => `<option value="${this.escapeHtml(group.id)}">${this.escapeHtml(group.name)}</option>`).join('')}</select>
-        <button type="button" class="button-secondary" data-approve-exception>Approve</button>
-        <button type="button" class="button-danger" data-reject-exception>Reject</button></div>`).join('');
+      const exceptionRows = (exceptionData.exceptions || []).map((item) => {
+        const groupOptions = enabledGroups.map((group) =>
+          `<option value="${this.escapeHtml(group.id)}">${this.escapeHtml(group.name)}</option>`
+        ).join('');
+        const title = item.document?.title || `Document ${item.document_id}`;
+        return `
+          <div class="choice-card" data-exception="${item.id}"><strong>${this.escapeHtml(item.suggested_name)}</strong>
+          <span>${this.escapeHtml(title)} · ${this.escapeHtml(item.created_at)}</span>
+          <small>Current valid tags: ${this.escapeHtml((item.currentValidTags || []).join(', ') || 'none')}</small>
+          <select data-exception-group><option value="">Choose destination group</option>${groupOptions}</select>
+          <button type="button" class="button-secondary" data-approve-exception>Approve</button>
+          <button type="button" class="button-danger" data-reject-exception>Reject</button></div>`;
+      }).join('');
       exceptionRoot.innerHTML = `<h3>Pending tag exceptions</h3>${exceptionRows || '<p class="field-hint">No pending exceptions.</p>'}`;
       unmanagedRoot.innerHTML = `<h3>Unmanaged Paperless tags</h3>${(unmanagedData.tags || []).map((tag) => `<label class="choice-card"><input type="checkbox" data-unmanaged-id="${tag.id}" ${Number(tag.document_count) ? 'disabled' : ''}> ${this.escapeHtml(tag.name)} <span class="badge">${Number(tag.document_count || 0)} documents</span></label>`).join('') || '<p class="field-hint">No unmanaged tags.</p>'}<button type="button" class="button-danger" id="cleanupUnmanaged">Delete selected zero-use tags</button>`;
       exceptionRoot.onclick = async (event) => {
@@ -918,6 +925,65 @@ class ConfigFormApp {
         submit.textContent = previous;
       }
     });
+  }
+
+  // Goal-gradient onboarding progress: never starts at 0%. Simply opening the
+  // setup screen already counts as the first completed step, and the bar fills
+  // as the user connects Paperless, creates a login, and picks a model.
+  initOnboardingProgress() {
+    const bar = document.getElementById('onboardingProgressFill');
+    const pctLabel = document.getElementById('onboardingProgressPct');
+    const countLabel = document.getElementById('onboardingProgressCount');
+    const track = document.getElementById('onboardingProgressBar');
+    if (!bar || !this.form) return;
+
+    // "start" is pre-credited (goal-gradient head start).
+    const steps = [
+      { key: 'start', done: () => true },
+      { key: 'paperless', done: () => {
+        const url = document.getElementById('paperlessUrl')?.value.trim();
+        const token = document.getElementById('paperlessToken')?.value.trim();
+        return Boolean(url && token);
+      } },
+      { key: 'login', done: () => {
+        const user = document.getElementById('username')?.value.trim();
+        const pass = document.getElementById('password')?.value.trim();
+        return Boolean(user && pass);
+      } },
+      { key: 'model', done: () => Boolean(this.modelInput?.value.trim()) },
+      { key: 'finish', done: () => false }
+    ];
+    const stepNodes = new Map(
+      Array.from(document.querySelectorAll('[data-onboarding-step]'))
+        .map((node) => [node.dataset.onboardingStep, node])
+    );
+
+    const render = () => {
+      let completed = 0;
+      let firstIncomplete = null;
+      steps.forEach((step) => {
+        const isDone = step.done();
+        if (isDone) completed += 1;
+        else if (!firstIncomplete) firstIncomplete = step.key;
+        const node = stepNodes.get(step.key);
+        if (node) {
+          node.classList.toggle('is-complete', isDone);
+          node.classList.toggle('is-active', step.key === firstIncomplete);
+        }
+      });
+      // Percentage of the five steps, floored at the head-start value so the
+      // bar never drops back to zero once the page is open.
+      const pct = Math.max(20, Math.round((completed / steps.length) * 100));
+      bar.style.width = `${pct}%`;
+      if (pctLabel) pctLabel.textContent = `${pct}%`;
+      if (track) track.setAttribute('aria-valuenow', String(pct));
+      if (countLabel) {
+        countLabel.textContent = `${completed} of ${steps.length} steps done`;
+      }
+    };
+
+    ['input', 'change'].forEach((evt) => this.form.addEventListener(evt, () => render()));
+    render();
   }
 }
 

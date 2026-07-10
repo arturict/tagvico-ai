@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 'use strict';
 
 /**
@@ -9,12 +8,37 @@
  * unit-test and reuse from the route layer. Numbers are coerced so empty
  * installations (zero documents / zero metrics) never produce NaN.
  */
-function num(value) {
+type MetricEntry = Record<string, unknown>;
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { estimateCost } = require('./modelPricing');
+
+interface PaperlessDashboardData {
+  documentCount?: unknown;
+  processedDocumentCount?: unknown;
+  tokenDistribution?: MetricEntry[];
+  documentTypes?: Array<{ type?: string; count?: unknown }>;
+  processingTimeStats?: MetricEntry[];
+  tagCount?: unknown;
+  correspondentCount?: unknown;
+}
+
+interface OpenAiDashboardData {
+  metricCount?: unknown;
+  averagePromptTokens?: unknown;
+  averageCompletionTokens?: unknown;
+  averageTotalTokens?: unknown;
+  tokensOverall?: unknown;
+  model?: unknown;
+  provider?: unknown;
+}
+
+function num(value: unknown): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : 0;
 }
 
-function sumBy(list, key) {
+function sumBy(list: unknown, key: string): number {
   return Array.isArray(list) ? list.reduce((acc, item) => acc + num(item?.[key]), 0) : 0;
 }
 
@@ -35,7 +59,10 @@ function sumBy(list, key) {
  * @param {number} openaiData.tokensOverall
  * @param {number} [openaiData.metricCount] - Number of metric rows backing the averages.
  */
-function buildDashboardSummary(paperlessData = {}, openaiData = {}) {
+function buildDashboardSummary(
+  paperlessData: PaperlessDashboardData = {},
+  openaiData: OpenAiDashboardData = {}
+) {
   const documentCount = num(paperlessData.documentCount);
   const processedCount = num(paperlessData.processedDocumentCount);
   const remaining = Math.max(documentCount - processedCount, 0);
@@ -72,6 +99,17 @@ function buildDashboardSummary(paperlessData = {}, openaiData = {}) {
   const tagCount = num(paperlessData.tagCount);
   const correspondentCount = num(paperlessData.correspondentCount);
 
+  // Clearly-labelled cost ESTIMATE derived from token totals and the active
+  // model's public list price. Never billed against; hidden when unavailable
+  // (no tokens tracked yet, or a free local model).
+  const cost = estimateCost({
+    promptTotal,
+    completionTotal,
+    metricCount,
+    model: openaiData.model,
+    provider: openaiData.provider
+  });
+
   return {
     counts: {
       documents: documentCount,
@@ -92,6 +130,7 @@ function buildDashboardSummary(paperlessData = {}, openaiData = {}) {
       completionPct,
       promptRatio
     },
+    cost,
     today,
     topDocumentTypes,
     tokenDistribution

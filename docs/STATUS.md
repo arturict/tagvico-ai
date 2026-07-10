@@ -4,7 +4,7 @@
 
 ## What this means
 
-Tagvico AI is in **alpha**. We are stabilizing the core filing workflow, the provider adapters, and the TypeScript migration. You can run it for real, and many people do, but the following may change at any time without a deprecation cycle:
+Tagvico AI is in **alpha**. We are stabilizing the core filing workflow and provider adapters. The TypeScript migration is complete. You can run it for real, and many people do, but the following may change at any time without a deprecation cycle:
 
 - The HTTP/REST API surface (paths, request bodies, response fields).
 - The configuration schema in `data/.env` and the setup wizard.
@@ -15,7 +15,7 @@ Tagvico AI is in **alpha**. We are stabilizing the core filing workflow, the pro
 
 ## Recommendations for alpha users
 
-- **Pin a specific release tag** in `docker-compose.yml` (for example `ghcr.io/arturict/tagvico-ai:1.1.0`), never `:latest`. We publish immutable tags per release.
+- **Pin a specific release tag** in `docker-compose.yml` (for example `ghcr.io/arturict/tagvico-ai:<version>`), never `:latest`. We publish immutable tags per release.
 - **Back up the `tagvico_ai_data` volume** before upgrading. The volume holds your admin account, provider settings, and processing history.
 - **Test upgrades on a non-production instance** if you rely on automatic metadata writes.
 - **Read the release notes** for breaking changes — they are documented per release on the [GitHub releases page](https://github.com/arturict/tagvico-ai/releases).
@@ -41,7 +41,7 @@ Security issues must **not** be filed as public issues — see [SECURITY.md](../
 
 ## Roadmap toward 1.0
 
-- Complete the TypeScript migration of all services and routes.
+- [x] Complete the TypeScript migration of all services and routes.
 - Lock the REST API surface, configuration schema, and database schema.
 - Cut a release candidate, run a community testing window, then tag 1.0.
 

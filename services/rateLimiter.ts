@@ -1,8 +1,15 @@
 type Entry = { count: number; resetAt: number };
+interface RateLimitRequest { ip?: string; socket?: { remoteAddress?: string } }
+interface RateLimitResponse {
+  setHeader(name: string, value: string): void;
+  status(code: number): RateLimitResponse;
+  json(body: unknown): unknown;
+}
+type NextFunction = () => void;
 
 function createRateLimiter({ windowMs, max, keyPrefix = 'global' }: { windowMs: number; max: number; keyPrefix?: string }) {
   const entries = new Map<string, Entry>();
-  return (req: any, res: any, next: () => void) => {
+  return (req: RateLimitRequest, res: RateLimitResponse, next: NextFunction) => {
     const now = Date.now();
     const key = `${keyPrefix}:${req.ip || req.socket?.remoteAddress || 'unknown'}`;
     const current = entries.get(key);

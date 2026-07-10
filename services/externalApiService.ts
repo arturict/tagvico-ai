@@ -1,5 +1,4 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
-const axios = require('axios');
+import axios, { type AxiosRequestConfig } from 'axios';
 const config = require('../config/config');
 const dns = require('node:dns');
 const http = require('node:http');
@@ -17,7 +16,32 @@ const MAX_SELECTOR_SEGMENTS = 64;
 const ALLOWED_METHODS = new Set(['GET', 'POST', 'PUT']);
 const FORBIDDEN_SELECTOR_SEGMENTS = new Set(['__proto__', 'constructor', 'prototype']);
 
-function normalizeHostname(hostname) {
+interface DnsRecord {
+  address: string;
+  family: 4 | 6;
+}
+interface ExternalApiConfig {
+  enabled?: string;
+  url?: string;
+  method?: string;
+  selector?: string;
+  transformationTemplate?: string;
+  transform?: string;
+  timeout?: string | number;
+  headers?: unknown;
+  body?: unknown;
+}
+interface LookupOptions { family?: number; all?: boolean }
+type LookupCallback = (error: Error | null, address?: string | DnsRecord[], family?: number) => void;
+type RequestFunction = (options: AxiosRequestConfig) => Promise<{ status?: number; data?: unknown }>;
+type ResolveHostname = (hostname: string) => Promise<unknown>;
+interface ExternalApiServiceOptions {
+  request?: RequestFunction;
+  resolveHostname?: ResolveHostname;
+  dnsLookupTimeoutMs?: number;
+}
+
+function normalizeHostname(hostname: unknown): string {
   const normalized = String(hostname || '')
     .trim()
     .toLowerCase()
@@ -25,7 +49,7 @@ function normalizeHostname(hostname) {
   return normalized.endsWith('.') ? normalized.slice(0, -1) : normalized;
 }
 
-function isBlockedHostname(hostname) {
+function isBlockedHostname(hostname: unknown): boolean {
   const normalized = normalizeHostname(hostname);
   return normalized === 'localhost' ||
     normalized.endsWith('.localhost') ||
@@ -33,7 +57,7 @@ function isBlockedHostname(hostname) {
     normalized.endsWith('.localhost.localdomain');
 }
 
-function isBlockedIpv4(address) {
+function isBlockedIpv4(address: unknown): boolean {
   const octets = String(address).split('.').map((part) => Number(part));
   if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
     return true;
@@ -56,7 +80,7 @@ function isBlockedIpv4(address) {
     first >= 224;
 }
 
-function parseIpv6Groups(address) {
+function parseIpv6Groups(address: unknown): number[] | null {
   const normalized = normalizeHostname(address).split('%')[0];
   if (net.isIP(normalized) !== 6) return null;
 
@@ -64,7 +88,7 @@ function parseIpv6Groups(address) {
   if (parts.length > 2) return null;
 
   let embeddedIpv4Seen = false;
-  const parseSegments = (part) => {
+  const parseSegments = (part: string): number[] | null => {
     if (!part) return [];
     const segments = part.split(':');
     const ipv4Index = segments.findIndex((segment) => segment.includes('.'));
@@ -95,7 +119,7 @@ function parseIpv6Groups(address) {
     : [...left, ...right];
 }
 
-function isBlockedIpv6(address) {
+function isBlockedIpv6(address: unknown): boolean {
   const groups = parseIpv6Groups(address);
   if (!groups) return true;
 
@@ -150,7 +174,7 @@ function isBlockedIpv6(address) {
  * Unknown/non-IP values are rejected too, so DNS records cannot bypass this
  * guard through malformed data.
  */
-function isBlockedIpAddress(address) {
+function isBlockedIpAddress(address: unknown): boolean {
   const normalized = normalizeHostname(address);
   const family = net.isIP(normalized);
   if (family === 4) return isBlockedIpv4(normalized);
@@ -158,13 +182,13 @@ function isBlockedIpAddress(address) {
   return true;
 }
 
-function normalizeTimeout(timeout) {
+function normalizeTimeout(timeout: unknown): number {
   const parsed = Number.parseInt(String(timeout), 10);
   if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_TIMEOUT_MS;
   return Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, parsed));
 }
 
-function normalizeMethod(method) {
+function normalizeMethod(method: unknown): string {
   const normalized = String(method || 'GET').trim().toUpperCase();
   if (!ALLOWED_METHODS.has(normalized)) {
     throw new Error('External API method must be GET, POST, or PUT');
@@ -172,7 +196,7 @@ function normalizeMethod(method) {
   return normalized;
 }
 
-function parseJsonSetting(value, label) {
+function parseJsonSetting(value: unknown, label: string): unknown {
   if (value && typeof value === 'object') return value;
   if (typeof value !== 'string' || !value.trim()) return {};
   try {
@@ -182,21 +206,22 @@ function parseJsonSetting(value, label) {
   }
 }
 
-function sanitizeHeaders(headers) {
+function sanitizeHeaders(headers: unknown): Record<string, string> {
   const parsed = parseJsonSetting(headers, 'headers');
   if (!parsed || Array.isArray(parsed) || typeof parsed !== 'object') {
     throw new Error('External API headers must be a JSON object');
   }
 
-  return Object.fromEntries(Object.entries(parsed).filter(([name]) => {
+  return Object.fromEntries(Object.entries(parsed).filter(([name, value]) => {
     const lowerName = name.toLowerCase();
-    return /^[!#$%&'*+.^_`|~0-9a-z-]+$/i.test(name) &&
+    return (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') &&
+      /^[!#$%&'*+.^_`|~0-9a-z-]+$/i.test(name) &&
       !['host', 'content-length', 'transfer-encoding', 'connection'].includes(lowerName) &&
       !lowerName.startsWith('proxy-');
-  }));
+  }).map(([name, value]) => [name, String(value)]));
 }
 
-function isForbiddenSelectorSegment(segment) {
+function isForbiddenSelectorSegment(segment: string): boolean {
   return FORBIDDEN_SELECTOR_SEGMENTS.has(String(segment).toLowerCase());
 }
 
@@ -204,7 +229,7 @@ function isForbiddenSelectorSegment(segment) {
  * Parse either a simple dotted field path (`invoice.vendor.name`) or an RFC
  * 6901 JSON pointer (`/invoice/vendor/name`). No expressions are accepted.
  */
-function parseSelector(selector) {
+function parseSelector(selector: unknown): string[] | null {
   if (typeof selector !== 'string' || !selector.trim()) return [];
   const trimmed = selector.trim();
   if (trimmed.length > MAX_SELECTOR_LENGTH) return null;
@@ -226,13 +251,13 @@ function parseSelector(selector) {
     return null;
   }
 
-  const segments = [];
+  const segments: string[] = [];
   let invalidIndex = false;
-  trimmed.replace(/([A-Za-z_][A-Za-z0-9_-]*)|\[(\d+)\]/g, (_match, property, index) => {
+  trimmed.replace(/([A-Za-z_][A-Za-z0-9_-]*)|\[(\d+)\]/g, (_match: string, property: string | undefined, index: string | undefined) => {
     if (property) {
       segments.push(property);
     } else {
-      const numericIndex = Number(index);
+      const numericIndex = Number(index || '');
       if (!Number.isSafeInteger(numericIndex)) {
         invalidIndex = true;
       } else {
@@ -247,7 +272,7 @@ function parseSelector(selector) {
     : segments;
 }
 
-function selectData(data, selector) {
+function selectData(data: unknown, selector: unknown): { valid: boolean; value: unknown } {
   const segments = parseSelector(selector);
   if (segments === null) return { valid: false, value: data };
 
@@ -256,34 +281,35 @@ function selectData(data, selector) {
     if (value === null || (typeof value !== 'object') || !Object.prototype.hasOwnProperty.call(value, segment)) {
       return { valid: true, value: undefined };
     }
-    value = value[segment];
+    value = (value as Record<string, unknown>)[segment];
   }
   return { valid: true, value };
 }
 
-function normalizeDnsRecords(records) {
+function normalizeDnsRecords(records: unknown): DnsRecord[] {
   const entries = Array.isArray(records) ? records : [records];
   return entries
     .map((entry) => {
-      const address = typeof entry === 'string' ? entry : entry?.address;
-      const family = typeof entry === 'string' ? net.isIP(entry) : (entry?.family || net.isIP(address));
+      const record = typeof entry === 'object' && entry !== null ? entry as Record<string, unknown> : null;
+      const address = typeof entry === 'string' ? entry : record?.address;
+      const family = typeof entry === 'string' ? net.isIP(entry) : (record?.family || net.isIP(String(address || '')));
       return { address: normalizeHostname(address), family };
     })
-    .filter((entry) => entry.address && (entry.family === 4 || entry.family === 6));
+    .filter((entry): entry is DnsRecord => Boolean(entry.address) && (entry.family === 4 || entry.family === 6));
 }
 
-const defaultResolveHostname = (hostname) => dns.promises.lookup(hostname, { all: true, verbatim: true });
+const defaultResolveHostname: ResolveHostname = (hostname: string) => dns.promises.lookup(hostname, { all: true, verbatim: true });
 
-async function withTimeout(promise, timeoutMs, message) {
-  let timer;
-  const timeout = new Promise((_resolve, reject) => {
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_resolve, reject) => {
     timer = setTimeout(() => reject(new Error(message)), timeoutMs);
   });
 
   try {
     return await Promise.race([Promise.resolve(promise), timeout]);
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -293,11 +319,17 @@ async function withTimeout(promise, timeoutMs, message) {
  * as untrusted input because it can otherwise become an SSRF primitive.
  */
 class ExternalApiService {
+  request: RequestFunction;
+  resolveHostname: ResolveHostname;
+  dnsLookupTimeoutMs: number;
+  httpAgent: unknown;
+  httpsAgent: unknown;
+
   constructor({
     request = axios,
     resolveHostname = defaultResolveHostname,
     dnsLookupTimeoutMs = DNS_LOOKUP_TIMEOUT_MS
-  } = {}) {
+  }: ExternalApiServiceOptions = {}) {
     this.request = request;
     this.resolveHostname = resolveHostname;
     this.dnsLookupTimeoutMs = Math.max(1, Number(dnsLookupTimeoutMs) || DNS_LOOKUP_TIMEOUT_MS);
@@ -307,7 +339,7 @@ class ExternalApiService {
     this.httpsAgent = new https.Agent({ keepAlive: false, lookup });
   }
 
-  async ensureSafeHostname(hostname) {
+  async ensureSafeHostname(hostname: string): Promise<DnsRecord[]> {
     const normalized = normalizeHostname(hostname);
     if (!normalized || isBlockedHostname(normalized)) {
       throw new Error('External API URL targets a blocked hostname');
@@ -338,7 +370,7 @@ class ExternalApiService {
     return records;
   }
 
-  async validateUrl(rawUrl) {
+  async validateUrl(rawUrl: unknown): Promise<URL> {
     let parsed;
     try {
       parsed = new URL(String(rawUrl || '').trim());
@@ -362,8 +394,8 @@ class ExternalApiService {
    * here pins each connection to a freshly validated address and prevents a
    * public-to-private DNS rebinding between URL validation and connection.
    */
-  safeLookup(hostname, options, callback) {
-    const lookupOptions = typeof options === 'object'
+  safeLookup(hostname: string, options: LookupOptions | number | LookupCallback, callback?: LookupCallback): void {
+    const lookupOptions: LookupOptions = typeof options === 'object'
       ? options
       : { family: typeof options === 'number' ? options : 0 };
     const done = typeof options === 'function' ? options : callback;
@@ -377,14 +409,14 @@ class ExternalApiService {
         if (lookupOptions.all) return done(null, matches);
         return done(null, matches[0].address, matches[0].family);
       })
-      .catch((error) => done(error));
+      .catch((error: unknown) => done(error instanceof Error ? error : new Error(String(error))));
   }
 
   /**
    * Fetch data from the configured external API.
    * @returns {Promise<Object|string|null>} The data from the API or null when disabled/error
    */
-  async fetchData(externalApiConfig = config.externalApiConfig) {
+  async fetchData(externalApiConfig: ExternalApiConfig = config.externalApiConfig) {
     try {
       if (!externalApiConfig || externalApiConfig.enabled !== 'yes') {
         console.log('[DEBUG] External API integration is disabled');
@@ -404,7 +436,7 @@ class ExternalApiService {
         externalApiConfig.transform ??
         '';
       const timeout = normalizeTimeout(externalApiConfig.timeout);
-      const options = {
+      const options: AxiosRequestConfig = {
         method,
         url: parsedUrl.toString(),
         headers: sanitizeHeaders(externalApiConfig.headers),
@@ -449,8 +481,8 @@ class ExternalApiService {
 
       return data;
     } catch (error) {
-      console.error('[ERROR] Failed to fetch external API data:', error.message);
-      if (error.response) {
+      console.error('[ERROR] Failed to fetch data from external API:', error instanceof Error ? error.message : String(error));
+      if (axios.isAxiosError(error) && error.response) {
         console.error('[ERROR] API Response status:', error.response.status);
       }
       return null;

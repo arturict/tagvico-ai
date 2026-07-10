@@ -1,4 +1,3 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 const fs = require('fs');
 const fsp = require('fs').promises;
 const os = require('os');
@@ -6,15 +5,20 @@ const path = require('path');
 const crypto = require('crypto');
 
 const TERMINAL = new Set(['completed', 'failed', 'expired', 'cancelled']);
+type BatchClient = { files: { create(input: unknown): Promise<{ id: string }>; content(id: string): Promise<{ text(): Promise<string> }> }; batches: { create(input: unknown): Promise<{ id: string; status: string; output_file_id?: string }>; retrieve(id: string): Promise<{ id: string; status: string; output_file_id?: string }> } };
+type BatchItem = { client: BatchClient; body: unknown; resolve: (value: unknown) => void; reject: (reason?: unknown) => void; customId: string };
+type BatchOutput = { custom_id: string; error?: { message?: string }; response?: { status_code: number; body: unknown } };
 
 class OpenAIBatchService {
+  pending: BatchItem[];
+  timer: NodeJS.Timeout | null;
   constructor() {
-    this.pending = [];
-    this.timer = null;
+    this.pending = [] as BatchItem[];
+    this.timer = null as NodeJS.Timeout | null;
   }
 
-  enqueue(client, body) {
-    return new Promise((resolve, reject) => {
+  enqueue(client: BatchClient, body: unknown): Promise<unknown> {
+    return new Promise<unknown>((resolve, reject) => {
       this.pending.push({ client, body, resolve, reject, customId: `doc-${crypto.randomUUID()}` });
       if (!this.timer) this.timer = setTimeout(() => this.flush(), 100);
     });
@@ -28,7 +32,7 @@ class OpenAIBatchService {
     const client = items[0].client;
     const tempPath = path.join(os.tmpdir(), `tagvico-batch-${crypto.randomUUID()}.jsonl`);
     try {
-      const jsonl = items.map(({ customId, body }) => JSON.stringify({
+      const jsonl = items.map(({ customId, body }: BatchItem) => JSON.stringify({
         custom_id: customId,
         method: 'POST',
         url: '/v1/chat/completions',
@@ -53,18 +57,18 @@ class OpenAIBatchService {
       }
 
       const output = await client.files.content(batch.output_file_id);
-      const lines = (await output.text()).trim().split(/\r?\n/).filter(Boolean).map(JSON.parse);
-      const byId = new Map(lines.map((line) => [line.custom_id, line]));
+      const lines = (await output.text()).trim().split(/\r?\n/).filter(Boolean).map((line: string) => JSON.parse(line) as BatchOutput);
+      const byId = new Map(lines.map((line: BatchOutput) => [line.custom_id, line]));
       for (const item of items) {
         const line = byId.get(item.customId);
-        if (!line || line.error || line.response?.status_code >= 400) {
+        if (!line || line.error || !line.response || line.response.status_code >= 400) {
           item.reject(new Error(line?.error?.message || `No successful result for ${item.customId}`));
         } else {
           item.resolve(line.response.body);
         }
       }
     } catch (error) {
-      items.forEach((item) => item.reject(error));
+      items.forEach((item: BatchItem) => item.reject(error));
     } finally {
       await fsp.rm(tempPath, { force: true }).catch(() => {});
     }

@@ -1,18 +1,21 @@
-// @ts-nocheck — legacy module; tracked for strict typing.
 const Anthropic = require('@anthropic-ai/sdk');
 const config = require('../config/config');
 const confidenceGuard = require('./confidenceGuard');
 const tagGroupService = require('./tagGroupService');
 const { ProviderAdapter } = require('./providerAdapter');
+type BatchItem = { params: unknown; resolve: (value: unknown) => void; reject: (reason?: unknown) => void; customId: string };
+const errorMessage = (error: unknown): string => error instanceof Error ? error.message : String(error);
 
 class AnthropicService extends ProviderAdapter {
+  pending: BatchItem[];
+  timer: NodeJS.Timeout | null;
   constructor() {
     super();
     this.name = 'anthropic';
     this.displayName = 'Anthropic Claude';
     this.client = null;
     this.key = null;
-    this.pending = [];
+    this.pending = [] as BatchItem[];
     this.timer = null;
   }
 
@@ -22,7 +25,7 @@ class AnthropicService extends ProviderAdapter {
       this.initialize();
       if (!this.client) throw new Error('Anthropic API key is not configured');
       return { ok: true, latencyMs: Date.now() - started };
-    } catch (error) { return { ok: false, error: error.message, latencyMs: Date.now() - started }; }
+    } catch (error) { return { ok: false, error: errorMessage(error), latencyMs: Date.now() - started }; }
   }
 
   modelMetadata() { return { id: config.anthropic.model, contextWindow: 200000, supportsImages: true }; }
@@ -36,7 +39,7 @@ class AnthropicService extends ProviderAdapter {
 
   reset() { this.client = null; this.key = null; }
 
-  buildRequest(content, existingTags, correspondents, documentTypes) {
+  buildRequest(content: string, existingTags: string[], correspondents: string[], documentTypes: string[]) {
     const context = `Existing tags: ${existingTags.join(', ')}\nExisting correspondents: ${correspondents.join(', ')}\nExisting document types: ${documentTypes.join(', ')}`;
     return {
       model: config.anthropic.model,
@@ -46,7 +49,7 @@ class AnthropicService extends ProviderAdapter {
     };
   }
 
-  async analyzeDocument(content, existingTags = [], correspondents = [], documentTypes = []) {
+  async analyzeDocument(content: string, existingTags: string[] = [], correspondents: string[] = [], documentTypes: string[] = []) {
     try {
       this.initialize();
       if (!this.client) throw new Error('Anthropic client not initialized');
@@ -54,7 +57,7 @@ class AnthropicService extends ProviderAdapter {
       const response = config.processingMode === 'batch'
         ? await this.enqueueBatch(request)
         : await this.client.messages.create(request);
-      const text = response.content?.find((block) => block.type === 'text')?.text || '';
+      const text = response.content?.find((block: { type: string; text?: string }) => block.type === 'text')?.text || '';
       const document = confidenceGuard.annotateHeldFields(JSON.parse(text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()));
       const usage = response.usage || {};
       return {
@@ -67,12 +70,12 @@ class AnthropicService extends ProviderAdapter {
         truncated: false
       };
     } catch (error) {
-      return { document: { tags: [], correspondent: null }, metrics: null, error: error.message };
+      return { document: { tags: [], correspondent: null }, metrics: null, error: errorMessage(error) };
     }
   }
 
-  enqueueBatch(params) {
-    return new Promise((resolve, reject) => {
+  enqueueBatch(params: unknown): Promise<unknown> {
+    return new Promise<unknown>((resolve, reject) => {
       this.pending.push({ params, resolve, reject, customId: `doc-${Date.now()}-${this.pending.length}` });
       if (!this.timer) this.timer = setTimeout(() => this.flushBatch(), 100);
     });
@@ -84,7 +87,7 @@ class AnthropicService extends ProviderAdapter {
     if (!items.length) return;
     try {
       let batch = await this.client.messages.batches.create({
-        requests: items.map((item) => ({ custom_id: item.customId, params: item.params }))
+        requests: items.map((item: BatchItem) => ({ custom_id: item.customId, params: item.params }))
       });
       const pollMs = Math.max(1000, Number(process.env.BATCH_POLL_INTERVAL_MS || 30000));
       while (batch.processing_status === 'in_progress') {
@@ -101,7 +104,7 @@ class AnthropicService extends ProviderAdapter {
         else item.reject(new Error(result?.error?.message || `Anthropic batch failed for ${item.customId}`));
       }
     } catch (error) {
-      items.forEach((item) => item.reject(error));
+      items.forEach((item: BatchItem) => item.reject(error));
     }
   }
 }

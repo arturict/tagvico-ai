@@ -5,6 +5,7 @@ const {
   normalizeOpenAIModel,
   normalizeProvider
 } = require('../services/providerCatalogService');
+const { resolveEnv } = require('../services/configHelpers');
 const currentDir = decodeURIComponent(process.cwd());
 const { version: packageVersion } = require(path.join(currentDir, 'package.json'));
 const envPath = path.join(currentDir, 'data', '.env');
@@ -18,6 +19,7 @@ const parseEnvBoolean = (value: string | undefined, defaultValue = 'yes') => {
   return value.toLowerCase() === 'true' || value === '1' || value.toLowerCase() === 'yes' ? 'yes' : 'no';
 };
 const { normalizeProcessingMode } = require('../services/processingMode');
+const tagvicoAiVersion = resolveEnv('TAGVICO_AI_VERSION', 'ARCHIVISTA_AI_VERSION') || packageVersion;
 
 // Initialize limit functions with defaults
 const limitFunctions = {
@@ -61,7 +63,7 @@ console.log('Loaded environment variables:', {
 });
 
 module.exports = {
-  ARCHIVISTA_AI_VERSION: packageVersion,
+  TAGVICO_AI_VERSION: tagvicoAiVersion,
   CONFIGURED: false,
   disableAutomaticProcessing: process.env.DISABLE_AUTOMATIC_PROCESSING || 'no',
   predefinedMode: process.env.PROCESS_PREDEFINED_DOCUMENTS,
