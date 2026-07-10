@@ -247,8 +247,10 @@ class ConfigFormApp {
     const providerName = selected?.querySelector('strong')?.textContent || this.providerInput.value;
     const modelName = this.modelInput.value || 'Choose a model';
     const modelOutput = document.getElementById('activeModelName');
+    const defaultModelOutput = document.getElementById('defaultModelName');
     const providerOutput = document.getElementById('activeProviderName');
     if (modelOutput) modelOutput.textContent = modelName;
+    if (defaultModelOutput) defaultModelOutput.textContent = modelName;
     if (providerOutput) providerOutput.textContent = providerName;
   }
 

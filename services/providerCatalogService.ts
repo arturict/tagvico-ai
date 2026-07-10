@@ -262,7 +262,7 @@ function getEffectiveModel(env: EnvLike = process.env) {
 
 function buildCatalog(currentConfig: EnvLike = {}) {
   const selectedProvider = normalizeProvider(currentConfig.AI_PROVIDER);
-  const effectiveModel = currentConfig.AI_MODEL || getEffectiveModel(currentConfig);
+  const effectiveModel = getEffectiveModel(currentConfig);
 
   return {
     recommendedProvider: 'openrouter',

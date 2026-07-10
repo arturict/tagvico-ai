@@ -41,6 +41,7 @@ test('settings render account-scoped model selects and correct provider icons', 
   const routes = fs.readFileSync(path.join(root, 'routes', 'setup.ts'), 'utf8');
 
   assert.match(template, /<select id="codexModel"/);
+  assert.match(template, /id="defaultModelName"><%= providerCatalog\.effectiveModel %>/);
   assert.match(template, /<select id="copilotModel"/);
   assert.match(template, /provider-icons\/opencode-go\.svg/);
   assert.match(template, /provider-icons\/github-copilot\.svg/);

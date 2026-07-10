@@ -25,6 +25,15 @@ test('GPT-5.6 preview models stay gated unless the organization explicitly enabl
   );
 });
 
+test('catalog effective model follows the selected provider-specific model', () => {
+  const result = catalog.buildCatalog({
+    AI_PROVIDER: 'codex',
+    AI_MODEL: 'openai/gpt-5.4-mini',
+    CODEX_MODEL: 'gpt-5.6-luna'
+  });
+  assert.equal(result.effectiveModel, 'gpt-5.6-luna');
+});
+
 test('provider payload keeps OpenCode, Copilot, and Ollama Cloud credentials separate', () => {
   const opencode = helpers.normalizeProviderPayload({
     aiProvider: 'opencode', opencodeApiKey: 'oc_sk_test', opencodeModel: 'opencode/model', opencodeBaseUrl: 'https://console.example/v1'
