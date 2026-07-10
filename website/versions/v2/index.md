@@ -1,0 +1,51 @@
+---
+layout: home
+
+hero:
+  name: "Tagvico AI v2"
+  text: "AI filing for Paperless-ngx, under your control"
+  tagline: Connect Paperless, choose a local or hosted model, and review or automate structured metadata updates.
+  image:
+    src: /icon.webp
+    alt: Tagvico AI
+  actions:
+    - theme: brand
+      text: Install v2
+      link: /installation
+    - theme: alt
+      text: Explore features
+      link: /features
+    - theme: alt
+      text: Choose a provider
+      link: /providers
+
+features:
+  - icon: 🗂️
+    title: Structured filing
+    details: Generate titles, tags, correspondents, document types, dates, languages, custom fields, and optional owner assignments.
+  - icon: ✅
+    title: Review first or automate
+    details: Queue suggestions for approval or write validated metadata directly. Change modes without losing queued work.
+  - icon: 🔌
+    title: Your model, your boundary
+    details: Use local Ollama, direct APIs, OpenRouter, Azure, compatible gateways, GitHub Copilot, or experimental ChatGPT subscription access.
+  - icon: 📈
+    title: Visible operations
+    details: Inspect progress, processing history, usage, retries, OCR recovery, rescan actions, and metadata restoration from the web UI.
+---
+
+## Start here
+
+Tagvico AI is a self-hosted companion for an existing Paperless-ngx instance.
+It reads OCR text already stored in Paperless, asks your chosen model for a
+structured filing suggestion, validates that suggestion, and either queues it
+for review or writes it back.
+
+The v2 documentation is frozen under this URL when a future major version is
+published. Use the version menu in the navigation to move between major
+versions without losing the instructions that match your installation.
+
+::: warning Alpha documentation
+The current package is a v2 alpha. Pin an immutable image version, back up the
+data volume before upgrades, and start in **Review first** mode.
+:::

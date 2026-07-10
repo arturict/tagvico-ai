@@ -1,6 +1,8 @@
 # Documentation
 
-This directory contains the Tagvico AI documentation site (`index.html`), provider setup guides, and the project status page.
+This directory contains legacy project documentation and the standalone landing
+page. The production VitePress site is built into the ignored `docs-site/`
+directory and served by Coolify at `https://tagvico.arturf.ch/docs/`.
 
 | File / directory | Purpose |
 | --- | --- |
@@ -12,9 +14,15 @@ This directory contains the Tagvico AI documentation site (`index.html`), provid
 | `upstream/` | Research notes on the upstream Paperless-ngx project (issue tracking, not a product dependency). |
 | `launch-post.md` | Drafts for community launch posts (r/selfhosted, r/Paperlessngx). |
 
-## Editing the landing page
+## Editing the public site
 
 `index.html` is intentionally a single self-contained file with no build step. Edit the markup in place, keep the inline CSS variables in `:root` consistent, and verify the copy buttons still work after changes.
+
+Edit versioned docs in `website/versions/v<major>/`. Use `npm run docs:dev` for
+the v2 authoring server and `npm run docs:build` to rebuild the current site and
+all major-version archives. Create a snapshot with
+`npm run docs:new-major -- 3` before starting v3 documentation. The latest
+major is built at `/docs/`; immutable archives are built at `/docs/v<major>/`.
 
 ## Updating screenshots
 

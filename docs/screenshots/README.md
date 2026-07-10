@@ -6,6 +6,7 @@ These images are captured from a running Tagvico AI installation and used in the
 |---|---|
 | `dashboard.png` | Dashboard, processing status, usage, and document statistics |
 | `manual-review.png` | Manual metadata review before writing changes to Paperless-ngx |
+| `sign-in.png` | Sanitized v2 local-admin sign-in captured headlessly from VM 113 |
 
 Before adding a screenshot, verify that it contains no API keys, tokens, personal document content, real names, email addresses, private URLs, or other identifying data. Prefer empty states and synthetic documents for public captures.
 
