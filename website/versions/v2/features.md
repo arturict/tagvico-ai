@@ -6,8 +6,6 @@ The dashboard shows processing progress, runner state, Paperless vocabulary
 counts, recent activity, and token/cost-efficiency signals. **Scan now** starts
 an on-demand pass without waiting for the schedule.
 
-![Sanitized Tagvico AI v2 dashboard showing processing and runner status](/screenshots/dashboard.png)
-
 ## Controlled tagging
 
 Choose whether the model may create open-ended tags or must stay within a
