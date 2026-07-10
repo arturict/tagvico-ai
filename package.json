@@ -45,7 +45,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.109.0",
     "@github/copilot-sdk": "^1.0.6",
-    "@openai/codex-sdk": "^0.142.5",
+    "@openai/codex-sdk": "^0.144.1",
     "axios": "^1.18.1",
     "bcryptjs": "^3.0.2",
     "better-sqlite3": "^11.8.1",
