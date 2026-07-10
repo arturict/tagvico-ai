@@ -27,7 +27,7 @@ export default defineConfig({
     ['meta', { name: 'theme-color', content: '#c8ff2e' }],
   ],
   themeConfig: {
-    logo: '/icon.webp',
+    logo: '/tagvico-icon.png',
     siteTitle: 'Tagvico AI Docs',
     nav: [
       { text: 'Guide', link: '/installation' },

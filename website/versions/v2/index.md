@@ -6,7 +6,7 @@ hero:
   text: "AI filing for Paperless-ngx, under your control"
   tagline: Connect Paperless, choose a local or hosted model, and review or automate structured metadata updates.
   image:
-    src: /icon.webp
+    src: /tagvico-icon.png
     alt: Tagvico AI
   actions:
     - theme: brand
