@@ -29,7 +29,7 @@ model is good enough for Automatic mode.
 | Provider | Recommended starting point | Why it is a good-value choice |
 | --- | --- | --- |
 | OpenRouter | **GPT-5.4 Mini** with low reasoning | Best general hosted default in Tagvico: reliable structured extraction without paying for a frontier-sized model. Try **GPT-5.4 Nano** or **Gemini 3.1 Flash Lite** for very clean, repetitive documents; avoid the free router for unattended production because the underlying model can change. |
-| Ollama | Start with **Llama 3.2**; choose the smallest local model that passes your test set | There is no per-token API bill. A smaller model is usually faster and cheaper to operate, but local hardware, electricity, language mix, and OCR quality determine the real value. Step up in model size only when fields are repeatedly missed. |
+| Ollama | **Qwen 3.5 4B** on modest hardware; **Qwen 3.5 9B** when it fits comfortably | Qwen 3.5 is the current value-oriented starting family for structured, multilingual filing. The 4B download is about 3.4 GB; the 9B build is about 6.6 GB and is the better quality target when memory allows. **Gemma 3 4B** is a strong compact alternative. Gemma 4 is newer, but even its E2B/E4B edge variants have larger model files and are less attractive for a cheapest-first setup. |
 | Ollama Cloud | **gpt-oss:20b-cloud** | Tagvico's default balances capability with a moderate hosted footprint and avoids buying or running a GPU. Recheck the cloud catalog and account limits before committing to it. |
 | OpenAI direct | **GPT-5.4 Mini**; use **Batch** for non-urgent archives | Mini is the balanced default. **GPT-5.4 Nano** can reduce cost further for predictable invoices and statements. Batch is preferable when turnaround can wait; Flex is useful when supported and occasional slower availability is acceptable. |
 | Anthropic direct | **Claude Haiku 4.5**; use Message Batches when latency is unimportant | Haiku is the speed-and-cost tier and is normally sufficient for titles, tags, and other structured fields. Move to a larger Claude model only for difficult layouts or extraction failures. |
@@ -45,6 +45,26 @@ Measure incorrect or missing fields—not how impressive the prose sounds. Move
 up one tier only when the cheaper model fails the same field or document type
 repeatedly.
 :::
+
+### Ollama sizing notes
+
+The official [Qwen 3.5 library](https://ollama.com/library/qwen3.5) currently
+offers `0.8b`, `2b`, `4b`, `9b`, and larger variants—there is no official 7B
+or 8B tag. For Tagvico, start with:
+
+- `qwen3.5:4b` for a low-memory trial and routine, clean documents.
+- `qwen3.5:9b` for the preferred local balance when the roughly 6.6 GB model
+  file plus runtime overhead fits comfortably.
+- [`gemma3:4b`](https://ollama.com/library/gemma3) for a compact multilingual
+  alternative with a roughly 3.3 GB model file.
+- [`gemma4:e2b` or `gemma4:e4b`](https://ollama.com/library/gemma4) only when
+  you specifically want Gemma 4 and can
+  accommodate their roughly 7.2 GB or 9.6 GB model files. Their “E” sizes mean
+  effective parameters, not download or runtime memory.
+
+Actual RAM or VRAM use is higher than the model file and rises with context
+length. Keep the context window only as large as your documents require, then
+compare field accuracy and throughput on the same test set.
 
 ## Switching providers
 
