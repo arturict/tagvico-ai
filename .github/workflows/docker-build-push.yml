@@ -39,7 +39,10 @@ jobs:
           tags: |
             type=schedule,pattern=nightly
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
-            type=raw,value=latest,enable=${{ github.event_name == 'release' }}
+            # Prereleases get only their immutable semver tag. Keep :latest on
+            # the newest stable release so unattended deployments never jump
+            # to an alpha, beta, or release candidate.
+            type=raw,value=latest,enable=${{ github.event_name == 'release' && !github.event.release.prerelease }}
 
       - name: Build and push
         uses: docker/build-push-action@v5
