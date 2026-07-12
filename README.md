@@ -8,7 +8,7 @@ with local or hosted models.** Turn OCR text into clean titles, tags,
 correspondents, document types, dates, languages, custom fields, and optional
 owner assignments while keeping control of the model and privacy boundary.
 
-[![Status: Alpha](https://img.shields.io/badge/status-alpha-ff6f00.svg)](#-alpha--under-active-development)
+[![Status: Alpha](https://img.shields.io/badge/status-alpha-ff6f00.svg)](docs/STATUS.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/arturict/tagvico-ai)](https://github.com/arturict/tagvico-ai/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/arturict/tagvico-ai/ci.yml?branch=main&label=CI)](https://github.com/arturict/tagvico-ai/actions/workflows/ci.yml)
@@ -58,7 +58,7 @@ services:
   tagvico-ai:
     # Pin an immutable release tag for upgrades you can rely on.
     # See https://github.com/arturict/tagvico-ai/releases for the current version.
-    image: ghcr.io/arturict/tagvico-ai:1.3.0
+    image: ghcr.io/arturict/tagvico-ai:2.0.0-alpha.1
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -106,7 +106,7 @@ docker run -d \
   -p 8080:3000 \
   -e TAGVICO_AI_PORT=3000 \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:1.3.0
+  ghcr.io/arturict/tagvico-ai:2.0.0-alpha.1
 ```
 
 </details>
@@ -172,7 +172,7 @@ History supports explicit rescan and restoration of the first metadata snapshot 
 ## Upgrades
 
 1. Check the latest release at <https://github.com/arturict/tagvico-ai/releases>.
-2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page—for example `ghcr.io/arturict/tagvico-ai:1.3.0`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
+2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page—for example `ghcr.io/arturict/tagvico-ai:2.0.0-alpha.1`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
 3. `docker compose pull && docker compose up -d`.
 
 Tagvico is stateless across restarts: configuration, processing history, and the local admin account live in the `tagvico_ai_data` volume, so upgrades do not touch your settings.
@@ -219,7 +219,7 @@ The development server listens on `http://localhost:3000`. The application sourc
 
 Bug reports, feature requests, and pull requests are welcome. The issue chooser asks only for the information needed to reproduce or evaluate a change, and the pull-request template includes a short verification checklist. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow. For security disclosures, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 
-See [docs/STATUS.md](docs/STATUS.md) for the current development status, what may still change before 1.0, and recommendations for running alpha software in production.
+See [docs/STATUS.md](docs/STATUS.md) for the current development status, what may still change before stable v2, and recommendations for running the v2 prerelease.
 
 ## License
 

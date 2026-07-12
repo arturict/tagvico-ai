@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+## 2.0.0-alpha.1 - 2026-07-12
+
+- Added an optional review-first workflow with durable suggestions, structured
+  metadata diffs, Apply/Reject actions, original-metadata snapshots, restore,
+  retries, and reconciliation.
+- Added subscription-backed ChatGPT/Codex and GitHub Copilot providers using
+  official runtimes, device authentication, account-visible model discovery,
+  and disabled agent tools.
+- Added Ollama Cloud, OpenCode Go, Anthropic, OpenRouter, Azure OpenAI, local
+  Ollama, OpenAI direct, and OpenAI-compatible provider paths with isolated
+  credentials and provider-aware health checks.
+- Added controlled tag groups, an exception queue, tag caps, custom fields,
+  optional owner assignment, OCR rescue, terminal-failure handling, and
+  interrupted-job recovery.
+- Added hardened thumbnail handling, same-origin mutation checks, MFA, rate
+  limits, SSRF-safe external enrichment, generated JWT secrets, and strict
+  TypeScript checks across the application.
+- Added versioned v2 installation, upgrade, removal, provider, privacy,
+  troubleshooting, and feature documentation with sanitized screenshots.
+- Added optional, off-by-default aggregate installation analytics with rotating
+  daily/monthly identifiers, exact local payload preview, and a reference
+  receiver with bounded retention. No collector is contacted unless an HTTPS
+  endpoint is explicitly configured.
+- Added GitHub traffic archival, repository discovery metadata, launch assets,
+  an Unraid template, and a contextual GitHub star prompt.
+- **Upgrade note:** Back up `tagvico_ai_data`, migrate deprecated
+  `ARCHIVISTA_*` variables to `TAGVICO_*`, pin the exact prerelease image, and
+  validate representative documents in Review first before enabling Automatic.
+
 - Migrated the dashboard charts from Chart.js to Apache ECharts 5 for smoother animations, sharper tooltips, and better theme integration (doughnut, bar, rose/pie, and area-line visualizations).
 - Refined the dashboard visual design: subtle card hover elevation, tabular-numeral KPIs, consistent chart legends, and polished empty states — preserving the existing neo-brutalist aesthetic.
 - Added a clearly-labelled **cost estimate** to the dashboard: total estimated spend, average cost per document, and an input-vs-output cost split, derived from tracked token totals and the active model's public list price (`services/modelPricing.ts`). Free local models (Ollama) and installations without tracked usage correctly show no cost, and unknown cloud models fall back to a conservative estimate flagged with an asterisk.
