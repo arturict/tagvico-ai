@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+## 2.0.0 - 2026-07-13
+
+- Promoted the reviewable Paperless-ngx filing workflow to the first stable v2
+  release after representative setup, ingest, review, apply, restore, migration,
+  Docker, and multi-architecture validation.
+- Fixed fresh installations contacting Paperless before setup was complete.
+- Fixed History restoration so it exactly replaces metadata, including clearing
+  AI-created tags and restoring null correspondent and document-type values.
+- Locked the documented v2 installation, upgrade, removal, provider, privacy,
+  and troubleshooting contract and published sanitized screenshots.
+- Kept anonymous installation analytics explicitly opt-in and off by default;
+  no official collector endpoint is embedded in v2.0.0.
+- **Upgrade note:** Back up `tagvico_ai_data`, pin
+  `ghcr.io/arturict/tagvico-ai:2.0.0`, migrate deprecated `ARCHIVISTA_*`
+  variables to `TAGVICO_*`, and validate representative documents in Review
+  first before enabling Automatic mode.
+
 ## 2.0.0-alpha.1 - 2026-07-12
 
 - Added an optional review-first workflow with durable suggestions, structured
@@ -50,7 +67,7 @@
 - Completed the strict TypeScript migration across services, routes, configuration, models, and the server; new `@ts-nocheck` suppressions are rejected by the type-debt guard.
 - Finished the Tagvico AI rebranding across shipped code, container configuration, documentation, and user-facing views.
 - Added canonical `TAGVICO_AI_PORT`, `TAGVICO_AI_HOST_PORT`, `TAGVICO_AI_VERSION`, and `TAGVICO_AI_INITIAL_SETUP` environment variables.
-- **Deprecation:** Existing `ARCHIVISTA_*` variables remain supported as warning-emitting fallbacks for compatibility and will be removed in 2.0. Deployments should migrate to `TAGVICO_*` variables now.
+- **Deprecation:** Existing `ARCHIVISTA_*` variables remain supported as warning-emitting fallbacks for compatibility. Deployments should migrate to `TAGVICO_*` variables before a future major version removes the aliases.
 
 ## 1.3.0 - 2026-07-05
 

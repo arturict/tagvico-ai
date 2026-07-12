@@ -7,7 +7,7 @@ directory and served by Coolify at `https://tagvico.arturf.ch/docs/`.
 | File / directory | Purpose |
 | --- | --- |
 | `index.html` | Standalone landing page (the public docs site). |
-| `STATUS.md` | Current development status, alpha expectations, upgrade guidance. |
+| `STATUS.md` | Current development status, compatibility policy, upgrade guidance. |
 | `screenshots/` | Product screenshots used in the README and landing page. |
 | `providers/` | Per-provider setup and troubleshooting guides. |
 | `V2_COMPETITIVE_REVIEW.md` | Source-level v2 feature comparison and release gates. |

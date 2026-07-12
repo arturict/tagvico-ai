@@ -17,8 +17,8 @@ queue, generated tags can be constrained to a controlled vocabulary, and local
 Ollama or an OpenAI-compatible endpoint can keep classification on your own
 network. Hosted providers are optional and explicit.
 
-It runs in Docker, is MIT licensed, and is still alpha—pin a release, back up
-the volume, and start in Review-first mode.
+Version 2.0 is stable, runs in Docker, and is MIT licensed. Pin the release,
+back up the volume, and start in Review-first mode.
 
 GitHub: https://github.com/arturict/tagvico-ai
 
@@ -40,9 +40,10 @@ Tagvico-operated service.
 
 Repository and Compose example: https://github.com/arturict/tagvico-ai
 
-The project is alpha. I would like blunt Paperless-specific feedback: does the
-review queue fit your workflow, which fields should default to existing values
-only, and what would make you trust automatic mode?
+Version 2.0 is the first stable release. I would still value blunt
+Paperless-specific feedback: does the review queue fit your workflow, which
+fields should default to existing values only, and what would make you trust
+automatic mode?
 
 ## Show HN
 
@@ -53,7 +54,7 @@ and proposes structured document metadata. The main design goal is a visible
 safety boundary: reviewable diffs, controlled vocabularies, restoration, local
 model support, and optional hosted providers instead of a mandatory cloud.
 
-It is TypeScript, Docker, SQLite, and MIT licensed. The project is alpha and I
+It is TypeScript, Docker, SQLite, and MIT licensed. Version 2.0 is stable, and I
 am looking for feedback from people running real document archives.
 
 https://github.com/arturict/tagvico-ai

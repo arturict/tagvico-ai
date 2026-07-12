@@ -1,51 +1,45 @@
 # Project status
 
-**Status:** v2 prerelease (`2.0.0-alpha.1`) — under active testing.
+**Status:** stable v2 (`2.0.0`).
 
-## What this means
+## Stable v2 contract
 
-Tagvico AI v2 is in **prerelease testing**. The TypeScript migration and core
-review-first filing workflow are complete, but the following may still change
-before stable `2.0.0`:
+Tagvico AI v2.0.0 is the first stable release of the reviewable Paperless-ngx
+filing workflow. The following are compatibility commitments for v2:
 
-- The HTTP/REST API surface (paths, request bodies, response fields).
-- The configuration schema in `data/.env` and the setup wizard.
-- The SQLite database schema in `data/tagvico.db` (migrations are provided, but backwards compatibility is not guaranteed across v2 prereleases).
-- Provider adapter behavior (Ollama, OpenAI, OpenRouter, Azure OpenAI, OpenAI-compatible, Anthropic, experimental Codex sign-in).
-- Default values, output formats, and confidence thresholds.
-- File paths, filenames, and the on-disk layout inside the persistent volume.
+- Existing v2 data volumes are upgraded with versioned, idempotent SQLite
+  migrations and a pre-migration database backup.
+- Canonical `TAGVICO_*` environment variables, port `3000`, `/app/data`, and
+  the documented setup, login, health, review, history, and settings workflows
+  remain supported throughout v2.
+- Stable upgrades do not intentionally discard the local admin account,
+  settings, processing history, review queue, or original metadata snapshots.
+- Paperless data is accessed only through the official Paperless REST API.
 
-## Recommendations for prerelease users
+Breaking changes to these contracts require a new major version. Provider
+model names, prices, quotas, and account entitlements remain controlled by the
+provider and can change independently of Tagvico.
 
-- **Pin a specific release tag** in `docker-compose.yml` (for example `ghcr.io/arturict/tagvico-ai:<version>`), never `:latest`. We publish immutable tags per release.
-- **Back up the `tagvico_ai_data` volume** before upgrading. The volume holds your admin account, provider settings, and processing history.
-- **Test upgrades on a non-production instance** if you rely on automatic metadata writes.
-- **Read the release notes** for breaking changes — they are documented per release on the [GitHub releases page](https://github.com/arturict/tagvico-ai/releases).
+## Recommended deployment policy
 
-## What is stable enough to rely on
+- Pin `ghcr.io/arturict/tagvico-ai:2.0.0` rather than `latest` when you need
+  explicit change control and unambiguous rollback.
+- Back up the complete `tagvico_ai_data` volume before every upgrade.
+- Start in **Review first** and test representative, non-sensitive documents
+  before enabling Automatic mode.
+- Treat ChatGPT subscription access as experimental and account-specific; it is
+  not an API SLA.
+- Keep anonymous installation analytics disabled unless you explicitly choose
+  to share the locally previewed aggregate heartbeat.
 
-- The Docker image contract: same env vars, same port, same persistent volume path.
-- The setup wizard flow (browser-based onboarding at `/setup`).
-- The Paperless-ngx integration: we only write to the official Paperless REST API, and we never modify your Paperless database directly.
-- The local admin account: the SQLite-stored credentials in the persistent volume.
-- The OpenAI-compatible provider contract: anything that speaks the OpenAI Chat Completions API works the same way.
+## Security and support
 
-## Reporting prerelease issues
+Report reproducible bugs through the
+[issue tracker](https://github.com/arturict/tagvico-ai/issues) after removing
+credentials, private URLs, document contents, and personal information.
+Security issues must not be filed publicly; follow
+[`SECURITY.md`](../SECURITY.md).
 
-The prerelease window is where feedback is most useful. Please file issues for:
-
-- Surprising behavior or errors during setup.
-- Provider failures, malformed responses, or token-limit issues.
-- Database migration errors when upgrading from an earlier version.
-- Anything you would expect to be configurable but cannot find.
-
-Security issues must **not** be filed as public issues — see [SECURITY.md](../SECURITY.md).
-
-## Roadmap toward stable v2
-
-- [x] Complete the TypeScript migration of all services and routes.
-- Lock the REST API surface, configuration schema, and database schema.
-- Complete representative Paperless ingest, restore, OCR, and provider-account
-  checks, then tag stable `2.0.0`.
-
-This document lives at `docs/STATUS.md` and is updated when the project status changes.
+Release-specific upgrade and rollback instructions are available on the
+[GitHub releases page](https://github.com/arturict/tagvico-ai/releases) and in
+the [versioned v2 documentation](https://tagvico.arturf.ch/docs/).
