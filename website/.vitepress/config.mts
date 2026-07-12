@@ -62,6 +62,7 @@ export default defineConfig({
         text: 'Product',
         items: [
           { text: 'Feature showcase', link: '/features' },
+          { text: 'AI tagging for Paperless', link: '/paperless-ai-tagging' },
           { text: 'Provider overview', link: '/providers' },
           { text: 'Privacy & security', link: '/privacy' },
           { text: 'Troubleshooting', link: '/troubleshooting' },

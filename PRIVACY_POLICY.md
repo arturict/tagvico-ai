@@ -1,104 +1,69 @@
-# Privacy Policy for the Tagvico AI Browser Extension
+# Tagvico AI privacy notice
 
-Last updated: 16.01.2025
+Last updated: 11 July 2026
 
-## 1. General Information
+Tagvico AI is self-hosted software. The operator of each installation controls
+the Paperless-ngx connection, model provider, network exposure, users, logs,
+and local data retention. This notice describes what the Tagvico project
+receives, not what an operator may configure locally.
 
-The Tagvico AI Browser Extension ("the Extension") is a browser extension designed to connect your Paperless-ngx instance with your Tagvico AI server. We are committed to protecting your privacy and personal data.
+## Document processing
 
-## 2. Data Controller
+Tagvico reads OCR text and metadata from the Paperless-ngx instance selected by
+the operator. With Ollama or another endpoint on the operator's network, that
+content can remain on infrastructure they control. When a hosted provider is
+selected, the content required for classification is sent directly to that
+provider under its terms and privacy notice. It is not routed through a
+Tagvico-operated service.
 
-Email: clusterz[at]protonmail.com
+Provider credentials are stored in the installation's `data/.env` file and are
+not sent to the Tagvico project. Processing history and review suggestions are
+stored in the installation's local SQLite database.
 
-## 3. Data Collection and Processing
+## Optional installation analytics
 
-### 3.1 Stored Data
-The Extension stores the following data locally in your browser:
-- URL of your Paperless-ngx installation
-- URL of your Tagvico AI server
-- API key for the Tagvico AI service
+Anonymous installation analytics are **off by default**. An administrator may
+explicitly enable or disable them in Settings or with
+`TAGVICO_TELEMETRY_ENABLED=yes|no`. When enabled, the installation sends one
+heartbeat approximately every 24 hours, beginning 15 minutes after startup.
 
-This data is stored exclusively in the Chrome Storage Sync API and is only accessible by the Extension.
+The payload contains only:
 
-### 3.2 Document Content Processing
-- The Extension only accesses document content when you actively use the chat function for a specific document
-- Document contents are transmitted exclusively to your configured Tagvico AI server
-- No document content is transmitted to third parties
+- rotating daily and monthly HMAC identifiers;
+- Tagvico version;
+- a broad processed-document-count bucket;
+- review or automatic write mode;
+- `local`, `hosted`, or `custom` provider category; and
+- booleans for OCR rescue, custom fields, and controlled tags.
 
-### 3.3 Chat History
-- Chat histories are only temporarily held in browser memory
-- This data is deleted when closing the chat window
-- No permanent storage of chat histories occurs in the Extension
+It does **not** contain document text, titles or metadata; document or user
+identifiers; names or email addresses; Paperless URLs, hostnames, or domains;
+API keys or provider account details; exact document counts; model names;
+errors, stack traces, IP-derived location, cookies, or advertising identifiers.
 
-## 4. Data Transmission
+The random secret used to derive period identifiers remains on the local
+installation. Daily identifiers change each day and monthly identifiers change
+each month, preventing the project from linking an installation across months.
+The receiver does not intentionally store source IP addresses or user-agent
+headers. Its deduplication rows expire after 62 days. Hosting infrastructure
+may necessarily process network addresses to deliver the request; its request
+logging must be disabled or minimized by the project operator.
 
-The Extension transmits data exclusively to:
-- Your self-hosted Paperless-ngx installation
-- Your self-configured Tagvico AI server
+Administrators can preview the exact current payload before enabling sharing.
+The payload is also printed to the local application log after a successful
+send. Disabling analytics stops future heartbeats immediately.
 
-No data is transmitted to the Extension developers or other third parties.
+## Website and GitHub
 
-## 5. Permissions
+The documentation website does not require Tagvico application telemetry.
+GitHub independently processes repository visits, stars, clones, issues, and
+release access under GitHub's own terms. The in-app update check and star count
+request public release/repository data directly from GitHub; Tagvico does not
+receive those requests.
 
-The Extension requires the following browser permissions:
-- "storage": For saving your configuration settings
-- "activeTab": For integrating chat functionality into the Paperless-ngx interface
-- "host_permissions": For communication with your Paperless-ngx and Tagvico AI servers
+## Contact and changes
 
-## 6. Data Security
-
-- All communication with your servers is encrypted via HTTPS
-- The API key is securely stored in the Chrome Storage system
-- The Extension implements best practices for handling sensitive data
-
-## 7. Your Rights
-
-You have the right to:
-- Uninstall the Extension at any time
-- Delete your stored settings
-- Cease using the Extension at any time
-
-Under GDPR, you also have the following rights:
-- Right to access your personal data
-- Right to rectification
-- Right to erasure ("right to be forgotten")
-- Right to restrict processing
-- Right to data portability
-- Right to object
-
-## 8. Changes to Privacy Policy
-
-We reserve the right to modify this privacy policy when necessary, in compliance with applicable data protection regulations. The current version can always be found at [Link to Privacy Policy].
-
-## 9. Contact
-
-If you have any questions about data protection, you can contact us at any time:
-clusterz[at]protonmail.com
-
-## 10. Consent
-
-By installing and using the Extension, you agree to this privacy policy. You can withdraw your consent at any time by uninstalling the Extension.
-
-## 11. Technical Details
-
-### 11.1 Data Storage Location
-All configuration data is stored locally in your browser using Chrome's secure storage APIs. No data is stored on our servers.
-
-### 11.2 Data Processing
-- Document content is processed only when explicitly requested through the chat interface
-- Processing occurs on your configured Tagvico AI server
-- No content caching or storage occurs within the Extension
-
-### 11.3 Security Measures
-- All API communications use HTTPS encryption
-- API keys are stored using Chrome's secure storage system
-- No logging or tracking of user activities
-- No analytics or tracking code is included in the Extension
-
-## 12. Children's Privacy
-
-The Extension is not intended for use by children under the age of 13. We do not knowingly collect or process data from children under 13 years of age.
-
-## 13. International Data Transfers
-
-As the Extension operates entirely within your browser and communicates only with servers you configure, no international data transfers occur through our services.
+Privacy questions can be sent to `clusterz[at]protonmail.com`. Material changes
+to analytics fields, purposes, or retention will be documented before release.
+This notice is informational and does not replace an installation operator's
+own legal obligations or privacy notice.

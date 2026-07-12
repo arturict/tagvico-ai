@@ -27,3 +27,29 @@ counts are acceptable.
 The screenshots in this v2 guide use generic tag labels and sanitized document
 state. They demonstrate product behavior without exposing source documents or
 credentials.
+
+## Optional installation analytics
+
+Tagvico's anonymous installation analytics are disabled by default. You can
+explicitly opt in from **Settings → Privacy → Anonymous installation
+analytics**, preview the exact payload before sharing, send a test heartbeat,
+or disable sharing again at any time.
+
+When enabled, Tagvico sends one coarse heartbeat roughly every 24 hours. It
+contains the application version, a broad processed-count
+buckets, write mode, a broad provider category, three feature booleans, and
+rotating daily/monthly identifiers. The locally generated secret used to derive
+those identifiers never leaves the installation, and the monthly identifier
+changes every month.
+
+Tagvico never includes document text or metadata, names, emails, user or
+document IDs, Paperless URLs, API keys, exact document counts, exact model
+names, errors, hostnames, or IP-derived location in the payload. Receiver rows
+expire after 62 days and only aggregate opted-in installation counts should be
+published.
+
+Set `TAGVICO_TELEMETRY_ENABLED=no` to enforce the default from the environment.
+Self-hosted distributors may override `TAGVICO_TELEMETRY_ENDPOINT`; it must use
+HTTPS. The complete policy and receiver source are available in
+[`PRIVACY_POLICY.md`](https://github.com/arturict/tagvico-ai/blob/main/PRIVACY_POLICY.md)
+and [`telemetry/`](https://github.com/arturict/tagvico-ai/tree/main/telemetry).

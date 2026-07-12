@@ -15,6 +15,7 @@ const pageDescriptions = {
   'upgrading.md': 'Back up, upgrade, validate, and roll back a v2 installation safely.',
   'removing.md': 'Remove the container, optionally delete local data, and revoke credentials.',
   'features.md': 'Review the dashboard, controlled tagging, review queue, history, OCR, and model discovery.',
+  'paperless-ai-tagging.md': 'Compare Tagvico with built-in Paperless matching and evaluate local or hosted AI metadata safely.',
   'providers.md': 'Compare local, hosted, direct, compatible, and subscription-backed model providers.',
   'privacy.md': 'Understand data flow, secret storage, deployment boundaries, and screenshot policy.',
   'troubleshooting.md': 'Diagnose setup, connectivity, provider, processing, and upgrade problems.',

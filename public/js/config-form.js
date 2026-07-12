@@ -20,6 +20,7 @@ class ConfigFormApp {
     this.initSecretToggles();
     this.initCodexStatus();
     this.initCopilotStatus();
+    this.initTelemetry();
     this.initSubmit();
     this.initOnboardingProgress();
   }
@@ -923,6 +924,38 @@ class ConfigFormApp {
       } finally {
         submit.disabled = false;
         submit.textContent = previous;
+      }
+    });
+  }
+
+  initTelemetry() {
+    const preview = document.getElementById('telemetryPreview');
+    const status = document.getElementById('telemetryStatus');
+    const showPayload = async () => {
+      if (status) status.textContent = 'Building local preview...';
+      try {
+        const response = await fetch('/api/telemetry/preview');
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Preview failed');
+        if (preview) {
+          preview.textContent = JSON.stringify(result.payload, null, 2);
+          preview.classList.remove('hidden');
+        }
+        if (status) status.textContent = result.enabled ? 'Telemetry is enabled.' : 'Telemetry is currently disabled.';
+      } catch (error) {
+        if (status) status.textContent = error.message;
+      }
+    };
+    document.getElementById('previewTelemetry')?.addEventListener('click', showPayload);
+    document.getElementById('sendTelemetryNow')?.addEventListener('click', async () => {
+      if (status) status.textContent = 'Sending heartbeat...';
+      try {
+        const response = await fetch('/api/telemetry/send', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'Heartbeat failed');
+        if (status) status.textContent = result.sent ? 'Heartbeat sent.' : `Not sent: ${result.reason}. Save opt-in first.`;
+      } catch (error) {
+        if (status) status.textContent = error.message;
       }
     });
   }

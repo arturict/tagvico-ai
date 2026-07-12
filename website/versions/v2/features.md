@@ -50,3 +50,12 @@ the official Copilot SDK and likewise limits choices to account-visible models.
 Agent tools are denied for these document-extraction paths.
 
 ![Sanitized ChatGPT subscription model selector in Tagvico settings](/screenshots/chatgpt-models.png)
+
+## Optional anonymous installation analytics
+
+Installation analytics are off by default. Administrators can preview the
+complete outbound heartbeat in Settings before opting in. Rotating daily and
+monthly identifiers support active-installation counts without creating a
+permanent installation profile; document content, metadata, URLs, identities,
+keys, exact counts, and errors are never included. See [Privacy and
+security](./privacy) for the complete field list and retention design.

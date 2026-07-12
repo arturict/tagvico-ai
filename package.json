@@ -27,10 +27,12 @@
   },
   "keywords": [
     "paperless-ngx",
-    "ai",
-    "paperless",
-    "artificial",
-    "intelligence"
+    "document-ai",
+    "self-hosted",
+    "ollama",
+    "homelab",
+    "docker",
+    "document-management"
   ],
   "nodemonConfig": {
     "ignore": [

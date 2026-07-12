@@ -1,0 +1,38 @@
+name: Archive GitHub traffic
+
+on:
+  schedule:
+    - cron: "23 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Preserve collector script
+        run: cp scripts/archive-github-traffic.mjs /tmp/archive-github-traffic.mjs
+      - name: Open metrics branch
+        run: |
+          if git ls-remote --exit-code --heads origin metrics; then
+            git switch --track origin/metrics
+          else
+            git switch --orphan metrics
+            git rm -rf .
+          fi
+      - name: Capture rolling traffic window
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: node /tmp/archive-github-traffic.mjs
+      - name: Publish archive
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add github-traffic.jsonl
+          git diff --cached --quiet || git commit -m "chore: archive GitHub traffic [skip ci]"
+          git push origin HEAD:metrics

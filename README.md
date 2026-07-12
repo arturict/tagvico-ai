@@ -1,9 +1,12 @@
 # Tagvico AI
 
-> **⚠️ Alpha — under active development.**
-> This project is currently in an **alpha** state. APIs, configuration schema, environment variables, and the SQLite layout are subject to change without notice. Things will break. Pin a specific release tag if you need stability, and please open issues for anything that surprises you — feedback during alpha is what shapes the 1.0 API.
+> **Alpha — under active development.** Pin an immutable release and back up the
+> data volume before upgrades. Feedback now directly shapes the stable v2 API.
 
-Self-hosted AI filing for [Paperless-ngx](https://docs.paperless-ngx.com/): turn OCR text into clean metadata — titles, tags, correspondents, document types, dates, languages, custom fields, and optional owner assignment — while keeping control of the model, cost mode, and the privacy boundary.
+**AI-powered metadata for Paperless-ngx—self-hosted, reviewable, and compatible
+with local or hosted models.** Turn OCR text into clean titles, tags,
+correspondents, document types, dates, languages, custom fields, and optional
+owner assignments while keeping control of the model and privacy boundary.
 
 [![Status: Alpha](https://img.shields.io/badge/status-alpha-ff6f00.svg)](#-alpha--under-active-development)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -55,7 +58,7 @@ services:
   tagvico-ai:
     # Pin an immutable release tag for upgrades you can rely on.
     # See https://github.com/arturict/tagvico-ai/releases for the current version.
-    image: ghcr.io/arturict/tagvico-ai:1.4.0
+    image: ghcr.io/arturict/tagvico-ai:1.3.0
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -103,7 +106,7 @@ docker run -d \
   -p 8080:3000 \
   -e TAGVICO_AI_PORT=3000 \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:1.4.0
+  ghcr.io/arturict/tagvico-ai:1.3.0
 ```
 
 </details>
@@ -169,7 +172,7 @@ History supports explicit rescan and restoration of the first metadata snapshot 
 ## Upgrades
 
 1. Check the latest release at <https://github.com/arturict/tagvico-ai/releases>.
-2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** — for example `ghcr.io/arturict/tagvico-ai:1.4.0`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
+2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page—for example `ghcr.io/arturict/tagvico-ai:1.3.0`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
 3. `docker compose pull && docker compose up -d`.
 
 Tagvico is stateless across restarts: configuration, processing history, and the local admin account live in the `tagvico_ai_data` volume, so upgrades do not touch your settings.
@@ -187,6 +190,16 @@ Tagvico is stateless across restarts: configuration, processing history, and the
 With Ollama or another endpoint on your network, OCR text and metadata can remain on infrastructure you control. When you select OpenAI, OpenRouter, or Azure, the document content required for classification is sent to that provider. Secrets are stored in `data/.env` and are not written to the processing database.
 
 The container drops Linux capabilities and enables `no-new-privileges`. See [SECURITY.md](SECURITY.md) and [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the full policies.
+
+Anonymous installation analytics are optional and disabled by default. When
+enabled, Tagvico sends one coarse daily heartbeat with rotating identifiers;
+the exact payload can be previewed in Settings. It never includes document
+content or metadata, Paperless URLs, usernames, keys, errors, or exact document
+counts.
+
+## Support the project
+
+If Tagvico saves you filing time, [star it on GitHub](https://github.com/arturict/tagvico-ai)—it helps other Paperless-ngx users discover the project. Bug reports, deployment notes, and sanitized model comparisons are equally valuable.
 
 ## Development
 

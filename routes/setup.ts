@@ -64,6 +64,7 @@ const reviewProgressService = require('../services/reviewProgressService');
 const historyService = require('../services/historyService');
 const ocrService = require('../services/ocrService');
 const reconciliationService = require('../services/reconciliationService');
+const telemetryService = require('../services/telemetryService');
 const tagGroupService = require('../services/tagGroupService');
 const tagExceptionService = require('../services/tagExceptionService');
 const controlledTaggingService = require('../services/controlledTaggingService');
@@ -1956,7 +1957,9 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
     SYSTEM_PROMPT: processSystemPrompt(payload.systemPrompt),
     TOKEN_LIMIT: currentConfig.TOKEN_LIMIT || '128000',
     RESPONSE_TOKENS: currentConfig.RESPONSE_TOKENS || '1000',
-    AI_REASONING_EFFORT: payload.aiReasoningEffort || currentConfig.AI_REASONING_EFFORT || 'low'
+    AI_REASONING_EFFORT: payload.aiReasoningEffort || currentConfig.AI_REASONING_EFFORT || 'low',
+    TAGVICO_TELEMETRY_ENABLED: parseBooleanFlag(payload.telemetryEnabled, currentConfig.TAGVICO_TELEMETRY_ENABLED || 'no'),
+    TAGVICO_TELEMETRY_ENDPOINT: currentConfig.TAGVICO_TELEMETRY_ENDPOINT || process.env.TAGVICO_TELEMETRY_ENDPOINT || ''
   };
 }
 
@@ -3046,6 +3049,22 @@ router.get('/settings', async (req: Req, res: Res) => {
     success: isConfigured ? 'The application is already configured. You can update the configuration below.' : undefined,
     settingsError: showErrorCheckSettings ? 'Please check your settings. Something is not working correctly.' : undefined
   });
+});
+
+router.get('/api/telemetry/preview', async (_req: Req, res: Res) => {
+  try {
+    res.json({ enabled: telemetryService.enabled(), payload: await telemetryService.buildPayload() });
+  } catch (error) {
+    res.status(500).json({ error: 'Could not build telemetry preview: ' + errorMessage(error) });
+  }
+});
+
+router.post('/api/telemetry/send', async (_req: Req, res: Res) => {
+  try {
+    res.json(await telemetryService.sendNow());
+  } catch (error) {
+    res.status(502).json({ error: 'Telemetry heartbeat failed: ' + errorMessage(error) });
+  }
 });
 
 /**

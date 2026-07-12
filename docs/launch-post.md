@@ -1,37 +1,77 @@
-# Community launch drafts
+# Community launch kit
 
-## r/selfhosted
+Use these drafts sequentially, at least 24 hours apart, after checking each
+community's current self-promotion rules. Stay available to answer replies.
 
-Tagvico AI is less than three months old, so it belongs in the weekly New Project Megathread rather than a standalone post.
+## r/selfhosted / New Project thread
 
-**Project Name:** Tagvico AI
+**Title:** I built a self-hosted, review-first AI filing companion for Paperless-ngx
 
-**Repo:** https://github.com/arturict/tagvico-ai
+I built Tagvico AI to reduce the repetitive cleanup after documents arrive in
+Paperless-ngx. It reads the OCR text Paperless already has and proposes titles,
+tags, correspondents, document types, dates, languages, custom fields, and
+optional owner assignments.
 
-**Description:** Tagvico AI is a self-hosted companion for Paperless-ngx that turns OCR text into useful filing metadata: titles, tags, correspondents, document types, dates, languages, custom fields, and optional owner assignments. I built it because I wanted guided setup and one place to configure local or hosted model providers without hand-wiring the classification workflow.
+The part I care about most is control: suggestions can wait in a durable review
+queue, generated tags can be constrained to a controlled vocabulary, and local
+Ollama or an OpenAI-compatible endpoint can keep classification on your own
+network. Hosted providers are optional and explicit.
 
-It supports Ollama for local processing, plus OpenAI, OpenRouter, Azure OpenAI, and OpenAI-compatible endpoints such as LM Studio. The web UI covers setup, processing history, manual re-runs, and provider settings. Metadata is written back to the original Paperless document; a local SQLite database tracks runs and retries.
+It runs in Docker, is MIT licensed, and is still alpha—pin a release, back up
+the volume, and start in Review-first mode.
 
-**Deployment:** Docker Compose; one container and a persistent data volume. Connect it to an existing Paperless-ngx instance, then finish setup in the browser. MIT licensed.
+GitHub: https://github.com/arturict/tagvico-ai
 
-**Privacy:** With Ollama or another endpoint on your network, OCR text and metadata stay local. Hosted providers receive the document content needed for classification, so that choice is explicit.
-
-**AI involvement:** AI coding tools assisted with parts of implementation, review, documentation, and testing. The application itself uses the model provider you configure for document classification.
-
-I would especially value feedback on owner assignment, provider setup, and the guardrails you would want before letting an AI update metadata automatically.
+I would especially value feedback on installation friction and which metadata
+guardrails work in real household or small-office archives.
 
 ## r/Paperlessngx
 
-**Title:** I built a Paperless-ngx companion for AI metadata and owner assignment — looking for workflow feedback
+**Title:** Tagvico AI: review-first AI metadata for Paperless-ngx — looking for workflow feedback
 
-I have been working on Tagvico AI, a self-hosted companion that reads Paperless OCR text and writes back a title, tags, correspondent, document type, date, language, custom fields, and—optionally—an owner.
+I maintain Tagvico AI, an independent self-hosted companion for Paperless-ngx.
+It proposes structured filing metadata from existing OCR text and either queues
+the diff for approval or writes validated fields automatically.
 
-The part I most wanted to improve was setup: connect an existing Paperless instance in a browser, choose Ollama or a hosted/OpenAI-compatible provider, then inspect history and manually re-run documents from the UI. It runs as one Docker container and uses SQLite for processing history and retries.
+Current features include controlled tag groups, metadata restoration, OCR
+rescue, processing history, custom fields, owner assignment, local Ollama, and
+optional hosted providers. No document content is routed through a
+Tagvico-operated service.
 
-Repo: https://github.com/arturict/tagvico-ai (MIT)
+Repository and Compose example: https://github.com/arturict/tagvico-ai
 
-Privacy boundary: local Ollama/OpenAI-compatible endpoints keep classification on your network; choosing OpenAI, OpenRouter, or Azure sends the OCR content used for classification to that provider.
+The project is alpha. I would like blunt Paperless-specific feedback: does the
+review queue fit your workflow, which fields should default to existing values
+only, and what would make you trust automatic mode?
 
-I am looking for Paperless-specific feedback rather than stars: should new metadata default to a review queue, should generated values be limited to existing tags/correspondents/types, and what would make owner assignment feel safe enough for a household installation?
+## Show HN
 
-Disclosure: I am the author. AI coding tools assisted with parts of implementation, review, documentation, and testing, and the app itself uses the configured model for classification.
+**Title:** Show HN: Tagvico AI – self-hosted, reviewable AI metadata for Paperless-ngx
+
+Tagvico AI connects to an existing Paperless-ngx installation, reads OCR text,
+and proposes structured document metadata. The main design goal is a visible
+safety boundary: reviewable diffs, controlled vocabularies, restoration, local
+model support, and optional hosted providers instead of a mandatory cloud.
+
+It is TypeScript, Docker, SQLite, and MIT licensed. The project is alpha and I
+am looking for feedback from people running real document archives.
+
+https://github.com/arturict/tagvico-ai
+
+## Provider communities
+
+Adapt the short draft below for Ollama, OpenRouter, or compatible-gateway
+communities. Do not cross-post identical text or imply provider endorsement.
+
+> I am testing **[provider/model]** for structured Paperless-ngx metadata in
+> Tagvico AI. The useful question is not prose quality but field accuracy across
+> titles, dates, tags, correspondents, and custom fields. If you run this model
+> for document extraction, I would value sanitized examples of where it fails.
+> Project: https://github.com/arturict/tagvico-ai
+
+## Visual asset checklist
+
+- 60–90 second screen recording from a representative installation.
+- Show arrival → suggestion → diff review → Paperless result.
+- Use synthetic documents and inspect every final frame for identifiers.
+- Export one short GIF for the README and two captioned stills for posts.

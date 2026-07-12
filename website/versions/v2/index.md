@@ -4,7 +4,7 @@ layout: home
 hero:
   name: "Tagvico AI v2"
   text: "AI filing for Paperless-ngx, under your control"
-  tagline: Connect Paperless, choose a local or hosted model, and review or automate structured metadata updates.
+  tagline: Self-hosted, reviewable AI metadata for Paperless-ngx with your choice of local or hosted model.
   image:
     src: /tagvico-icon.png
     alt: Tagvico AI
