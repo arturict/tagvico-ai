@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <Container version="2">
   <Name>Tagvico AI</Name>
-  <Repository>ghcr.io/arturict/tagvico-ai:1.3.0</Repository>
+  <Repository>ghcr.io/arturict/tagvico-ai:2.0.0-alpha.1</Repository>
   <Registry>https://github.com/arturict/tagvico-ai/pkgs/container/tagvico-ai</Registry>
   <Network>bridge</Network>
   <WebUI>http://[IP]:[PORT:3000]/setup</WebUI>

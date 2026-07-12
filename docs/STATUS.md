@@ -1,10 +1,12 @@
 # Project status
 
-**Status:** Alpha — under active development.
+**Status:** v2 prerelease (`2.0.0-alpha.1`) — under active testing.
 
 ## What this means
 
-Tagvico AI is in **alpha**. We are stabilizing the core filing workflow and provider adapters. The TypeScript migration is complete. You can run it for real, and many people do, but the following may change at any time without a deprecation cycle:
+Tagvico AI v2 is in **prerelease testing**. The TypeScript migration and core
+review-first filing workflow are complete, but the following may still change
+before stable `2.0.0`:
 
 - The HTTP/REST API surface (paths, request bodies, response fields).
 - The configuration schema in `data/.env` and the setup wizard.
@@ -13,7 +15,7 @@ Tagvico AI is in **alpha**. We are stabilizing the core filing workflow and prov
 - Default values, output formats, and confidence thresholds.
 - File paths, filenames, and the on-disk layout inside the persistent volume.
 
-## Recommendations for alpha users
+## Recommendations for prerelease users
 
 - **Pin a specific release tag** in `docker-compose.yml` (for example `ghcr.io/arturict/tagvico-ai:<version>`), never `:latest`. We publish immutable tags per release.
 - **Back up the `tagvico_ai_data` volume** before upgrading. The volume holds your admin account, provider settings, and processing history.
@@ -28,9 +30,9 @@ Tagvico AI is in **alpha**. We are stabilizing the core filing workflow and prov
 - The local admin account: the SQLite-stored credentials in the persistent volume.
 - The OpenAI-compatible provider contract: anything that speaks the OpenAI Chat Completions API works the same way.
 
-## Reporting alpha issues
+## Reporting prerelease issues
 
-Alpha is exactly the phase where feedback is most useful. Please file issues for:
+The prerelease window is where feedback is most useful. Please file issues for:
 
 - Surprising behavior or errors during setup.
 - Provider failures, malformed responses, or token-limit issues.
@@ -39,10 +41,11 @@ Alpha is exactly the phase where feedback is most useful. Please file issues for
 
 Security issues must **not** be filed as public issues — see [SECURITY.md](../SECURITY.md).
 
-## Roadmap toward 1.0
+## Roadmap toward stable v2
 
 - [x] Complete the TypeScript migration of all services and routes.
 - Lock the REST API surface, configuration schema, and database schema.
-- Cut a release candidate, run a community testing window, then tag 1.0.
+- Complete representative Paperless ingest, restore, OCR, and provider-account
+  checks, then tag stable `2.0.0`.
 
 This document lives at `docs/STATUS.md` and is updated when the project status changes.
