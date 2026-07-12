@@ -1,10 +1,23 @@
 ## Contributing
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+Tagvico AI requires Node.js 22 and npm. Before starting substantial work, open
+an issue or comment on an existing one so that implementation direction can be
+agreed without duplicating effort.
+
+1. Fork the repository and create a focused branch.
+2. Install the locked dependencies with `npm ci`.
+3. Make the smallest change that addresses the issue and add regression tests
+   for behavior changes.
+4. Run `npm test`, which performs type checking, linting, repository policy
+   checks, a production build, and the unit-test suite.
+5. Open a pull request using the repository template and explain how the change
+   was verified.
+
+Pull requests are expected to keep unrelated refactors out of the diff, avoid
+committing secrets or personal document data, and update user-facing
+documentation when configuration or behavior changes. AI-assisted
+contributions are welcome when the contributor has reviewed the patch, can
+explain it, and reports the verification they personally performed.
 
 ## Issue Staleness Policy
 

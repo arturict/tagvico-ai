@@ -16,8 +16,7 @@ jobs:
           node-version: '22'
           cache: 'npm'
       - run: npm ci
-      - run: npm run check
-      - run: npm run build
+      - run: npm test
       - run: node --check dist/server.js
         # Syntax-only smoke test; starting the server would keep CI alive.
       - name: Verify package scripts

@@ -27,7 +27,7 @@ jobs:
           fi
       - name: Capture rolling traffic window
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.TRAFFIC_TOKEN || secrets.GITHUB_TOKEN }}
         run: node /tmp/archive-github-traffic.mjs
       - name: Publish archive
         run: |

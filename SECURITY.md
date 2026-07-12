@@ -6,10 +6,11 @@
 
 | Version      | Supported          |
 | ------------ | ------------------ |
-| 1.1.x (alpha)| :white_check_mark: (best effort) |
-| < 1.1        | :x:                |
+| 2.0.x (prerelease) | :white_check_mark: (best effort) |
+| 1.3.x        | :white_check_mark: |
+| < 1.3        | :x:                |
 
-We commit to addressing security issues in the latest alpha release line as quickly as possible. Pre-1.1 releases are no longer maintained.
+We commit to addressing security issues in the latest stable and prerelease lines as quickly as possible. Releases before 1.3 are no longer maintained.
 
 ## Reporting a Vulnerability
 

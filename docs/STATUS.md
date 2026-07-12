@@ -10,7 +10,7 @@ before stable `2.0.0`:
 
 - The HTTP/REST API surface (paths, request bodies, response fields).
 - The configuration schema in `data/.env` and the setup wizard.
-- The SQLite database schema in `data/tagvico.db` (migrations are provided, but backwards compatibility is not guaranteed across pre-1.0 releases).
+- The SQLite database schema in `data/tagvico.db` (migrations are provided, but backwards compatibility is not guaranteed across v2 prereleases).
 - Provider adapter behavior (Ollama, OpenAI, OpenRouter, Azure OpenAI, OpenAI-compatible, Anthropic, experimental Codex sign-in).
 - Default values, output formats, and confidence thresholds.
 - File paths, filenames, and the on-disk layout inside the persistent volume.
