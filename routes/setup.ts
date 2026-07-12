@@ -4609,8 +4609,11 @@ router.post('/api/history/:id/restore', async (req: Req, res: Res) => {
     owner: snapshot.owner ?? original.owner
   };
   Object.keys(update).forEach((key) => update[key] === undefined && delete update[key]);
-  const restored = await paperlessService.updateDocument(documentId, update);
-  if (!restored) return res.status(502).json({ error: 'Paperless-ngx rejected the restore' });
+  // Restoration must replace metadata exactly. The normal update path merges
+  // tags and preserves an existing correspondent, which is correct for new AI
+  // suggestions but would leave Tagvico-created values behind during restore.
+  const restored = await paperlessService.patchDocument(documentId, update);
+  if (!restored?.ok) return res.status(502).json({ error: restored?.error || 'Paperless-ngx rejected the restore' });
   await documentModel.addToHistory(documentId, update.tags || [], update.title, String(update.correspondent || ''));
   res.json({ success: true });
 });

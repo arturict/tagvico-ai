@@ -57,12 +57,18 @@ contains no credentials, private hostnames, document data, or account details.
 4. Select **Review first** for approval-based filing or **Automatic** for direct
    writes, then choose which metadata fields Tagvico may change.
 
-After saving the provider, verify the complete dependency chain. Unlike
-`/health`, this endpoint also checks the configured model provider:
+After saving the provider, inspect the detailed application health response.
+Unlike `/health`, this endpoint reports the configured model adapter's health
+when that adapter exposes a health check:
 
 ```bash
 curl --fail http://localhost:8080/api/health
 ```
+
+Some compatible and subscription-backed adapters report their health as
+unknown rather than making a billable test request. Use the **Test connection**
+actions in Settings to verify both Paperless and the selected model provider
+before processing documents.
 
 If Paperless runs on the Docker host, use `host.docker.internal` on Docker
 Desktop or the host's LAN address on Linux. If both containers share a Docker

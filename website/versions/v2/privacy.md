@@ -37,7 +37,7 @@ or disable sharing again at any time.
 
 When enabled, Tagvico sends one coarse heartbeat roughly every 24 hours. It
 contains the application version, a broad processed-count
-buckets, write mode, a broad provider category, three feature booleans, and
+bucket, write mode, a broad provider category, three feature booleans, and
 rotating daily/monthly identifiers. The locally generated secret used to derive
 those identifiers never leaves the installation, and the monthly identifier
 changes every month.
