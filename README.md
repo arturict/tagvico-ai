@@ -3,6 +3,11 @@
 > **Alpha — under active development.** Pin an immutable release and back up the
 > data volume before upgrades. Feedback now directly shapes the stable v2 API.
 
+**Help validate v2:** follow the [safe prerelease guidance](docs/STATUS.md),
+[share a redacted test result](https://github.com/arturict/tagvico-ai/discussions/35),
+or [report a reproducible bug](https://github.com/arturict/tagvico-ai/issues/new?template=bug_report.yml).
+Successful installation and upgrade reports are useful too.
+
 **AI-powered metadata for Paperless-ngx—self-hosted, reviewable, and compatible
 with local or hosted models.** Turn OCR text into clean titles, tags,
 correspondents, document types, dates, languages, custom fields, and optional
