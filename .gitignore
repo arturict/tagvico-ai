@@ -19,6 +19,7 @@ documents.json
 apitest.js
 logs/*
 /test-stack/
+/docs-site/
 api_correspondent.js
 prompt.txt
 api_test_r1.js

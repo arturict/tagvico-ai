@@ -137,6 +137,8 @@ function buildUiConfig(env: Environment = process.env, version = '') {
     CUSTOM_FIELDS: env.CUSTOM_FIELDS || '{"custom_fields":[]}',
     API_KEY: env.API_KEY || '',
     AI_REASONING_EFFORT: env.AI_REASONING_EFFORT || 'low',
+    TAGVICO_TELEMETRY_ENABLED: parseBooleanFlag(env.TAGVICO_TELEMETRY_ENABLED, 'no'),
+    TAGVICO_TELEMETRY_ENDPOINT: env.TAGVICO_TELEMETRY_ENDPOINT || '',
     TAGVICO_AI_VERSION: version || resolveEnv('TAGVICO_AI_VERSION', 'ARCHIVISTA_AI_VERSION', env) || '',
     SYSTEM_PROMPT: ''
   };

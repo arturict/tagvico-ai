@@ -62,6 +62,7 @@ const controlledTaggingService = require('./services/controlledTaggingService');
 const tagGroupService = require('./services/tagGroupService');
 const reviewService = require('./services/reviewService');
 const { blockLegacyPublicImages, removeLegacyPublicThumbnailCache } = require('./services/staticPathSecurity');
+const telemetryService = require('./services/telemetryService');
 
 const htmlLogger = new Logger({
   logFile: 'logs.html',
@@ -809,6 +810,7 @@ async function startServer() {
     }
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);
+      telemetryService.start();
       startScanning();
     });
   } catch (error) {

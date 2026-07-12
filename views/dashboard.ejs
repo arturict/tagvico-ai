@@ -32,6 +32,15 @@
       </div>
     </section>
 
+    ${counts.processed >= 25 ? `
+    <aside id="githubStarPrompt" class="help-card" hidden style="margin:0 0 1.25rem;display:flex;gap:1rem;align-items:center;justify-content:space-between;flex-wrap:wrap;">
+      <div><strong>Tagvico has filed ${counts.processed.toLocaleString()} documents.</strong><br><span class="field-hint">If it is useful, a GitHub star helps other Paperless-ngx users find it.</span></div>
+      <div class="inline-actions">
+        <a class="button-secondary" href="https://github.com/arturict/tagvico-ai" target="_blank" rel="noreferrer">Star on GitHub</a>
+        <button id="dismissStarPrompt" class="button-secondary" type="button">Dismiss</button>
+      </div>
+    </aside>` : ''}
+
     <div class="dash-identity" aria-hidden="true">
       <span class="dash-mark"></span>
       <span>Tagvico AI ${version} &middot; live processing state polls every few seconds</span>
@@ -199,6 +208,6 @@
   includeCharts: true,
   includeDataTables: false,
   extraHead: '',
-  extraScripts: `<script>window.dashboardPageData = ${dashboardJson};</script><script src="/js/dashboard.js"></script>`,
+  extraScripts: `<script>window.dashboardPageData = ${dashboardJson};(function(){var p=document.getElementById('githubStarPrompt');if(!p)return;try{if(localStorage.getItem('tagvico:star-prompt:dismissed')==='1')return;}catch(e){}p.hidden=false;var b=document.getElementById('dismissStarPrompt');if(b)b.addEventListener('click',function(){p.hidden=true;try{localStorage.setItem('tagvico:star-prompt:dismissed','1');}catch(e){}});}());</script><script src="/js/dashboard.js"></script>`,
   body
 }) %>

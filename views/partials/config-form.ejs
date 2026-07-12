@@ -6,6 +6,7 @@
   const introCopy = isSetup
     ? 'Connect Paperless-ngx, choose a model, and decide what Tagvico AI may write back. The rest uses smart defaults.'
     : 'Switch providers, refresh model choices, and control how aggressively Tagvico AI updates documents.';
+  const telemetryAvailable = String(config.TAGVICO_TELEMETRY_ENDPOINT || '').startsWith('https://');
   const providerLogos = {
     openrouter: { light: '/provider-icons/openrouter.svg', dark: '/provider-icons/openrouter.svg' },
     ollama: { light: 'https://svgl.app/library/ollama_light.svg', dark: 'https://svgl.app/library/ollama_dark.svg' },
@@ -826,6 +827,33 @@
     </div>
 
     <input id="customFieldsJson" name="customFields" type="hidden" value='<%= config.CUSTOM_FIELDS || "{\"custom_fields\":[]}" %>'>
+  </details>
+
+  <details class="hero stack advanced-panel">
+    <summary>
+      <span>
+        <span class="section-kicker">Privacy</span>
+        <strong>Anonymous installation analytics</strong>
+      </span>
+      <i class="fa-solid fa-chevron-down" aria-hidden="true"></i>
+    </summary>
+
+    <div class="stack">
+      <p class="field-hint">Optional and off by default. Share one coarse heartbeat per day to help count active installations and prioritize compatibility work. Tagvico never sends document content, metadata, URLs, usernames, API keys, exact document counts, errors, or a permanent installation identifier.</p>
+      <input type="hidden" name="telemetryEnabled" value="no">
+      <label class="choice-card toggle-card <%= config.TAGVICO_TELEMETRY_ENABLED === 'yes' ? 'is-selected' : '' %>">
+        <input type="checkbox" name="telemetryEnabled" value="yes" <%= config.TAGVICO_TELEMETRY_ENABLED === 'yes' ? 'checked' : '' %> <%= telemetryAvailable ? '' : 'disabled' %> hidden aria-label="Share anonymous installation analytics">
+        <div class="choice-title"><span>Share anonymous usage counts</span><span class="badge"><%= telemetryAvailable ? 'Opt in' : 'Collector not configured' %></span></div>
+        <div class="choice-copy">Uses rotating daily and monthly identifiers that cannot be linked across months. Disable this at any time.</div>
+      </label>
+      <div class="inline-actions">
+        <button id="previewTelemetry" type="button" class="button-secondary">Preview exact payload</button>
+        <button id="sendTelemetryNow" type="button" class="button-secondary" <%= telemetryAvailable ? '' : 'disabled' %>>Send test heartbeat</button>
+        <span id="telemetryStatus" class="field-hint" aria-live="polite"></span>
+      </div>
+      <pre id="telemetryPreview" class="help-card hidden" style="white-space:pre-wrap;overflow:auto;"></pre>
+      <p class="field-hint"><a class="inline-link" href="https://tagvico.arturf.ch/docs/privacy" target="_blank" rel="noreferrer">Read the telemetry and privacy documentation</a></p>
+    </div>
   </details>
 
   <div class="save-bar">

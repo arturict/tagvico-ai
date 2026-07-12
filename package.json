@@ -15,6 +15,10 @@
     "test:unit": "npm run build && node --test tests/*.test.js",
     "check": "npm run typecheck && npm run lint && npm run check:type-debt && npm run check:branding && npm run check:ejs && npm run check:browser",
     "check:browser": "node --check public/js/config-form.js && node --check public/js/app-shell.js",
+    "docs:build": "node scripts/docs.mjs build",
+    "docs:dev": "node scripts/docs.mjs dev v2",
+    "docs:new-major": "node scripts/docs.mjs new-major",
+    "docs:preview": "node scripts/docs.mjs preview v2",
     "check:branding": "node scripts/check-brand-debt.js",
     "check:ejs": "node scripts/check-ejs.js",
     "check:type-debt": "node scripts/check-type-debt.js",
@@ -23,10 +27,12 @@
   },
   "keywords": [
     "paperless-ngx",
-    "ai",
-    "paperless",
-    "artificial",
-    "intelligence"
+    "document-ai",
+    "self-hosted",
+    "ollama",
+    "homelab",
+    "docker",
+    "document-management"
   ],
   "nodemonConfig": {
     "ignore": [
@@ -76,7 +82,8 @@
     "globals": "^16.0.0",
     "prettier": "^3.5.3",
     "typescript": "^5.8.2",
-    "typescript-eslint": "^8.62.1"
+    "typescript-eslint": "^8.62.1",
+    "vitepress": "^1.6.4"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

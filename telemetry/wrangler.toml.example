@@ -1,0 +1,11 @@
+name = "tagvico-telemetry"
+main = "worker.js"
+compatibility_date = "2026-07-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "tagvico-telemetry"
+database_id = "REPLACE_ME"
+
+[triggers]
+crons = ["17 3 * * *"]
