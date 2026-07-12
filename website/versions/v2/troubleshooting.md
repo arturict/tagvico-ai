@@ -10,8 +10,10 @@ curl --fail http://localhost:8080/api/health
 ```
 
 `/health` verifies the Tagvico process and its database. `/api/health` also
-probes the configured model provider and returns `503` when that dependency is
-degraded.
+reports the configured model adapter's health when the adapter exposes a
+health check, and returns `503` on an explicit failure. An `unknown` provider
+result is not a successful connection test; use the **Test connection** actions
+in Settings to verify Paperless and the selected provider.
 
 ## Setup returns 403
 

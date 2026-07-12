@@ -330,6 +330,77 @@ test('review page renders proposed metadata and durable suggestion ids', async (
   assert.doesNotMatch(html, /data-suggestion-id="1234"/);
 });
 
+test('history restore replaces metadata exactly, including empty tags', () => {
+  const script = `
+    const assert = require('node:assert/strict');
+    const path = require('node:path');
+    const root = ${JSON.stringify(repoRoot)};
+    const setupPath = path.join(root, 'dist/services/setupService.js');
+    const paperlessPath = path.join(root, 'dist/services/paperlessService.js');
+    let patchCall = null;
+
+    require.cache[setupPath] = {
+      id: setupPath,
+      filename: setupPath,
+      loaded: true,
+      exports: { isConfigured: async () => true }
+    };
+    require.cache[paperlessPath] = {
+      id: paperlessPath,
+      filename: paperlessPath,
+      loaded: true,
+      exports: {
+        patchDocument: async (id, patch) => {
+          patchCall = { id, patch };
+          return { ok: true, after: { id, ...patch }, diff: [] };
+        },
+        updateDocument: async () => { throw new Error('restore must not use the merging update path'); }
+      }
+    };
+
+    const model = require(path.join(root, 'dist/models/document.js'));
+    const express = require(path.join(root, 'node_modules/express'));
+    const cookieParser = require(path.join(root, 'node_modules/cookie-parser'));
+
+    (async () => {
+      await model.saveOriginalSnapshot(901, {
+        title: 'Original title',
+        tags: [],
+        correspondent: null,
+        document_type: null,
+        created: '2026-07-10',
+        language: 'en',
+        custom_fields: [],
+        owner: 7
+      });
+      const router = require(path.join(root, 'dist/routes/setup.js'));
+      const app = express();
+      app.use(cookieParser());
+      app.use(router);
+      const server = await new Promise((resolve) => {
+        const instance = app.listen(0, '127.0.0.1', () => resolve(instance));
+      });
+      const response = await fetch('http://127.0.0.1:' + server.address().port + '/api/history/901/restore', {
+        method: 'POST',
+        headers: { 'x-api-key': 'review-route-key' }
+      });
+      assert.equal(response.status, 200, await response.text());
+      assert.equal(patchCall.id, 901);
+      assert.deepEqual(patchCall.patch.tags, []);
+      assert.equal(patchCall.patch.correspondent, null);
+      assert.equal(patchCall.patch.document_type, null);
+      assert.equal(patchCall.patch.title, 'Original title');
+      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      await model.closeDatabase();
+    })().catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
+  `;
+
+  runIsolated(script);
+});
+
 test('settings UI exposes exclusive review-first and automatic write modes', () => {
   const template = fs.readFileSync(path.join(repoRoot, 'views', 'partials', 'config-form.ejs'), 'utf8');
   const browserCode = fs.readFileSync(path.join(repoRoot, 'public', 'js', 'config-form.js'), 'utf8');

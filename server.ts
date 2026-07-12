@@ -711,6 +711,7 @@ async function startScanning() {
     if (!isConfigured) {
       const port = resolveEnv('TAGVICO_AI_PORT', 'ARCHIVISTA_AI_PORT') || 3000;
       console.log(`Setup not completed. Visit http://your-machine-ip:${port}/setup to complete setup.`);
+      return;
     }
 
     const userId = await paperlessService.getOwnUserID();
