@@ -1,5 +1,8 @@
 blank_issues_enabled: false
 contact_links:
+  - name: Share v2 test feedback
+    url: https://github.com/arturict/tagvico-ai/discussions/35
+    about: Share a redacted installation, upgrade, or workflow test result in the canonical prerelease thread.
   - name: Security vulnerability
     url: https://github.com/arturict/tagvico-ai/security/policy
     about: Please report security issues privately.
