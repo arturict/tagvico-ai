@@ -411,8 +411,8 @@
         </nav>
       </div>
       <div class="alpha-strip" role="status" aria-label="Project status">
-        <span class="alpha-pill">ALPHA</span>
-        <span>Tagvico AI is under active development. APIs and the configuration schema may change without notice &mdash; pin a release tag for stability.</span>
+        <span class="alpha-pill">STABLE V2</span>
+        <span>Tagvico AI v2.0.0 is stable. Pin the immutable release tag and back up the data volume before upgrades.</span>
       </div>
     </header>
 
@@ -421,7 +421,7 @@
       <div class="hero">
         <div class="container">
           <div class="hero-badges">
-            <img src="https://img.shields.io/badge/status-ALPHA-ff6f00.svg" alt="Status: Alpha">
+            <img src="https://img.shields.io/badge/status-stable-2ea44f.svg" alt="Status: Stable">
             <a href="https://github.com/arturict/tagvico-ai/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"></a>
             <a href="https://github.com/arturict/tagvico-ai/releases"><img src="https://img.shields.io/github/v/release/arturict/tagvico-ai" alt="Latest release"></a>
             <a href="https://github.com/arturict/tagvico-ai/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/arturict/tagvico-ai/ci.yml?branch=main&label=CI" alt="CI"></a>
@@ -453,7 +453,7 @@
               <p>Save as <code>docker-compose.yml</code> and bring up the stack:</p>
 <pre><code>services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:latest
+    image: ghcr.io/arturict/tagvico-ai:2.0.0
     container_name: tagvico-ai
     restart: unless-stopped
     ports:
@@ -484,7 +484,7 @@ volumes:
   -e AI_PROVIDER=openai \
   -e OPENAI_API_KEY=sk-... \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:latest</code></pre>
+  ghcr.io/arturict/tagvico-ai:2.0.0</code></pre>
               <div class="copy-row">
                 <button class="copy-btn" data-copy="oneliner" type="button">Copy</button>
               </div>
@@ -575,7 +575,7 @@ volumes:
       const snippets = {
         compose: `services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:latest
+    image: ghcr.io/arturict/tagvico-ai:2.0.0
     container_name: tagvico-ai
     restart: unless-stopped
     ports:
@@ -597,7 +597,7 @@ volumes:
   -e AI_PROVIDER=openai \\
   -e OPENAI_API_KEY=sk-... \\
   -v tagvico_ai_data:/app/data \\
-  ghcr.io/arturict/tagvico-ai:latest`
+  ghcr.io/arturict/tagvico-ai:2.0.0`
       };
 
       document.querySelectorAll('.copy-btn').forEach(btn => {

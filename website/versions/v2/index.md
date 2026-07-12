@@ -45,7 +45,8 @@ The v2 documentation is frozen under this URL when a future major version is
 published. Use the version menu in the navigation to move between major
 versions without losing the instructions that match your installation.
 
-::: warning Alpha documentation
-The current package is a v2 alpha. Pin an immutable image version, back up the
-data volume before upgrades, and start in **Review first** mode.
+::: tip Stable v2
+Version 2.0.0 is the first stable v2 release. Pin the immutable image version,
+back up the data volume before upgrades, and start new installations in
+**Review first** mode.
 :::
