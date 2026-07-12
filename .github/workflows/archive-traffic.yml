@@ -23,7 +23,7 @@ jobs:
             git switch --track origin/metrics
           else
             git switch --orphan metrics
-            git rm -rf .
+            git rm -rf --ignore-unmatch .
           fi
       - name: Capture rolling traffic window
         env:
