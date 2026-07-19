@@ -37,6 +37,7 @@ export interface ConsumptionResult {
 }
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
+const TELEGRAM_DOCUMENT_MAX_BYTES = 50 * 1024 * 1024;
 
 function normalizeApiUrl(value: string): string {
   const trimmed = String(value || '').trim().replace(/\/+$/, '');
@@ -121,7 +122,10 @@ export class TelegramPaperlessClient {
   }
 
   async downloadDocument(documentId: number): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
-    const response = await this.client.get(`/documents/${documentId}/download/`, { responseType: 'arraybuffer' });
+    const response = await this.client.get(`/documents/${documentId}/download/`, {
+      responseType: 'arraybuffer',
+      maxContentLength: TELEGRAM_DOCUMENT_MAX_BYTES
+    });
     const document = await this.getDocument(documentId);
     return {
       buffer: Buffer.from(response.data),

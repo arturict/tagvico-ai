@@ -5,7 +5,7 @@ const path = require('node:path');
 const axios = require('axios');
 
 const telegramBot = require('../dist/services/telegramBotService');
-const { telegramPaperlessInternals } = require('../dist/services/telegramPaperlessClient');
+const { TelegramPaperlessClient, telegramPaperlessInternals } = require('../dist/services/telegramPaperlessClient');
 const config = require('../dist/config/config');
 
 const allowedUser = {
@@ -79,6 +79,67 @@ test('Paperless task parsing recognizes duplicate document links', () => {
 test('Paperless URLs are normalized to one API suffix', () => {
   assert.equal(telegramPaperlessInternals.normalizeApiUrl('https://paperless.example/'), 'https://paperless.example/api');
   assert.equal(telegramPaperlessInternals.normalizeApiUrl('https://paperless.example/api/'), 'https://paperless.example/api');
+});
+
+test('Paperless downloads enforce Telegram size limits before metadata lookup', async () => {
+  const originalAxiosCreate = axios.create;
+  const oversized = Object.assign(new Error('download exceeds the configured response limit'), {
+    code: 'ERR_FR_MAX_BODY_LENGTH_EXCEEDED'
+  });
+  let metadataRequested = false;
+
+  try {
+    axios.create = () => ({
+      get: async (url, requestConfig) => {
+        if (url.endsWith('/download/')) {
+          assert.equal(requestConfig.responseType, 'arraybuffer');
+          assert.equal(requestConfig.maxContentLength, 50 * 1024 * 1024);
+          throw oversized;
+        }
+        metadataRequested = true;
+        throw new Error(`Unexpected metadata request: ${url}`);
+      }
+    });
+
+    const client = new TelegramPaperlessClient('https://paperless.example/api', 'test-token');
+    await assert.rejects(() => client.downloadDocument(42), (error) => error === oversized);
+  } finally {
+    axios.create = originalAxiosCreate;
+  }
+
+  assert.equal(metadataRequested, false);
+});
+
+test('within-limit Paperless downloads preserve filename and content type', async () => {
+  const originalAxiosCreate = axios.create;
+  const file = Buffer.from('PDF-BYTES');
+
+  try {
+    axios.create = () => ({
+      get: async (url, requestConfig) => {
+        if (url.endsWith('/download/')) {
+          assert.equal(requestConfig.maxContentLength, 50 * 1024 * 1024);
+          return {
+            data: file,
+            headers: {
+              'content-disposition': 'attachment; filename="invoice.pdf"',
+              'content-type': 'application/pdf'
+            }
+          };
+        }
+        assert.equal(url, '/documents/7/');
+        return { data: { id: 7, title: 'Invoice', original_file_name: 'fallback.pdf' } };
+      }
+    });
+
+    const client = new TelegramPaperlessClient('https://paperless.example/api', 'test-token');
+    const result = await client.downloadDocument(7);
+    assert.equal(result.buffer.toString(), 'PDF-BYTES');
+    assert.equal(result.filename, 'invoice.pdf');
+    assert.equal(result.mimeType, 'application/pdf');
+  } finally {
+    axios.create = originalAxiosCreate;
+  }
 });
 
 test('Telegram routing ignores groups and unknown IDs, then selects the allowlisted user', async () => {
