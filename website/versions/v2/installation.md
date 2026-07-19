@@ -79,6 +79,38 @@ Use **Review first**, enable only a small controlled tag vocabulary, and test
 with synthetic or non-sensitive documents before allowing automatic writes.
 :::
 
+## Optional Telegram bot
+
+Create a bot with BotFather, obtain each person's Telegram numeric user ID, and
+create a separate Paperless API token for each person. Add the following
+environment values to the Tagvico service:
+
+```yaml
+environment:
+  TELEGRAM_BOT_ENABLED: "yes"
+  TELEGRAM_BOT_TOKEN: "123456:replace-with-the-bot-token"
+  TELEGRAM_USERS_JSON: >-
+    [{"telegramId":"123456789","paperlessToken":"one-users-paperless-token"}]
+  # Optional: bypasses the Tagvico review queue for metadata on bot uploads.
+  TELEGRAM_UPLOAD_AUTOMATIC_METADATA: "no"
+```
+
+The remaining optional tuning variables are
+`TELEGRAM_POLL_TIMEOUT_SECONDS` (default `30`),
+`TELEGRAM_UPLOAD_TIMEOUT_SECONDS` (default `180`),
+`TELEGRAM_MAX_DOCUMENTS` (default `8`), `TELEGRAM_HISTORY_TURNS`
+(default `6`), and `TELEGRAM_MAX_FILE_BYTES` (default `20971520`). The bundled
+Compose file passes every Telegram setting through to the application container.
+
+`paperlessUrl` may be added to an individual allowlist entry; otherwise the
+normal `PAPERLESS_API_URL` is used. Restart Tagvico after changing this process
+configuration. The standard Telegram Bot API can download uploads up to 20 MB,
+and Tagvico enforces that limit. Unknown IDs and non-private chats receive no
+response.
+
+Read [Privacy and security](./privacy) before enabling the bot. Telegram bot
+chats are not end-to-end encrypted, and model-provider data terms still apply.
+
 ## Docker run alternative
 
 ```bash

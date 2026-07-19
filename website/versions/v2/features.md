@@ -49,6 +49,21 @@ Luna when that account exposes it. GitHub Copilot uses
 the official Copilot SDK and likewise limits choices to account-visible models.
 Agent tools are denied for these document-extraction paths.
 
+## Optional Telegram family interface
+
+An opt-in long-polling bot lets allowlisted people search the archive in natural
+language, ask follow-up questions, download cited originals, and send a PDF or
+photo into Paperless. Each Telegram ID maps to its own Paperless API token;
+unknown users and group chats are ignored, and Paperless enforces every search,
+download, upload, and metadata permission.
+
+Conversation history is bounded and held in memory only. `/clear` removes one
+person's history, and a restart removes all histories. Uploads wait for the
+Paperless consumption task, link the existing document when Paperless reports a
+duplicate, and can optionally run Tagvico metadata classification. Automatic
+metadata for bot uploads is a separate explicit opt-in because it bypasses the
+web review queue.
+
 ![Sanitized ChatGPT subscription model selector in Tagvico settings](/screenshots/chatgpt-models.png)
 
 ## Optional anonymous installation analytics

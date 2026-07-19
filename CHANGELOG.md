@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### Added
+
+- Add an optional, private-chat-only Telegram interface for allowlisted users. Each Telegram ID uses its own Paperless API token for search, cited-original downloads, and PDF/photo uploads.
+- Keep Telegram conversation history bounded and in memory per user, with `/clear` support and no bot conversation database.
+- Wait for Paperless upload consumption and link the existing document when Paperless reports a duplicate.
+
+### Security and privacy
+
+- Keep Telegram support disabled by default and ignore unknown users and non-private chats without responding.
+- Make automatic AI metadata writes for Telegram uploads a separate explicit opt-in because they bypass the web review queue.
+- Document that Telegram bot chats are not end-to-end encrypted and that retrieved OCR follows the configured model provider's data boundary.
+
 ## 2.0.0 - 2026-07-13
 
 - Promoted the reviewable Paperless-ngx filing workflow to the first stable v2

@@ -74,6 +74,19 @@ class AnthropicService extends ProviderAdapter {
     }
   }
 
+  async generateText(prompt: string) {
+    this.initialize();
+    if (!this.client) throw new Error('Anthropic client not initialized');
+    const response = await this.client.messages.create({
+      model: config.anthropic.model,
+      max_tokens: Math.max(300, Number(config.responseTokens || 1000)),
+      messages: [{ role: 'user', content: prompt }]
+    });
+    const text = response.content?.find((block: { type: string; text?: string }) => block.type === 'text')?.text;
+    if (!text) throw new Error('Anthropic returned no text');
+    return text;
+  }
+
   enqueueBatch(params: unknown): Promise<unknown> {
     return new Promise<unknown>((resolve, reject) => {
       this.pending.push({ params, resolve, reject, customId: `doc-${Date.now()}-${this.pending.length}` });

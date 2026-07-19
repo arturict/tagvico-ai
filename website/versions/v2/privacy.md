@@ -16,6 +16,26 @@ classification is sent to that provider under its terms.
 - Start with Review first and a controlled tag vocabulary.
 - Back up the data volume before schema upgrades.
 
+## Telegram bot boundary
+
+The optional Telegram interface is not a local transport and Telegram bot chats
+are not end-to-end encrypted. Questions, photos, PDFs, and any original sent
+back through a download button pass through Telegram under its terms. Retrieved
+Paperless OCR and the user's question are sent to the configured Tagvico model
+provider. Choosing local Ollama or a local compatible endpoint keeps the model
+step on infrastructure you control, but does not change the Telegram boundary.
+
+Only explicitly allowlisted Telegram IDs are processed, only private chats are
+accepted, and each ID has a separate Paperless API token. Paperless therefore
+remains responsible for document visibility and mutation permissions. The
+allowlist and tokens are configuration secrets; do not commit them. The bot has
+no conversation database: bounded per-user history lives in process memory and
+is removed by `/clear` or restart.
+
+Answers derived from OCR can be incomplete or wrong. In particular, totals and
+comparisons are assistant summaries rather than accounting-grade calculations;
+use the cited-original buttons to verify them.
+
 ## Screenshot policy
 
 Documentation screenshots must be inspected as final rendered pixels before

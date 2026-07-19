@@ -32,6 +32,9 @@ features:
   - icon: 📈
     title: Visible operations
     details: Inspect progress, processing history, usage, retries, OCR recovery, rescan actions, and metadata restoration from the web UI.
+  - icon: 💬
+    title: Optional Telegram access
+    details: Give allowlisted family members natural-language search, cited downloads, follow-ups, and uploads through their own Paperless tokens.
 ---
 
 ## Start here

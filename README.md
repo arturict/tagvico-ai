@@ -25,6 +25,7 @@ owner assignments while keeping control of the model and privacy boundary.
 - **Your choice of model** — Ollama (local or cloud), OpenAI, Anthropic, OpenRouter, OpenCode Go, GitHub Copilot, Azure OpenAI, an OpenAI-compatible endpoint, or an experimental ChatGPT subscription sign-in.
 - **Cost-aware processing** — pick immediate requests, OpenAI Flex, or asynchronous OpenAI/Anthropic batches.
 - **Designed for homelabs** — one container, one persistent volume, and SQLite for processing history and retries.
+- **Optional Telegram access** — allowlisted family members can search, ask follow-ups, download originals, and upload PDFs or photos using their own Paperless tokens.
 - **Built to recover** — durable OCR and terminal-failure queues, safe rescans, original-metadata restore, and interrupted-job recovery.
 - **Operationally hardened** — optional MFA, rate limits, same-origin mutation checks, protected setup, and generated JWT secrets.
 - **Clear privacy boundaries** — keep processing on your network with a local endpoint, or explicitly choose a hosted provider.
@@ -166,6 +167,28 @@ Copy [`.env.example`](.env.example) when deploying without the setup wizard. Var
 Set `TAGVICO_WRITE_MODE=review` to queue suggestions or `TAGVICO_WRITE_MODE=automatic` for direct writes. The setup and settings pages expose the same two choices. `DRY_RUN=true/false` remains supported for older deployments, but the explicit write-mode variable takes precedence.
 
 The canonical application variables are `TAGVICO_AI_PORT`, `TAGVICO_AI_HOST_PORT`, `TAGVICO_AI_VERSION`, and `TAGVICO_AI_INITIAL_SETUP`. Their former `ARCHIVISTA_*` names remain supported as deprecated fallbacks for existing deployments and emit a warning when used. Migrate to the `TAGVICO_*` names before a future major version removes the aliases.
+
+### Optional Telegram bot
+
+Set `TELEGRAM_BOT_ENABLED=yes`, provide a BotFather token in
+`TELEGRAM_BOT_TOKEN`, and allowlist users with independent Paperless tokens:
+
+```dotenv
+TELEGRAM_USERS_JSON=[{"telegramId":"123456789","paperlessToken":"token-for-that-user"}]
+```
+
+Unknown users and non-private chats are ignored. Conversation history is
+bounded, kept in memory per user, and cleared by `/clear` or a restart. Search,
+downloads, and uploads use the matching user's Paperless token, so Paperless
+remains the permission authority. Set
+`TELEGRAM_UPLOAD_AUTOMATIC_METADATA=yes` only if Telegram uploads may bypass
+the web review queue and write AI-generated metadata immediately.
+
+Telegram chats are not end-to-end encrypted. Questions, uploads, and originals
+returned through the bot pass through Telegram. Retrieved OCR text and queries
+are also sent to the configured model provider; a local Ollama or compatible
+endpoint keeps that AI step local, but does not make Telegram local. Treat
+calculated totals as assistant summaries rather than accounting-grade results.
 
 ### OCR rescue and failure recovery
 

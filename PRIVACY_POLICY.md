@@ -1,6 +1,6 @@
 # Tagvico AI privacy notice
 
-Last updated: 11 July 2026
+Last updated: 17 July 2026
 
 Tagvico AI is self-hosted software. The operator of each installation controls
 the Paperless-ngx connection, model provider, network exposure, users, logs,
@@ -19,6 +19,21 @@ Tagvico-operated service.
 Provider credentials are stored in the installation's `data/.env` file and are
 not sent to the Tagvico project. Processing history and review suggestions are
 stored in the installation's local SQLite database.
+
+## Optional Telegram interface
+
+An operator may enable a Telegram bot and allowlist numeric Telegram user IDs
+with separate Paperless API tokens. This configuration remains on the
+installation and is not sent to the Tagvico project. Unknown users and
+non-private chats are ignored. Bot conversation history is bounded, separated
+by user, held only in process memory, and removed by `/clear` or restart.
+
+Telegram bot chats are not end-to-end encrypted. Questions, uploads, and
+original documents returned through the bot are processed by Telegram under
+its terms. Retrieved OCR text and questions are also processed by the selected
+model provider as described above. A local model can keep the inference step
+on operator-controlled infrastructure, but it does not make Telegram a local
+or end-to-end encrypted transport.
 
 ## Optional installation analytics
 
