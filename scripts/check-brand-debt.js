@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const excludedDirectories = new Set(['.git', 'dist', 'node_modules']);
+const excludedDirectories = new Set(['.git', '.next', 'dist', 'docs-site', 'node_modules']);
 const allowedFiles = new Map([
   ['CHANGELOG.md', /archivista/i],
   ['README.md', /`ARCHIVISTA_\*`/],

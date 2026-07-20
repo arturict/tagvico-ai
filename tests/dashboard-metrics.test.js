@@ -2,12 +2,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { resolveDataDirectory } = require('../dist/services/dataDirectory');
 
 // These tests exercise the STATIC price book / fallback paths, so make them
 // hermetic: remove any on-disk pricing cache and neutralise the dynamic
 // models.dev catalog before requiring modelPricing. Otherwise a cache left by
 // another test or a prior server run would flip these lookups to live prices.
-try { fs.unlinkSync(path.join(process.cwd(), 'data', 'model-pricing-cache.json')); } catch { /* ignore */ }
+try { fs.unlinkSync(path.join(resolveDataDirectory(), 'model-pricing-cache.json')); } catch { /* ignore */ }
 const pricingCatalog = require('../dist/services/pricingCatalog');
 pricingCatalog.lookupPrice = () => null;
 

@@ -9,6 +9,9 @@ const fsModule = require('fs');
 const fs = fsModule.promises;
 const path = require('path');
 const { createHash, randomUUID } = require('crypto');
+const { resolveDataDirectory } = require('./dataDirectory') as {
+  resolveDataDirectory: () => string;
+};
 const config = require('../config/config') as {
   paperless?: { apiUrl?: string; apiToken?: string };
 };
@@ -38,7 +41,7 @@ declare namespace thumbnailHelper {
  * Paperless thumbnails contain document data and must never be written below
  * `public/`. Keep the cache in the application data directory instead.
  */
-const THUMBNAIL_CACHE_ROOT = path.join(process.cwd(), 'data', 'thumb-cache');
+const THUMBNAIL_CACHE_ROOT = path.join(resolveDataDirectory(), 'thumb-cache');
 function getThumbnailCacheNamespace(paperlessConfig = config.paperless): string {
   return createHash('sha256')
     .update(`${paperlessConfig?.apiUrl || ''}\0${paperlessConfig?.apiToken || ''}`)

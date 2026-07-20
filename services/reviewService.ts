@@ -5,6 +5,7 @@
 
 import fs from 'fs';
 import path from 'path';
+import { resolveDataDirectory } from './dataDirectory';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const documentModel = require('../models/document.js');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -18,7 +19,7 @@ const customFieldsService = require('./customFieldsService.js');
 const ownerProfileService = require('./ownerProfileService.js');
 const { compareMetadata } = require('./metadataDiff.js');
 
-const REVIEW_PATH = path.join(process.cwd(), 'data', '.review');
+const REVIEW_PATH = path.join(resolveDataDirectory(), '.review');
 const WRITE_MODES = {
   REVIEW: 'review',
   AUTOMATIC: 'automatic'

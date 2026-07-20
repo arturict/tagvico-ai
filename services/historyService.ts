@@ -8,11 +8,12 @@
 
 import path from 'path';
 import fs from 'fs';
+import { resolveDataDirectory } from './dataDirectory';
 // better-sqlite3 11 does not bundle TypeScript declarations.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const Database = require('better-sqlite3');
 
-const dataDir = path.join(process.cwd(), 'data');
+const dataDir = resolveDataDirectory();
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }

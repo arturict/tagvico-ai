@@ -2,9 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
+const { resolveDataDirectory } = require('../dist/services/dataDirectory');
 
-// The catalog reads/writes data/model-pricing-cache.json relative to cwd.
-const cachePath = path.join(process.cwd(), 'data', 'model-pricing-cache.json');
+const cachePath = path.join(resolveDataDirectory(), 'model-pricing-cache.json');
 
 // Seed a deterministic offline cache BEFORE requiring the module so the first
 // synchronous lookup reads it (and no network call is required for the test).

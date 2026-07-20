@@ -12,7 +12,7 @@
     "dev": "npm run build && nodemon --watch services --watch routes --watch models --watch config --watch server.ts --ext ts,json --exec \"npm run build && node dist/server.js\"",
     "build": "tsc",
     "test": "npm run check && npm run test:unit",
-    "test:unit": "npm run build && node --test tests/*.test.js",
+    "test:unit": "npm run build && node scripts/run-tests.js",
     "check": "npm run typecheck && npm run lint && npm run check:type-debt && npm run check:branding && npm run check:ejs && npm run check:browser",
     "check:browser": "node --check public/js/config-form.js && node --check public/js/app-shell.js",
     "docs:build": "node scripts/docs.mjs build",

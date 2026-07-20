@@ -4,6 +4,8 @@ data/
 /OPENAPI/
 node_modules/
 dist/
+.next/
+*.tsbuildinfo
 api-test.ps1
 openai_debug.log
 prompt.bak
