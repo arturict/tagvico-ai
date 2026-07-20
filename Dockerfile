@@ -23,9 +23,7 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends bubblewrap ca-certificates curl poppler-utils && \
     update-ca-certificates && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    npm install pm2 -g && \
-    npm cache clean --force
+    rm -rf /var/lib/apt/lists/*
 
 COPY --from=build /app /app
 

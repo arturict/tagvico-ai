@@ -7,7 +7,7 @@
   },
   "main": "dist/server.js",
   "scripts": {
-    "start": "node dist/server.js",
+    "start": "node scripts/start-production.js",
     "start:backend": "node dist/server.js",
     "start:web": "next start -p 3000",
     "auth:copilot": "node scripts/copilot-login.js",
