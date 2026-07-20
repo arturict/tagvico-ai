@@ -3,4 +3,6 @@
 const bufferModule = require('node:buffer');
 if (!bufferModule.SlowBuffer) bufferModule.SlowBuffer = bufferModule.Buffer;
 
-export = require('jsonwebtoken');
+const jwtCompat = require('jsonwebtoken');
+export default jwtCompat;
+module.exports = jwtCompat;

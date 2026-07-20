@@ -40,4 +40,6 @@ function provisioningUri(secret: string, username: string) {
   return `otpauth://totp/${encodeURIComponent(`${issuer}:${username}`)}?secret=${secret}&issuer=${encodeURIComponent(issuer)}&digits=6&period=30`;
 }
 
-export = { generateSecret, provisioningUri, token, verify };
+const totpService = { generateSecret, provisioningUri, token, verify };
+export default totpService;
+module.exports = totpService;

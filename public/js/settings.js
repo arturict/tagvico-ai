@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
             if (formData.get('systemPrompt')) {
                 formData.set('systemPrompt', formData.get('systemPrompt').replace(/`/g, ''));
             }
-            const response = await fetch('/settings', {
+            const response = await fetch('/automation/settings', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
