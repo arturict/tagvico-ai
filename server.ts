@@ -63,6 +63,7 @@ const tagGroupService = require('./services/tagGroupService');
 const reviewService = require('./services/reviewService');
 const { blockLegacyPublicImages, removeLegacyPublicThumbnailCache } = require('./services/staticPathSecurity');
 const telemetryService = require('./services/telemetryService');
+const telegramBotService = require('./services/telegramBotService');
 
 const htmlLogger = new Logger({
   logFile: 'logs.html',
@@ -773,6 +774,7 @@ process.on('unhandledRejection', (reason, promise) => {
 async function gracefulShutdown(signal: NodeJS.Signals) {
   console.log(`[DEBUG] Received ${signal} signal. Starting graceful shutdown...`);
   try {
+    await telegramBotService.stop();
     console.log('[DEBUG] Closing database...');
     await documentModel.closeDatabase();
     console.log('[DEBUG] Database closed successfully');
@@ -812,6 +814,7 @@ async function startServer() {
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);
       telemetryService.start();
+      telegramBotService.start();
       startScanning();
     });
   } catch (error) {

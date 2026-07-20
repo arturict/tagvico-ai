@@ -21,6 +21,11 @@ const parseEnvBoolean = (value: string | undefined, defaultValue = 'yes') => {
 const { normalizeProcessingMode } = require('../services/processingMode');
 const tagvicoAiVersion = resolveEnv('TAGVICO_AI_VERSION', 'ARCHIVISTA_AI_VERSION') || packageVersion;
 
+const parsePositiveInteger = (value: string | undefined, fallback: number, maximum: number) => {
+  const parsed = Number.parseInt(value || '', 10);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, maximum) : fallback;
+};
+
 // Initialize limit functions with defaults
 const limitFunctions = {
   activateTagging: parseEnvBoolean(process.env.ACTIVATE_TAGGING, 'yes'),
@@ -114,6 +119,17 @@ module.exports = {
     model: process.env.OCR_MODEL || process.env.MISTRAL_OCR_MODEL || 'mistral-ocr-latest',
     maxPages: Math.max(1, parseInt(process.env.OCR_MAX_PAGES || '20', 10)),
     timeoutMs: Math.max(10000, parseInt(process.env.OCR_TIMEOUT_MS || '120000', 10))
+  },
+  telegram: {
+    enabled: parseEnvBoolean(process.env.TELEGRAM_BOT_ENABLED, 'no'),
+    botToken: process.env.TELEGRAM_BOT_TOKEN || '',
+    usersJson: process.env.TELEGRAM_USERS_JSON || '[]',
+    pollTimeoutSeconds: parsePositiveInteger(process.env.TELEGRAM_POLL_TIMEOUT_SECONDS, 30, 50),
+    uploadTimeoutSeconds: parsePositiveInteger(process.env.TELEGRAM_UPLOAD_TIMEOUT_SECONDS, 180, 900),
+    maxDocuments: parsePositiveInteger(process.env.TELEGRAM_MAX_DOCUMENTS, 8, 20),
+    historyTurns: parsePositiveInteger(process.env.TELEGRAM_HISTORY_TURNS, 6, 20),
+    maxFileBytes: parsePositiveInteger(process.env.TELEGRAM_MAX_FILE_BYTES, 20 * 1024 * 1024, 20 * 1024 * 1024),
+    automaticUploadMetadata: parseEnvBoolean(process.env.TELEGRAM_UPLOAD_AUTOMATIC_METADATA, 'no')
   },
   injectedEnvironment,
   openrouter: {
