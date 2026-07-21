@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 2.0.1 - 2026-07-21
+
+### Security and privacy
+
+- Reject public `POST /setup` requests once setup has completed, before any
+  Paperless connection check or configuration write. Change existing settings
+  only after signing in.
+
 ### Added
 
 - Add an optional, private-chat-only Telegram interface for allowlisted users. Each Telegram ID uses its own Paperless API token for search, cited-original downloads, and PDF/photo uploads.

@@ -3808,6 +3808,16 @@ router.get('/api/health', async (req: Req, res: Res) => {
  */
 router.post('/setup', express.json(), async (req: Req, res: Res) => {
   try {
+    // Setup is deliberately one-time. This route is public only for the first
+    // local (or explicitly opted-in remote) bootstrap; accepting it after a
+    // configuration exists would let an unauthenticated caller replace the
+    // admin account and connection settings.
+    if (await setupService.isConfigured()) {
+      return res.status(409).json({
+        error: 'Setup has already been completed. Sign in to change settings.'
+      });
+    }
+
     const { 
       paperlessUrl, 
       paperlessToken,

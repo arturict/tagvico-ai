@@ -40,9 +40,24 @@ schema upgrades. The external volume backup remains the safest rollback point.
 
 ## Roll back
 
-Stop the new container, restore the backup volume if the upgrade changed its
-schema, pin the previous image tag, and start Compose again. Do not run two
-Tagvico versions against the same volume at the same time.
+Use this only with the external backup made above. Do not run two Tagvico
+versions against the same volume at the same time.
+
+```bash
+docker compose down
+docker volume rm tagvico_ai_data
+docker volume create tagvico_ai_data
+docker run --rm \
+  -v tagvico_ai_data:/target \
+  -v "$PWD":/backup:ro \
+  alpine sh -c 'tar xzf /backup/tagvico-ai-data.tgz -C /target'
+# Change image: back to the previous immutable release tag, then:
+docker compose up -d
+docker compose logs --tail=100 tagvico-ai
+```
+
+Confirm that `/health`, sign-in, configuration, and one representative
+**Review first** suggestion work before returning to normal operation.
 
 ::: danger v1 to v2
 Treat a major-version upgrade as a maintenance window. Back up the volume,

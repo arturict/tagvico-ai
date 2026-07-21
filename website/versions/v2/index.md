@@ -49,7 +49,7 @@ published. Use the version menu in the navigation to move between major
 versions without losing the instructions that match your installation.
 
 ::: tip Stable v2
-Version 2.0.0 is the first stable v2 release. Pin the immutable image version,
+Version 2.0.1 is the current stable v2 release. Pin the immutable image version,
 back up the data volume before upgrades, and start new installations in
 **Review first** mode.
 :::

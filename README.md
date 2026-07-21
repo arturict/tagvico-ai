@@ -1,6 +1,6 @@
 # Tagvico AI
 
-> **Stable v2.0.0.** Pin an immutable release and back up the data volume before
+> **Stable v2.0.1.** Pin an immutable release and back up the data volume before
 > upgrades. Start new installations in Review first mode before enabling writes.
 
 **Using v2?** Read the [stable deployment guidance](docs/STATUS.md), share a
@@ -63,7 +63,7 @@ services:
   tagvico-ai:
     # Pin an immutable release tag for upgrades you can rely on.
     # See https://github.com/arturict/tagvico-ai/releases for the current version.
-    image: ghcr.io/arturict/tagvico-ai:2.0.0
+    image: ghcr.io/arturict/tagvico-ai:2.0.1
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -111,7 +111,7 @@ docker run -d \
   -p 8080:3000 \
   -e TAGVICO_AI_PORT=3000 \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:2.0.0
+  ghcr.io/arturict/tagvico-ai:2.0.1
 ```
 
 </details>
@@ -199,7 +199,7 @@ History supports explicit rescan and restoration of the first metadata snapshot 
 ## Upgrades
 
 1. Check the latest release at <https://github.com/arturict/tagvico-ai/releases>.
-2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page—for example `ghcr.io/arturict/tagvico-ai:2.0.0`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
+2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page—for example `ghcr.io/arturict/tagvico-ai:2.0.1`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
 3. `docker compose pull && docker compose up -d`.
 
 Tagvico is stateless across restarts: configuration, processing history, and the local admin account live in the `tagvico_ai_data` volume, so upgrades do not touch your settings.
