@@ -1,10 +1,9 @@
 # Tagvico
 
-> **v3 release candidate.** This branch is being validated for the first stable
-> v3 release. Companion writes always require explicit approval.
+> **Tagvico v3 is stable.** Companion writes always require explicit approval,
+> and Paperless-ngx remains the document system of record.
 
-**Deploying stable v2?** Read the [stable deployment guidance](docs/STATUS.md).
-**Reviewing v3?** Read the local versioned preview, share a
+**Deploying v3?** Read the [stable deployment guidance](docs/STATUS.md), share a
 [redacted deployment result](https://github.com/arturict/tagvico-ai/discussions/35),
 or [report a reproducible bug](https://github.com/arturict/tagvico-ai/issues/new?template=bug_report.yml).
 
@@ -13,7 +12,7 @@ letters and PDFs into assigned deadlines, decisions, payments, replies,
 renewals, and multi-step work while keeping Paperless as the document system of
 record. Reviewable AI metadata automation remains included.
 
-[![Status: v3 preview](https://img.shields.io/badge/status-v3_preview-f59e0b.svg)](docs/STATUS.md)
+[![Status: stable v3](https://img.shields.io/badge/status-stable_v3-16a34a.svg)](docs/STATUS.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/arturict/tagvico-ai)](https://github.com/arturict/tagvico-ai/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/arturict/tagvico-ai/ci.yml?branch=main&label=CI)](https://github.com/arturict/tagvico-ai/actions/workflows/ci.yml)
@@ -63,11 +62,10 @@ which account-scoped model is active, and which vocabulary the model may use.
 
 <p align="center"><em>Sanitized screens from the established document-automation interface. Live document names were replaced for privacy.</em></p>
 
-## Stable quick start (v2.0.0)
+## Stable quick start (v3.0.0)
 
-The v3 source tree does not yet have a published container image. The example
-below intentionally installs the current stable release; use only tags that are
-present on the [GitHub releases page](https://github.com/arturict/tagvico-ai/releases).
+Use only immutable tags that are present on the
+[GitHub releases page](https://github.com/arturict/tagvico-ai/releases).
 
 You need Docker Compose, a running Paperless-ngx instance, and a Paperless API token. No source checkout is required.
 
@@ -78,7 +76,7 @@ services:
   tagvico-ai:
     # Pin an immutable release tag for upgrades you can rely on.
     # See https://github.com/arturict/tagvico-ai/releases for the current version.
-    image: ghcr.io/arturict/tagvico-ai:2.0.1
+    image: ghcr.io/arturict/tagvico-ai:3.0.0
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -125,9 +123,14 @@ docker run -d \
   --security-opt no-new-privileges=true \
   -p 8080:3000 \
   -e TAGVICO_AI_PORT=3000 \
+  -e ALLOW_REMOTE_SETUP=yes \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:2.0.1
+  ghcr.io/arturict/tagvico-ai:3.0.0
 ```
+
+After setup succeeds, remove and recreate the container without
+`-e ALLOW_REMOTE_SETUP=yes`. The named volume keeps your configuration and data,
+while the setup endpoint returns to its locked-down default.
 
 </details>
 
@@ -171,7 +174,7 @@ offers `openrouter/free` for a low-stakes trial, but its free-model routing is
 intentionally not the reliability default.
 
 OpenAI's GPT-5.6 Sol, Terra, and Luna are included only behind the
-`OPENAI_ENABLE_GPT_5_6_PREVIEW=yes` trusted-partner flag. Luna is the v2 preview
+`OPENAI_ENABLE_GPT_5_6_PREVIEW=yes` trusted-partner flag. Luna is the preview
 recommendation for organizations that actually have access; it is not assumed
 to be available to normal API or ChatGPT subscription accounts.
 
@@ -214,7 +217,7 @@ History supports explicit rescan and restoration of the first metadata snapshot 
 ## Upgrades
 
 1. Check the latest release at <https://github.com/arturict/tagvico-ai/releases>.
-2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page—for example `ghcr.io/arturict/tagvico-ai:2.0.1`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
+2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page—for example `ghcr.io/arturict/tagvico-ai:3.0.0`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
 3. `docker compose pull && docker compose up -d`.
 
 The container is replaceable, while configuration, processing history, the local admin account, encrypted member tokens, and the installation secret live in the `tagvico_ai_data` volume. Back up and restore that volume as one unit; changing or losing the JWT secret makes encrypted member tokens unreadable.
@@ -262,7 +265,7 @@ The development server listens on `http://localhost:3000`. The application sourc
 
 Bug reports, feature requests, and pull requests are welcome. The issue chooser asks only for the information needed to reproduce or evaluate a change, and the pull-request template includes a short verification checklist. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow. For security disclosures, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 
-See [docs/STATUS.md](docs/STATUS.md) for the currently published v2 compatibility policy and stable deployment recommendations.
+See [docs/STATUS.md](docs/STATUS.md) for the currently published v3 compatibility policy and stable deployment recommendations.
 
 ## License
 

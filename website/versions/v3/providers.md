@@ -48,7 +48,7 @@ OpenAI-compatible endpoints run through Vercel AI SDK v6. Codex is a separate
 read-only adapter and cannot bypass Tagvico approvals.
 
 ::: tip A practical selection rule
-Start with the recommended mini, flash, Haiku, or Luna tier and low reasoning.
+Start with the recommended mini, flash, or Haiku tier and low reasoning.
 Measure incorrect or missing fields—not how impressive the prose sounds. Move
 up one tier only when the cheaper model fails the same field or document type
 repeatedly.
@@ -97,5 +97,6 @@ Tagvico release; it is not part of the compatibility contract.
 :::
 
 For current model identifiers and account entitlements, use the catalog shown
-inside Tagvico after authentication. The documentation intentionally does not
-hard-code model names that providers may rename or withdraw.
+inside Tagvico after authentication. The concrete recommendations above are a
+dated starting point, not an availability guarantee; providers may rename or
+withdraw models between Tagvico releases.

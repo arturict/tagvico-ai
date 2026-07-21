@@ -11,10 +11,10 @@ const [command = 'build', requestedVersion] = process.argv.slice(2);
 const docsOrigin = 'https://tagvico.arturf.ch/docs';
 const pageDescriptions = {
   'index.md': 'What Tagvico AI does, its operating modes, and where to start.',
-  'installation.md': 'Install v2 with Docker Compose or docker run and complete guided setup.',
-  'upgrading.md': 'Back up, upgrade, validate, and roll back a v2 installation safely.',
+  'installation.md': 'Install the current Tagvico release with Docker Compose or docker run and complete guided setup.',
+  'upgrading.md': 'Back up, upgrade, validate, and roll back a Tagvico installation safely.',
   'removing.md': 'Remove the container, optionally delete local data, and revoke credentials.',
-  'features.md': 'Review the dashboard, controlled tagging, review queue, history, OCR, and model discovery.',
+  'features.md': 'Review filing, Action Center, Companion approvals, household access, OCR, and model discovery.',
   'paperless-ai-tagging.md': 'Compare Tagvico with built-in Paperless matching and evaluate local or hosted AI metadata safely.',
   'providers.md': 'Compare local, hosted, direct, compatible, and subscription-backed model providers.',
   'privacy.md': 'Understand data flow, secret storage, deployment boundaries, and screenshot policy.',

@@ -53,12 +53,20 @@ test('action sync retries local writes, isolates member credentials, and redacts
     assert.ok(address && typeof address === 'object');
     process.env.TAGVICO_DATA_DIR = dataDir;
     process.env.JWT_SECRET = 'test-secret-that-is-long-enough-for-action-sync';
-    process.env.PAPERLESS_API_URL = `http://127.0.0.1:${address.port}/api`;
-    process.env.PAPERLESS_API_TOKEN = 'owner-admin-token';
+    delete process.env.PAPERLESS_API_URL;
+    delete process.env.PAPERLESS_API_TOKEN;
 
     const documentModel = require('../dist/models/document');
     const actions = require('../dist/models/actionCenter');
     const sync = require('../dist/services/actionSyncService');
+    // Setup and the Next application run in separate processes. Initial setup
+    // therefore writes the shared .env after Action Sync has already loaded;
+    // the application process must observe that saved configuration without a
+    // restart or a process.env mutation.
+    fs.writeFileSync(path.join(dataDir, '.env'), [
+      `PAPERLESS_API_URL=http://127.0.0.1:${address.port}/api`,
+      'PAPERLESS_API_TOKEN=owner-admin-token'
+    ].join('\n'));
     const db = documentModel.getDatabase();
     const userId = Number(db.prepare('INSERT INTO users (username, password) VALUES (?, ?)').run('owner', 'hash').lastInsertRowid);
     const workspace = actions.ensureWorkspaceForUser(userId, 'owner');

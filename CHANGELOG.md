@@ -2,6 +2,33 @@
 
 ## Unreleased
 
+## 3.0.0 - 2026-07-22
+
+### Added
+
+- Added the Action Center: one durable case per Paperless document with owner,
+  priority, due date, state, audit trail, and up to 100 checklist steps.
+- Added household roles and encrypted, member-specific Paperless tokens for
+  permission-aware web and Telegram actions.
+- Added the document-grounded Companion with narrow read tools, durable write
+  proposals, explicit owner/adult approval, and deterministic execution.
+- Added a Next.js v3 console for actions, approvals, Companion sessions,
+  household settings, and the established filing operations.
+
+### Security and reliability
+
+- Preserved the v2.0.1 configured-instance setup takeover protection.
+- Kept every AI-proposed write behind an explicit approval and exposed no shell
+  or filesystem tools to the Companion.
+- Removed an unnecessary build-time CLI dependency and updated the docs build
+  toolchain so the full dependency audit reports zero known vulnerabilities.
+
+### Upgrade note
+
+- Back up `tagvico_ai_data`, pin `ghcr.io/arturict/tagvico-ai:3.0.0`, and allow
+  the schema-v5 migration to finish. The public app remains on port 3000; its
+  internal scanner process uses port 3001 and must not be exposed.
+
 ## 2.0.1 - 2026-07-21
 
 ### Security and privacy

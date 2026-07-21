@@ -1,11 +1,5 @@
 # Install Tagvico v3
 
-::: warning Not released yet
-This page is a release-candidate checklist. v3 has no published image today;
-the current production release is v2.0.0. Use the exact immutable v3 tag from
-the GitHub releases page only after it exists.
-:::
-
 You need Docker Compose, a running Paperless-ngx installation, its base URL,
 and a Paperless API token. Tagvico runs as one container and stores its local
 configuration, admin account, history, and queues in a persistent volume.
@@ -17,7 +11,7 @@ Create a new directory and save this as `docker-compose.yml`:
 ```yaml
 services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:REPLACE_WITH_PUBLISHED_V3_TAG
+    image: ghcr.io/arturict/tagvico-ai:3.0.0
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -36,7 +30,7 @@ volumes:
   tagvico_ai_data:
 ```
 
-After release, pin the exact v3 tag you intend to run. Do not use `latest` for a
+Pin the exact v3 tag you intend to run. Do not use `latest` for a
 production install because it makes upgrades and rollback ambiguous.
 
 ## 2. Start and check the container
@@ -131,7 +125,7 @@ docker run -d \
   -e TAGVICO_AI_PORT=3000 \
   -e ALLOW_REMOTE_SETUP=yes \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:REPLACE_WITH_PUBLISHED_V3_TAG
+  ghcr.io/arturict/tagvico-ai:3.0.0
 ```
 
 After setup, remove `ALLOW_REMOTE_SETUP=yes` unless you specifically need to

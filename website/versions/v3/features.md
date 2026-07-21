@@ -4,17 +4,21 @@
 
 Each Paperless document can have one Action Case with a title, summary,
 priority, due date, assignee, and top-level state. A case may contain up to 100
-of steps for compound work such as reviewing a renewal, comparing an offer,
+steps for compound work such as reviewing a renewal, comparing an offer,
 replying, and storing the confirmation. Solo workspaces upgrade to family
 households when another member is added.
 
-Household members are managed assignment, permission, and Telegram profiles;
+Household members are managed profiles for assignment, permissions, and Telegram;
 they are not separate Tagvico web accounts. The local admin remains the web
-console owner in the v3 preview.
+console owner in v3.
 
 Tagvico mirrors its case ID, state, next due date, assignee, and
 `tagvico/action` tag to Paperless. It preserves unrelated tags and custom
 fields. The complete checklist and audit trail remain in Tagvico.
+
+![Tagvico v3 Action Center with a synthetic renewal case, status, deadline, completed step, and priority](/screenshots/action-center-v3.png)
+
+This release-acceptance capture contains synthetic case data only.
 
 ## Household Companion and approvals
 
@@ -26,6 +30,11 @@ the selected model never receives shell or filesystem access.
 Read tools run immediately. Write tools only create a durable proposal. An
 owner or adult must approve it before the deterministic executor changes
 Tagvico or Paperless. The web chat uses AI SDK v6 streams and AI Elements.
+
+![Tagvico v3 Companion answering a synthetic deadline question beside its approval queue](/screenshots/companion-v3.png)
+
+The answer shown here was produced by the synthetic release provider fixture;
+no personal documents or hosted-provider credentials were used.
 
 ## Operations at a glance
 

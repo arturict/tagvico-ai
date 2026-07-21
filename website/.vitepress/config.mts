@@ -14,7 +14,7 @@ const outDir = process.env.TAGVICO_DOCS_OUT_DIR || '../docs-site';
 
 export default defineConfig({
   title: 'Tagvico AI',
-  description: 'Versioned documentation for the AI filing autopilot for Paperless-ngx.',
+  description: 'Versioned documentation for the private action center and household companion for Paperless-ngx.',
   lang: 'en-US',
   base,
   srcDir: `versions/${version}`,
@@ -23,7 +23,7 @@ export default defineConfig({
   lastUpdated: process.env.TAGVICO_DOCS_LAST_UPDATED !== 'false',
   appearance: true,
   head: [
-    ['link', { rel: 'icon', type: 'image/png', href: `${base}tagvico-icon.png` }],
+    ['link', { rel: 'icon', type: 'image/x-icon', href: `${base}favicon.ico` }],
     ['link', { rel: 'alternate', type: 'text/plain', href: `${base}llms.txt`, title: 'LLM documentation index' }],
     ['link', { rel: 'alternate', type: 'text/plain', href: `${base}llms-full.txt`, title: 'Complete LLM documentation' }],
     ['meta', { name: 'theme-color', content: '#c8ff2e' }],
@@ -71,8 +71,8 @@ export default defineConfig({
       {
         text: 'Machine-readable',
         items: [
-          { text: 'LLM index', link: '/llms.txt' },
-          { text: 'Complete docs for LLMs', link: '/llms-full.txt' },
+          { text: 'LLM index', link: `${base}llms.txt` },
+          { text: 'Complete docs for LLMs', link: `${base}llms-full.txt` },
         ],
       },
     ],

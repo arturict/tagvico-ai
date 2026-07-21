@@ -18,6 +18,7 @@
     "build:web": "node scripts/build-web.js",
     "test": "npm run check && npm run test:unit",
     "test:unit": "npm run build && node scripts/run-tests.js",
+    "test:release-acceptance": "node scripts/release-acceptance.mjs",
     "check": "npm run typecheck && npm run lint && npm run check:type-debt && npm run check:branding && npm run check:ejs && npm run check:browser",
     "check:browser": "node --check public/js/config-form.js && node --check public/js/app-shell.js",
     "docs:build": "node scripts/docs.mjs build",
@@ -84,7 +85,7 @@
     "geist": "1.7.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "1.25.0",
-    "next": "16.2.10",
+    "next": "16.2.11",
     "node-cron": "^4.5.0",
     "nodemon": "^3.1.9",
     "openai": "^4.86.2",
@@ -93,7 +94,6 @@
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "rimraf": "^6.0.1",
-    "shadcn": "^4.13.1",
     "shiki": "3.23.0",
     "streamdown": "2.5.0",
     "swagger-jsdoc": "^6.2.8",
@@ -110,7 +110,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "eslint": "^9.22.0",
-    "eslint-config-next": "16.2.10",
+    "eslint-config-next": "16.2.11",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-jsdoc": "^50.6.3",
     "globals": "^16.0.0",
@@ -126,5 +126,9 @@
       "better-sqlite3"
     ]
   },
-  "overrides": { "postcss": "8.5.20" }
+  "overrides": {
+    "postcss": "8.5.20",
+    "sharp": "0.35.3",
+    "vite": "6.4.3"
+  }
 }

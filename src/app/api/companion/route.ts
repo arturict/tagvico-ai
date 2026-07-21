@@ -5,6 +5,13 @@ import { safeValidateUIMessages, type UIMessage } from 'ai';
 import crypto from 'node:crypto';
 
 export const maxDuration = 120;
+export async function GET() {
+  try {
+    const user = await requireApiUser(); const workspace = workspaceFor(user);
+    const sessionId = actionCenter.getOrCreateSession(workspace.householdId, workspace.memberId, 'web');
+    return Response.json({ sessionId });
+  } catch (error) { return apiError(error); }
+}
 export async function POST(request: Request) {
   try {
     await assertSameOrigin(request); const user = await requireApiUser(); const workspace = workspaceFor(user);

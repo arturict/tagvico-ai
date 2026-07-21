@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import axios from 'axios';
 import * as actionCenter from '../models/actionCenter';
 import { decryptSecret } from './secretBox';
+import { runtimeEnvironmentValue } from './runtimeEnvironment';
 
 const config = require('../config/config');
 
@@ -16,10 +17,19 @@ const MAX_PAPERLESS_JSON_BYTES = 10 * 1024 * 1024;
 
 type PaperlessResource = { id: number; name: string; [key: string]: unknown };
 
+function paperlessApiUrl() {
+  return runtimeEnvironmentValue('PAPERLESS_API_URL', config.paperless.apiUrl);
+}
+
+function globalPaperlessToken() {
+  return runtimeEnvironmentValue('PAPERLESS_API_TOKEN', config.paperless.apiToken);
+}
+
 function paperlessClient(token: string) {
-  if (!config.paperless.apiUrl || !token) throw new Error('Paperless credentials are not configured');
+  const apiUrl = paperlessApiUrl();
+  if (!apiUrl || !token) throw new Error('Paperless credentials are not configured');
   return axios.create({
-    baseURL: config.paperless.apiUrl,
+    baseURL: apiUrl,
     timeout: 30_000,
     maxContentLength: MAX_PAPERLESS_JSON_BYTES,
     headers: { Authorization: `Token ${token}`, 'Content-Type': 'application/json' }
@@ -27,7 +37,7 @@ function paperlessClient(token: string) {
 }
 
 function clientFor(householdId: string, memberId: string | null) {
-  const globalToken = String(config.paperless.apiToken || '');
+  const globalToken = globalPaperlessToken();
   let token = globalToken;
   if (memberId) {
     const member = actionCenter.getMemberSecretRecord(householdId, memberId);
@@ -40,7 +50,7 @@ function clientFor(householdId: string, memberId: string | null) {
 }
 
 function schemaClientFor(householdId: string, memberId: string | null) {
-  const globalToken = String(config.paperless.apiToken || '');
+  const globalToken = globalPaperlessToken();
   return globalToken ? paperlessClient(globalToken) : clientFor(householdId, memberId);
 }
 
@@ -63,7 +73,7 @@ async function ensureSchema(client: ReturnType<typeof axios.create>) {
 
 let schemaCache: { key: string; value: Promise<Awaited<ReturnType<typeof ensureSchema>>> } | null = null;
 function schemaFor(householdId: string, memberId: string | null) {
-  const key = String(config.paperless.apiUrl || '');
+  const key = paperlessApiUrl();
   if (!schemaCache || schemaCache.key !== key) {
     const value = ensureSchema(schemaClientFor(householdId, memberId));
     schemaCache = { key, value };

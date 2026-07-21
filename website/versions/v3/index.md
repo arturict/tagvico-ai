@@ -10,7 +10,7 @@ hero:
     alt: Tagvico AI
   actions:
     - theme: brand
-      text: Preview install requirements
+      text: Install v3
       link: /installation
     - theme: alt
       text: Explore features
@@ -48,14 +48,8 @@ The v3 documentation is frozen under this URL when a future major version is
 published. Use the version menu in the navigation to move between major
 versions without losing the instructions that match your installation.
 
-::: warning Development preview
-v3 is not published yet. The current production release is v2.0.0. Do not pull
-or advertise a `3.0.0` container until an immutable release with that tag exists.
-:::
-
 ::: tip Production defaults
-After v3 is released, pin its immutable image version,
-back up the data volume before upgrades, and start new installations in
+Pin the immutable `3.0.0` image, back up the data volume before upgrades, and start new installations in
 **Review first** mode. Companion writes are always approval-gated regardless
 of the metadata processing mode.
 :::
