@@ -2,6 +2,7 @@ import { constants, promises as fs } from 'node:fs';
 import path from 'node:path';
 import axios from 'axios';
 import { AzureOpenAI, OpenAI } from 'openai';
+import { resolveDataDirectory } from './dataDirectory';
 const runtimeConfig = require('../config/config');
 const { normalizeProvider } = require('./providerCatalogService');
 
@@ -22,7 +23,7 @@ class SetupService {
   private configured: boolean | null;
 
   constructor() {
-    this.envPath = path.join(process.cwd(), 'data', '.env');
+    this.envPath = path.join(resolveDataDirectory(), '.env');
     this.configured = null; // Variable to store the configuration status
   }
 

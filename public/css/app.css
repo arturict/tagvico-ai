@@ -421,6 +421,7 @@ textarea:focus {
 
 .app-main {
   padding: 3rem 2rem 3.5rem;
+  min-width: 0;
 }
 
 .page-header {
@@ -573,6 +574,7 @@ textarea:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
+  min-width: 0;
 }
 
 .badge {
@@ -584,6 +586,8 @@ textarea:focus {
   background: var(--accent-soft);
   color: var(--text);
   font-size: 0.82rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
 }
 
 .stack {
@@ -769,7 +773,12 @@ textarea:focus {
   }
 
   .page-header {
-    padding-right: 3.5rem;
+    flex-direction: column;
+    padding-right: 0;
+  }
+
+  .badge-row {
+    width: 100%;
   }
 
   .onboarding-strip {
@@ -924,6 +933,7 @@ textarea:focus {
   box-shadow: var(--shadow);
   padding: 1.5rem;
   margin: 0;
+  min-width: 0;
 }
 
 .section-fieldset > legend {

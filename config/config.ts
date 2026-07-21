@@ -1,4 +1,5 @@
 const path = require('path');
+const fs = require('fs');
 const {
   getDefaultModel,
   getEffectiveModel,
@@ -6,10 +7,16 @@ const {
   normalizeProvider
 } = require('../services/providerCatalogService');
 const { resolveEnv } = require('../services/configHelpers');
+const { resolveDataDirectory } = require('../services/dataDirectory');
 const currentDir = decodeURIComponent(process.cwd());
-const { version: packageVersion } = require(path.join(currentDir, 'package.json'));
-const envPath = path.join(currentDir, 'data', '.env');
-console.log('Loading .env from:', envPath); // Debug log
+const dataDir = resolveDataDirectory();
+let packageVersion = '3.0.0';
+try {
+  packageVersion = JSON.parse(fs.readFileSync(path.join(/*turbopackIgnore: true*/ process.cwd(), 'package.json'), 'utf8')).version || packageVersion;
+} catch {
+  // The built-in version remains available in minimal runtime bundles.
+}
+const envPath = path.join(dataDir, '.env');
 const injectedEnvironment = new Set(Object.keys(process.env));
 require('dotenv').config({ path: envPath, override: false });
 
@@ -42,12 +49,6 @@ const aiRestrictions = {
   restrictToExistingDocumentTypes: parseEnvBoolean(process.env.RESTRICT_TO_EXISTING_DOCUMENT_TYPES, 'no')
 };
 
-console.log('Loaded restriction settings:', {
-  RESTRICT_TO_EXISTING_TAGS: aiRestrictions.restrictToExistingTags,
-  RESTRICT_TO_EXISTING_CORRESPONDENTS: aiRestrictions.restrictToExistingCorrespondents,
-  RESTRICT_TO_EXISTING_DOCUMENT_TYPES: aiRestrictions.restrictToExistingDocumentTypes
-});
-
 // Initialize external API configuration
 const externalApiConfig = {
   enabled: parseEnvBoolean(process.env.EXTERNAL_API_ENABLED, 'no'),
@@ -58,14 +59,6 @@ const externalApiConfig = {
   timeout: parseInt(process.env.EXTERNAL_API_TIMEOUT || '5000', 10),
   selector: process.env.EXTERNAL_API_TRANSFORM || ''
 };
-
-console.log('Loaded environment variables:', {
-  PAPERLESS_API_URL: process.env.PAPERLESS_API_URL,
-  PAPERLESS_API_TOKEN: '******',
-  LIMIT_FUNCTIONS: limitFunctions,
-  AI_RESTRICTIONS: aiRestrictions,
-  EXTERNAL_API: externalApiConfig.enabled === 'yes' ? 'enabled' : 'disabled'
-});
 
 module.exports = {
   TAGVICO_AI_VERSION: tagvicoAiVersion,
@@ -108,7 +101,7 @@ module.exports = {
   },
   codex: {
     model: process.env.CODEX_MODEL || 'gpt-5.4-mini',
-    home: process.env.CODEX_HOME || path.join(currentDir, 'data', 'codex'),
+    home: process.env.CODEX_HOME || path.join(dataDir, 'codex'),
     timeoutMs: Math.max(10000, parseInt(process.env.CODEX_TIMEOUT_MS || '120000', 10))
   },
   ocr: {
@@ -118,6 +111,7 @@ module.exports = {
     apiKey: process.env.OCR_API_KEY || process.env.MISTRAL_API_KEY || '',
     model: process.env.OCR_MODEL || process.env.MISTRAL_OCR_MODEL || 'mistral-ocr-latest',
     maxPages: Math.max(1, parseInt(process.env.OCR_MAX_PAGES || '20', 10)),
+    maxFileBytes: parsePositiveInteger(process.env.OCR_MAX_FILE_BYTES, 50 * 1024 * 1024, 100 * 1024 * 1024),
     timeoutMs: Math.max(10000, parseInt(process.env.OCR_TIMEOUT_MS || '120000', 10))
   },
   telegram: {
@@ -154,7 +148,7 @@ module.exports = {
   copilot: {
     githubToken: process.env.COPILOT_GITHUB_TOKEN || process.env.GITHUB_TOKEN || '',
     model: process.env.COPILOT_MODEL || getDefaultModel('copilot'),
-    home: process.env.COPILOT_HOME || path.join(currentDir, 'data', 'copilot'),
+    home: process.env.COPILOT_HOME || path.join(dataDir, 'copilot'),
     timeoutMs: Math.max(10000, parseInt(process.env.COPILOT_TIMEOUT_MS || '120000', 10))
   },
   compatible: {

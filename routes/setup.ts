@@ -54,6 +54,7 @@ const bcrypt = require('bcryptjs');
 const cookieParser = require('cookie-parser');
 const { authenticateJWT, isAuthenticated } = require('./auth.js');
 const { getJwtSecret } = require('../services/authSecret');
+const { resolveDataDirectory } = require('../services/dataDirectory');
 const JWT_SECRET = getJwtSecret();
 const customService = require('../services/customService.js');
 const config = require('../config/config.js');
@@ -104,7 +105,7 @@ const {
   resolveEnv,
   serializeArray
 } = require('../services/configHelpers');
-require('dotenv').config({ path: '../data/.env' });
+require('dotenv').config({ path: require('path').join(resolveDataDirectory(), '.env') });
 
 /**
  * @swagger
@@ -1769,10 +1770,9 @@ async function saveDocumentChanges(docId: number, updateData: DocumentUpdate, an
 router.post('/api/key-regenerate', async (req: Req, res: Res) => {
   try {
     const fs = require('fs');
-    const path = require('path');
     const dotenv = require('dotenv');
     const crypto = require('crypto');    
-    const envPath = path.join(process.cwd(), 'data', '.env');
+    const envPath = require('path').join(resolveDataDirectory(), '.env');
     const envConfig = dotenv.parse(fs.readFileSync(envPath));
     // Generiere ein neues API-Token
     const apiKey = crypto.randomBytes(32).toString('hex');
@@ -1782,14 +1782,15 @@ router.post('/api/key-regenerate', async (req: Req, res: Res) => {
     const envContent = Object.entries(envConfig)
       .map(([key, value]) => `${key}=${value}`)
       .join('\n');
-    fs.writeFileSync(envPath, envContent);
+    fs.writeFileSync(envPath, `${envContent}\n`, { encoding: 'utf8', mode: 0o600 });
+    try { fs.chmodSync(envPath, 0o600); } catch { /* Windows and read-only mounts may not expose POSIX modes. */ }
 
     // Setze die Umgebungsvariable für den aktuellen Prozess
     process.env.API_KEY = apiKey;
 
     // Sende die Antwort zurück
     res.json({ success: apiKey });
-    console.log('API key regenerated:', apiKey);
+    console.log('API key regenerated');
   } catch (error) {
     console.error('API key regeneration error:', error);
     res.status(500).json({ error: 'Error regenerating API key' });

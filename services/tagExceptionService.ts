@@ -2,8 +2,9 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 const tagGroups = require('./tagGroupService');
+const { resolveDataDirectory } = require('./dataDirectory');
 
-const dataDir = path.join(process.cwd(), 'data');
+const dataDir = resolveDataDirectory();
 if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
 const db = new Database(path.join(dataDir, 'documents.db'));
 db.pragma('journal_mode = WAL');

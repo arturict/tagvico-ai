@@ -1,10 +1,12 @@
 // models/document.js
 const Database = require('better-sqlite3');
+import crypto from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
+import { resolveDataDirectory } from '../services/dataDirectory';
 
 // Ensure data directory exists
-const dataDir = path.join(process.cwd(), 'data');
+const dataDir = resolveDataDirectory();
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
@@ -12,8 +14,9 @@ if (!fs.existsSync(dataDir)) {
 // Initialize database with WAL mode for better performance
 const databasePath = path.join(dataDir, 'documents.db');
 const db = new Database(databasePath, {
-  //verbose: console.log 
+  timeout: 30000
 });
+db.pragma('busy_timeout = 30000');
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
@@ -147,84 +150,220 @@ const MIGRATIONS = [
           WHERE status IN ('staging', 'pending', 'applying');
       `);
     }
+  },
+  {
+    version: 5,
+    up() {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS households (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          kind TEXT NOT NULL DEFAULT 'solo' CHECK (kind IN ('solo', 'family')),
+          created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS household_members (
+          id TEXT PRIMARY KEY,
+          household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+          user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+          display_name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'adult' CHECK (role IN ('owner', 'adult', 'member', 'viewer')),
+          paperless_user_id INTEGER,
+          paperless_token_encrypted TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(household_id, user_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_household_members_user ON household_members(user_id, active);
+
+        CREATE TABLE IF NOT EXISTS action_cases (
+          id TEXT PRIMARY KEY,
+          household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+          paperless_document_id INTEGER NOT NULL,
+          title TEXT NOT NULL,
+          summary TEXT NOT NULL DEFAULT '',
+          status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('suggested', 'open', 'waiting', 'done', 'dismissed')),
+          priority TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
+          due_at DATETIME,
+          assignee_member_id TEXT REFERENCES household_members(id) ON DELETE SET NULL,
+          source TEXT NOT NULL DEFAULT 'manual' CHECK (source IN ('manual', 'ai', 'paperless', 'telegram')),
+          confidence REAL,
+          paperless_fingerprint TEXT,
+          sync_status TEXT NOT NULL DEFAULT 'pending' CHECK (sync_status IN ('pending', 'synced', 'conflict', 'error')),
+          sync_error TEXT,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          last_synced_at DATETIME,
+          UNIQUE(household_id, paperless_document_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_action_cases_household_status ON action_cases(household_id, status, due_at);
+        CREATE INDEX IF NOT EXISTS idx_action_cases_document ON action_cases(paperless_document_id);
+
+        CREATE TABLE IF NOT EXISTS action_steps (
+          id TEXT PRIMARY KEY,
+          case_id TEXT NOT NULL REFERENCES action_cases(id) ON DELETE CASCADE,
+          title TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'done', 'dismissed')),
+          due_at DATETIME,
+          position INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_action_steps_case ON action_steps(case_id, position);
+
+        CREATE TABLE IF NOT EXISTS action_events (
+          id TEXT PRIMARY KEY,
+          case_id TEXT NOT NULL REFERENCES action_cases(id) ON DELETE CASCADE,
+          actor_member_id TEXT REFERENCES household_members(id) ON DELETE SET NULL,
+          event_type TEXT NOT NULL,
+          payload_json TEXT NOT NULL DEFAULT '{}',
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_action_events_case ON action_events(case_id, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS companion_sessions (
+          id TEXT PRIMARY KEY,
+          household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+          member_id TEXT REFERENCES household_members(id) ON DELETE SET NULL,
+          channel TEXT NOT NULL DEFAULT 'web' CHECK (channel IN ('web', 'telegram')),
+          title TEXT NOT NULL DEFAULT 'New conversation',
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE IF NOT EXISTS companion_messages (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL REFERENCES companion_sessions(id) ON DELETE CASCADE,
+          role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system', 'tool')),
+          content_json TEXT NOT NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_companion_messages_session ON companion_messages(session_id, created_at);
+
+        CREATE TABLE IF NOT EXISTS agent_approvals (
+          id TEXT PRIMARY KEY,
+          household_id TEXT NOT NULL REFERENCES households(id) ON DELETE CASCADE,
+          session_id TEXT REFERENCES companion_sessions(id) ON DELETE SET NULL,
+          requested_by_member_id TEXT REFERENCES household_members(id) ON DELETE SET NULL,
+          action_type TEXT NOT NULL,
+          payload_json TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'executed', 'failed', 'expired')),
+          result_json TEXT,
+          decided_by_member_id TEXT REFERENCES household_members(id) ON DELETE SET NULL,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          decided_at DATETIME,
+          executed_at DATETIME
+        );
+        CREATE INDEX IF NOT EXISTS idx_agent_approvals_pending ON agent_approvals(household_id, status, created_at DESC);
+      `);
+    }
   }
 ];
 
 function runMigrations() {
   const current = Number(db.pragma('user_version', { simple: true })) || 0;
   const pending = MIGRATIONS.filter((entry) => entry.version > current);
-  if (pending.length > 0 && fs.existsSync(databasePath)) {
-    db.pragma('wal_checkpoint(FULL)');
-    const backupPath = `${databasePath}.pre-migration-v${current}-${Date.now()}.bak`;
-    fs.copyFileSync(databasePath, backupPath, fs.constants.COPYFILE_EXCL);
+  const disposableDataDirectory = process.env.TAGVICO_BUILD_DATA_ROOT || process.env.TAGVICO_TEST_DATA_ROOT;
+  if (pending.length > 0 && fs.existsSync(databasePath) && !disposableDataDirectory) {
+    const backupPath = `${databasePath}.pre-migration-v${current}-${Date.now()}-${process.pid}-${crypto.randomUUID().slice(0, 8)}.bak`;
+    // VACUUM INTO creates a consistent standalone snapshot, including data that
+    // still lives in the WAL. Copying only the main file can silently lose it.
+    db.prepare('VACUUM INTO ?').run(backupPath);
     console.log(`[DB] Created pre-migration backup at ${backupPath}`);
   }
-  for (const migration of pending) {
-    db.transaction(() => {
+
+  db.exec('BEGIN IMMEDIATE');
+  const appliedVersions: number[] = [];
+  try {
+    const lockedVersion = Number(db.pragma('user_version', { simple: true })) || 0;
+    for (const migration of MIGRATIONS.filter((entry) => entry.version > lockedVersion)) {
       migration.up();
       db.pragma(`user_version = ${migration.version}`);
-    })();
-    console.log(`[DB] Applied migration ${migration.version}`);
+      appliedVersions.push(migration.version);
+    }
+    db.exec('COMMIT');
+  } catch (error) {
+    if (db.inTransaction) db.exec('ROLLBACK');
+    throw error;
+  }
+  if (!disposableDataDirectory) {
+    for (const version of appliedVersions) {
+      console.log(`[DB] Applied migration ${version}`);
+    }
   }
 }
 
-// Create tables
-const createTableMain = db.prepare(`
-  CREATE TABLE IF NOT EXISTS processed_documents (
-    id INTEGER PRIMARY KEY,
-    document_id INTEGER UNIQUE,
-    title TEXT,
-    processed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-createTableMain.run();
+function initializeSchema() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS processed_documents (
+      id INTEGER PRIMARY KEY,
+      document_id INTEGER UNIQUE,
+      title TEXT,
+      processed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_updated DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS openai_metrics (
+      id INTEGER PRIMARY KEY,
+      document_id INTEGER,
+      promptTokens INTEGER,
+      completionTokens INTEGER,
+      totalTokens INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS history_documents (
+      id INTEGER PRIMARY KEY,
+      document_id INTEGER,
+      tags TEXT,
+      title TEXT,
+      correspondent TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS original_documents (
+      id INTEGER PRIMARY KEY,
+      document_id INTEGER,
+      title TEXT,
+      tags TEXT,
+      correspondent TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY,
+      username TEXT,
+      password TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    CREATE TABLE IF NOT EXISTS processing_status (
+      id INTEGER PRIMARY KEY,
+      document_id INTEGER UNIQUE,
+      title TEXT,
+      start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+      status TEXT
+    );
+  `);
+  runMigrations();
+}
 
-const createTableMetrics = db.prepare(`
-  CREATE TABLE IF NOT EXISTS openai_metrics (
-    id INTEGER PRIMARY KEY,
-    document_id INTEGER,
-    promptTokens INTEGER,
-    completionTokens INTEGER,
-    totalTokens INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-createTableMetrics.run();
+function initializeSchemaWithProcessLock() {
+  const lockDatabase = new Database(`${databasePath}.migration-lock`, { timeout: 30000 });
+  lockDatabase.pragma('busy_timeout = 30000');
+  try {
+    lockDatabase.exec('CREATE TABLE IF NOT EXISTS migration_lock (id INTEGER PRIMARY KEY CHECK (id = 1))');
+    lockDatabase.exec('BEGIN EXCLUSIVE');
+    try {
+      initializeSchema();
+      lockDatabase.exec('COMMIT');
+    } catch (error) {
+      if (lockDatabase.inTransaction) lockDatabase.exec('ROLLBACK');
+      throw error;
+    }
+  } finally {
+    lockDatabase.close();
+  }
+}
 
-const createTableHistory = db.prepare(`
-  CREATE TABLE IF NOT EXISTS history_documents (
-    id INTEGER PRIMARY KEY,
-    document_id INTEGER,
-    tags TEXT,
-    title TEXT,
-    correspondent TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-createTableHistory.run();
-
-const createOriginalDocuments = db.prepare(`
-  CREATE TABLE IF NOT EXISTS original_documents (
-    id INTEGER PRIMARY KEY,
-    document_id INTEGER,
-    title TEXT,
-    tags TEXT,
-    correspondent TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-createOriginalDocuments.run();
-
-const userTable = db.prepare(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY,
-    username TEXT,
-    password TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`);
-userTable.run();
+initializeSchemaWithProcessLock();
+db.pragma('busy_timeout = 5000');
 
 
 // Prepare statements for better performance
@@ -261,18 +400,6 @@ const getPaginatedHistoryDocuments = db.prepare(`
   LIMIT ? OFFSET ?
 `);
 
-const createProcessingStatus = db.prepare(`
-  CREATE TABLE IF NOT EXISTS processing_status (
-    id INTEGER PRIMARY KEY,
-    document_id INTEGER UNIQUE,
-    title TEXT,
-    start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
-    status TEXT
-  );
-`);
-createProcessingStatus.run();
-runMigrations();
-
 // An `applying` claim belongs to the previous process. If it exited before
 // finalizing the row, return the suggestion to the visible review queue so it
 // can be retried explicitly instead of blocking the document forever.
@@ -285,8 +412,6 @@ function recoverApplyingReviewSuggestions() {
     WHERE status = 'applying'
   `).run().changes;
 }
-recoverApplyingReviewSuggestions();
-
 // Add with your other prepared statements
 const upsertProcessingStatus = db.prepare(`
   INSERT INTO processing_status (document_id, title, status)
@@ -308,7 +433,7 @@ const getActiveProcessing = db.prepare(`
 `);
 
 
-module.exports = {
+const documentModel = {
   getDatabase() {
     return db;
   },
@@ -1094,3 +1219,6 @@ async getCurrentProcessingStatus() {
     });
   }
 };
+
+export default documentModel;
+module.exports = documentModel;

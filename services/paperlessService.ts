@@ -12,6 +12,7 @@ type AxiosClient = ReturnType<typeof axios.create>;
 interface NamedResource { id: number; name: string; [key: string]: unknown }
 interface ProcessingOptions { restrictToExistingTags?: boolean; restrictToExistingCorrespondents?: boolean }
 interface DocumentUpdate { [key: string]: unknown; tags?: number[]; title?: string; created?: string; correspondent?: unknown }
+const MAX_THUMBNAIL_BYTES = 10 * 1024 * 1024;
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
@@ -74,7 +75,9 @@ class PaperlessService {
     this.initialize();
     try { 
       const response = await this.client.get(`/documents/${documentId}/thumb/`, {
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
+        maxContentLength: MAX_THUMBNAIL_BYTES,
+        timeout: 30_000
       });
 
       if (response.data && response.data.byteLength > 0) {      

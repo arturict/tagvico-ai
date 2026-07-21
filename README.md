@@ -1,36 +1,47 @@
-# Tagvico AI
+# Tagvico
 
-> **Stable v2.0.1.** Pin an immutable release and back up the data volume before
-> upgrades. Start new installations in Review first mode before enabling writes.
+> **v3 release candidate.** This branch is being validated for the first stable
+> v3 release. Companion writes always require explicit approval.
 
-**Using v2?** Read the [stable deployment guidance](docs/STATUS.md), share a
+**Deploying stable v2?** Read the [stable deployment guidance](docs/STATUS.md).
+**Reviewing v3?** Read the local versioned preview, share a
 [redacted deployment result](https://github.com/arturict/tagvico-ai/discussions/35),
 or [report a reproducible bug](https://github.com/arturict/tagvico-ai/issues/new?template=bug_report.yml).
 
-**AI-powered metadata for Paperless-ngx—self-hosted, reviewable, and compatible
-with local or hosted models.** Turn OCR text into clean titles, tags,
-correspondents, document types, dates, languages, custom fields, and optional
-owner assignments while keeping control of the model and privacy boundary.
+**The private Action Center and Household Companion for Paperless-ngx.** Turn
+letters and PDFs into assigned deadlines, decisions, payments, replies,
+renewals, and multi-step work while keeping Paperless as the document system of
+record. Reviewable AI metadata automation remains included.
 
-[![Status: Stable](https://img.shields.io/badge/status-stable-2ea44f.svg)](docs/STATUS.md)
+[![Status: v3 preview](https://img.shields.io/badge/status-v3_preview-f59e0b.svg)](docs/STATUS.md)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/arturict/tagvico-ai)](https://github.com/arturict/tagvico-ai/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/arturict/tagvico-ai/ci.yml?branch=main&label=CI)](https://github.com/arturict/tagvico-ai/actions/workflows/ci.yml)
 
 ![Tagvico AI dashboard](docs/screenshots/dashboard.png)
 
-## Why Tagvico AI
+## Why Tagvico
 
-- **Useful metadata, automatically** — titles, tags, correspondents, document types, dates, languages, custom fields, and optional owner assignment.
-- **Your choice of model** — Ollama (local or cloud), OpenAI, Anthropic, OpenRouter, OpenCode Go, GitHub Copilot, Azure OpenAI, an OpenAI-compatible endpoint, or an experimental ChatGPT subscription sign-in.
+- **Action Cases, not loose reminders** — one case per Paperless document, with priority, owner, due date, audit trail, and up to 100 checklist steps.
+- **AI with approval boundaries** — the Companion can read permitted documents and prepare changes; only an owner or adult can execute a write.
+- **Your choice of model** — the Companion uses Vercel AI SDK v6 for OpenCode Go, OpenRouter, OpenAI, and compatible gateways, plus an optional read-only Codex SDK adapter.
+- **Useful metadata, automatically** — retain titles, tags, correspondents, document types, dates, languages, custom fields, and optional owner assignment.
 - **Cost-aware processing** — pick immediate requests, OpenAI Flex, or asynchronous OpenAI/Anthropic batches.
 - **Designed for homelabs** — one container, one persistent volume, and SQLite for processing history and retries.
-- **Optional Telegram access** — allowlisted family members can search, ask follow-ups, download originals, and upload PDFs or photos using their own Paperless tokens.
+- **Optional Telegram access** — allowlisted family members can search, upload, list actions, and approve or reject proposals using their own Paperless tokens.
 - **Built to recover** — durable OCR and terminal-failure queues, safe rescans, original-metadata restore, and interrupted-job recovery.
 - **Operationally hardened** — optional MFA, rate limits, same-origin mutation checks, protected setup, and generated JWT secrets.
 - **Clear privacy boundaries** — keep processing on your network with a local endpoint, or explicitly choose a hosted provider.
 
-## See v2 in action
+## The v3 architecture
+
+Tagvico owns the credential store, model resolution, session transcript, narrow
+tool catalog, household roles, approval state, and audit trail. Model providers
+only supply inference. There is no shell or filesystem tool in the Companion.
+Top-level case state is mirrored to reserved Paperless custom fields and the
+`tagvico/action` tag; complete checklists remain local to Tagvico.
+
+## See Tagvico in action
 
 The interface keeps the important decisions visible: what has been processed,
 which account-scoped model is active, and which vocabulary the model may use.
@@ -39,8 +50,8 @@ which account-scoped model is active, and which vocabulary the model may use.
   <tr>
     <td width="50%">
       <img src="docs/screenshots/chatgpt-models.png" alt="ChatGPT subscription model picker showing GPT-5.6 Luna and seven account-scoped models">
-      <br><strong>Use the subscription you already have.</strong><br>
-      Device-code sign-in, live model discovery, and no ChatGPT token exposed to the browser.
+      <br><strong>Use a subscription-backed adapter if desired.</strong><br>
+      Stable Codex device sign-in, no token exposed to the browser, and no dependency on the experimental app-server.
     </td>
     <td width="50%">
       <img src="docs/screenshots/controlled-tagging.png" alt="Controlled Tag Groups in Tagvico AI settings">
@@ -50,9 +61,13 @@ which account-scoped model is active, and which vocabulary the model may use.
   </tr>
 </table>
 
-<p align="center"><em>Real screens from Tagvico AI v2. Live document names were replaced in the dashboard capture for privacy.</em></p>
+<p align="center"><em>Sanitized screens from the established document-automation interface. Live document names were replaced for privacy.</em></p>
 
-## Quick start (about 2 minutes)
+## Stable quick start (v2.0.0)
+
+The v3 source tree does not yet have a published container image. The example
+below intentionally installs the current stable release; use only tags that are
+present on the [GitHub releases page](https://github.com/arturict/tagvico-ai/releases).
 
 You need Docker Compose, a running Paperless-ngx instance, and a Paperless API token. No source checkout is required.
 
@@ -135,7 +150,7 @@ Owner matching is conservative: optional hint profiles add context, and assignme
 | GitHub Copilot | Official Copilot SDK, OAuth device login, and account-scoped model discovery |
 | OpenAI-compatible | LM Studio, LiteLLM, vLLM, and custom gateways |
 | Azure OpenAI | Existing Azure deployments |
-| ChatGPT subscription | Experimental Codex-runtime provider with device login and account-scoped models |
+| ChatGPT subscription | Optional read-only Codex SDK adapter with stable device login |
 
 Provider-specific setup and troubleshooting live in [`docs/providers/`](docs/providers/README.md).
 
@@ -144,10 +159,10 @@ Provider-specific setup and troubleshooting live in [`docs/providers/`](docs/pro
 - **Standard** — process each document immediately. Best for interactive feedback and low-volume setups.
 - **OpenAI Flex** — trades latency and guaranteed availability for Batch-level pricing. Available only for supported OpenAI models, selected in the provider step.
 - **Batch** — asynchronous, discounted jobs that may take up to 24 hours. Available for OpenAI direct and Anthropic direct; Tagvico groups all documents discovered in the same scan into one batch.
-- **ChatGPT subscription (experimental)** — sign in directly from Settings. The official Codex app-server owns OAuth and token refresh, and its live `model/list` response becomes the model dropdown. Tagvico does not implement private ChatGPT endpoints or expose tokens to the browser. The extraction runtime stays read-only with tools and approvals disabled.
+- **ChatGPT subscription** — sign in directly from Settings with the stable `codex login --device-auth` flow. The official Codex SDK supplies read-only inference; Tagvico does not depend on the experimental app-server and never exposes tokens to the browser.
 - **GitHub Copilot subscription** — uses the official SDK with every agent tool denied. Authenticate through the Settings device flow, `npm run auth:copilot`, or a supported token. The dropdown is populated with `listModels()` for the authenticated account.
 
-### Model selection for v2
+### Model selection
 
 For routine filing, Tagvico recommends `openai/gpt-5.4-mini` through OpenRouter
 or `gpt-5.4-mini` through OpenAI direct. Use `gpt-5.4-nano` for clean,
@@ -202,7 +217,7 @@ History supports explicit rescan and restoration of the first metadata snapshot 
 2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page—for example `ghcr.io/arturict/tagvico-ai:2.0.1`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
 3. `docker compose pull && docker compose up -d`.
 
-Tagvico is stateless across restarts: configuration, processing history, and the local admin account live in the `tagvico_ai_data` volume, so upgrades do not touch your settings.
+The container is replaceable, while configuration, processing history, the local admin account, encrypted member tokens, and the installation secret live in the `tagvico_ai_data` volume. Back up and restore that volume as one unit; changing or losing the JWT secret makes encrypted member tokens unreadable.
 
 ## Troubleshooting
 
@@ -233,8 +248,9 @@ If Tagvico saves you filing time, [star it on GitHub](https://github.com/arturic
 ```bash
 git clone https://github.com/arturict/tagvico-ai.git
 cd tagvico-ai
-npm install
-npm run dev
+npm ci
+npm run dev        # web process on 3000
+npm run dev:backend # second terminal, internal backend on 3001
 npm run typecheck
 npm run lint
 npm test
@@ -246,7 +262,7 @@ The development server listens on `http://localhost:3000`. The application sourc
 
 Bug reports, feature requests, and pull requests are welcome. The issue chooser asks only for the information needed to reproduce or evaluate a change, and the pull-request template includes a short verification checklist. See [CONTRIBUTING.md](CONTRIBUTING.md) for the workflow. For security disclosures, follow [SECURITY.md](SECURITY.md) instead of opening a public issue.
 
-See [docs/STATUS.md](docs/STATUS.md) for the v2 compatibility policy and stable deployment recommendations.
+See [docs/STATUS.md](docs/STATUS.md) for the currently published v2 compatibility policy and stable deployment recommendations.
 
 ## License
 

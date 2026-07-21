@@ -11,7 +11,7 @@ test('database migrations and recovery queues are idempotent', () => {
   const script = `
     const model = require(${JSON.stringify(modulePath)});
     (async () => {
-      if (model.getSchemaVersion() !== 4) process.exit(2);
+      if (model.getSchemaVersion() !== 5) process.exit(2);
       await model.addToOcrQueue(42, 'Test', 'short_content');
       await model.updateOcrQueueStatus(42, 'processing');
       const recovered = await model.recoverInterruptedOcrJobs();

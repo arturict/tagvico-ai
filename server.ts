@@ -2,6 +2,7 @@ const express = require('express');
 const cron = require('node-cron');
 const path = require('path');
 const fs = require('fs').promises;
+const { resolveDataDirectory } = require('./services/dataDirectory');
 const config = require('./config/config');
 const paperlessService = require('./services/paperlessService');
 const AIServiceFactory = require('./services/aiServiceFactory');
@@ -64,6 +65,7 @@ const reviewService = require('./services/reviewService');
 const { blockLegacyPublicImages, removeLegacyPublicThumbnailCache } = require('./services/staticPathSecurity');
 const telemetryService = require('./services/telemetryService');
 const telegramBotService = require('./services/telegramBotService');
+const actionSyncService = require('./services/actionSyncService');
 
 const htmlLogger = new Logger({
   logFile: 'logs.html',
@@ -191,7 +193,7 @@ app.set('views', path.join(process.cwd(), 'views'));
 
 // Initialize data directory
 async function initializeDataDirectory() {
-  const dataDir = path.join(process.cwd(), 'data');
+  const dataDir = resolveDataDirectory();
   try {
     await fs.access(dataDir);
   } catch {
@@ -681,15 +683,8 @@ app.get('/', async (_req: HttpRequest, res: HttpResponse) => {
 app.get('/health', async (_req: HttpRequest, res: HttpResponse) => {
   try {
     const isConfigured = await setupService.isConfigured();
-    if (!isConfigured) {
-      return res.status(503).json({ 
-        status: 'not_configured',
-        message: 'Application setup not completed'
-      });
-    }
-
     await documentModel.isDocumentProcessed(1);
-    res.json({ status: 'healthy' });
+    res.json({ status: 'healthy', configured: isConfigured });
   } catch (error) {
     console.error('Health check failed:', error);
     res.status(503).json({ 
@@ -741,6 +736,17 @@ async function startScanning() {
           console.error('[RECONCILIATION] Failed:', errorMessage(error));
         }
       });
+    }
+    const actionSyncInterval = process.env.ACTION_SYNC_INTERVAL || '*/10 * * * *';
+    if (cron.validate(actionSyncInterval)) {
+      cron.schedule(actionSyncInterval, async () => {
+        try {
+          const result = await actionSyncService.reconcileAllCases();
+          if (result.changed || result.failed) console.log(`[ACTION SYNC] checked=${result.checked} changed=${result.changed} failed=${result.failed}`);
+        } catch (error) { console.warn('[ACTION SYNC] Failed:', errorMessage(error)); }
+      });
+    } else {
+      console.warn(`[ACTION SYNC] Ignoring invalid ACTION_SYNC_INTERVAL: ${actionSyncInterval}`);
     }
   } catch (error) {
     console.error('[ERROR] in startScanning:', error);
@@ -800,6 +806,8 @@ async function startServer() {
     await initializeDataDirectory();
     // Idempotent schema migration for the history.diff JSON column.
     historyService.migrate();
+    const recoveredReviews = await documentModel.recoverApplyingReviewSuggestions();
+    if (recoveredReviews) console.log(`[REVIEW] Recovered ${recoveredReviews} interrupted suggestion(s)`);
     const ocrService = require('./services/ocrService');
     const recovered = await ocrService.recoverInterruptedJobs();
     if (recovered) console.log(`[OCR] Recovered ${recovered} interrupted job(s)`);

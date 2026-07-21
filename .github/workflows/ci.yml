@@ -5,6 +5,13 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -17,6 +24,8 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm test
+      - run: npm run docs:build
+      - run: npm audit --omit=dev --audit-level=high
       - run: node --check dist/server.js
         # Syntax-only smoke test; starting the server would keep CI alive.
       - name: Verify package scripts

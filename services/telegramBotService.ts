@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { TelegramPaperlessClient, TelegramPaperlessDocument, NamedPaperlessResource } from './telegramPaperlessClient';
+import { encryptSecret } from './secretBox';
 
 const config = require('../config/config');
 const AIServiceFactory = require('./aiServiceFactory');
@@ -8,6 +9,8 @@ interface TelegramUserConfig {
   telegramId: string;
   paperlessToken: string;
   paperlessUrl: string;
+  householdId?: string;
+  memberId?: string;
 }
 
 interface ChatTurn {
@@ -65,6 +68,7 @@ interface TelegramApiResponse<T> {
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
 const safeText = (value: unknown) => String(value || '').replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g, '').trim();
 const sleep = (milliseconds: number) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+const normalizedUrl = (value: unknown) => safeText(value).replace(/\/+$/, '');
 
 function parseTelegramUsers(usersJson: string, defaultPaperlessUrl: string): Map<string, TelegramUserConfig> {
   const parsed: unknown = JSON.parse(usersJson || '[]');
@@ -83,7 +87,9 @@ function parseTelegramUsers(usersJson: string, defaultPaperlessUrl: string): Map
     const paperlessToken = safeText(item.paperlessToken ?? item.paperless_token ?? item.token);
     const paperlessUrl = safeText(item.paperlessUrl ?? item.paperless_url ?? defaultPaperlessUrl);
     if (!/^\d{1,16}$/.test(telegramId) || !paperlessToken || !paperlessUrl) continue;
-    users.set(telegramId, { telegramId, paperlessToken, paperlessUrl });
+    const householdId = safeText(item.householdId ?? item.household_id);
+    const memberId = safeText(item.memberId ?? item.member_id);
+    users.set(telegramId, { telegramId, paperlessToken, paperlessUrl, ...(householdId ? { householdId } : {}), ...(memberId ? { memberId } : {}) });
   }
   return users;
 }
@@ -173,6 +179,18 @@ class TelegramBotService {
       console.warn('[Telegram] Bot is enabled but no valid users are allowlisted');
       return;
     }
+    const actionCenter = require('../models/actionCenter');
+    for (const user of this.users.values()) {
+      if (!user.householdId && !user.memberId) continue;
+      const member = user.householdId && user.memberId ? actionCenter.getMemberSecretRecord(user.householdId, user.memberId) : null;
+      const samePaperless = normalizedUrl(user.paperlessUrl) === normalizedUrl(config.paperless.apiUrl);
+      if (!member || !samePaperless) {
+        console.warn(`[Telegram] Action Center link ignored for Telegram user ${user.telegramId}: household/member mapping or Paperless URL is invalid`);
+        delete user.householdId; delete user.memberId;
+        continue;
+      }
+      actionCenter.setPaperlessToken(user.householdId, user.memberId, encryptSecret(user.paperlessToken));
+    }
     this.apiBase = `https://api.telegram.org/bot${this.botToken}`;
     this.running = true;
     this.loopPromise = this.pollLoop();
@@ -180,6 +198,7 @@ class TelegramBotService {
       commands: [
         { command: 'start', description: 'Show help and privacy boundaries' },
         { command: 'clear', description: 'Forget your in-memory conversation' },
+        { command: 'actions', description: 'Show active household actions' },
         { command: 'privacy', description: 'Show data-processing information' }
       ]
     }).catch(() => {});
@@ -272,6 +291,13 @@ class TelegramBotService {
       await this.sendText(message.chat.id, this.privacyText());
       return;
     }
+    if (command === '/actions') {
+      if (!user.householdId || !user.memberId) { await this.sendText(message.chat.id, 'Link this Telegram user to a valid householdId and memberId in TELEGRAM_USERS_JSON to use the Action Center.'); return; }
+      const actionCenter = require('../models/actionCenter');
+      const actions = actionCenter.listCases(user.householdId).filter((item: Record<string, unknown>) => !['done', 'dismissed'].includes(String(item.status))).slice(0, 12);
+      await this.sendText(message.chat.id, actions.length ? actions.map((item: Record<string, unknown>) => `• ${item.title}${item.dueAt ? ` — due ${String(item.dueAt).slice(0, 10)}` : ''} [doc:${item.paperlessDocumentId}]`).join('\n') : 'No active household actions.');
+      return;
+    }
     await this.sendText(message.chat.id,
       'Ask me to find or read documents in your Paperless archive, including follow-up questions. Send a PDF or photo to upload and classify it. Use /clear to forget this in-memory conversation.\n\n' + this.privacyText());
   }
@@ -287,7 +313,7 @@ class TelegramBotService {
     const history = this.histories.get(user.telegramId) || [];
     await this.call('sendChatAction', { chat_id: message.chat.id, action: 'typing' });
     const planRaw = await this.ai().generateText(
-      `Turn a user's Paperless-ngx request into a short full-text search query. Resolve follow-ups from the conversation. Put any overall document-date range into ISO dates; createdBefore is exclusive. For comparisons, use one range covering every compared period. Return JSON only: {"query":"keywords without date filler","resolvedQuestion":"complete question","createdAfter":"YYYY-MM-DD or empty","createdBefore":"YYYY-MM-DD or empty"}. Do not answer the question.\n\nConversation:\n${historyText(history)}\n\nLatest request: ${question}`
+      `Turn a user's Paperless-ngx request into a short full-text search query. Resolve follow-ups from the conversation. Put any overall document-date range into ISO dates; createdBefore is exclusive. For comparisons, use one range covering every compared period. If the user explicitly asks to create a reminder or action, set proposeAction=true and supply a short actionTitle and ISO dueAt when known. Set actionDocumentId only when the request explicitly identifies a numeric Paperless document. Return JSON only: {"query":"keywords without date filler","resolvedQuestion":"complete question","createdAfter":"YYYY-MM-DD or empty","createdBefore":"YYYY-MM-DD or empty","proposeAction":false,"actionTitle":"","dueAt":"","actionDocumentId":null}. Do not answer the question.\n\nConversation:\n${historyText(history)}\n\nLatest request: ${question}`
     );
     const plan = parseJsonObject(planRaw);
     const query = safeText(plan?.query) || question;
@@ -308,6 +334,23 @@ class TelegramBotService {
     const cited = ids.length ? ids : documents.slice(0, 3).map((document) => document.id);
     const answer = cleanAnswerCitations(rawAnswer);
     await this.sendText(message.chat.id, answer, documents.filter((document) => cited.includes(document.id)));
+    const requestedActionDocumentId = Number(plan?.actionDocumentId);
+    const actionDocumentId = documents.some((document) => document.id === requestedActionDocumentId)
+      ? requestedActionDocumentId
+      : cited.length === 1 ? cited[0] : null;
+    const actionDocument = documents.find((document) => document.id === actionDocumentId);
+    if (plan?.proposeAction === true && user.householdId && user.memberId && actionDocument) {
+      const actionCenter = require('../models/actionCenter');
+      const approval = actionCenter.createApproval(user.householdId, null, user.memberId, 'action.create', {
+        paperlessDocumentId: actionDocument.id,
+        title: safeText(plan.actionTitle) || `Follow up: ${safeText(actionDocument.title)}`,
+        dueAt: /^\d{4}-\d{2}-\d{2}$/.test(safeText(plan.dueAt)) ? safeText(plan.dueAt) : null,
+        priority: 'normal', steps: []
+      });
+      await this.sendApproval(message.chat.id, approval.id, safeText(approval.payload.title));
+    } else if (plan?.proposeAction === true && user.householdId && user.memberId) {
+      await this.sendText(message.chat.id, 'I found several possible documents, so I did not guess. Name one Paperless document ID and ask me to create the action again.');
+    }
     const nextHistory = [...history, { question, answer }].slice(-Number(config.telegram.historyTurns));
     this.histories.set(user.telegramId, nextHistory);
   }
@@ -317,6 +360,16 @@ class TelegramBotService {
     const chatId = callback.message?.chat.id;
     if (!user || !chatId || callback.message?.chat.type !== 'private') return;
     await this.call('answerCallbackQuery', { callback_query_id: callback.id });
+    const approvalMatch = safeText(callback.data).match(/^approval:(approve|reject):([0-9a-f-]{36})$/i);
+    if (approvalMatch && user.householdId && user.memberId) {
+      const actionCenter = require('../models/actionCenter');
+      const decision = approvalMatch[1] === 'approve' ? 'approved' : 'rejected';
+      actionCenter.decideApproval(user.householdId, approvalMatch[2], user.memberId, decision);
+      const result = decision === 'approved' ? await require('./approvalExecutor').executeApproval(user.householdId, approvalMatch[2], user.memberId) : null;
+      const syncFailed = result?.result?.sync?.ok === false;
+      await this.sendText(chatId, decision === 'approved' ? (syncFailed ? 'Approved and saved locally. Paperless sync failed and will retry automatically.' : 'Approved and synced with Paperless.') : 'Proposal rejected.');
+      return;
+    }
     const match = safeText(callback.data).match(/^doc:(\d+)$/);
     if (!match) return;
     const documentId = Number(match[1]);
@@ -448,6 +501,13 @@ class TelegramBotService {
         ...(replyMarkup ? { reply_markup: replyMarkup } : {})
       });
     }
+  }
+
+  private async sendApproval(chatId: number, approvalId: string, title: string): Promise<void> {
+    await this.call('sendMessage', { chat_id: chatId, text: `Proposed action: ${title}\n\nNothing changes until you approve.`, reply_markup: { inline_keyboard: [[
+      { text: 'Approve', callback_data: `approval:approve:${approvalId}` },
+      { text: 'Reject', callback_data: `approval:reject:${approvalId}` }
+    ]] } });
   }
 
   private async sendDocument(chatId: number, buffer: Buffer, filename: string, mimeType: string, caption: string): Promise<void> {
