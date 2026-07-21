@@ -3,6 +3,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import axios from 'axios';
 import { periodId, providerCategory } from './telemetryPrivacy';
+import { resolveDataDirectory } from './dataDirectory';
 
 const documentModel = require('../models/document');
 const reviewService = require('./reviewService');
@@ -12,7 +13,7 @@ interface TelemetryState {
   lastSentAt?: string;
 }
 
-const statePath = path.join(process.cwd(), 'data', 'telemetry.json');
+const statePath = path.join(resolveDataDirectory(), 'telemetry.json');
 let timer: NodeJS.Timeout | null = null;
 
 function enabled(env = process.env): boolean {

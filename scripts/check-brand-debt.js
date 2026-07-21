@@ -6,7 +6,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-const excludedDirectories = new Set(['.git', 'dist', 'node_modules']);
+const excludedDirectories = new Set(['.git', '.next', 'dist', 'docs-site', 'node_modules']);
 const allowedFiles = new Map([
   ['CHANGELOG.md', /archivista/i],
   ['README.md', /`ARCHIVISTA_\*`/],
@@ -14,6 +14,7 @@ const allowedFiles = new Map([
   ['docker-compose.yml', /ARCHIVISTA_AI_HOST_PORT/],
   ['config/config.ts', /resolveEnv\('TAGVICO_AI_VERSION', 'ARCHIVISTA_AI_VERSION'\)/],
   ['services/configHelpers.ts', /resolveEnv\('TAGVICO_AI_VERSION', 'ARCHIVISTA_AI_VERSION'/],
+  ['services/setupService.ts', /config\?\.TAGVICO_AI_INITIAL_SETUP \|\| config\?\.ARCHIVISTA_AI_INITIAL_SETUP/],
   ['server.ts', /resolveEnv\('TAGVICO_AI_PORT', 'ARCHIVISTA_AI_PORT'\)/],
   ['routes/setup.ts', /resolveEnv\('TAGVICO_AI_(?:PORT|INITIAL_SETUP)', 'ARCHIVISTA_AI_(?:PORT|INITIAL_SETUP)'\)/],
   ['tests/env-compatibility.test.js', /(?:TEST_)?ARCHIVISTA_/]

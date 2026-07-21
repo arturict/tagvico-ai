@@ -1,7 +1,8 @@
 const fs = require('fs');
 const path = require('path');
+const { resolveDataDirectory } = require('./dataDirectory');
 
-const ONBOARDING_PATH = path.join(process.cwd(), 'data', '.onboarding');
+const ONBOARDING_PATH = path.join(resolveDataDirectory(), '.onboarding');
 
 function parseOnboarding(content: unknown): Record<string, string> {
   const values: Record<string, string> = {};

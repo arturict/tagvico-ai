@@ -2,7 +2,8 @@ const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const home = process.env.COPILOT_HOME || path.join(process.cwd(), 'data', 'copilot');
+const configuredDataDirectory = process.env.TAGVICO_DATA_DIR || 'data';
+const home = process.env.COPILOT_HOME || path.join(path.resolve(process.cwd(), configuredDataDirectory), 'copilot');
 const executable = process.env.COPILOT_BINARY || path.join(
   process.cwd(),
   'node_modules',

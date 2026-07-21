@@ -25,6 +25,7 @@ class OcrService {
     paperlessService.initialize();
     const response = await paperlessService.client.get(`/documents/${documentId}/download/`, {
       responseType: 'arraybuffer',
+      maxContentLength: config.ocr.maxFileBytes,
       timeout: config.ocr.timeoutMs
     });
     return {

@@ -19,6 +19,7 @@
 import fs from 'fs';
 import path from 'path';
 import https from 'https';
+import { resolveDataDirectory } from './dataDirectory';
 
 interface CatalogEntry {
   input: number;
@@ -40,7 +41,7 @@ const FETCH_TIMEOUT_MS = 8000;
 // stream unbounded data into memory. The real payload is ~3 MB today.
 const MAX_RESPONSE_BYTES = 15 * 1024 * 1024; // 15 MB
 
-const dataDir = path.join(process.cwd(), 'data');
+const dataDir = resolveDataDirectory();
 const cachePath = path.join(dataDir, 'model-pricing-cache.json');
 
 let memoryCache: CatalogFile | null = null;

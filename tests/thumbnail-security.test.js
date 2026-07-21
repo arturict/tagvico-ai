@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
+const { resolveDataDirectory } = require('../dist/services/dataDirectory');
 
 const runtimeConfig = require('../dist/config/config');
 const paperlessService = require('../dist/services/paperlessService');
@@ -35,7 +36,7 @@ test('thumbnails use a numeric-id cache below data/thumb-cache only', async () =
   assert.match(path.basename(cacheDirectory), /^[a-f0-9]{32}$/);
   assert.equal(cacheDirectory, getThumbnailCacheDirectory());
   assert.equal(cachePath, path.join(cacheDirectory, `${id}.img`));
-  assert.equal(THUMBNAIL_CACHE_ROOT, path.join(process.cwd(), 'data', 'thumb-cache'));
+  assert.equal(THUMBNAIL_CACHE_ROOT, path.join(resolveDataDirectory(), 'thumb-cache'));
   assert.ok(cachePath.startsWith(THUMBNAIL_CACHE_ROOT + path.sep));
   assert.equal(cachePath.includes(path.join('public', 'images')), false);
   assert.equal(detectThumbnailMediaType(WEBP_THUMBNAIL), 'image/webp');

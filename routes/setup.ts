@@ -54,6 +54,9 @@ const bcrypt = require('bcryptjs');
 const cookieParser = require('cookie-parser');
 const { authenticateJWT, isAuthenticated } = require('./auth.js');
 const { getJwtSecret } = require('../services/authSecret');
+const { resolveDataDirectory } = require('../services/dataDirectory');
+const { allowsMutationOrigin } = require('../services/csrfOrigin');
+const { isLocalProxyRequest } = require('../services/proxyAddress');
 const JWT_SECRET = getJwtSecret();
 const customService = require('../services/customService.js');
 const config = require('../config/config.js');
@@ -104,7 +107,7 @@ const {
   resolveEnv,
   serializeArray
 } = require('../services/configHelpers');
-require('dotenv').config({ path: '../data/.env' });
+require('dotenv').config({ path: require('path').join(resolveDataDirectory(), '.env') });
 
 /**
  * @swagger
@@ -241,8 +244,7 @@ router.use(async (req: Req, res: Res, next: Next) => {
 
   if (req.path.startsWith('/setup')) {
     const configured = await setupService.isConfigured().catch(() => false);
-    const remote = String(req.socket?.remoteAddress || '');
-    const local = remote === '127.0.0.1' || remote === '::1' || remote === '::ffff:127.0.0.1';
+    const local = isLocalProxyRequest({ remoteAddress: req.socket?.remoteAddress, forwardedFor: firstString(req.headers['x-forwarded-for']) });
     if (!configured && !local && process.env.ALLOW_REMOTE_SETUP !== 'yes') {
       return res.status(403).send('Remote setup is disabled. Set ALLOW_REMOTE_SETUP=yes temporarily to opt in.');
     }
@@ -300,11 +302,12 @@ router.use(async (req: Req, res: Res, next: Next) => {
 router.use((req: Req, res: Res, next: Next) => {
   if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) || !req.cookies.jwt || req.headers['x-api-key']) return next();
   const source = req.headers.origin || req.headers.referer;
-  try {
-    if (!source || new URL(firstString(source) || '').host !== req.get('host')) return res.status(403).json({ error: 'Cross-site request rejected' });
-  } catch {
-    return res.status(403).json({ error: 'Cross-site request rejected' });
-  }
+  if (!allowsMutationOrigin({
+    source: firstString(source),
+    host: req.get('host'),
+    forwardedHost: firstString(req.headers['x-forwarded-host']),
+    remoteAddress: req.socket?.remoteAddress
+  })) return res.status(403).json({ error: 'Cross-site request rejected' });
   next();
 });
 
@@ -341,8 +344,7 @@ const allowDuringSetup = async (req: Req, res: Res, next: Next) => {
   try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
-      const remote = String(req.socket?.remoteAddress || '');
-      const local = remote === '127.0.0.1' || remote === '::1' || remote === '::ffff:127.0.0.1';
+      const local = isLocalProxyRequest({ remoteAddress: req.socket?.remoteAddress, forwardedFor: firstString(req.headers['x-forwarded-for']) });
       if (!local && process.env.ALLOW_REMOTE_SETUP !== 'yes') {
         return res.status(403).json({ success: false, error: 'Remote setup is disabled. Set ALLOW_REMOTE_SETUP=yes temporarily to opt in.' });
       }
@@ -1769,10 +1771,9 @@ async function saveDocumentChanges(docId: number, updateData: DocumentUpdate, an
 router.post('/api/key-regenerate', async (req: Req, res: Res) => {
   try {
     const fs = require('fs');
-    const path = require('path');
     const dotenv = require('dotenv');
     const crypto = require('crypto');    
-    const envPath = path.join(process.cwd(), 'data', '.env');
+    const envPath = require('path').join(resolveDataDirectory(), '.env');
     const envConfig = dotenv.parse(fs.readFileSync(envPath));
     // Generiere ein neues API-Token
     const apiKey = crypto.randomBytes(32).toString('hex');
@@ -1782,14 +1783,15 @@ router.post('/api/key-regenerate', async (req: Req, res: Res) => {
     const envContent = Object.entries(envConfig)
       .map(([key, value]) => `${key}=${value}`)
       .join('\n');
-    fs.writeFileSync(envPath, envContent);
+    fs.writeFileSync(envPath, `${envContent}\n`, { encoding: 'utf8', mode: 0o600 });
+    try { fs.chmodSync(envPath, 0o600); } catch { /* Windows and read-only mounts may not expose POSIX modes. */ }
 
     // Setze die Umgebungsvariable für den aktuellen Prozess
     process.env.API_KEY = apiKey;
 
     // Sende die Antwort zurück
     res.json({ success: apiKey });
-    console.log('API key regenerated:', apiKey);
+    console.log('API key regenerated');
   } catch (error) {
     console.error('API key regeneration error:', error);
     res.status(500).json({ error: 'Error regenerating API key' });
@@ -3552,6 +3554,10 @@ router.post('/manual/updateDocument', express.json(), async (req: Req, res: Res)
  *                   type: string
  *                   description: Health status of the system
  *                   example: "healthy"
+ *                 configured:
+ *                   type: boolean
+ *                   description: Whether guided setup has been completed
+ *                   example: true
  *       500:
  *         description: Internal server error
  *         content:
@@ -3585,13 +3591,7 @@ router.post('/manual/updateDocument', express.json(), async (req: Req, res: Res)
  */
 router.get('/health', async (req: Req, res: Res) => {
   try {
-    // const isConfigured = await setupService.isConfigured();
-    // if (!isConfigured) {
-    //   return res.status(503).json({ 
-    //     status: 'not_configured',
-    //     message: 'Application setup not completed'
-    //   });
-    // }
+    const configured = await setupService.isConfigured();
     try {
       await documentModel.isDocumentProcessed(1);
     } catch (error) {
@@ -3601,7 +3601,7 @@ router.get('/health', async (req: Req, res: Res) => {
       });
     }
 
-    res.json({ status: 'healthy' });
+    res.json({ status: 'healthy', configured });
   } catch (error) {
     console.error('Health check failed:', error);
     res.status(500).json({ 

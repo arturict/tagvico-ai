@@ -1,7 +1,8 @@
-import { constants, promises as fs } from 'node:fs';
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import axios from 'axios';
 import { AzureOpenAI, OpenAI } from 'openai';
+import { resolveDataDirectory } from './dataDirectory';
 const runtimeConfig = require('../config/config');
 const { normalizeProvider } = require('./providerCatalogService');
 
@@ -22,7 +23,7 @@ class SetupService {
   private configured: boolean | null;
 
   constructor() {
-    this.envPath = path.join(process.cwd(), 'data', '.env');
+    this.envPath = path.join(resolveDataDirectory(), '.env');
     this.configured = null; // Variable to store the configuration status
   }
 
@@ -364,80 +365,19 @@ class SetupService {
     if (this.configured !== null) {
       return this.configured;
     }
-
-    const maxAttempts = 60; // 5 minutes = 300 seconds, attempting every 5 seconds = 60 attempts
-    const delayBetweenAttempts = 5000; // 5 seconds in milliseconds
-    let attempts = 0;
-
-    // First check if .env exists and if PAPERLESS_API_URL is set
     try {
-      // Check if .env file exists
-      try {
-        await fs.access(this.envPath, constants.F_OK);
-      } catch (err) {
-        console.log('No .env file found. Starting setup process...');
-        this.configured = false;
-        return false;
-      }
-
-      // Load and check for PAPERLESS_API_URL
       const config = await this.loadConfig();
-      if (!config || !config.PAPERLESS_API_URL) {
+      const setupMarker = config?.TAGVICO_AI_INITIAL_SETUP || config?.ARCHIVISTA_AI_INITIAL_SETUP;
+      this.configured = Boolean(config?.PAPERLESS_API_URL && setupMarker === 'yes');
+      if (!this.configured) {
         console.log('PAPERLESS_API_URL not set. Starting setup process...');
-        this.configured = false;
-        return false;
       }
+      return this.configured;
     } catch (error) {
       console.error('Error checking initial configuration:', errorMessage(error));
       this.configured = false;
       return false;
     }
-
-    const attemptConfiguration = async () => {
-      try {
-        // Check data directory and create if needed
-        const dataDir = path.dirname(this.envPath);
-        try {
-          await fs.access(dataDir, constants.F_OK);
-        } catch (err) {
-          console.log('Creating data directory...');
-          await fs.mkdir(dataDir, { recursive: true });
-        }
-
-        // Load and validate full configuration
-        const config = await this.loadConfig();
-        if (!config) {
-          throw new Error('Failed to load configuration');
-        }
-
-        await this.validateConfig(config);
-        this.configured = true;
-        return true;
-      } catch (error) {
-        console.error('Configuration attempt failed:', errorMessage(error));
-        throw error;
-      }
-    };
-
-    // Only enter retry loop if we have PAPERLESS_API_URL set
-    while (attempts < maxAttempts) {
-      try {
-        const result = await attemptConfiguration();
-        return result;
-      } catch (error) {
-        attempts++;
-        if (attempts === maxAttempts) {
-          console.error('Max configuration attempts reached. Final error:', errorMessage(error));
-          this.configured = false;
-          return false;
-        }
-        console.log(`Retrying configuration (attempt ${attempts}/${maxAttempts}) in 5 seconds...`);
-        await new Promise<void>((resolve) => setTimeout(resolve, delayBetweenAttempts));
-      }
-    }
-
-    this.configured = false;
-    return false;
   }
 }
 

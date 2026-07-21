@@ -1,28 +1,31 @@
 # Project status
 
-**Status:** stable v2 (`2.0.0`).
+**Status:** stable v3 (`3.0.0`).
 
-## Stable v2 contract
+## Stable v3 contract
 
-Tagvico AI v2.0.0 is the first stable release of the reviewable Paperless-ngx
-filing workflow. The following are compatibility commitments for v2:
+Tagvico AI v3.0.0 adds an accountable action and approval layer to the stable,
+reviewable Paperless-ngx filing workflow. The following are compatibility
+commitments for v3:
 
-- Existing v2 data volumes are upgraded with versioned, idempotent SQLite
+- Existing v2 and v3 data volumes are upgraded with versioned, idempotent SQLite
   migrations and a pre-migration database backup.
 - Canonical `TAGVICO_*` environment variables, port `3000`, `/app/data`, and
   the documented setup, login, health, review, history, and settings workflows
-  remain supported throughout v2.
+  remain supported throughout v3.
 - Stable upgrades do not intentionally discard the local admin account,
   settings, processing history, review queue, or original metadata snapshots.
 - Paperless data is accessed only through the official Paperless REST API.
 
-Breaking changes to these contracts require a new major version. Provider
+The household, Action Case, checklist, approval, and encrypted member-token
+records introduced by schema v5 are also preserved through compatible v3
+upgrades. Breaking changes to these contracts require a new major version. Provider
 model names, prices, quotas, and account entitlements remain controlled by the
 provider and can change independently of Tagvico.
 
 ## Recommended deployment policy
 
-- Pin `ghcr.io/arturict/tagvico-ai:2.0.0` rather than `latest` when you need
+- Pin `ghcr.io/arturict/tagvico-ai:3.0.0` rather than `latest` when you need
   explicit change control and unambiguous rollback.
 - Back up the complete `tagvico_ai_data` volume before every upgrade.
 - Start in **Review first** and test representative, non-sensitive documents
@@ -42,4 +45,4 @@ Security issues must not be filed publicly; follow
 
 Release-specific upgrade and rollback instructions are available on the
 [GitHub releases page](https://github.com/arturict/tagvico-ai/releases) and in
-the [versioned v2 documentation](https://tagvico.arturf.ch/docs/).
+  the [versioned v3 documentation](https://tagvico.arturf.ch/docs/).
