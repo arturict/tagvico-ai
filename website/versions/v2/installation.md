@@ -11,7 +11,7 @@ Create a new directory and save this as `docker-compose.yml`:
 ```yaml
 services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:2.0.0
+    image: ghcr.io/arturict/tagvico-ai:2.0.1
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -22,7 +22,6 @@ services:
       - "8080:3000"
     environment:
       TAGVICO_AI_PORT: "3000"
-      ALLOW_REMOTE_SETUP: "yes"
     volumes:
       - tagvico_ai_data:/app/data
 
@@ -42,6 +41,11 @@ curl http://localhost:8080/health
 ```
 
 Open `http://localhost:8080/setup` after the health check succeeds.
+
+If the setup browser is on a different machine, temporarily add
+`ALLOW_REMOTE_SETUP: "yes"` to the service environment, recreate the
+container, and remove it immediately after the first setup completes. Do not
+leave it enabled for normal operation.
 
 ![Tagvico AI v2 sign-in screen captured from a clean VM 113 browser session](/screenshots/sign-in.png)
 
@@ -122,13 +126,13 @@ docker run -d \
   --security-opt no-new-privileges=true \
   -p 8080:3000 \
   -e TAGVICO_AI_PORT=3000 \
-  -e ALLOW_REMOTE_SETUP=yes \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:2.0.0
+  ghcr.io/arturict/tagvico-ai:2.0.1
 ```
 
-After setup, remove `ALLOW_REMOTE_SETUP=yes` unless you specifically need to
-repeat setup from another machine.
+Setup is a one-time bootstrap; later configuration changes require signing in.
+For a remote browser, add `-e ALLOW_REMOTE_SETUP=yes` only until setup is
+finished, then recreate the container without it.
 
 ## Next steps
 

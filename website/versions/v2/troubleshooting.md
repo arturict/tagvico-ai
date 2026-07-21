@@ -22,6 +22,13 @@ same machine as Tagvico, temporarily set `ALLOW_REMOTE_SETUP=yes`, recreate the
 container, and complete setup. Remove the setting afterward and recreate the
 container again.
 
+## Setup returns 409
+
+The instance already has setup data. This is intentional: public setup cannot
+replace an existing admin account or its connection settings. Sign in and use
+Settings for normal changes. For disaster recovery, restore a known-good data
+volume backup rather than exposing a reset endpoint.
+
 ## Paperless connection fails
 
 - Use the Paperless base URL without `/api`.
