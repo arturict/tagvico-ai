@@ -8,7 +8,7 @@ directory and served by Coolify at `https://tagvico.arturf.ch/docs/`.
 | --- | --- |
 | `index.html` | Standalone landing page (the public docs site). |
 | `STATUS.md` | Current development status, compatibility policy, upgrade guidance. |
-| `screenshots/` | Product screenshots used in the README and landing page. |
+| `screenshots/` | Product screenshots used in the README and release material. The landing page uses an HTML product illustration so stale screenshots cannot misrepresent the current UI. |
 | `providers/` | Per-provider setup and troubleshooting guides. |
 | `V2_COMPETITIVE_REVIEW.md` | Source-level v2 feature comparison and release gates. |
 | `upstream/` | Research notes on the upstream Paperless-ngx project (issue tracking, not a product dependency). |

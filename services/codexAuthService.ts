@@ -1,21 +1,74 @@
 import { spawn, execFile } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
 
 type LoginState = { loginId: string; completed: boolean; cancelled?: boolean; output: string; error?: string; startedAt: string };
 const appConfig = { codex: { home: process.env.CODEX_HOME || 'data/codex', model: process.env.CODEX_MODEL || 'gpt-5.4-mini' } };
 const ANSI = /\u001b\[[0-9;]*m/g;
+const CHILD_ENVIRONMENT_KEYS = [
+  'PATH',
+  'HOME',
+  'USERPROFILE',
+  'HOMEDRIVE',
+  'HOMEPATH',
+  'SystemRoot',
+  'WINDIR',
+  'ComSpec',
+  'PATHEXT',
+  'TEMP',
+  'TMP',
+  'TMPDIR',
+  'LANG',
+  'LC_ALL',
+  'TERM',
+  'HTTP_PROXY',
+  'HTTPS_PROXY',
+  'NO_PROXY',
+  'http_proxy',
+  'https_proxy',
+  'no_proxy',
+  'SSL_CERT_FILE',
+  'SSL_CERT_DIR',
+  'NODE_EXTRA_CA_CERTS',
+  'CODEX_CA_CERTIFICATE'
+] as const;
 
 function command() {
   const explicit = process.env.CODEX_BINARY;
   if (explicit) return { file: explicit, prefix: [] as string[] };
+  const bundledBinary = path.join(
+    /* turbopackIgnore: true */ process.cwd(),
+    'node_modules',
+    '@openai',
+    'codex',
+    'bin',
+    'codex.js'
+  );
+  if (fs.existsSync(bundledBinary)) return { file: process.execPath, prefix: [bundledBinary] };
+  // Keep the global binary fallback for development environments that
+  // intentionally omit the bundled CLI package.
   if (process.platform === 'win32') return { file: process.env.ComSpec || 'cmd.exe', prefix: ['/d', '/s', '/c', 'codex'] };
   return { file: 'codex', prefix: [] as string[] };
 }
 
 class CodexAuthService {
   private logins = new Map<string, LoginState & { child?: ReturnType<typeof spawn> }>();
-  private environment() { fs.mkdirSync(/*turbopackIgnore: true*/ appConfig.codex.home, { recursive: true, mode: 0o700 }); return { ...process.env, CODEX_HOME: appConfig.codex.home }; }
+  environment() {
+    fs.mkdirSync(/*turbopackIgnore: true*/ appConfig.codex.home, { recursive: true, mode: 0o700 });
+    const environment: NodeJS.ProcessEnv = {
+      NODE_ENV: process.env.NODE_ENV || 'production',
+      CODEX_HOME: appConfig.codex.home
+    };
+    for (const key of CHILD_ENVIRONMENT_KEYS) {
+      const value = process.env[key];
+      if (value) environment[key] = value;
+    }
+    environment.PATH ||= process.platform === 'win32'
+      ? 'C:\\Windows\\System32;C:\\Windows'
+      : '/usr/local/bin:/usr/bin:/bin';
+    return environment;
+  }
   private run(args: string[], timeout = 20_000) {
     const executable = command();
     return new Promise<{ stdout: string; stderr: string }>((resolve, reject) => {
@@ -40,7 +93,69 @@ class CodexAuthService {
         }) : []
       }));
   }
-  async models() { return [{ id: appConfig.codex.model, name: appConfig.codex.model, isDefault: true, reasoningEfforts: [] }]; }
+  async models() {
+    const executable = command();
+    return new Promise<Array<{ id: string; name: string; isDefault: boolean; reasoningEfforts: Array<{ id: string; description: string }> }>>((resolve, reject) => {
+      const child = spawn(executable.file, [...executable.prefix, 'app-server', '--stdio'], {
+        env: this.environment(), windowsHide: true, stdio: ['pipe', 'pipe', 'pipe']
+      });
+      let stdout = '';
+      let stderr = '';
+      let nextRequestId = 2;
+      let settled = false;
+      const collected: ReturnType<CodexAuthService['normalizeModels']> = [];
+      const finish = (error?: Error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        child.kill('SIGTERM');
+        if (error) reject(error);
+        else resolve(collected);
+      };
+      const requestPage = (cursor?: string | null) => {
+        child.stdin.write(`${JSON.stringify({
+          id: nextRequestId++, method: 'model/list', params: { includeHidden: false, limit: 100, cursor: cursor || null }
+        })}\n`);
+      };
+      const timeout = setTimeout(() => finish(new Error('Codex model discovery timed out')), 20_000);
+      child.once('error', (error) => finish(error));
+      child.stderr.on('data', (chunk) => { stderr = `${stderr}${String(chunk).replace(ANSI, '')}`.slice(-4_000); });
+      child.stdout.on('data', (chunk) => {
+        stdout += String(chunk);
+        let newline = stdout.indexOf('\n');
+        while (newline >= 0) {
+          const line = stdout.slice(0, newline).trim();
+          stdout = stdout.slice(newline + 1);
+          newline = stdout.indexOf('\n');
+          if (!line) continue;
+          try {
+            const message = JSON.parse(line) as { id?: number; result?: unknown; error?: { message?: string } };
+            if (message.id === 1) {
+              if (message.error) return finish(new Error(message.error.message || 'Codex app-server initialization failed'));
+              requestPage();
+            } else if (typeof message.id === 'number' && message.id >= 2) {
+              if (message.error) return finish(new Error(message.error.message || 'Codex model discovery failed'));
+              const result = message.result && typeof message.result === 'object' ? message.result as Record<string, unknown> : {};
+              collected.push(...this.normalizeModels(result));
+              const cursor = typeof result.nextCursor === 'string' ? result.nextCursor : null;
+              if (cursor && collected.length < 500) requestPage(cursor);
+              else finish();
+            }
+          } catch {
+            // Ignore non-protocol log lines. The app-server contract is JSONL.
+          }
+        }
+      });
+      child.once('exit', (code, signal) => {
+        if (!settled) finish(new Error(stderr.trim() || `Codex model discovery exited (${code ?? signal ?? 'unknown'})`));
+      });
+      child.stdin.write(`${JSON.stringify({
+        id: 1,
+        method: 'initialize',
+        params: { clientInfo: { name: 'tagvico', title: 'Tagvico', version: '3.1.0' } }
+      })}\n`);
+    });
+  }
   async login(_type: 'chatgpt' | 'chatgptDeviceCode') {
     const active = Array.from(this.logins.values()).find((entry) => !entry.completed);
     if (active) return this.view(active);

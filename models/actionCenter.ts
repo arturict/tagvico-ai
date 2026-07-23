@@ -245,6 +245,48 @@ export function addMessage(sessionId: string, role: 'user' | 'assistant' | 'syst
   return messageId;
 }
 
+export function getCompanionModelSelection(householdId: string, sessionId: string) {
+  const session = db.prepare('SELECT id FROM companion_sessions WHERE id=? AND household_id=?').get(sessionId, householdId);
+  if (!session) return null;
+  const rows = db.prepare(`
+    SELECT content_json FROM companion_messages
+    WHERE session_id=? AND role='system'
+    ORDER BY created_at DESC, rowid DESC LIMIT 50
+  `).all(sessionId) as Array<{ content_json: string }>;
+  for (const row of rows) {
+    try {
+      const content = JSON.parse(String(row.content_json || '{}')) as Record<string, unknown>;
+      if (content.type !== 'companion.model-selection') continue;
+      const providerInstanceId = String(content.providerInstanceId || '').trim();
+      const modelId = String(content.modelId || '').trim();
+      if (providerInstanceId && modelId) return { providerInstanceId, modelId };
+    } catch {
+      // Ignore malformed historical metadata and continue to an older choice.
+    }
+  }
+  return null;
+}
+
+export function setCompanionModelSelection(
+  householdId: string,
+  sessionId: string,
+  memberId: string | null,
+  selection: { providerInstanceId: string; modelId: string }
+) {
+  const session = db.prepare('SELECT member_id FROM companion_sessions WHERE id=? AND household_id=?')
+    .get(sessionId, householdId) as { member_id?: string | null } | undefined;
+  if (!session || session.member_id !== memberId) {
+    throw new Error('Companion session not found');
+  }
+  const content = {
+    type: 'companion.model-selection',
+    providerInstanceId: assertText(selection.providerInstanceId, 'Provider instance', 80),
+    modelId: assertText(selection.modelId, 'Model', 200)
+  };
+  addMessage(sessionId, 'system', content);
+  return content;
+}
+
 export function getSession(householdId: string, sessionId: string) {
   const session = db.prepare('SELECT * FROM companion_sessions WHERE id=? AND household_id=?').get(sessionId, householdId);
   if (!session) return null;

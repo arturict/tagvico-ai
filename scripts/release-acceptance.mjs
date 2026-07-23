@@ -12,41 +12,37 @@ const health = await responseJson(await request('/health'));
 assert.equal(health.response.status, 200);
 
 const setupPayload = {
-  paperlessUrl: mockUrl,
-  paperlessToken: 'release-paperless-token',
-  paperlessUsername: 'release-owner',
-  aiProvider: 'compatible',
-  compatibleBaseUrl: `${mockUrl}/v1`,
-  compatibleApiKey: 'release-provider-key',
-  compatibleModel: 'release-mock',
-  customBaseUrl: `${mockUrl}/v1`,
-  customApiKey: 'release-provider-key',
-  customModel: 'release-mock',
-  scanInterval: '*/30 * * * *',
-  tokenLimit: 4000,
-  responseTokens: 800,
-  username: 'release-owner',
-  password: 'Release-only-password-42!',
-  writeMode: 'review',
-  activateTagging: true,
-  activateTitle: true,
-  activateCorrespondents: true,
-  activateDocumentType: true,
-  activateCustomFields: false,
-  disableAutomaticProcessing: true
+  paperless: {
+    baseUrl: mockUrl,
+    token: 'release-paperless-token',
+    username: 'release-owner'
+  },
+  provider: {
+    instanceId: 'compatible',
+    modelId: 'release-mock',
+    values: {
+      baseUrl: `${mockUrl}/v1`,
+      apiKey: 'release-provider-key'
+    }
+  },
+  account: {
+    username: 'release-owner',
+    password: 'Release-only-password-42!',
+    confirmPassword: 'Release-only-password-42!'
+  }
 };
 
-const setup = await responseJson(await request('/setup', { method: 'POST', headers, body: JSON.stringify(setupPayload) }));
+const setup = await responseJson(await request('/api/setup/v3', { method: 'POST', headers, body: JSON.stringify(setupPayload) }));
 assert.equal(setup.response.status, 200, JSON.stringify(setup.body));
 assert.equal(setup.body.success, true);
 
-const takeover = await responseJson(await request('/setup', { method: 'POST', headers, body: JSON.stringify(setupPayload) }));
+const takeover = await responseJson(await request('/api/setup/v3', { method: 'POST', headers, body: JSON.stringify(setupPayload) }));
 assert.equal(takeover.response.status, 409, JSON.stringify(takeover.body));
 
 const rejectedLogin = await responseJson(await request('/api/auth/login', { method: 'POST', headers, body: JSON.stringify({ username: 'release-owner', password: 'wrong' }) }));
 assert.equal(rejectedLogin.response.status, 401);
 
-const login = await responseJson(await request('/api/auth/login', { method: 'POST', headers, body: JSON.stringify({ username: 'release-owner', password: setupPayload.password }) }));
+const login = await responseJson(await request('/api/auth/login', { method: 'POST', headers, body: JSON.stringify({ username: 'release-owner', password: setupPayload.account.password }) }));
 assert.equal(login.response.status, 200, JSON.stringify(login.body));
 const cookie = login.response.headers.get('set-cookie')?.split(';')[0];
 assert.ok(cookie?.startsWith('jwt='));
@@ -152,7 +148,7 @@ for (const page of ['/actions', `/actions/${actionId}`, '/companion', '/settings
   assert.equal(new URL(response.url).pathname, page, `${page} redirected to ${response.url}`);
   assert.match(response.headers.get('content-type') || '', /text\/html/);
   const html = await response.text();
-  assert.match(html, page === '/companion' ? /Household companion/i : page === '/settings' ? /Household &amp; models/i : /Action center|Compare renewal offer/i);
+  assert.match(html, page === '/companion' ? /Household companion/i : page === '/settings' ? /Settings \| Tagvico AI/i : /Action center|Compare renewal offer/i);
 }
 
 process.stdout.write(JSON.stringify({ ok: true, actionId, ownerMemberId, memberId, checks: 46 }, null, 2) + '\n');

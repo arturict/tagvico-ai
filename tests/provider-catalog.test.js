@@ -12,17 +12,10 @@ test('subscription and cloud providers normalize to first-class provider IDs', (
   assert.equal(catalog.getDefaultModel('copilot'), 'gpt-5.4-mini');
 });
 
-test('GPT-5.6 preview models stay gated unless the organization explicitly enables them', () => {
-  assert.equal(catalog.normalizeOpenAIModel('gpt-5.6-luna', {}), 'gpt-5.4-mini');
-  assert.equal(
-    catalog.normalizeOpenAIModel('gpt-5.6-luna', { OPENAI_ENABLE_GPT_5_6_PREVIEW: 'yes' }),
-    'gpt-5.6-luna'
-  );
-  assert.equal(catalog.buildCatalog({ AI_PROVIDER: 'openai' }).openaiPreviewAvailable, false);
-  assert.equal(
-    catalog.buildCatalog({ AI_PROVIDER: 'openai', OPENAI_ENABLE_GPT_5_6_PREVIEW: 'yes' }).openaiPreviewAvailable,
-    true
-  );
+test('OpenAI accepts custom model IDs without inventing an account catalog', () => {
+  assert.equal(catalog.normalizeOpenAIModel('gpt-5.6-luna', {}), 'gpt-5.6-luna');
+  assert.equal(catalog.normalizeOpenAIModel('organization-model-alias', {}), 'organization-model-alias');
+  assert.equal('openaiDirectModels' in catalog.buildCatalog({ AI_PROVIDER: 'openai' }), false);
 });
 
 test('catalog effective model follows the selected provider-specific model', () => {

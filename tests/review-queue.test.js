@@ -189,7 +189,7 @@ test('write mode supports review-first, automatic, environment override, and leg
   runIsolated(script);
 });
 
-test('review routes authenticate and use stored suggestion ids for apply and reject', () => {
+test('legacy review UI is retired while authenticated service mutations keep durable ids', () => {
   const script = `
     const assert = require('node:assert/strict');
     const path = require('node:path');
@@ -260,10 +260,8 @@ test('review routes authenticate and use stored suggestion ids for apply and rej
       assert.equal(unauthenticated.status, 302);
 
       const listed = await fetch(base + '/review', { headers });
-      assert.equal(listed.status, 200);
-      const page = await listed.json();
-      assert.equal(page.view, 'review');
-      assert.equal(page.locals.analyses[0].id, 42);
+      assert.equal(listed.status, 410);
+      assert.match((await listed.json()).error, /Legacy review UI retired/);
 
       const applied = await fetch(base + '/review/42/apply', {
         method: 'POST',
@@ -288,7 +286,6 @@ test('review routes authenticate and use stored suggestion ids for apply and rej
       });
       assert.equal(invalid.status, 400);
       assert.deepEqual(calls, [
-        ['list', 100],
         ['apply', 42, 'api-key'],
         ['reject', 43, 'api-key', 'Not useful']
       ]);
@@ -303,31 +300,19 @@ test('review routes authenticate and use stored suggestion ids for apply and rej
   runIsolated(script);
 });
 
-test('review page renders proposed metadata and durable suggestion ids', async () => {
-  const ejs = require('ejs');
-  const html = await ejs.renderFile(path.join(repoRoot, 'views/review.ejs'), {
-    title: 'Review',
-    version: 'test',
-    dryRun: true,
-    analyses: [{
-      id: 77,
-      document_id: 1234,
-      proposed_metadata: {
-        title: 'Quarterly invoice',
-        tags: ['Invoice', 'Finance'],
-        correspondent: 'Acme AG',
-        document_type: 'Invoice',
-        custom_fields: { amount: { field_name: 'Amount', value: '42.00' } }
-      }
-    }]
-  }, { filename: path.join(repoRoot, 'views/review.ejs') });
+test('Next review workspace renders proposals and decides by durable suggestion id', () => {
+  const workspace = fs.readFileSync(
+    path.join(repoRoot, 'src', 'components', 'review-queue-workspace.tsx'),
+    'utf8'
+  );
 
-  assert.match(html, /data-suggestion-id="77"/);
-  assert.match(html, /Quarterly invoice/);
-  assert.match(html, /Acme AG/);
-  assert.match(html, /document type/);
-  assert.match(html, /decideOne\(suggestionId, documentId, 'reject'\)/);
-  assert.doesNotMatch(html, /data-suggestion-id="1234"/);
+  assert.match(workspace, /key=\{suggestion\.id\}/);
+  assert.match(workspace, /suggestion\.proposed_metadata/);
+  assert.match(workspace, /proposal\.title \?\? suggestion\.title/);
+  assert.match(workspace, /Array\.isArray\(proposal\.tags\)/);
+  assert.match(workspace, /Object\.entries\(proposal\)/);
+  assert.match(workspace, /`\/api\/review-queue\/\$\{suggestion\.id\}`/);
+  assert.doesNotMatch(workspace, /`\/api\/review-queue\/\$\{suggestion\.document_id\}`/);
 });
 
 test('history restore replaces metadata exactly, including empty tags', () => {
@@ -402,13 +387,13 @@ test('history restore replaces metadata exactly, including empty tags', () => {
 });
 
 test('settings UI exposes exclusive review-first and automatic write modes', () => {
-  const template = fs.readFileSync(path.join(repoRoot, 'views', 'partials', 'config-form.ejs'), 'utf8');
-  const browserCode = fs.readFileSync(path.join(repoRoot, 'public', 'js', 'config-form.js'), 'utf8');
-  assert.match(template, /type="radio" name="write_mode" value="review"/);
-  assert.match(template, /type="radio" name="write_mode" value="automatic"/);
-  assert.match(template, /Full access/);
-  assert.doesNotMatch(template, /type="checkbox" name="dry_run"/);
-  assert.match(browserCode, /input\[type="radio"\]/);
+  const workspace = fs.readFileSync(path.join(repoRoot, 'src', 'components', 'settings', 'settings-workspace.tsx'), 'utf8');
+  assert.match(workspace, /type="radio"/);
+  assert.match(workspace, /name="write_mode"/);
+  assert.match(workspace, /value="review"/);
+  assert.match(workspace, /value="automatic"/);
+  assert.match(workspace, /Full access/);
+  assert.doesNotMatch(workspace, /name="dry_run"/);
 });
 
 test('manual scan route completes without scheduler-only state', () => {

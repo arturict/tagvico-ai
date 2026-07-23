@@ -371,6 +371,47 @@ class PaperlessService {
     return tag;
   }
 
+  async getTag(tagId: number) {
+    this.initialize();
+    if (!this.client) throw new Error('Paperless client not initialized');
+    try {
+      const response = await this.client.get(`/tags/${tagId}/`);
+      return response.data as NamedResource;
+    } catch (error) {
+      if (errorResponse(error)?.status === 404) return null;
+      throw error;
+    }
+  }
+
+  async getDocumentsByTag(tagId: number) {
+    this.initialize();
+    if (!this.client) throw new Error('Paperless client not initialized');
+    const documents: Array<{ id: number; tags: number[]; title?: string }> = [];
+    let page = 1;
+    let hasMore = true;
+    while (hasMore) {
+      const response = await this.client.get('/documents/', {
+        params: {
+          page,
+          page_size: 100,
+          fields: 'id,title,tags',
+          tags__id__all: String(tagId)
+        }
+      });
+      const results = Array.isArray(response?.data?.results) ? response.data.results : [];
+      for (const document of results) {
+        documents.push({
+          id: Number(document.id),
+          title: document.title ? String(document.title) : undefined,
+          tags: Array.isArray(document.tags) ? document.tags.map(Number) : []
+        });
+      }
+      hasMore = Boolean(response?.data?.next);
+      page += 1;
+    }
+    return documents;
+  }
+
   async processTags(tagNames: string[], options: ProcessingOptions = {}) {
     try {
       this.initialize();
@@ -1482,6 +1523,7 @@ async getOrCreateDocumentType(name: string) {
     }
   }
 }
+const paperlessService = new PaperlessService();
 
-
-module.exports = new PaperlessService();
+export default paperlessService;
+module.exports = paperlessService;

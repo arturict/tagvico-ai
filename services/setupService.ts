@@ -2,6 +2,7 @@ import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import axios from 'axios';
 import { AzureOpenAI, OpenAI } from 'openai';
+import dotenv from 'dotenv';
 import { resolveDataDirectory } from './dataDirectory';
 const runtimeConfig = require('../config/config');
 const { normalizeProvider } = require('./providerCatalogService');
@@ -20,24 +21,24 @@ function tokenLimitParam(model: string, value: number) {
 
 class SetupService {
   private readonly envPath: string;
+  private readonly injectedEnvironmentKeys: Set<string>;
   private configured: boolean | null;
+  private writeQueue: Promise<void> = Promise.resolve();
 
   constructor() {
     this.envPath = path.join(resolveDataDirectory(), '.env');
+    this.injectedEnvironmentKeys = new Set(
+      runtimeConfig.injectedEnvironment instanceof Set
+        ? [...runtimeConfig.injectedEnvironment]
+        : []
+    );
     this.configured = null; // Variable to store the configuration status
   }
 
   async loadConfig(): Promise<SetupConfig | null> {
     try {
       const envContent = await fs.readFile(this.envPath, 'utf8');
-      const config: SetupConfig = {};
-      envContent.split('\n').forEach((line: string) => {
-        const [key, value] = line.split('=');
-        if (key && value) {
-          config[key.trim()] = value.trim();
-        }
-      });
-      return config;
+      return dotenv.parse(envContent);
     } catch (error) {
       console.error('Error loading config:', errorMessage(error));
       return null;
@@ -314,27 +315,7 @@ class SetupService {
           "language": "en/de/es/..."
         }`;
 
-      // Ensure data directory exists
-      const dataDir = path.dirname(this.envPath);
-      await fs.mkdir(dataDir, { recursive: true });
-
-      const envContent = Object.entries(config)
-        .map(([key, value]) => {
-          if (key === "SYSTEM_PROMPT") {
-            return `${key}=\`${value}\n\``;
-          }
-          return `${key}=${value}`;
-        })
-        .join('\n');
-
-      await fs.writeFile(this.envPath, envContent);
-      
-      // Reload environment variables
-      Object.entries(config).forEach(([key, value]) => {
-        process.env[key] = String(value);
-      });
-      this.reloadRuntimeConfig();
-      this.configured = true;
+      await this.persistConfig(config);
     } catch (error) {
       console.error('Error saving config:', errorMessage(error));
       throw error;
@@ -344,11 +325,57 @@ class SetupService {
   async saveTagPolicy(policy: SetupConfig) {
     const current = (await this.loadConfig()) || {};
     const next = { ...current, ...policy };
-    const envContent = Object.entries(next).map(([key, value]) => `${key}=${value}`).join('\n');
-    await fs.writeFile(this.envPath, envContent);
-    Object.entries(policy).forEach(([key, value]) => { process.env[key] = String(value); });
-    this.reloadRuntimeConfig();
+    await this.persistConfig(next);
     return next;
+  }
+
+  async savePartialConfig(patch: SetupConfig) {
+    const operation = this.writeQueue.then(async () => {
+      const current = (await this.loadConfig()) || {};
+      await this.persistConfig({ ...current, ...patch });
+    });
+    this.writeQueue = operation.catch(() => {});
+    await operation;
+  }
+
+  private serializeEnvironment(config: SetupConfig): string {
+    return Object.entries(config)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, rawValue]) => {
+        const value = String(rawValue ?? '');
+        const safeUnquoted = /^[A-Za-z0-9_./:@,+*-]*$/.test(value);
+        if (safeUnquoted) return `${key}=${value}`;
+        // dotenv leaves backslash-escaped double quotes untouched, so
+        // JSON.stringify is not a lossless .env serializer. Pick a delimiter
+        // that does not occur in the value; this also prevents a multiline
+        // value from closing its quote and injecting a second environment key.
+        if (!value.includes('\'')) return `${key}='${value}'`;
+        if (!value.includes('`')) return `${key}=\`${value}\``;
+        if (!value.includes('"') && !/\\[nr]/.test(value)) return `${key}="${value}"`;
+        throw new Error(`Cannot persist ${key}: value contains every supported dotenv quote delimiter`);
+      })
+      .join('\n') + '\n';
+  }
+
+  private async persistConfig(config: SetupConfig): Promise<void> {
+    const dataDir = path.dirname(this.envPath);
+    await fs.mkdir(dataDir, { recursive: true });
+    const temporaryPath = path.join(dataDir, `.env.${process.pid}.${Date.now()}.tmp`);
+    try {
+      await fs.writeFile(temporaryPath, this.serializeEnvironment(config), {
+        encoding: 'utf8',
+        mode: 0o600
+      });
+      await fs.rename(temporaryPath, this.envPath);
+    } finally {
+      await fs.rm(temporaryPath, { force: true }).catch(() => {});
+    }
+    Object.entries(config).forEach(([key, value]) => {
+      if (!this.injectedEnvironmentKeys.has(key)) process.env[key] = String(value);
+    });
+    this.reloadRuntimeConfig();
+    const setupMarker = config?.TAGVICO_AI_INITIAL_SETUP || config?.ARCHIVISTA_AI_INITIAL_SETUP;
+    this.configured = Boolean(config.PAPERLESS_API_URL && setupMarker === 'yes');
   }
 
   reloadRuntimeConfig() {
@@ -381,4 +408,7 @@ class SetupService {
   }
 }
 
-module.exports = new SetupService();
+const setupService = new SetupService();
+
+export default setupService;
+module.exports = setupService;

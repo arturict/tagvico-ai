@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import type { AssistantUsageData, CopilotClient, CopilotSession, ModelInfo } from '@github/copilot-sdk';
 
 const config = require('../config/config');
@@ -153,15 +154,16 @@ class CopilotService {
 
   reset() {}
 
-  async generateText(prompt: string) {
+  async generateText(prompt: string, options: { model?: string } = {}) {
     let client: CopilotClient | undefined;
     let session: CopilotSession | undefined;
     let workingDirectory: string | undefined;
     try {
-      if (!config.copilot.model) throw new Error('Choose a GitHub Copilot model before using Telegram chat');
+      const model = options.model || config.copilot.model;
+      if (!model) throw new Error('Choose a GitHub Copilot model before using Telegram chat');
       ({ client, workingDirectory } = await this.createClient());
       session = await client.createSession({
-        model: config.copilot.model,
+        model,
         availableTools: [],
         excludedTools: ['builtin:*', 'mcp:*', 'custom:*'],
         onPermissionRequest: () => ({ kind: 'reject', feedback: 'Tagvico Telegram chat never permits tools.' })
@@ -225,4 +227,7 @@ class CopilotService {
   }
 }
 
-export = new CopilotService();
+const copilotService = new CopilotService();
+
+export default copilotService;
+module.exports = copilotService;

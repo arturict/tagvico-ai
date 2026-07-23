@@ -4,6 +4,7 @@ import { actionCenter, workspaceFor } from '@/lib/server/workspace';
 import { CreateActionForm } from '@/components/create-action-form';
 
 export const dynamic = 'force-dynamic';
+export const metadata = { title: 'Actions' };
 
 export default async function ActionsPage() {
   const user = await requireUser();
@@ -27,7 +28,7 @@ export default async function ActionsPage() {
           <div className="case-meta"><span>Paperless #{String(item.paperlessDocumentId)}</span><span>{Number(item.completed_step_count)}/{Number(item.step_count)} steps</span>{item.assignee_name ? <span>{String(item.assignee_name)}</span> : null}{item.dueAt ? <span>Due {new Date(String(item.dueAt)).toLocaleDateString()}</span> : null}</div></div>
         <span className={`pill ${item.priority}`}>{String(item.priority)}</span>
       </Link>)}
-      {!cases.length && <div className="empty"><h2>No actions yet</h2><p>Create one above or ask the Companion to inspect a document.</p></div>}
+      {!cases.length && <div className="empty"><h2>No actions yet</h2><p>Create one above or ask Tagvico to inspect a document.</p></div>}
     </section>
   </div>;
 }

@@ -8,9 +8,10 @@ const {
 } = require('../services/providerCatalogService');
 const { resolveEnv } = require('../services/configHelpers');
 const { resolveDataDirectory } = require('../services/dataDirectory');
+const { applyPersistedAiSelection } = require('../services/managedAiSelection');
 const currentDir = decodeURIComponent(process.cwd());
 const dataDir = resolveDataDirectory();
-let packageVersion = '3.0.0';
+let packageVersion = '3.1.0';
 try {
   packageVersion = JSON.parse(fs.readFileSync(path.join(/*turbopackIgnore: true*/ process.cwd(), 'package.json'), 'utf8')).version || packageVersion;
 } catch {
@@ -18,7 +19,14 @@ try {
 }
 const envPath = path.join(dataDir, '.env');
 const injectedEnvironment = new Set(Object.keys(process.env));
+let persistedEnvironment = {};
+try {
+  persistedEnvironment = require('dotenv').parse(fs.readFileSync(envPath));
+} catch {
+  persistedEnvironment = {};
+}
 require('dotenv').config({ path: envPath, override: false });
+applyPersistedAiSelection(process.env, persistedEnvironment);
 
 // Helper function to parse boolean-like env vars
 const parseEnvBoolean = (value: string | undefined, defaultValue = 'yes') => {

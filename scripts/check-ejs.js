@@ -3,17 +3,9 @@ const fs = require('fs');
 const path = require('path');
 
 const targets = [
-  'views/dashboard.ejs',
-  'views/settings.ejs',
-  'views/setup.ejs',
   'views/partials/app-shell.ejs',
   'views/partials/app-head.ejs',
   'views/partials/app-sidebar.ejs',
-  'views/partials/config-form.ejs',
-  'views/review.ejs',
-  'views/manual.ejs',
-  'views/history.ejs',
-  'views/operations.ejs',
   'views/login.ejs'
 ];
 

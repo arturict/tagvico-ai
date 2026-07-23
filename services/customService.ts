@@ -16,6 +16,7 @@ const confidenceGuard = require('./confidenceGuard');
 type AnalysisOptions = { externalApiData?: unknown };
 type CustomField = { value: string };
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : String(error);
+const nativeImport = new Function('specifier', 'return import(specifier)');
 
 class CustomOpenAIService {
   client: InstanceType<typeof OpenAI> | null;
@@ -55,6 +56,45 @@ class CustomOpenAIService {
       this.clientKey = `${provider}:${apiUrl}:${apiKey || ''}`;
     }
     this.model = providerConfig?.model || '';
+  }
+
+  async createCompletion(payload: Record<string, any>) {
+    const [{ generateText }, { createOpenAICompatible }] = await Promise.all([
+      nativeImport('ai'),
+      nativeImport('@ai-sdk/openai-compatible')
+    ]);
+    const provider = normalizeProvider(config.aiProvider);
+    const providerConfig = provider === 'opencode' ? config.opencode : config.compatible;
+    const compatible = createOpenAICompatible({
+      name: 'tagvicoCompatible',
+      baseURL: providerConfig.apiUrl,
+      apiKey: providerConfig.apiKey || 'Tagvico AI-compatible',
+      includeUsage: true
+    });
+    const messages = (payload.messages || []).filter((message: Record<string, unknown>) => message.role !== 'system').map((message: Record<string, any>) => ({
+      role: message.role,
+      content: Array.isArray(message.content) ? message.content.map((part: Record<string, any>) => part.type === 'image_url'
+        ? { type: 'image', image: part.image_url.url }
+        : part) : message.content
+    }));
+    const system = (payload.messages || []).find((message: Record<string, unknown>) => message.role === 'system')?.content;
+    const effort = String(process.env.AI_REASONING_EFFORT || 'auto');
+    const result = await generateText({
+      model: compatible.chatModel(payload.model),
+      ...(system ? { system } : {}),
+      messages,
+      ...(payload.max_tokens ? { maxOutputTokens: payload.max_tokens } : {}),
+      ...(effort !== 'auto' ? { providerOptions: { tagvicoCompatible: { reasoningEffort: effort } } } : {})
+    });
+    const usage = result.usage || {};
+    return {
+      choices: [{ message: { content: result.text } }],
+      usage: {
+        prompt_tokens: usage.inputTokens || 0,
+        completion_tokens: usage.outputTokens || 0,
+        total_tokens: usage.totalTokens || (usage.inputTokens || 0) + (usage.outputTokens || 0)
+      }
+    };
   }
 
   async analyzeDocument(content: string, existingTags: string[] = [], existingCorrespondentList: string[] = [], existingDocumentTypesList: string[] = [], id: string, customPrompt: string | null = null, options: AnalysisOptions = {}) {
@@ -217,11 +257,7 @@ class CustomOpenAIService {
         temperature: 0.3
       };
 
-      if (/^gpt-5/i.test(model)) {
-        responsePayload.reasoning_effort = process.env.AI_REASONING_EFFORT || 'low';
-      }
-
-      const response = await this.client.chat.completions.create(responsePayload);
+      const response = await this.createCompletion(responsePayload);
 
       // Handle response
       //console.log(`MESSAGE: ${response?.choices?.[0]?.message?.content}`);
@@ -346,7 +382,7 @@ class CustomOpenAIService {
       const truncatedContent = await truncateToTokenLimit(content, availableTokens);
 
       // Make API request
-      const response = await this.client.chat.completions.create({
+      const response = await this.createCompletion({
         model: this.model,
         messages: [
           {
@@ -433,7 +469,7 @@ class CustomOpenAIService {
 
       const model = this.model;
 
-      const response = await this.client.chat.completions.create({
+      const response = await this.createCompletion({
         model: model,
         messages: [
           {
@@ -466,7 +502,7 @@ class CustomOpenAIService {
 
       const model = this.model;
 
-      const response = await this.client.chat.completions.create({
+      const response = await this.createCompletion({
         model: model,
         messages: [
           {

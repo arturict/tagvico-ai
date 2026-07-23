@@ -13,6 +13,6 @@
     "rootDir": ".",
     "outDir": "dist"
   },
-  "include": ["services/**/*.ts", "routes/**/*.ts", "models/**/*.ts", "config/**/*.ts", "schemas.ts", "swagger.ts", "server.ts"],
+  "include": ["contracts/**/*.ts", "services/**/*.ts", "routes/**/*.ts", "models/**/*.ts", "config/**/*.ts", "schemas.ts", "swagger.ts", "server.ts"],
   "exclude": ["node_modules", "dist", "data", "public", "docs", "src"]
 }

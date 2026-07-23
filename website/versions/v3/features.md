@@ -42,6 +42,13 @@ The dashboard shows processing progress, runner state, Paperless vocabulary
 counts, recent activity, and token/cost-efficiency signals. **Scan now** starts
 an on-demand pass without waiting for the schedule.
 
+Actions, Ask Tagvico, Automation, Review queue, Activity, and Settings stay
+inside one React application shell. Recovery and Manual processing are
+purposeful Automation subpages rather than unexplained primary tabs. They share the same fixed,
+collapsible navigation, Geist typography, green design tokens, responsive
+tables, dialogs, loading states, and inline feedback. The former EJS interfaces
+for user-facing workflows are no longer part of the visible application.
+
 ## Controlled tagging
 
 Choose whether the model may create open-ended tags or must stay within a
@@ -52,6 +59,15 @@ to manage, and a per-document maximum prevents noisy assignments.
 
 Generic category tags are shown in this capture. No document contents, names,
 credentials, account identifiers, or private endpoints are visible.
+
+## Review-first tag unification
+
+Tag library can load the current Paperless vocabulary and let one configured,
+live-discovered model propose likely duplicates. The model only plans and
+explains; it cannot write to Paperless. Every proposed merge is approved or
+rejected separately. Approved work runs as two explicit, idempotent phases:
+move document references to the chosen target, verify the result, then delete
+the now-unused source tag.
 
 ## Review-first filing
 
@@ -79,10 +95,31 @@ pending queue after restart.
 
 ## Subscription-backed model access
 
-The optional ChatGPT provider uses the official Codex SDK for inference and the
-stable `codex login --device-auth` flow. Tagvico does not depend on the
-experimental Codex app-server protocol or use Codex as its application
-harness. GitHub Copilot continues to use the official Copilot SDK.
+The optional ChatGPT provider uses the bundled official Codex runtime for
+inference and the stable `codex login --device-auth` flow. Its model picker is
+fed by the signed-in account's live `model/list` response, including the
+runtime default and each model's supported reasoning efforts. Curated names are
+never presented as account availability. GitHub Copilot continues to use the
+official Copilot SDK.
+
+## Unified setup and settings
+
+Setup and authenticated Settings now use the same React field, provider, and
+validation components. Settings are divided into Paperless, AI models,
+Automation, Tag library, Household, Security & privacy, and Diagnostics. The desktop navigation
+is fixed and collapsible; narrow screens use horizontal, scrollable navigation
+without a second legacy UI.
+
+Provider configuration is generated from the central provider registry. The
+model picker supports runtime discovery, search, provider grouping, local
+favorites, capability badges, and keyboard-native controls.
+
+The Ask Tagvico composer uses the same runtime catalog, but includes only
+configured providers whose live discovery succeeded. It defaults to the
+document-automation model and persists a validated per-session override.
+Redacted activity cards make Paperless search, document reading, action lookup,
+proposal preparation, and tool errors visible without exposing OCR, tokens, or
+raw provider payloads.
 
 ## Optional Telegram family interface
 

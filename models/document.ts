@@ -258,6 +258,67 @@ const MIGRATIONS = [
         CREATE INDEX IF NOT EXISTS idx_agent_approvals_pending ON agent_approvals(household_id, status, created_at DESC);
       `);
     }
+  },
+  {
+    version: 6,
+    up() {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS tag_unification_runs (
+          id TEXT PRIMARY KEY,
+          provider_instance_id TEXT NOT NULL,
+          model_id TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'analyzing'
+            CHECK (status IN ('analyzing', 'completed', 'failed')),
+          tag_snapshot_hash TEXT NOT NULL,
+          tags_count INTEGER NOT NULL,
+          error TEXT,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          finished_at DATETIME
+        );
+        CREATE INDEX IF NOT EXISTS idx_tag_unification_runs_created
+          ON tag_unification_runs(created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS tag_unification_suggestions (
+          id TEXT PRIMARY KEY,
+          run_id TEXT NOT NULL REFERENCES tag_unification_runs(id) ON DELETE CASCADE,
+          source_tag_id INTEGER NOT NULL,
+          source_tag_name TEXT NOT NULL,
+          source_document_count INTEGER NOT NULL DEFAULT 0,
+          target_tag_id INTEGER NOT NULL,
+          target_tag_name TEXT NOT NULL,
+          target_document_count INTEGER NOT NULL DEFAULT 0,
+          reason TEXT NOT NULL,
+          confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+          status TEXT NOT NULL DEFAULT 'suggested'
+            CHECK (status IN ('suggested', 'approved', 'rejected', 'moving', 'moved', 'deleting', 'completed', 'failed')),
+          current_phase TEXT CHECK (current_phase IS NULL OR current_phase IN ('move', 'delete')),
+          approved_by TEXT,
+          rejected_by TEXT,
+          last_error TEXT,
+          phase_started_at DATETIME,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(run_id, source_tag_id, target_tag_id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_tag_unification_suggestions_status
+          ON tag_unification_suggestions(status, created_at DESC);
+
+        CREATE TABLE IF NOT EXISTS tag_unification_audit (
+          id TEXT PRIMARY KEY,
+          suggestion_id TEXT NOT NULL REFERENCES tag_unification_suggestions(id) ON DELETE CASCADE,
+          actor TEXT NOT NULL,
+          phase TEXT NOT NULL CHECK (phase IN ('decision', 'move', 'delete')),
+          action TEXT NOT NULL,
+          document_id INTEGER,
+          outcome TEXT NOT NULL CHECK (outcome IN ('success', 'skipped', 'failed')),
+          payload_json TEXT NOT NULL DEFAULT '{}',
+          error TEXT,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_tag_unification_audit_suggestion
+          ON tag_unification_audit(suggestion_id, created_at);
+      `);
+    }
   }
 ];
 

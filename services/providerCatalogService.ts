@@ -10,6 +10,8 @@ type ProviderId =
   | 'codex'
   | 'azure';
 type EnvLike = Record<string, string | undefined>;
+const providerRegistryModule = require('./providerRegistry');
+const providerRegistry = providerRegistryModule.default || providerRegistryModule;
 const PROVIDER_IDS = [
   'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'anthropic', 'codex', 'azure'
 ] as const;
@@ -90,97 +92,6 @@ const OPENROUTER_PRESETS = [
   }
 ];
 
-const OPENAI_DIRECT_MODELS = [
-  { slug: 'gpt-5.5', name: 'GPT-5.5' },
-  { slug: 'gpt-5.4', name: 'GPT-5.4' },
-  { slug: 'gpt-5.4-mini', name: 'GPT-5.4 Mini' },
-  { slug: 'gpt-5.4-nano', name: 'GPT-5.4 Nano' },
-  { slug: 'gpt-5.3', name: 'GPT-5.3' }
-];
-
-// GPT-5.6 is a trusted-partner preview. Keep the slugs available for accounts
-// that explicitly opt in, but never make them the default for ordinary API or
-// ChatGPT subscription users.
-const OPENAI_PREVIEW_MODELS = [
-  { slug: 'gpt-5.6-sol', name: 'GPT-5.6 Sol', preview: true },
-  { slug: 'gpt-5.6-terra', name: 'GPT-5.6 Terra', preview: true },
-  { slug: 'gpt-5.6-luna', name: 'GPT-5.6 Luna', preview: true, recommended: true }
-];
-
-const PROVIDERS = [
-  {
-    id: 'openrouter',
-    name: 'OpenRouter',
-    description: 'Curated cloud models with a clean preset picker and custom slug support.',
-    recommended: true,
-    supportsModelDiscovery: false,
-    supportsCustomModelSlug: true
-  },
-  {
-    id: 'ollama',
-    name: 'Ollama',
-    description: 'Local or remote Ollama instances with model discovery from the instance itself.',
-    supportsModelDiscovery: true,
-    supportsCustomModelSlug: true
-  },
-  {
-    id: 'ollama-cloud',
-    name: 'Ollama Cloud',
-    description: 'Ollama cloud inference with an Ollama API key; no local GPU required.',
-    supportsModelDiscovery: false,
-    supportsCustomModelSlug: true
-  },
-  {
-    id: 'opencode',
-    name: 'OpenCode Go',
-    description: 'OpenCode Console inference with a service API key and OpenAI-compatible gateway.',
-    supportsModelDiscovery: false,
-    supportsCustomModelSlug: true
-  },
-  {
-    id: 'copilot',
-    name: 'GitHub Copilot',
-    description: 'Uses the official Copilot SDK, OAuth device login, and the models exposed by your plan.',
-    supportsModelDiscovery: true,
-    supportsCustomModelSlug: false
-  },
-  {
-    id: 'compatible',
-    name: 'OpenAI-Compatible',
-    description: 'LM Studio, LiteLLM, vLLM, FastChat, custom gateways, and similar APIs.',
-    supportsModelDiscovery: false,
-    supportsCustomModelSlug: true
-  },
-  {
-    id: 'openai',
-    name: 'OpenAI Direct',
-    description: 'Native OpenAI API with a locked, supported model list.',
-    supportsModelDiscovery: false,
-    supportsCustomModelSlug: false
-  },
-  {
-    id: 'azure',
-    name: 'Azure OpenAI',
-    description: 'Legacy Azure OpenAI support for existing setups.',
-    supportsModelDiscovery: false,
-    supportsCustomModelSlug: false
-  },
-  {
-    id: 'anthropic',
-    name: 'Anthropic Direct',
-    description: 'Claude with standard or discounted asynchronous Message Batches.',
-    supportsModelDiscovery: false,
-    supportsCustomModelSlug: true
-  },
-  {
-    id: 'codex',
-    name: 'ChatGPT subscription (experimental)',
-    description: 'Uses a ChatGPT device login and lists only models returned for the signed-in plan.',
-    supportsModelDiscovery: true,
-    supportsCustomModelSlug: false
-  }
-];
-
 const DEFAULT_MODELS = {
   openrouter: 'openai/gpt-5.4-mini',
   ollama: 'llama3.2',
@@ -194,17 +105,8 @@ const DEFAULT_MODELS = {
   codex: 'gpt-5.4-mini'
 };
 
-function isPreviewEnabled(env: EnvLike = process.env) {
-  return ['yes', 'true', '1', 'on'].includes(String(env.OPENAI_ENABLE_GPT_5_6_PREVIEW || '').toLowerCase());
-}
-
-function getOpenAIDirectModels(env: EnvLike = process.env) {
-  return isPreviewEnabled(env) ? [...OPENAI_DIRECT_MODELS, ...OPENAI_PREVIEW_MODELS] : OPENAI_DIRECT_MODELS;
-}
-
 function normalizeOpenAIModel(model?: string, env: EnvLike = process.env) {
-  const allowed = new Set(getOpenAIDirectModels(env).map((entry) => entry.slug));
-  return model && allowed.has(model) ? model : DEFAULT_MODELS.openai;
+  return model?.trim() || DEFAULT_MODELS.openai;
 }
 
 function normalizeProvider(provider?: string): ProviderId {
@@ -224,7 +126,21 @@ function getOpenRouterPresets() {
 }
 
 function getProviderList() {
-  return PROVIDERS;
+  return providerRegistry.getProviderDefinitions().map((provider: {
+    id: string;
+    name: string;
+    description: string;
+    recommended?: boolean;
+    discovery: string;
+    manualModelInput: boolean;
+  }) => ({
+    id: provider.id,
+    name: provider.name,
+    description: provider.description,
+    recommended: Boolean(provider.recommended),
+    supportsModelDiscovery: provider.discovery !== 'manual',
+    supportsCustomModelSlug: provider.manualModelInput
+  }));
 }
 
 function getPresetBySlug(slug?: string) {
@@ -233,31 +149,9 @@ function getPresetBySlug(slug?: string) {
 
 function getEffectiveModel(env: EnvLike = process.env) {
   const provider = normalizeProvider(env.AI_PROVIDER);
-
-  switch (provider) {
-    case 'openrouter':
-      return env.OPENROUTER_MODEL || env.AI_MODEL || env.OPENAI_MODEL || getDefaultModel(provider);
-    case 'ollama':
-      return env.OLLAMA_MODEL || env.AI_MODEL || getDefaultModel(provider);
-    case 'ollama-cloud':
-      return env.OLLAMA_CLOUD_MODEL || env.AI_MODEL || getDefaultModel(provider);
-    case 'opencode':
-      return env.OPENCODE_MODEL || env.AI_MODEL || getDefaultModel(provider);
-    case 'copilot':
-      return env.COPILOT_MODEL || env.AI_MODEL || getDefaultModel(provider);
-    case 'compatible':
-      return env.COMPATIBLE_MODEL || env.CUSTOM_MODEL || env.AI_MODEL || getDefaultModel(provider);
-    case 'openai':
-      return normalizeOpenAIModel(env.OPENAI_MODEL || env.AI_MODEL || getDefaultModel(provider), env);
-    case 'azure':
-      return env.AZURE_DEPLOYMENT_NAME || getDefaultModel(provider);
-    case 'anthropic':
-      return env.ANTHROPIC_MODEL || env.AI_MODEL || getDefaultModel(provider);
-    case 'codex':
-      return env.CODEX_MODEL || env.AI_MODEL || getDefaultModel(provider);
-    default:
-      return env.AI_MODEL || getDefaultModel(provider);
-  }
+  const definition = providerRegistry.getProviderDefinition(provider);
+  const configured = definition ? providerRegistry.getConfiguredModel(definition, env) : '';
+  return configured || getDefaultModel(provider);
 }
 
 function buildCatalog(currentConfig: EnvLike = {}) {
@@ -267,14 +161,12 @@ function buildCatalog(currentConfig: EnvLike = {}) {
   return {
     recommendedProvider: 'openrouter',
     recommendedModel: 'openai/gpt-5.4-mini',
-    providers: PROVIDERS.map((provider) => ({
+    providers: getProviderList().map((provider: { id: ProviderId }) => ({
       ...provider,
       selected: provider.id === selectedProvider,
       defaultModel: getDefaultModel(provider.id)
     })),
     openrouterPresets: OPENROUTER_PRESETS,
-    openaiDirectModels: getOpenAIDirectModels(currentConfig),
-    openaiPreviewAvailable: isPreviewEnabled(currentConfig),
     selectedProvider,
     effectiveModel,
     selectedPreset: getPresetBySlug(effectiveModel)
@@ -285,8 +177,6 @@ export = {
   buildCatalog,
   getDefaultModel,
   getEffectiveModel,
-  getOpenAIDirectModels,
-  isPreviewEnabled,
   normalizeOpenAIModel,
   getOpenRouterPresets,
   getPresetBySlug,

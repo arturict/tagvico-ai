@@ -11,7 +11,7 @@ Create a new directory and save this as `docker-compose.yml`:
 ```yaml
 services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:3.0.0
+    image: ghcr.io/arturict/tagvico-ai:3.1.0
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -48,14 +48,20 @@ Open `http://localhost:8080/setup` after the health check succeeds.
 This sanitized capture shows the local admin sign-in presented after setup. It
 contains no credentials, private hostnames, document data, or account details.
 
+The same container also serves the documentation bundled with that release.
+Open `http://localhost:8080/docs/` or the `/documentation` alias. The docs do
+not depend on a separate hosted documentation service, so they keep matching
+the image you pinned even when the public website changes.
+
 ## 3. Finish guided setup
 
-1. Create the local Tagvico admin account.
-2. Enter the Paperless base URL without `/api`, then paste a Paperless API token
+1. Enter the Paperless base URL without `/api`, then paste a Paperless API token
    and test the connection.
-3. Choose a [model provider](./providers) and test its credentials or endpoint.
-4. Select **Review first** for approval-based filing or **Automatic** for direct
-   writes, then choose which metadata fields Tagvico may change.
+2. Choose a [model provider](./providers) and enter its credentials or endpoint.
+3. Create the local Tagvico owner account.
+4. After signing in, use **Settings → Automation** to select **Review first**
+   for approval-based filing or **Automatic** for direct writes, then choose
+   which metadata fields Tagvico may change.
 
 After saving the provider, inspect the detailed application health response.
 Unlike `/health`, this endpoint reports the configured model adapter's health
@@ -125,7 +131,7 @@ docker run -d \
   -e TAGVICO_AI_PORT=3000 \
   -e ALLOW_REMOTE_SETUP=yes \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:3.0.0
+  ghcr.io/arturict/tagvico-ai:3.1.0
 ```
 
 After setup, remove `ALLOW_REMOTE_SETUP=yes` unless you specifically need to

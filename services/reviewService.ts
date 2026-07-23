@@ -7,17 +7,17 @@ import fs from 'fs';
 import path from 'path';
 import { resolveDataDirectory } from './dataDirectory';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const documentModel = require('../models/document.js');
+const documentModel = require('../models/document');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const paperlessService = require('./paperlessService.js');
+const paperlessService = require('./paperlessService');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const historyService = require('./historyService.js');
-const config = require('../config/config.js');
-const controlledTaggingService = require('./controlledTaggingService.js');
-const tagGroupService = require('./tagGroupService.js');
-const customFieldsService = require('./customFieldsService.js');
-const ownerProfileService = require('./ownerProfileService.js');
-const { compareMetadata } = require('./metadataDiff.js');
+const historyService = require('./historyService');
+const config = require('../config/config');
+const controlledTaggingService = require('./controlledTaggingService');
+const tagGroupService = require('./tagGroupService');
+const customFieldsService = require('./customFieldsService');
+const ownerProfileService = require('./ownerProfileService');
+const { compareMetadata } = require('./metadataDiff');
 
 const REVIEW_PATH = path.join(resolveDataDirectory(), '.review');
 const WRITE_MODES = {

@@ -6,14 +6,19 @@ WORKDIR /app
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     make \
-    g++ && \
+    g++ \
+    git && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
 RUN npm ci
 COPY . .
-RUN npm run build && npm prune --omit=dev && npm cache clean --force
+RUN npm run build && \
+    npm run docs:build && \
+    node -e 'const fs=require("node:fs");const major="v"+require("./package.json").version.split(".")[0];for(const file of ["docs-site/index.html","docs-site/"+major+"/index.html"]){if(!fs.existsSync(file))throw new Error("Missing bundled docs: "+file)}' && \
+    npm prune --omit=dev && \
+    npm cache clean --force
 
 FROM node:22.13-slim AS runtime
 
