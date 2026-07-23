@@ -1,6 +1,6 @@
 {
   "name": "tagvico-ai",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Tagvico — the private action center and household companion for Paperless-ngx.",
   "engines": {
     "node": "^20.19.0 || ^22.13.0 || ^24.0.0"
@@ -19,8 +19,10 @@
     "test": "npm run check && npm run test:unit",
     "test:unit": "npm run build && node scripts/run-tests.js",
     "test:release-acceptance": "node scripts/release-acceptance.mjs",
-    "check": "npm run typecheck && npm run lint && npm run check:type-debt && npm run check:branding && npm run check:ejs && npm run check:browser",
-    "check:browser": "node --check public/js/config-form.js && node --check public/js/app-shell.js",
+    "test:release-acceptance:local": "node scripts/run-release-acceptance-local.mjs",
+    "check": "npm run typecheck && npm run lint && npm run check:type-debt && npm run check:branding && npm run check:ejs && npm run check:browser && npm run check:settings-architecture",
+    "check:browser": "node --check public/js/app-shell.js",
+    "check:settings-architecture": "node scripts/check-settings-architecture.js",
     "docs:build": "node scripts/docs.mjs build",
     "docs:dev": "node scripts/docs.mjs dev v3",
     "docs:new-major": "node scripts/docs.mjs new-major",

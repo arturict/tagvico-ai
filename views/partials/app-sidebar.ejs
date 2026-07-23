@@ -1,15 +1,21 @@
 <%
   const navItems = [
-    { href: '/dashboard', key: 'dashboard', icon: 'fa-solid fa-chart-line', label: 'Dashboard' },
+    { href: '/actions', key: 'actions', icon: 'fa-solid fa-list-check', label: 'Action center' },
+    { href: '/companion', key: 'companion', icon: 'fa-solid fa-wand-magic-sparkles', label: 'Companion' },
+    { href: '/settings', key: 'household', icon: 'fa-solid fa-users-gear', label: 'Household & models' },
+    { href: '/dashboard', key: 'dashboard', icon: 'fa-solid fa-chart-line', label: 'Document automation' },
     { href: '/history', key: 'history', icon: 'fa-solid fa-clock-rotate-left', label: 'History' },
     { href: '/operations', key: 'operations', icon: 'fa-solid fa-tower-broadcast', label: 'Operations' },
     { href: '/automation/settings', key: 'settings', icon: 'fa-solid fa-sliders', label: 'Automation settings' }
   ];
 %>
 <aside class="app-sidebar" id="appSidebar">
+  <button id="desktopSidebarToggle" class="desktop-sidebar-toggle" type="button" aria-label="Collapse navigation" aria-expanded="true">
+    <i class="fa-solid fa-angles-left"></i>
+  </button>
   <div class="app-brand">
     <img class="app-brand-mark" src="/tagvico-icon.png" alt="Tagvico AI icon">
-    <div>
+    <div class="app-brand-copy">
       <div class="app-brand-title">Tagvico AI</div>
       <div class="app-brand-subtitle">AI filing for Paperless-ngx</div>
     </div>
@@ -18,12 +24,12 @@
   <nav class="app-nav">
     <% navItems.forEach((item) => { %>
       <a href="<%= item.href %>" class="app-nav-link <%= activePage === item.key ? 'is-active' : '' %>">
-        <i class="<%= item.icon %>"></i>
+        <i class="<%= item.icon %>" aria-hidden="true"></i>
         <span><%= item.label %></span>
       </a>
     <% }) %>
     <a href="/logout" class="app-nav-link">
-      <i class="fa-solid fa-right-from-bracket"></i>
+      <i class="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
       <span>Logout</span>
     </a>
   </nav>

@@ -5,8 +5,16 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { GeistSans } from 'geist/font/sans';
 
 export const metadata: Metadata = {
-  title: { default: 'Tagvico', template: '%s · Tagvico' },
+  applicationName: 'Tagvico AI',
+  title: { default: 'Tagvico AI', template: '%s | Tagvico AI' },
   description: 'Your private action center and household companion for Paperless-ngx.',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/tagvico-icon.png', type: 'image/png' }
+    ],
+    apple: '/tagvico-icon.png'
+  },
   robots: { index: false, follow: false }
 };
 

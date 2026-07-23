@@ -776,27 +776,8 @@ router.get('/chat/init/:documentId', protectApiRoute, retiredApiRoute('Document 
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/history', async (req: Req, res: Res) => {
-  try {
-    const allTags = await paperlessService.getTags();
-    const tagMap = new Map(allTags.map((tag: NamedItem) => [tag.id, tag]));
-
-    // Get all correspondents for filter dropdown
-    const historyDocuments = await documentModel.getAllHistory();
-    const allCorrespondents = [...new Set(historyDocuments.map((doc: UnknownRecord) => doc.correspondent))]
-      .filter(Boolean).sort();
-
-    res.render('history', {
-      version: configFile.TAGVICO_AI_VERSION,
-      filters: {
-        allTags: allTags,
-        allCorrespondents: allCorrespondents
-      }
-    });
-  } catch (error) {
-    console.error('[ERROR] loading history page:', error);
-    res.status(500).send('Error loading history page');
-  }
+router.get('/history', async (_req: Req, res: Res) => {
+  res.status(410).json({ error: 'Legacy history UI retired. Use the Next.js frontend.' });
 });
 
 /**
@@ -1005,6 +986,22 @@ router.get('/api/history', async (req: Req, res: Res) => {
   }
 });
 
+router.get('/api/history/filters', async (_req: Req, res: Res) => {
+  try {
+    const [allTags, historyDocuments] = await Promise.all([
+      paperlessService.getTags(),
+      documentModel.getAllHistory()
+    ]);
+    const allCorrespondents = [...new Set<string>(
+      historyDocuments.map((doc: UnknownRecord) => String(doc.correspondent || '')).filter(Boolean)
+    )].sort((left, right) => left.localeCompare(right));
+    res.json({ tags: allTags, correspondents: allCorrespondents });
+  } catch (error) {
+    console.error('[ERROR] loading history filters:', error);
+    res.status(500).json({ error: 'Error loading history filters' });
+  }
+});
+
 /**
  * @swagger
  * /api/history/{id}/diff:
@@ -1105,29 +1102,8 @@ router.get('/api/history/:id/diff', async (req: Req, res: Res) => {
  *       200:
  *         description: Review page rendered successfully
  */
-router.get('/review', isAuthenticated, async (req: Req, res: Res) => {
-  try {
-    const analyses = await reviewService.listPendingSuggestions(100);
-    res.render('review', {
-      title: 'Review | Tagvico AI',
-      activePage: 'review',
-      version: configFile.TAGVICO_AI_VERSION,
-      analyses,
-      reviewMode: reviewService.isReviewModeEnabled(),
-      dryRun: reviewService.isReviewModeEnabled()
-    });
-  } catch (error) {
-    console.error('[ERROR] loading review page:', error);
-    res.status(500).render('review', {
-      title: 'Review | Tagvico AI',
-      activePage: 'review',
-      version: configFile.TAGVICO_AI_VERSION,
-      analyses: [],
-      reviewMode: reviewService.isReviewModeEnabled(),
-      dryRun: reviewService.isReviewModeEnabled(),
-      error: 'Error loading review queue'
-    });
-  }
+router.get('/review', isAuthenticated, (_req: Req, res: Res) => {
+  res.status(410).json({ error: 'Legacy review UI retired. Use the Next.js /review page.' });
 });
 
 function parseSuggestionId(value: RequestValue) {
@@ -1959,7 +1935,9 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
     SYSTEM_PROMPT: processSystemPrompt(payload.systemPrompt),
     TOKEN_LIMIT: currentConfig.TOKEN_LIMIT || '128000',
     RESPONSE_TOKENS: currentConfig.RESPONSE_TOKENS || '1000',
-    AI_REASONING_EFFORT: payload.aiReasoningEffort || currentConfig.AI_REASONING_EFFORT || 'low',
+    AI_REASONING_EFFORT: ['auto', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra'].includes(String(payload.aiReasoningEffort))
+      ? String(payload.aiReasoningEffort)
+      : (currentConfig.AI_REASONING_EFFORT || 'auto'),
     TAGVICO_TELEMETRY_ENABLED: parseBooleanFlag(payload.telemetryEnabled, currentConfig.TAGVICO_TELEMETRY_ENABLED || 'no'),
     TAGVICO_TELEMETRY_ENDPOINT: currentConfig.TAGVICO_TELEMETRY_ENDPOINT || process.env.TAGVICO_TELEMETRY_ENDPOINT || ''
   };
@@ -2007,51 +1985,9 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
  *               $ref: '#/components/schemas/Error'
  */
 router.get('/setup', async (req: Req, res: Res) => {
-  try {
-    let config = buildPageConfig();
-
-    // Check both configuration and users
-    const [isEnvConfigured, users] = await Promise.all([
-      setupService.isConfigured(),
-      documentModel.getUsers()
-    ]);
-
-    // Load saved config if it exists
-    if (isEnvConfigured) {
-      const savedConfig = await setupService.loadConfig();
-      config = { ...config, ...buildUiConfig(savedConfig, configFile.TAGVICO_AI_VERSION || '') };
-    }
-
-    // Check if system is fully configured
-    const hasUsers = Array.isArray(users) && users.length > 0;
-    const isFullyConfigured = isEnvConfigured && hasUsers;
-
-    // Generate appropriate success message
-    let successMessage;
-    if (isEnvConfigured && !hasUsers) {
-      successMessage = 'Environment is configured, but no users exist. Please create at least one user.';
-    } else if (isEnvConfigured) {
-      successMessage = 'The application is already configured. You can update the configuration below.';
-    }
-
-    // If everything is configured and we have users, redirect to dashboard
-    // BUT only after we've loaded all the config
-    if (isFullyConfigured) {
-      return res.redirect('/dashboard');
-    }
-
-    // Render setup page with config and appropriate message
-    res.render('setup', {
-      ...buildViewModel(config),
-      success: successMessage
-    });
-  } catch (error) {
-    console.error('Setup route error:', error);
-    res.status(500).render('setup', {
-      ...buildViewModel(buildPageConfig()),
-      error: 'An error occurred while loading the setup page.'
-    });
-  }
+  res.status(410).json({
+    error: 'The legacy setup UI was removed in Tagvico v3. Use the Next.js /setup route.'
+  });
 });
 
 /**
@@ -2214,25 +2150,8 @@ router.get('/manual/preview/:id', async (req: Req, res: Res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/manual', async (req: Req, res: Res) => {
-  const version = configFile.TAGVICO_AI_VERSION || ' ';
-  const [correspondents, documentTypes, users] = await Promise.all([
-    paperlessService.listCorrespondentsNames(),
-    paperlessService.listDocumentTypesNames(),
-    paperlessService.getUsers()
-  ]);
-  res.render('manual', {
-    title: 'Document Review',
-    error: null,
-    success: null,
-    version,
-    paperlessUrl: process.env.PAPERLESS_API_URL,
-    paperlessToken: process.env.PAPERLESS_API_TOKEN,
-    config: {},
-    correspondents,
-    documentTypes,
-    users
-  });
+router.get('/manual', (_req: Req, res: Res) => {
+  res.status(410).json({ error: 'Legacy manual UI retired. Use the Next.js /automation/manual page.' });
 });
 
 /**
@@ -2949,15 +2868,26 @@ router.post('/api/webhook/document', async (req: Req, res: Res) => {
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/dashboard', async (req: Req, res: Res) => {
-  const tagCount = await paperlessService.getTagCount();
-  const correspondentCount = await paperlessService.getCorrespondentCount();
-  const documentCount = await paperlessService.getDocumentCount();
-  const processedDocumentCount = await documentModel.getProcessedDocumentsCount();
-  const metrics: TokenMetric[] = await documentModel.getMetrics();
-  const processingTimeStats = await documentModel.getProcessingTimeStats();
-  const tokenDistribution = await documentModel.getTokenDistribution();
-  const documentTypes = await documentModel.getDocumentTypeStats();
+async function loadDashboardSummary() {
+  const [
+    tagCount,
+    correspondentCount,
+    documentCount,
+    processedDocumentCount,
+    metrics,
+    processingTimeStats,
+    tokenDistribution,
+    documentTypes
+  ] = await Promise.all([
+    paperlessService.getTagCount(),
+    paperlessService.getCorrespondentCount(),
+    paperlessService.getDocumentCount(),
+    documentModel.getProcessedDocumentsCount(),
+    documentModel.getMetrics() as Promise<TokenMetric[]>,
+    documentModel.getProcessingTimeStats(),
+    documentModel.getTokenDistribution(),
+    documentModel.getDocumentTypeStats()
+  ]);
 
   const averagePromptTokens = metrics.length > 0 ? Math.round(metrics.reduce((acc: number, cur: TokenMetric) => acc + cur.promptTokens, 0) / metrics.length) : 0;
   const averageCompletionTokens = metrics.length > 0 ? Math.round(metrics.reduce((acc: number, cur: TokenMetric) => acc + cur.completionTokens, 0) / metrics.length) : 0;
@@ -2982,10 +2912,28 @@ router.get('/dashboard', async (req: Req, res: Res) => {
     model: configFile.aiModel,
     provider: configFile.aiProvider
   };
-  const summary = dashboardMetrics.buildDashboardSummary(paperless_data, openai_data);
-  const version = configFile.TAGVICO_AI_VERSION || ' ';
+  return dashboardMetrics.buildDashboardSummary(paperless_data, openai_data);
+}
 
-  res.render('dashboard', { paperless_data, openai_data, summary, version });
+router.get('/api/dashboard', async (_req: Req, res: Res) => {
+  try {
+    const [summary, processing] = await Promise.all([
+      loadDashboardSummary(),
+      documentModel.getCurrentProcessingStatus()
+    ]);
+    res.json({
+      summary,
+      processing,
+      version: configFile.TAGVICO_AI_VERSION || '3.1.0'
+    });
+  } catch (error) {
+    console.error('[ERROR] loading dashboard data:', error);
+    res.status(500).json({ error: 'Error loading dashboard data' });
+  }
+});
+
+router.get('/dashboard', async (_req: Req, res: Res) => {
+  res.status(410).json({ error: 'Legacy dashboard UI retired. Use the Next.js frontend.' });
 });
 
 /**
@@ -3033,24 +2981,7 @@ router.get('/dashboard', async (req: Req, res: Res) => {
  *               $ref: '#/components/schemas/Error'
  */
 router.get('/settings', async (req: Req, res: Res) => {
-  let showErrorCheckSettings = false;
-  const isConfigured = await setupService.isConfigured();
-  if(!isConfigured && resolveEnv('TAGVICO_AI_INITIAL_SETUP', 'ARCHIVISTA_AI_INITIAL_SETUP') === 'yes') {
-    showErrorCheckSettings = true;
-  }
-  let config = buildPageConfig();
-  
-  if (isConfigured) {
-    const savedConfig = await setupService.loadConfig();
-    config = { ...config, ...buildUiConfig(savedConfig, configFile.TAGVICO_AI_VERSION || '') };
-  }
-  const version = configFile.TAGVICO_AI_VERSION || ' ';
-  res.render('settings', { 
-    ...buildViewModel(config),
-    version,
-    success: isConfigured ? 'The application is already configured. You can update the configuration below.' : undefined,
-    settingsError: showErrorCheckSettings ? 'Please check your settings. Something is not working correctly.' : undefined
-  });
+  res.status(308).redirect('/settings/general');
 });
 
 router.get('/api/telemetry/preview', async (_req: Req, res: Res) => {
@@ -4230,6 +4161,10 @@ router.post('/setup', express.json(), async (req: Req, res: Res) => {
  *                   type: string
  *                   example: "Failed to update settings: Database error"
  */
+// v3 has one settings write path with validation and optimistic concurrency.
+// Keep the historical handler below unreachable for one compatibility cycle,
+// then remove its OpenAPI block and implementation in the next cleanup.
+router.post('/settings', retiredApiRoute('Legacy settings writes are retired. Use PATCH /api/settings/v3.'));
 router.post('/settings', express.json(), async (req: Req, res: Res) => {
   try {
     const { 
@@ -4510,10 +4445,14 @@ router.get('/api/processing-status', async (req: Req, res: Res) => {
 });
 
 router.get('/operations', async (req: Req, res: Res) => {
-  res.render('operations', {
-    version: configFile.TAGVICO_AI_VERSION,
+  res.status(410).json({ error: 'Legacy operations UI retired. Use the Next.js frontend.' });
+});
+
+router.get('/api/operations/status', async (_req: Req, res: Res) => {
+  res.json({
     ocrEnabled: ocrService.isEnabled(),
-    ocrProvider: config.ocr?.provider || 'mistral'
+    ocrProvider: config.ocr?.provider || 'mistral',
+    version: configFile.TAGVICO_AI_VERSION || '3.1.0'
   });
 });
 
@@ -4639,16 +4578,46 @@ router.get('/api/codex/status', allowDuringSetup, async (req: Req, res: Res) => 
   } catch { res.json(await codexService.getStatus()); }
 });
 
+router.post('/api/compatible/models', allowDuringSetup, express.json({ limit: '8kb' }), async (req: Req, res: Res) => {
+  try {
+    const baseUrl = String(req.body?.baseUrl || '').trim().replace(/\/+$/, '');
+    const parsed = new URL(baseUrl);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return res.status(400).json({ success: false, error: 'Base URL must use HTTP or HTTPS.' });
+    }
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 7000);
+    try {
+      const response = await fetch(`${baseUrl}/models`, {
+        headers: req.body?.apiKey ? { Authorization: `Bearer ${String(req.body.apiKey)}` } : {},
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`Endpoint returned HTTP ${response.status}`);
+      const payload = await response.json() as { data?: unknown[]; models?: unknown[] };
+      const entries = Array.isArray(payload.data) ? payload.data : Array.isArray(payload.models) ? payload.models : [];
+      const models = entries.slice(0, 500).map((entry: any) => ({
+        id: String(entry?.id || entry?.model || ''),
+        name: String(entry?.name || entry?.display_name || entry?.id || entry?.model || '')
+      })).filter((entry) => entry.id);
+      res.json({ success: true, models });
+    } finally {
+      clearTimeout(timeout);
+    }
+  } catch (error) {
+    res.status(502).json({ success: false, error: errorMessage(error) || 'Could not load models from compatible endpoint' });
+  }
+});
+
 router.get('/api/codex/models', allowDuringSetup, async (req: Req, res: Res) => {
   try {
     const account = await codexAuthService.account();
-    if (account.account?.type !== 'chatgpt') {
-      return res.status(401).json({ success: false, error: 'Sign in with ChatGPT to load subscription models.' });
-    }
     const models = await codexAuthService.models();
+    if (!models.length) {
+      return res.status(404).json({ success: false, error: 'The Codex runtime returned no selectable models. You can still enter a model ID manually.' });
+    }
     res.json({
       success: true,
-      planType: account.account.planType || null,
+      planType: account.account?.planType || null,
       models,
       defaultModel: models.find((model: { id: string; isDefault?: boolean }) => model.isDefault)?.id || models[0]?.id || null
     });

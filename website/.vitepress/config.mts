@@ -11,6 +11,11 @@ const availableVersions = readdirSync(versionsRoot, { withFileTypes: true })
 const latestVersion = availableVersions[0];
 const base = process.env.TAGVICO_DOCS_BASE || '/docs/';
 const outDir = process.env.TAGVICO_DOCS_OUT_DIR || '../docs-site';
+const versionLink = (targetVersion: string) => {
+  if (targetVersion === version) return '/';
+  if (targetVersion === latestVersion) return '../';
+  return version === latestVersion ? `/${targetVersion}/` : `../${targetVersion}/`;
+};
 
 export default defineConfig({
   title: 'Tagvico AI',
@@ -39,10 +44,7 @@ export default defineConfig({
         text: version.toUpperCase(),
         items: availableVersions.map((item) => ({
           text: item === latestVersion ? `${item.toUpperCase()} (current)` : item.toUpperCase(),
-          link:
-            item === latestVersion
-              ? 'https://tagvico.arturf.ch/docs/'
-              : `https://tagvico.arturf.ch/docs/${item}/`,
+          link: versionLink(item),
           target: '_self',
         })),
       },

@@ -26,6 +26,23 @@ test('Codex model catalog exposes only visible models in server order', () => {
   }]);
 });
 
+test('Codex subprocesses exclude oversized Next.js internals from their environment', () => {
+  const service = require('../dist/services/codexAuthService');
+  const oversizedKey = '__NEXT_PRIVATE_STANDALONE_CONFIG';
+  const previous = process.env[oversizedKey];
+  process.env[oversizedKey] = 'x'.repeat(512 * 1024);
+  try {
+    const environment = service.environment();
+    assert.equal(environment[oversizedKey], undefined);
+    assert.equal(environment.CODEX_HOME, process.env.CODEX_HOME || 'data/codex');
+    assert.ok(environment.PATH);
+    assert.ok(Buffer.byteLength(JSON.stringify(environment), 'utf8') < 128 * 1024);
+  } finally {
+    if (previous === undefined) delete process.env[oversizedKey];
+    else process.env[oversizedKey] = previous;
+  }
+});
+
 test('Copilot login parser accepts the official CLI device-code message', () => {
   const service = require('../dist/services/copilotAuthService');
   assert.deepEqual(
@@ -35,16 +52,19 @@ test('Copilot login parser accepts the official CLI device-code message', () => 
   assert.equal(service.parseChallenge('Waiting for authorization...'), null);
 });
 
-test('settings render account-scoped model selects and correct provider icons', () => {
+test('settings render account-scoped runtime models and model capabilities', () => {
   const root = path.join(__dirname, '..');
-  const template = fs.readFileSync(path.join(root, 'views', 'partials', 'config-form.ejs'), 'utf8');
+  const picker = fs.readFileSync(path.join(root, 'src', 'components', 'settings', 'model-picker.tsx'), 'utf8');
+  const workspace = fs.readFileSync(path.join(root, 'src', 'components', 'settings', 'settings-workspace.tsx'), 'utf8');
+  const registry = fs.readFileSync(path.join(root, 'services', 'providerRegistry.ts'), 'utf8');
   const routes = fs.readFileSync(path.join(root, 'routes', 'setup.ts'), 'utf8');
 
-  assert.match(template, /<select id="codexModel"/);
-  assert.match(template, /id="defaultModelName"><%= providerCatalog\.effectiveModel %>/);
-  assert.match(template, /<select id="copilotModel"/);
-  assert.match(template, /provider-icons\/opencode-go\.svg/);
-  assert.match(template, /provider-icons\/github-copilot\.svg/);
+  assert.doesNotMatch(fs.readFileSync(path.join(root, 'services', 'codexAuthService.ts'), 'utf8'), /gpt-5\.6-(?:luna|terra|sol)/);
+  assert.match(picker, /Availability and capabilities come from the selected runtime/);
+  assert.match(picker, /Curated suggestions/);
+  assert.match(workspace, /activeModel\?\.options/);
+  assert.match(workspace, /modelOptions/);
+  assert.match(registry, /supported by the signed-in ChatGPT account|returned by the signed-in ChatGPT account|Official Codex runtime/);
   assert.match(routes, /\/api\/codex\/models/);
   assert.match(routes, /\/api\/copilot\/login/);
   assert.match(routes, /\/api\/copilot\/models/);

@@ -41,11 +41,15 @@ class AnthropicService extends ProviderAdapter {
 
   buildRequest(content: string, existingTags: string[], correspondents: string[], documentTypes: string[]) {
     const context = `Existing tags: ${existingTags.join(', ')}\nExisting correspondents: ${correspondents.join(', ')}\nExisting document types: ${documentTypes.join(', ')}`;
+    const effort = String(process.env.AI_REASONING_EFFORT || 'auto');
+    const budgets: Record<string, number> = { minimal: 1024, low: 2048, medium: 4096, high: 8192, xhigh: 16000, max: 24000, ultra: 32000 };
+    const thinkingBudget = budgets[effort];
     return {
       model: config.anthropic.model,
-      max_tokens: Number(config.responseTokens || 1000),
+      max_tokens: Number(config.responseTokens || 1000) + (thinkingBudget || 0),
       system: confidenceGuard.appendConfidencePrompt(`${process.env.SYSTEM_PROMPT || ''}\n${context}\n${config.mustHavePrompt}\n${tagGroupService.promptContract()}`),
-      messages: [{ role: 'user', content }]
+      messages: [{ role: 'user', content }],
+      ...(thinkingBudget ? { thinking: { type: 'enabled', budget_tokens: thinkingBudget } } : {})
     };
   }
 
@@ -74,13 +78,17 @@ class AnthropicService extends ProviderAdapter {
     }
   }
 
-  async generateText(prompt: string) {
+  async generateText(prompt: string, options: { model?: string } = {}) {
     this.initialize();
     if (!this.client) throw new Error('Anthropic client not initialized');
+    const effort = String(process.env.AI_REASONING_EFFORT || 'auto');
+    const budgets: Record<string, number> = { minimal: 1024, low: 2048, medium: 4096, high: 8192, xhigh: 16000, max: 24000, ultra: 32000 };
+    const thinkingBudget = budgets[effort];
     const response = await this.client.messages.create({
-      model: config.anthropic.model,
-      max_tokens: Math.max(300, Number(config.responseTokens || 1000)),
-      messages: [{ role: 'user', content: prompt }]
+      model: options.model || config.anthropic.model,
+      max_tokens: Math.max(300, Number(config.responseTokens || 1000)) + (thinkingBudget || 0),
+      messages: [{ role: 'user', content: prompt }],
+      ...(thinkingBudget ? { thinking: { type: 'enabled', budget_tokens: thinkingBudget } } : {})
     });
     const text = response.content?.find((block: { type: string; text?: string }) => block.type === 'text')?.text;
     if (!text) throw new Error('Anthropic returned no text');
@@ -122,4 +130,7 @@ class AnthropicService extends ProviderAdapter {
   }
 }
 
-module.exports = new AnthropicService();
+const anthropicService = new AnthropicService();
+
+export default anthropicService;
+module.exports = anthropicService;

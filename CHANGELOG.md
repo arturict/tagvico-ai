@@ -1,6 +1,28 @@
 # Changelog
 
-## Unreleased
+## 3.1.0 - 2026-07-23
+
+- Unified every user-facing workflow in the green Next.js shell, including the
+  Review queue and Manual processing; legacy URLs now redirect into the task-
+  oriented navigation.
+- Reordered the product around Actions, Ask Tagvico, Automation, Review queue,
+  Activity, and Settings, with Recovery and Manual processing nested under
+  Automation.
+- Added a Companion model picker that contains only configured, live-discovered
+  provider models and defaults to the document-tagging model.
+- Made Companion Paperless research visible through redacted tool-activity
+  cards without exposing OCR text, secrets, raw tool arguments, or provider
+  errors.
+- Restored Paperless instance discovery and expanded typed Settings parity for
+  metadata reuse, owner assignment, custom fields, trigger tags, existing-
+  vocabulary limits, external enrichment, and MFA.
+- Added review-first tag unification with per-merge approval and two explicit,
+  idempotent move/delete phases.
+- Bundled the versioned documentation into the production image at `/docs/`
+  with `/documentation` as a local alias, and replaced the old Paperless AI
+  favicon across the app, docs, and landing page.
+- Added bounded fetch timeouts, independent partial loads, retryable page
+  errors, route-level loading/error states, and focused regression coverage.
 
 ## 3.0.0 - 2026-07-22
 

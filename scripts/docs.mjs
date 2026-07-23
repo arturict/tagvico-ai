@@ -8,7 +8,7 @@ const versionsRoot = path.join(root, 'website', 'versions');
 const docsSiteRoot = path.join(root, 'docs-site');
 const vitepress = path.join(root, 'node_modules', 'vitepress', 'bin', 'vitepress.js');
 const [command = 'build', requestedVersion] = process.argv.slice(2);
-const docsOrigin = 'https://tagvico.arturf.ch/docs';
+const docsOrigin = String(process.env.TAGVICO_DOCS_ORIGIN || '').replace(/\/+$/, '');
 const pageDescriptions = {
   'index.md': 'What Tagvico AI does, its operating modes, and where to start.',
   'installation.md': 'Install the current Tagvico release with Docker Compose or docker run and complete guided setup.',
@@ -56,7 +56,7 @@ function generateLlmFiles(version, outputRoot, publicPath) {
       return aIndex - bIndex;
     })
     .map((file) => [file, pageDescriptions[file] || `Read the ${file.replace(/\.md$/, '').replaceAll('-', ' ')} guide.`]);
-  const publicUrl = `${docsOrigin}${publicPath}`;
+  const publicUrl = `${docsOrigin}/docs${publicPath}`;
   const title = `Tagvico AI ${version.toUpperCase()} documentation`;
   const links = pages.map(([file, description]) => {
     const slug = file === 'index.md' ? 'index.html.md' : file;

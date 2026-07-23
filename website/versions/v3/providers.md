@@ -11,13 +11,13 @@ service.
 | OpenRouter | Curated cloud choice and easy model switching | API key | Recommended hosted starting point; requests are forwarded to the selected upstream provider. |
 | Ollama | Fully local inference | Local `/api/chat` endpoint | Keeps processing on infrastructure you control; model quality and speed depend on hardware. |
 | Ollama Cloud | Hosted Ollama models | API key | No local GPU required; document text leaves your network. |
-| OpenAI direct | Native OpenAI models, Flex, and Batch | API key | Flex and Batch are available only for supported models. |
+| OpenAI direct | Native OpenAI models, Flex, and Batch | API key | Loads the API account's live `/v1/models` catalog; Flex and Batch remain model-dependent. |
 | Anthropic direct | Claude and Message Batches | API key | Supports standard requests and discounted asynchronous batches. |
 | OpenCode Go | Subscription inference gateway | Go API key | OpenAI-compatible request path with provider-controlled limits. |
 | GitHub Copilot | Account-scoped model discovery | OAuth device login or supported token | Uses the official SDK; every agent tool is denied. |
-| OpenAI-compatible | LM Studio, LiteLLM, vLLM, custom gateways | Base URL and optional key | Use an endpoint that implements OpenAI Chat Completions. |
+| CLI Proxy / OpenAI-compatible | CLIProxyAPI, LM Studio, LiteLLM, vLLM, custom gateways | `/v1` base URL and optional key | Uses Vercel AI SDK v6. Tagvico can load the endpoint's `/models` catalog or accept a model ID manually. |
 | Azure OpenAI | Existing Azure deployments and governance | Endpoint, deployment, API key | Model availability follows your Azure deployment. |
-| ChatGPT subscription | Optional private, low-volume model adapter | Stable Codex device login | Uses the official Codex SDK in read-only mode. It is not the Tagvico harness and does not provide an API SLA. |
+| ChatGPT subscription | Optional private, low-volume model adapter | Stable Codex device login | Uses the bundled official Codex runtime and loads the signed-in account's live `model/list` catalog. It is not an API SLA. |
 
 ## Cost-conscious recommendations
 
@@ -35,7 +35,7 @@ model is good enough for Automatic mode.
 | Anthropic direct | **Claude Haiku 4.5**; use Message Batches when latency is unimportant | Haiku is the speed-and-cost tier and is normally sufficient for titles, tags, and other structured fields. Move to a larger Claude model only for difficult layouts or extraction failures. |
 | OpenCode Go | **DeepSeek V4 Flash** | This is Tagvico's budget-oriented default for the Go gateway. It suits classification-heavy workloads; confirm the current subscription allowance and gateway model catalog. |
 | GitHub Copilot | **GPT-5.4 Mini** when the signed-in plan exposes it | It offers a strong quality/cost balance without a separate per-token key inside Tagvico. Prefer a model with the lowest billing multiplier that still passes your test set, because plan entitlements differ. |
-| OpenAI-compatible | A **mini**, **flash**, or roughly **8B–20B instruct** model supported by your gateway | Compatible endpoints vary too much for one universal slug. Start small, require reliable JSON/structured output, and increase model size only when the error rate justifies the extra compute or gateway cost. |
+| CLI Proxy / OpenAI-compatible | A subscription-backed model returned by CLIProxyAPI, or a **mini**, **flash**, or roughly **8B–20B instruct** model supported by your gateway | Compatible endpoints vary too much for one universal slug. Load the live catalog, start small, require reliable JSON, and increase model size only when the error rate justifies it. |
 | Azure OpenAI | A deployment of **GPT-5.4 Mini** | Mini is the normal value choice when Azure governance is required. Azure deployment availability and regional pricing take precedence over the public model name. |
 | ChatGPT subscription | The configured Codex model supported by the signed-in account | Suitable for one trusted, low-volume installation when subscription-backed inference is preferable. Model availability remains account-controlled and is not an API service guarantee. |
 
@@ -46,6 +46,31 @@ by OpenCode and Pi: credentials, model resolution, agent sessions, tools, and
 approvals are independent layers. OpenCode Go, OpenRouter, OpenAI, and custom
 OpenAI-compatible endpoints run through Vercel AI SDK v6. Codex is a separate
 read-only adapter and cannot bypass Tagvico approvals.
+
+### CLIProxyAPI and subscription models
+
+Choose **CLI Proxy / Compatible**, enter the proxy's OpenAI-compatible `/v1`
+URL and its API key, then select **Load models**. This integration uses
+`@ai-sdk/openai-compatible`; the proxy may authenticate its own upstream CLI
+accounts, but Tagvico never receives those upstream OAuth tokens. A model being
+listed does not override the subscription's acceptable-use rules, quota, or
+availability.
+
+The built-in ChatGPT/Codex adapter is different: Tagvico starts the bundled
+Codex app-server and reads its account-scoped `model/list` protocol. The picker
+shows only the visible models returned by that runtime, in server order, along
+with the reasoning levels each model advertises. If discovery fails, Tagvico
+shows the failure; it never replaces the result with a hardcoded subscription
+list. Luna, Terra, and Sol therefore appear only when the signed-in account
+actually reports them.
+
+### Reasoning and thinking effort
+
+The effort control is model-scoped. It appears only when the selected runtime
+reports reasoning options for that model, and it contains only the values from
+that capability response. For example, one Codex model may expose `low` through
+`max` while another account or model exposes a different set. Tagvico does not
+invent a global list or claim unsupported efforts are available.
 
 ::: tip A practical selection rule
 Start with the recommended mini, flash, or Haiku tier and low reasoning.
@@ -76,7 +101,7 @@ compare field accuracy and throughput on the same test set.
 
 ## Switching providers
 
-Use **Settings → AI provider**, complete the selected provider form, and test
+Use **Settings → AI models**, complete the selected provider form, and test
 the connection. With environment configuration, change `AI_PROVIDER`, keep the
 provider-specific values in `data/.env`, and restart the container. Each
 adapter has its own configuration namespace, so switching does not require

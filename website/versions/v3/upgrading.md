@@ -32,11 +32,24 @@ curl http://localhost:8080/health
 ```
 
 After signing in, confirm the displayed version, test the Paperless connection,
-and check `/api/health`. Process one non-sensitive document in **Review first**
-before re-enabling Automatic mode.
+check `/api/health`, and open `/docs/` to confirm the bundled release
+documentation is available. Process one non-sensitive document in **Review
+first** before re-enabling Automatic mode.
 
 Tagvico checkpoints SQLite and creates a pre-migration database backup before
 schema upgrades. The external volume backup remains the safest rollback point.
+
+The v3 Settings migration does not replace `data/.env`. Existing variable
+names remain readable and compatible values are written back through the new
+typed Settings API. `/settings` now redirects into the single Next.js settings
+workspace; the removed EJS settings form is not a rollback or compatibility
+surface.
+
+Legacy bookmarks redirect into the task-oriented 3.1 information architecture:
+`/dashboard` to `/automation`, `/history` to `/activity`, `/operations` to
+`/automation/recovery`, and `/manual` to `/automation/manual`. `/review`
+remains the clear approval destination. Their former EJS views and page-specific
+browser scripts have been retired.
 
 ## Roll back
 

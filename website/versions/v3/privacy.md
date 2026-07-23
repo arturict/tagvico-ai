@@ -9,6 +9,9 @@ classification is sent to that provider under its terms.
 
 - Provider secrets are stored in `data/.env` and are not written to the
   processing database.
+- Settings APIs return only `configured: true/false` metadata for secrets.
+  Existing keys and tokens are never sent back to React or rendered into HTML;
+  leaving a secret field empty preserves its current value.
 - Per-member Paperless tokens are encrypted with AES-256-GCM using a key derived
   from the installation secret. Plaintext tokens are never returned by the API.
 - Back up the complete data volume, including the generated installation secret.
@@ -16,6 +19,9 @@ classification is sent to that provider under its terms.
 - Companion write proposals, decisions, and results are retained in the local
   SQLite audit trail. Provider prompts receive only the bounded context needed
   for the request.
+- Companion activity cards are redacted on the server before streaming. They
+  show the kind and status of Paperless research, but never raw tool arguments,
+  OCR text, model reasoning, provider errors, tokens, or complete tool results.
 - The Tagvico harness exposes no host shell or filesystem tools. Paperless read
   and write capabilities are narrow, and every AI write requires approval.
 - The container drops Linux capabilities and enables `no-new-privileges` in the
@@ -24,6 +30,11 @@ classification is sent to that provider under its terms.
   trusted networks.
 - Start with Review first and a controlled tag vocabulary.
 - Back up the data volume before schema upgrades.
+
+Tag-unification analysis sends tag names and coarse document-use counts to the
+configured model provider. It does not send document OCR for that workflow.
+The model can only propose pairs; deterministic, approval-gated server code
+moves references and deletes a source tag after verifying that it is unused.
 
 ## Telegram bot boundary
 

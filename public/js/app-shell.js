@@ -2,6 +2,7 @@ class AppShell {
   constructor() {
     this.themeToggle = document.getElementById('themeToggle');
     this.sidebarToggle = document.getElementById('sidebarToggle');
+    this.desktopSidebarToggle = document.getElementById('desktopSidebarToggle');
     this.sidebar = document.getElementById('appSidebar');
     this.sidebarOverlay = document.getElementById('sidebarOverlay');
     this.starCount = document.getElementById('starCount');
@@ -36,6 +37,20 @@ class AppShell {
 
     this.sidebarToggle?.addEventListener('click', toggle);
     this.sidebarOverlay?.addEventListener('click', toggle);
+
+    const setCollapsed = (collapsed) => {
+      document.body.classList.toggle('sidebar-collapsed', collapsed);
+      this.desktopSidebarToggle?.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      this.desktopSidebarToggle?.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+      const icon = this.desktopSidebarToggle?.querySelector('i');
+      if (icon) icon.className = collapsed ? 'fa-solid fa-angles-right' : 'fa-solid fa-angles-left';
+      localStorage.setItem('tagvicoSidebarCollapsed', collapsed ? 'true' : 'false');
+    };
+
+    setCollapsed(localStorage.getItem('tagvicoSidebarCollapsed') === 'true');
+    this.desktopSidebarToggle?.addEventListener('click', () => {
+      setCollapsed(!document.body.classList.contains('sidebar-collapsed'));
+    });
   }
 
   async loadStars() {

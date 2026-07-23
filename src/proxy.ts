@@ -27,5 +27,19 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/', '/login', '/actions/:path*', '/companion/:path*', '/settings/:path*']
+  matcher: [
+    '/',
+    '/login',
+    '/setup',
+    '/actions/:path*',
+    '/companion/:path*',
+    '/activity/:path*',
+    '/automation/:path*',
+    '/review/:path*',
+    '/manual/:path*',
+    '/settings/:path*',
+    '/dashboard/:path*',
+    '/history/:path*',
+    '/operations/:path*'
+  ]
 };

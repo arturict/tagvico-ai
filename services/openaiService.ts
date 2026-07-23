@@ -257,7 +257,7 @@ class OpenAIService extends ProviderAdapter {
         responsePayload.temperature = 0.3;
       }
 
-      if (/^gpt-5/i.test(model)) {
+      if ((process.env.AI_REASONING_EFFORT || 'auto') !== 'auto') {
         responsePayload.reasoning_effort = process.env.AI_REASONING_EFFORT || 'low';
       }
 
@@ -409,7 +409,7 @@ class OpenAIService extends ProviderAdapter {
         responsePayload.temperature = 0.3;
       }
 
-      if (/^gpt-5/i.test(model)) {
+      if ((process.env.AI_REASONING_EFFORT || 'auto') !== 'auto') {
         responsePayload.reasoning_effort = process.env.AI_REASONING_EFFORT || 'low';
       }
 

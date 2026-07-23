@@ -47,6 +47,37 @@ test('action center provisions solo households, multi-step cases, and approval a
     assert.equal(actions.getOrCreateSession(workspace.id, workspace.member_id, 'web'), firstSession);
     actions.addMessage(firstSession, 'user', { text: 'Remember this' });
     assert.equal(actions.getSession(workspace.id, firstSession).messages[0].content.text, 'Remember this');
+    assert.equal(actions.getCompanionModelSelection(workspace.id, firstSession), null);
+    actions.setCompanionModelSelection(workspace.id, firstSession, workspace.member_id, {
+      providerInstanceId: 'codex',
+      modelId: 'gpt-5.6-terra'
+    });
+    assert.deepEqual(actions.getCompanionModelSelection(workspace.id, firstSession), {
+      providerInstanceId: 'codex',
+      modelId: 'gpt-5.6-terra'
+    });
+    actions.setCompanionModelSelection(workspace.id, firstSession, workspace.member_id, {
+      providerInstanceId: 'compatible',
+      modelId: 'claude-sonnet-4.6'
+    });
+    assert.deepEqual(actions.getCompanionModelSelection(workspace.id, firstSession), {
+      providerInstanceId: 'compatible',
+      modelId: 'claude-sonnet-4.6'
+    });
+    actions.addMessage(firstSession, 'assistant', {
+      text: 'I found one document.',
+      activities: [{
+        label: 'Searching Paperless',
+        detail: 'Found 1 matching document.',
+        status: 'succeeded'
+      }]
+    });
+    const storedAssistant = actions.getSession(workspace.id, firstSession).messages.find((message) => message.role === 'assistant');
+    assert.equal(storedAssistant.content.activities[0].detail, 'Found 1 matching document.');
+    assert.throws(() => actions.setCompanionModelSelection(workspace.id, firstSession, otherWorkspace.member_id, {
+      providerInstanceId: 'codex',
+      modelId: 'gpt-5.6-sol'
+    }), /not found/);
     assert.equal(actions.getSession(otherWorkspace.id, firstSession), null);
     assert.throws(() => actions.createSession(workspace.id, otherWorkspace.member_id, 'web'), /not part/);
     const encrypted = secretBox.encryptSecret('paperless-token');

@@ -24,6 +24,7 @@ type NextFunction = () => void;
 interface HttpResponse {
   setHeader(name: string, value: string): void;
   send(body: unknown): HttpResponse;
+  sendFile(path: string): HttpResponse;
   redirect(path: string): void;
   status(code: number): HttpResponse;
   json(body: unknown): HttpResponse;
@@ -121,6 +122,21 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // and normalized variants before static middleware so old files cannot be
 // exposed through encoded-path mount bypasses.
 app.use(blockLegacyPublicImages);
+const bundledDocsDirectory = path.join(process.cwd(), 'docs-site');
+app.get('/docs', (_req: HttpRequest, res: HttpResponse) => {
+  res.sendFile(path.join(bundledDocsDirectory, 'index.html'));
+});
+app.use('/docs', express.static(bundledDocsDirectory, {
+  extensions: ['html'],
+  index: 'index.html',
+  setHeaders(res: HttpResponse, filePath: string) {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    } else if (filePath.includes(`${path.sep}assets${path.sep}`)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  }
+}));
 app.use(express.static(path.join(process.cwd(), 'public')));
 app.use(cookieParser());
 app.use('/api', createRateLimiter({ windowMs: 15 * 60 * 1000, max: Number(process.env.GLOBAL_RATE_LIMIT_MAX || 1000) }));

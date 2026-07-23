@@ -49,7 +49,7 @@ published. Use the version menu in the navigation to move between major
 versions without losing the instructions that match your installation.
 
 ::: tip Production defaults
-Pin the immutable `3.0.0` image, back up the data volume before upgrades, and start new installations in
+Pin the immutable `3.1.0` image after the release is published, back up the data volume before upgrades, and start new installations in
 **Review first** mode. Companion writes are always approval-gated regardless
 of the metadata processing mode.
 :::
