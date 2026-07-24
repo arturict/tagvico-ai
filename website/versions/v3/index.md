@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: "Tagvico v3"
+  name: "Tagvico v3.1.2"
   text: "The action center for your household documents"
   tagline: Turn Paperless-ngx documents into owned tasks, deadlines, decisions, and carefully approved AI assistance.
   image:
@@ -10,7 +10,7 @@ hero:
     alt: Tagvico AI
   actions:
     - theme: brand
-      text: Install v3
+      text: Install v3.1.2
       link: /installation
     - theme: alt
       text: Explore features
@@ -44,12 +44,12 @@ It keeps Paperless as the document system of record while adding household
 ownership, checklists, deadlines, approval history, and a provider-neutral AI
 session runtime. Existing reviewable AI metadata filing remains available.
 
-The v3 documentation is frozen under this URL when a future major version is
-published. Use the version menu in the navigation to move between major
-versions without losing the instructions that match your installation.
+This page tracks the latest stable v3 patch release. The version menu keeps
+older major-version guides available, while [Release notes](./release-notes)
+shows exactly what changed in v3.1.2.
 
 ::: tip Production defaults
-Pin the immutable `3.1.2` image after the release is published, back up the data volume before upgrades, and start new installations in
+Pin the immutable `3.1.2` image, back up the data volume before upgrades, and start new installations in
 **Review first** mode. Companion writes are always approval-gated regardless
 of the metadata processing mode.
 :::
