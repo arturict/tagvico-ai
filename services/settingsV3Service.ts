@@ -321,7 +321,7 @@ async function getSettings() {
       customFields: customFields(effective.CUSTOM_FIELDS)
     },
     diagnostics: {
-      version: effective.TAGVICO_AI_VERSION || '3.1.1',
+      version: effective.TAGVICO_AI_VERSION || '3.1.2',
       configured: yes(effective.TAGVICO_AI_INITIAL_SETUP),
       providerRegistrySize: knownDefinitions.length
     }

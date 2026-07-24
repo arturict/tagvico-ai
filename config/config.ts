@@ -11,7 +11,7 @@ const { resolveDataDirectory } = require('../services/dataDirectory');
 const { applyPersistedAiSelection } = require('../services/managedAiSelection');
 const currentDir = decodeURIComponent(process.cwd());
 const dataDir = resolveDataDirectory();
-let packageVersion = '3.1.1';
+let packageVersion = '3.1.2';
 try {
   packageVersion = JSON.parse(fs.readFileSync(path.join(/*turbopackIgnore: true*/ process.cwd(), 'package.json'), 'utf8')).version || packageVersion;
 } catch {
