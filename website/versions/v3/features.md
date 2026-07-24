@@ -16,7 +16,7 @@ Tagvico mirrors its case ID, state, next due date, assignee, and
 `tagvico/action` tag to Paperless. It preserves unrelated tags and custom
 fields. The complete checklist and audit trail remain in Tagvico.
 
-![Tagvico v3.1.2 Action Center in the current green application shell](/screenshots/action-center-v3.png)
+![Tagvico v3.1.2 Action Center in the current green application shell](/screenshots/action-center-green-v3.png)
 
 This v3.1.2 capture comes from the representative release installation and
 contains no document or account data.
@@ -38,7 +38,7 @@ matching document IDs, titles, dates, and result count without exposing OCR.
 Approvals appear only when a proposal is pending, and conversations can be
 created, searched, renamed, switched, and deleted from the chat workspace.
 
-![Tagvico v3.1.2 Ask Tagvico workspace with persistent conversations, approval boundary, composer and configured model](/screenshots/companion-v3.png)
+![Tagvico v3.1.2 Ask Tagvico workspace with persistent conversations, approval boundary, composer and configured model](/screenshots/companion-green-v3.png)
 
 The capture uses a generic greeting only. No document contents, private
 identifiers, credentials, or provider payloads are visible.
@@ -181,7 +181,7 @@ approve/reject cards. Approval uses the same executor and audit trail as web.
 Action Center linking is accepted only when the Telegram entry points at the
 same Paperless instance as the main Tagvico configuration.
 
-![Tagvico v3.1.2 AI model settings with the supported provider registry and write-only credential boundary](/screenshots/ai-models-v3.png)
+![Tagvico v3.1.2 AI model settings with the supported provider registry and write-only credential boundary](/screenshots/ai-models-green-v3.png)
 
 This capture shows provider names and product copy only. No API key, account
 identifier, private endpoint, or signed-in profile is exposed.

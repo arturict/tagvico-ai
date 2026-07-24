@@ -17,7 +17,7 @@ record. Reviewable AI metadata automation remains included.
 [![Latest release](https://img.shields.io/github/v/release/arturict/tagvico-ai)](https://github.com/arturict/tagvico-ai/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/arturict/tagvico-ai/ci.yml?branch=main&label=CI)](https://github.com/arturict/tagvico-ai/actions/workflows/ci.yml)
 
-![Tagvico v3.1.2 Action Center](docs/screenshots/action-center-v3.png)
+![Tagvico v3.1.2 Action Center](docs/screenshots/action-center-green-v3.png)
 
 ## Why Tagvico
 
@@ -48,12 +48,12 @@ which account-scoped model is active, and which vocabulary the model may use.
 <table>
   <tr>
     <td width="50%">
-      <img src="docs/screenshots/ai-models-v3.png" alt="Tagvico v3.1.2 AI model settings showing the supported provider registry">
+      <img src="docs/screenshots/ai-models-green-v3.png" alt="Tagvico v3.1.2 AI model settings showing the supported provider registry">
       <br><strong>Use the provider boundary that fits your archive.</strong><br>
       Live model discovery, write-only credentials, local inference, API providers, ChatGPT subscription, and GitHub Copilot.
     </td>
     <td width="50%">
-      <img src="docs/screenshots/companion-v3.png" alt="Tagvico v3.1.2 persistent Ask Tagvico workspace">
+      <img src="docs/screenshots/companion-green-v3.png" alt="Tagvico v3.1.2 persistent Ask Tagvico workspace">
       <br><strong>Research with a visible approval boundary.</strong><br>
       Persistent chats, a configured model picker, privacy-safe tool activity, and explicit approval before writes.
     </td>
