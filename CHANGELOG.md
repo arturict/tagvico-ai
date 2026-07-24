@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.1.2 - 2026-07-24
+
+### Ask Tagvico
+
+- Exclude provider model IDs containing colon- or slash-delimited embedding
+  markers, including Ollama models such as `qwen3-embedding:4b` and
+  `nomic-embed-text:latest`, from every chat model picker.
+
 ## 3.1.1 - 2026-07-24
 
 ### Providers and Companion

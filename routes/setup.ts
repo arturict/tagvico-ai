@@ -3081,7 +3081,7 @@ router.get('/api/dashboard', async (_req: Req, res: Res) => {
     res.json({
       summary,
       processing,
-      version: configFile.TAGVICO_AI_VERSION || '3.1.1'
+      version: configFile.TAGVICO_AI_VERSION || '3.1.2'
     });
   } catch (error) {
     console.error('[ERROR] loading dashboard data:', error);
@@ -4609,7 +4609,7 @@ router.get('/api/operations/status', async (_req: Req, res: Res) => {
   res.json({
     ocrEnabled: ocrService.isEnabled(),
     ocrProvider: config.ocr?.provider || 'mistral',
-    version: configFile.TAGVICO_AI_VERSION || '3.1.1'
+    version: configFile.TAGVICO_AI_VERSION || '3.1.2'
   });
 });
 

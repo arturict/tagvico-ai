@@ -9,6 +9,22 @@ export type ChangelogEntry = {
 
 export const changelogEntries: ChangelogEntry[] = [
   {
+    version: '3.1.2',
+    date: '24 July 2026',
+    title: 'Chat-only model catalogs',
+    summary: 'A focused hotfix that keeps embedding-only provider models out of Ask Tagvico.',
+    status: 'released',
+    groups: [
+      {
+        title: 'Ask Tagvico',
+        items: [
+          'Embedding-only models with colon-, slash-, dash-, dot- or underscore-delimited IDs are no longer offered in chat model pickers.',
+          'Ollama IDs such as qwen3-embedding:4b and nomic-embed-text:latest are covered by regression tests.'
+        ]
+      }
+    ]
+  },
+  {
     version: '3.1.1',
     date: '24 July 2026',
     title: 'Reliable automation and a useful Paperless copilot',
@@ -87,4 +103,4 @@ export const changelogEntries: ChangelogEntry[] = [
   }
 ];
 
-export const currentChangelogAnnouncement = changelogEntries.find((entry) => entry.version === '3.1.1')!;
+export const currentChangelogAnnouncement = changelogEntries.find((entry) => entry.version === '3.1.2')!;

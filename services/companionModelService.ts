@@ -20,7 +20,7 @@ const SUPPORTED_ADAPTERS = new Set([
   'native-ollama'
 ]);
 const CACHE_TTL_MS = 60_000;
-const NON_CHAT_MODEL_ID = /(?:^|[-_.])(?:embedding|embeddings|whisper|tts|moderation|realtime|audio|transcribe|transcription|image|vision-only|sora)(?:$|[-_.])/i;
+const NON_CHAT_MODEL_ID = /(?:^|[-_.:/])(?:embed(?:ding)?s?\d*|whisper|tts|moderation|realtime|audio|transcribe|transcription|image|vision-only|sora)(?:$|[-_.:/])/i;
 const LEGACY_COMPLETION_MODEL_ID = /^(?:text-|davinci(?:-|$)|babbage(?:-|$)|curie(?:-|$)|ada(?:-|$))/i;
 
 let cachedCatalog: {

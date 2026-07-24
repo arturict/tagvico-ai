@@ -1,6 +1,6 @@
 {
   "name": "tagvico-ai",
-  "version": "3.1.1",
+  "version": "3.1.2",
   "description": "Tagvico — the private action center and household companion for Paperless-ngx.",
   "engines": {
     "node": "^20.19.0 || ^22.13.0 || ^24.0.0"

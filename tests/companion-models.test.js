@@ -54,7 +54,19 @@ test('Companion rejects stale or invented models and falls back to a runtime def
 });
 
 test('Companion excludes live catalog entries that cannot answer chat requests', () => {
-  for (const id of ['text-embedding-3-small', 'whisper-1', 'tts-1', 'omni-moderation-latest', 'gpt-image-2', 'gpt-realtime-2', 'sora-2']) {
+  for (const id of [
+    'text-embedding-3-small',
+    'qwen3-embedding:4b',
+    'nomic-embed-text:latest',
+    'mxbai-embed-large',
+    'snowflake-arctic-embed2:latest',
+    'whisper-1',
+    'tts-1',
+    'omni-moderation-latest',
+    'gpt-image-2',
+    'gpt-realtime-2',
+    'sora-2'
+  ]) {
     assert.equal(modelService.supportsCompanionModel({ id }), false, id);
   }
   for (const id of ['gpt-5.6-terra', 'claude-sonnet-4.6', 'gemma3:latest', 'gpt-4o-search-preview']) {
