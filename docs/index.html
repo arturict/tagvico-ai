@@ -1107,8 +1107,8 @@
 
     <div class="release-note" role="status">
       <div class="container">
-        <span class="release-pill">3.1 preview</span>
-        <span>A focused reliability and usability release. The current stable container remains v3.0.0 until 3.1 ships.</span>
+        <span class="release-pill">v3.1.2 stable</span>
+        <span>The current stable release includes the unified green UI, live provider catalogs, durable chat, recovery queues, and safer chat-model filtering.</span>
       </div>
     </div>
 
@@ -1135,10 +1135,10 @@
                 <span>Tagvico</span>
               </div>
               <div class="window-nav" aria-hidden="true">
-                <span><i class="nav-dot"></i>Review</span>
-                <span class="active"><i class="nav-dot"></i>Ask Paperless</span>
                 <span><i class="nav-dot"></i>Actions</span>
-                <span><i class="nav-dot"></i>Automations</span>
+                <span class="active"><i class="nav-dot"></i>Ask Tagvico</span>
+                <span><i class="nav-dot"></i>Automation</span>
+                <span><i class="nav-dot"></i>Activity</span>
                 <span><i class="nav-dot"></i>Settings</span>
               </div>
               <div class="window-user">Private household workspace</div>
@@ -1146,11 +1146,11 @@
             <div class="window-content">
               <div class="window-heading">
                 <div>
-                  <div class="window-kicker">Ask Paperless</div>
-                  <h2>Companion</h2>
+                  <div class="window-kicker">Your Paperless copilot</div>
+                  <h2>Ask Tagvico</h2>
                   <p>Research your archive with visible sources and tool activity.</p>
                 </div>
-                <div class="model-chip"><i></i> Codex · GPT-5.6 Luna⌄</div>
+                <div class="model-chip"><i></i> ChatGPT subscription · live model⌄</div>
               </div>
               <div class="conversation">
                 <div class="bubble user">Which insurance renewals need my attention this month?</div>
@@ -1193,7 +1193,7 @@
             <p class="eyebrow">Clear from the first login</p>
             <h2>Four jobs. One coherent workspace.</h2>
             <p>
-              The 3.1 navigation is organized around what you want to accomplish—not internal system names.
+              The v3.1.2 navigation is organized around what you want to accomplish—not internal system names.
             </p>
           </div>
           <div class="workflow-grid">
@@ -1253,22 +1253,22 @@
             <div class="picker">
               <div class="picker-row selected">
                 <span class="provider-mark">CX</span>
-                <span><strong>GPT-5.6 Luna</strong><small>Codex subscription · medium reasoning</small></span>
+                <span><strong>ChatGPT subscription</strong><small>Live account catalog · selected model</small></span>
                 <span class="configured">Selected</span>
               </div>
               <div class="picker-row">
                 <span class="provider-mark">CX</span>
-                <span><strong>GPT-5.6 Terra</strong><small>Codex subscription · reasoning available</small></span>
+                <span><strong>GitHub Copilot</strong><small>Live plan catalog · account authentication</small></span>
                 <span class="configured">Live</span>
               </div>
               <div class="picker-row">
                 <span class="provider-mark">OR</span>
-                <span><strong>Claude Sonnet 4.6</strong><small>OpenRouter · configured in Settings</small></span>
+                <span><strong>OpenRouter</strong><small>Configured cloud models</small></span>
                 <span class="configured">Live</span>
               </div>
               <div class="picker-row">
                 <span class="provider-mark">OL</span>
-                <span><strong>Qwen 3.5 32B</strong><small>Ollama · local</small></span>
+                <span><strong>Ollama</strong><small>Local model catalog</small></span>
                 <span class="configured">Live</span>
               </div>
             </div>
@@ -1399,7 +1399,7 @@
             <h2>Start beside Paperless.</h2>
             <p>
               Pin the stable image, keep the data volume, and complete the guided setup in your browser.
-              The 3.1 preview does not replace the current release image yet.
+              The current stable image is v3.1.2. Pin the immutable tag so upgrades stay deliberate and rollback remains simple.
             </p>
             <div class="actions" style="justify-content:flex-start">
               <a class="button primary" href="/docs/installation">Installation guide</a>
@@ -1414,7 +1414,7 @@
               </div>
               <pre><code>services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:3.0.0
+    image: ghcr.io/arturict/tagvico-ai:3.1.2
     restart: unless-stopped
     ports:
       - "8080:3000"
@@ -1447,7 +1447,7 @@ volumes:
     <script>
       const composeSnippet = `services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:3.0.0
+    image: ghcr.io/arturict/tagvico-ai:3.1.2
     restart: unless-stopped
     ports:
       - "8080:3000"

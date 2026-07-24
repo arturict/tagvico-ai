@@ -43,8 +43,6 @@ curl http://localhost:8080/health
 
 Open `http://localhost:8080/setup` after the health check succeeds.
 
-![Sanitized Tagvico sign-in screen](/screenshots/sign-in.png)
-
 This sanitized capture shows the local admin sign-in presented after setup. It
 contains no credentials, private hostnames, document data, or account details.
 

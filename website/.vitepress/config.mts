@@ -9,6 +9,9 @@ const availableVersions = readdirSync(versionsRoot, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort((a, b) => Number(b.slice(1)) - Number(a.slice(1)));
 const latestVersion = availableVersions[0];
+const currentRelease = 'v3.1.2';
+const displayVersion = (targetVersion: string) =>
+  targetVersion === latestVersion ? currentRelease.toUpperCase() : targetVersion.toUpperCase();
 const base = process.env.TAGVICO_DOCS_BASE || '/docs/';
 const outDir = process.env.TAGVICO_DOCS_OUT_DIR || '../docs-site';
 const versionLink = (targetVersion: string) => {
@@ -41,9 +44,9 @@ export default defineConfig({
       { text: 'Features', link: '/features' },
       { text: 'Providers', link: '/providers' },
       {
-        text: version.toUpperCase(),
+        text: displayVersion(version),
         items: availableVersions.map((item) => ({
-          text: item === latestVersion ? `${item.toUpperCase()} (current)` : item.toUpperCase(),
+          text: item === latestVersion ? `${displayVersion(item)} (current)` : displayVersion(item),
           link: versionLink(item),
           target: '_self',
         })),
@@ -52,9 +55,10 @@ export default defineConfig({
     ],
     sidebar: [
       {
-        text: `${version.toUpperCase()} Guide`,
+        text: `${displayVersion(version)} Guide`,
         items: [
           { text: 'Overview', link: '/' },
+          { text: 'Release notes', link: '/release-notes' },
           { text: 'Installation', link: '/installation' },
           { text: 'Upgrading', link: '/upgrading' },
           { text: 'Removing Tagvico', link: '/removing' },
@@ -85,7 +89,7 @@ export default defineConfig({
       text: 'Edit this page on GitHub',
     },
     footer: {
-      message: `Tagvico AI ${version.toUpperCase()} documentation`,
+      message: `Tagvico AI ${displayVersion(version)} documentation`,
       copyright: 'Released under the MIT License.',
     },
   },
