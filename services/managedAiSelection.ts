@@ -13,9 +13,7 @@ export const AI_SELECTION_ENVIRONMENT_KEYS = [
   'COMPATIBLE_MODEL',
   'CUSTOM_MODEL',
   'OPENAI_MODEL',
-  'ANTHROPIC_MODEL',
-  'CODEX_MODEL',
-  'AZURE_DEPLOYMENT_NAME'
+  'CODEX_MODEL'
 ] as const;
 
 type Environment = Record<string, string | undefined>;

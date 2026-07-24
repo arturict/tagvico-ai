@@ -20,8 +20,9 @@ classification is sent to that provider under its terms.
   SQLite audit trail. Provider prompts receive only the bounded context needed
   for the request.
 - Companion activity cards are redacted on the server before streaming. They
-  show the kind and status of Paperless research, but never raw tool arguments,
-  OCR text, model reasoning, provider errors, tokens, or complete tool results.
+  show the kind and status of Paperless research plus the user-authored search
+  term and bounded document metadata. They never show OCR text, mutation
+  payloads, model reasoning, provider errors, tokens, or complete tool results.
 - The Tagvico harness exposes no host shell or filesystem tools. Paperless read
   and write capabilities are narrow, and every AI write requires approval.
 - The container drops Linux capabilities and enables `no-new-privileges` in the

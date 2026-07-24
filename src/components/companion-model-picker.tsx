@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Bot, Check, ChevronDown, RefreshCw, Search, X } from 'lucide-react';
+import { Check, ChevronDown, RefreshCw, Search, X } from 'lucide-react';
 import { Dialog } from 'radix-ui';
+import { ProviderIcon } from '@/components/provider-icon';
 import type {
   CompanionModelCatalog,
   CompanionModelSelection
@@ -95,7 +96,7 @@ export function CompanionModelPicker({ sessionId }: { sessionId: string }) {
           disabled={loading || saving || !catalog.providers.length}
           aria-label="Choose Companion model"
         >
-          <Bot aria-hidden="true" />
+          <ProviderIcon icon={selectedProvider?.icon || null} name={selectedProvider?.name || 'AI provider'} />
           <span>
             <small>{selectedProvider?.name || (loading ? 'Loading models' : 'No verified provider')}</small>
             <strong>{selectedModel?.name || selection?.modelId || 'Configure a model'}</strong>
@@ -140,7 +141,7 @@ export function CompanionModelPicker({ sessionId }: { sessionId: string }) {
           </div>
           <div className="companion-model-list">
             {visibleProviders.map((provider) => <section key={provider.instanceId}>
-              <h3>{provider.name}</h3>
+              <h3><ProviderIcon icon={provider.icon} name={provider.name} />{provider.name}</h3>
               {provider.models.map((model) => {
                 const selected = selection?.providerInstanceId === provider.instanceId
                   && selection.modelId === model.id;

@@ -25,6 +25,7 @@ fs.writeFileSync(path.join(dataDir, '.env'), [
   "EXTERNAL_API_BODY='{\"password\":\"body-secret-value\"}'",
   'AI_PROCESSING_MODE=flex',
   'SCAN_INTERVAL=*/30 * * * *',
+  "CUSTOM_PROMPT='Prefer broad archive categories.'",
   "OWNER_PROFILES=`alex: O'Reilly\nfinance: vendor bills`",
   'CONTROLLED_TAGGING_ENABLED=yes',
   'TAG_MAX_PER_DOCUMENT=4'
@@ -54,6 +55,7 @@ test('GET settings follows injected-environment precedence and preserves flex mo
   const settings = await service.getSettings();
   assert.equal(settings.automation.scanInterval, '5 * * * *');
   assert.equal(settings.automation.processingMode, 'flex');
+  assert.equal(settings.automation.customPrompt, 'Prefer broad archive categories.');
 });
 
 test('PATCH uses a revision and empty secret fields retain existing values', async () => {
@@ -109,6 +111,28 @@ test('invalid tag limits are rejected by the typed patch schema', async () => {
     revision: current.revision,
     patch: { tags: { maximumPerDocument: 100 } }
   }), /Number must be less than or equal to 10/);
+});
+
+test('empty trigger tags mean scan all and prompts persist as explicit settings', async () => {
+  const current = await service.getSettings();
+  const after = await service.patchSettings({
+    revision: current.revision,
+    patch: {
+      automation: {
+        processPredefinedDocuments: true,
+        customPrompt: 'Use stable categories.',
+        advancedSystemPrompt: 'Classify household documents conservatively.'
+      },
+      tags: { triggerTags: [] }
+    }
+  });
+  const persisted = await setupService.loadConfig();
+  assert.equal(persisted.PROCESS_PREDEFINED_DOCUMENTS, 'no');
+  assert.equal(persisted.TAGS, '');
+  assert.equal(persisted.CUSTOM_PROMPT, 'Use stable categories.');
+  assert.equal(persisted.SYSTEM_PROMPT, 'Classify household documents conservatively.');
+  assert.equal(after.automation.processPredefinedDocuments, false);
+  assert.equal(after.automation.customPrompt, 'Use stable categories.');
 });
 
 test('PATCH rejects unsupported enrichment methods, unsafe URLs and malformed JSON', async () => {

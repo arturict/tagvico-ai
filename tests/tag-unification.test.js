@@ -15,11 +15,13 @@ function fakePaperless() {
   const tags = new Map([
     [1, { id: 1, name: 'Invoices' }],
     [2, { id: 2, name: 'Invoice' }],
-    [3, { id: 3, name: 'Finance' }]
+    [3, { id: 3, name: 'Finance' }],
+    [4, { id: 4, name: 'Bills' }]
   ]);
   const documents = new Map([
     [101, { id: 101, title: 'A', tags: [1, 3] }],
-    [102, { id: 102, title: 'B', tags: [1] }]
+    [102, { id: 102, title: 'B', tags: [1] }],
+    [103, { id: 103, title: 'C', tags: [4] }]
   ]);
   const calls = { patches: 0, deletes: 0 };
   const countFor = (tagId) => [...documents.values()].filter((document) => document.tags.includes(tagId)).length;
@@ -77,6 +79,11 @@ function fakeInference() {
             reason: 'Plural and singular forms represent the same invoice concept.',
             confidence: 0.97
           }, {
+            sourceTagId: 4,
+            targetTagId: 2,
+            reason: 'Bills is used as a duplicate invoice label.',
+            confidence: 0.91
+          }, {
             sourceTagId: 2,
             targetTagId: 3,
             reason: 'This overlapping chain must be discarded for safe independent review.',
@@ -107,8 +114,12 @@ test('analysis is read-only and every unification requires approval plus two exp
     providerInstanceId: 'codex',
     modelId: 'gpt-5.6-terra'
   });
-  assert.equal(analysis.tagsAnalyzed, 3);
-  assert.equal(analysis.suggestions.length, 1);
+  assert.equal(analysis.tagsAnalyzed, 4);
+  assert.equal(analysis.suggestions.length, 2);
+  assert.deepEqual(
+    analysis.suggestions.map((suggestion) => suggestion.targetTagId),
+    [2, 2]
+  );
   assert.equal(paperless.calls.patches, 0);
   assert.equal(paperless.calls.deletes, 0);
 
@@ -155,6 +166,10 @@ test('analysis is read-only and every unification requires approval plus two exp
   assert.ok(audit.some((entry) => entry.phase === 'decision' && entry.action === 'approved'));
   assert.equal(audit.filter((entry) => entry.action === 'replace_document_tag' && entry.outcome === 'success').length, 2);
   assert.ok(audit.some((entry) => entry.phase === 'delete' && entry.action === 'delete_source_tag'));
+  assert.equal(
+    service.decide(analysis.suggestions[1].id, { decision: 'rejected' }, 'owner').status,
+    'rejected'
+  );
 });
 
 test('rejected suggestions can never mutate Paperless', async () => {

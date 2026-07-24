@@ -152,7 +152,7 @@ class CodexAuthService {
       child.stdin.write(`${JSON.stringify({
         id: 1,
         method: 'initialize',
-        params: { clientInfo: { name: 'tagvico', title: 'Tagvico', version: '3.1.0' } }
+        params: { clientInfo: { name: 'tagvico', title: 'Tagvico', version: '3.1.1' } }
       })}\n`);
     });
   }

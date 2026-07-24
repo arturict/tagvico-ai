@@ -30,6 +30,19 @@ type LoginView = {
   error?: string;
 };
 
+function command() {
+  const explicit = process.env.COPILOT_BINARY;
+  if (explicit) return { file: explicit, prefix: [] as string[] };
+  const executable = path.join(process.cwd(), 'node_modules', '.bin', process.platform === 'win32' ? 'copilot.cmd' : 'copilot');
+  if (process.platform === 'win32') {
+    return {
+      file: process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe',
+      prefix: ['/d', '/s', '/c', executable] as string[]
+    };
+  }
+  return { file: executable, prefix: [] as string[] };
+}
+
 function publicState(state: LoginState): LoginView {
   return {
     loginId: state.loginId,
@@ -95,8 +108,8 @@ class CopilotAuthService {
 
     const home = config.copilot.home;
     fs.mkdirSync(home, { recursive: true, mode: 0o700 });
-    const executable = process.env.COPILOT_BINARY || path.join(process.cwd(), 'node_modules', '.bin', 'copilot');
-    const child = spawn(executable, ['--no-color', 'login'], {
+    const executable = command();
+    const child = spawn(executable.file, [...executable.prefix, '--no-color', 'login'], {
       env: {
         PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
         HOME: process.env.HOME || '/app',
@@ -109,6 +122,7 @@ class CopilotAuthService {
         ...(process.env.HTTP_PROXY ? { HTTP_PROXY: process.env.HTTP_PROXY } : {}),
         ...(process.env.NO_PROXY ? { NO_PROXY: process.env.NO_PROXY } : {})
       },
+      windowsHide: true,
       stdio: ['pipe', 'pipe', 'pipe']
     });
     const loginId = crypto.randomUUID();

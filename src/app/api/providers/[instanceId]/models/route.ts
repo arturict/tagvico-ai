@@ -2,7 +2,7 @@ import { apiError, ApiError, requireApiUser } from '@/lib/server/auth';
 import { workspaceFor } from '@/lib/server/workspace';
 import providerDiscoveryService from '@root/services/providerDiscoveryService';
 import providerRegistry from '@root/services/providerRegistry';
-import setupService from '@root/services/setupService';
+import { getEffectiveProviderEnvironment } from '@root/services/settingsV3Service';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,11 +15,13 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ins
     const { instanceId } = await params;
     const definition = providerRegistry.getProviderDefinition(instanceId);
     if (!definition) throw new ApiError(404, `Provider instance "${instanceId}" is unavailable.`);
-    const persisted = (await setupService.loadConfig()) || {};
-    const models = await providerDiscoveryService.discoverProviderModels(instanceId, { ...process.env, ...persisted });
+    const models = await providerDiscoveryService.discoverProviderModels(
+      instanceId,
+      await getEffectiveProviderEnvironment()
+    );
     return Response.json({
       instanceId,
-      source: definition.discovery === 'manual' ? 'manual' : 'runtime',
+      source: 'runtime',
       manualModelInput: definition.manualModelInput,
       models
     }, { headers: { 'Cache-Control': 'no-store' } });

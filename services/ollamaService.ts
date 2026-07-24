@@ -10,6 +10,7 @@ const os = require('os');
 const OpenAI = require('openai');
 const RestrictionPromptService = require('./restrictionPromptService');
 const tagGroupService = require('./tagGroupService');
+const promptPolicyService = require('./promptPolicyService');
 const { normalizeProvider } = require('./providerCatalogService');
 const { loadThumbnail } = require('./thumbnailHelper');
 type AnalysisOptions = { externalApiData?: unknown };
@@ -347,11 +348,10 @@ class OllamaService {
             Pre-existing tags: ${existingTagsList}\n\n
             Pre-existing correspondents: ${existingCorrespondentList}\n\n
             Pre-existing document types: ${existingDocumentTypesList}\n\n
-            ` + process.env.SYSTEM_PROMPT + '\n\n' + config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr);
+            ` + config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr);
             promptTags = '';
         } else {
-            config.mustHavePrompt = config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr);
-            systemPrompt = process.env.SYSTEM_PROMPT + '\n\n' + config.mustHavePrompt;
+            systemPrompt = config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr);
             promptTags = '';
         }
 
@@ -459,8 +459,8 @@ class OllamaService {
      * @returns {string} System prompt
      */
     _generateSystemPrompt(customFieldsStr: string) {
-        let systemPromptTemplate = `
-            You are a document analyzer. Your task is to analyze documents and extract relevant information. You do not ask back questions. 
+        let systemPromptTemplate = `${promptPolicyService.configuredPrompt()}
+
             YOU MUSTNOT: Ask for additional information or clarification, or ask questions about the document, or ask for additional context.
             YOU MUSTNOT: Return a response without the desired JSON format.
             YOU MUST: Return the result EXCLUSIVELY as a JSON object. The Tags, Title and Document_Type MUST be in the language that is used in the document.:
@@ -476,6 +476,7 @@ class OllamaService {
                 %CUSTOMFIELDS%
             }
             ALWAYS USE THE INFORMATION TO FILL OUT THE JSON OBJECT. DO NOT ASK BACK QUESTIONS.
+            ${tagGroupService.promptContract()}
         `;
 
         return systemPromptTemplate.replace('%CUSTOMFIELDS%', customFieldsStr);

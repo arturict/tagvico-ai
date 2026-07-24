@@ -454,7 +454,15 @@ test('manual scan route completes without scheduler-only state', () => {
         headers: { 'x-api-key': 'review-route-key' }
       });
       assert.equal(response.status, 200);
-      assert.equal(await response.text(), 'Task completed');
+      assert.deepEqual(await response.json(), {
+        visible: 0,
+        eligible: 0,
+        processed: 0,
+        stagedForReview: 0,
+        skipped: 0,
+        failed: 0,
+        stopped: false
+      });
       await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     })().catch((error) => {
       console.error(error);

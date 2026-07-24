@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type {
   ModelDescriptor,
   ProviderFieldDescriptor,
+  ProviderIconDescriptor,
   ProviderInstanceId,
   ProviderOptionDescriptor
 } from '../contracts/provider';
@@ -12,15 +13,14 @@ type RuntimeAdapter =
   | 'ai-sdk-compatible'
   | 'codex-runtime'
   | 'copilot-sdk'
-  | 'native-anthropic'
-  | 'native-ollama'
-  | 'native-azure';
-type DiscoveryKind = 'openai' | 'anthropic' | 'ollama' | 'codex' | 'copilot' | 'manual';
+  | 'native-ollama';
+type DiscoveryKind = 'openai' | 'ollama' | 'codex' | 'copilot';
 
 interface ProviderDefinition {
   id: ProviderInstanceId;
   name: string;
   description: string;
+  icon: ProviderIconDescriptor | null;
   runtimeAdapter: RuntimeAdapter;
   serviceModule: string;
   recommended?: boolean;
@@ -65,6 +65,10 @@ const definitions = [
     id: 'openrouter',
     name: 'OpenRouter',
     description: 'Cloud model routing with a live account catalog and optional curated suggestions.',
+    icon: {
+      path: '/provider-icons/openrouter.svg',
+      source: 'https://svgl.app/library/openrouter_dark.svg'
+    },
     runtimeAdapter: 'ai-sdk-openai',
     serviceModule: './openaiService',
     recommended: true,
@@ -89,6 +93,10 @@ const definitions = [
     id: 'ollama',
     name: 'Ollama',
     description: 'Local or remote Ollama inference with model discovery from the configured instance.',
+    icon: {
+      path: '/provider-icons/ollama.svg',
+      source: 'https://svgl.app/library/ollama_dark.svg'
+    },
     runtimeAdapter: 'native-ollama',
     serviceModule: './ollamaService',
     discovery: 'ollama',
@@ -109,6 +117,10 @@ const definitions = [
     id: 'ollama-cloud',
     name: 'Ollama Cloud',
     description: 'Ollama-hosted inference with the models exposed by the configured cloud account.',
+    icon: {
+      path: '/provider-icons/ollama.svg',
+      source: 'https://svgl.app/library/ollama_dark.svg'
+    },
     runtimeAdapter: 'native-ollama',
     serviceModule: './ollamaService',
     discovery: 'ollama',
@@ -129,6 +141,10 @@ const definitions = [
     id: 'opencode',
     name: 'OpenCode Go',
     description: 'OpenAI-compatible inference through Vercel AI SDK.',
+    icon: {
+      path: '/provider-icons/opencode.svg',
+      source: 'https://svgl.app/library/opencode-dark.svg'
+    },
     runtimeAdapter: 'ai-sdk-compatible',
     serviceModule: './customService',
     discovery: 'openai',
@@ -149,6 +165,10 @@ const definitions = [
     id: 'copilot',
     name: 'GitHub Copilot',
     description: 'Official Copilot SDK, account authentication and live plan model discovery.',
+    icon: {
+      path: '/provider-icons/github-copilot.svg',
+      source: 'https://svgl.app/library/copilot_dark.svg'
+    },
     runtimeAdapter: 'copilot-sdk',
     serviceModule: './copilotService',
     discovery: 'copilot',
@@ -163,6 +183,7 @@ const definitions = [
     id: 'compatible',
     name: 'CLI Proxy / Compatible',
     description: 'CLIProxyAPI, LiteLLM, vLLM and other OpenAI-compatible endpoints through Vercel AI SDK.',
+    icon: null,
     runtimeAdapter: 'ai-sdk-compatible',
     serviceModule: './customService',
     discovery: 'openai',
@@ -190,6 +211,10 @@ const definitions = [
     id: 'openai',
     name: 'OpenAI',
     description: 'Native OpenAI inference through Vercel AI SDK with a live account model catalog.',
+    icon: {
+      path: '/provider-icons/openai.svg',
+      source: 'https://svgl.app/library/openai_dark.svg'
+    },
     runtimeAdapter: 'ai-sdk-openai',
     serviceModule: './openaiService',
     discovery: 'openai',
@@ -203,25 +228,13 @@ const definitions = [
     manualModelInput: true
   },
   {
-    id: 'anthropic',
-    name: 'Anthropic',
-    description: 'Native Anthropic Messages API with live model discovery where the account supports it.',
-    runtimeAdapter: 'native-anthropic',
-    serviceModule: './anthropicService',
-    discovery: 'anthropic',
-    modelEnvironmentKey: 'ANTHROPIC_MODEL',
-    legacyModelEnvironmentKeys: ['AI_MODEL'],
-    configurationSchema: z.object({ apiKey: optionalString }).strict(),
-    fields: [secret('apiKey', 'API key', 'ANTHROPIC_API_KEY', true)],
-    suggestedModels: [
-      { id: 'claude-haiku-4-5', name: 'Claude Haiku 4.5', description: 'Curated fallback preference, not proof of account availability.' }
-    ],
-    manualModelInput: true
-  },
-  {
     id: 'codex',
     name: 'ChatGPT subscription',
     description: 'Official Codex runtime with models and reasoning efforts returned by the signed-in ChatGPT account.',
+    icon: {
+      path: '/provider-icons/openai.svg',
+      source: 'https://svgl.app/library/openai_dark.svg'
+    },
     runtimeAdapter: 'codex-runtime',
     serviceModule: './codexService',
     discovery: 'codex',
@@ -231,34 +244,6 @@ const definitions = [
     fields: [],
     suggestedModels: [],
     manualModelInput: false
-  },
-  {
-    id: 'azure',
-    name: 'Azure OpenAI',
-    description: 'Azure deployment-based inference. Enter the deployment name manually.',
-    runtimeAdapter: 'native-azure',
-    serviceModule: './azureService',
-    discovery: 'manual',
-    modelEnvironmentKey: 'AZURE_DEPLOYMENT_NAME',
-    configurationSchema: z.object({
-      endpoint: requiredUrl.optional(),
-      apiKey: optionalString,
-      apiVersion: z.string().trim().max(100).optional()
-    }).strict(),
-    fields: [
-      url('endpoint', 'Endpoint', 'AZURE_ENDPOINT'),
-      secret('apiKey', 'API key', 'AZURE_API_KEY', true),
-      {
-        key: 'apiVersion',
-        label: 'API version',
-        environmentKey: 'AZURE_API_VERSION',
-        type: 'text',
-        required: true,
-        secret: false
-      }
-    ],
-    suggestedModels: [],
-    manualModelInput: true
   }
 ] as const satisfies readonly ProviderDefinition[];
 
@@ -393,23 +378,6 @@ async function discoverOllamaModels(definition: ProviderDefinition, env: Environ
   }));
 }
 
-async function discoverAnthropicModels(definition: ProviderDefinition, env: Environment): Promise<ModelDescriptor[]> {
-  const apiKey = secretFor(definition, env);
-  if (!apiKey) throw new Error('Configure an Anthropic API key before loading models.');
-  const payload = await fetchJson('https://api.anthropic.com/v1/models', {
-    'x-api-key': apiKey,
-    'anthropic-version': '2023-06-01'
-  });
-  const entries = payload && typeof payload === 'object' && Array.isArray((payload as { data?: unknown[] }).data)
-    ? (payload as { data: unknown[] }).data
-    : [];
-  return normalizeModels(entries.map((entry) => {
-    const candidate = entry && typeof entry === 'object' ? entry as Record<string, unknown> : {};
-    const id = String(candidate.id || '');
-    return { id, name: String(candidate.display_name || id), isDefault: false, options: [] };
-  }));
-}
-
 function readProviderConfiguration(definition: ProviderDefinition, env: Environment) {
   return Object.fromEntries(definition.fields.map((field) => {
     const value = environmentValue(env, field.environmentKey, field.legacyEnvironmentKeys);
@@ -433,7 +401,6 @@ function providerValuesToEnvironment(instanceId: string, values: Record<string, 
 
 const providerRegistry = {
   baseUrlFor,
-  discoverAnthropicModels,
   discoverOllamaModels,
   discoverOpenAIModels,
   environmentValue,

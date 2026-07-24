@@ -144,26 +144,38 @@ class OcrService {
     const item = await documentModel.getOcrQueueItem(documentId);
     if (!item) throw new Error('Document is not in the OCR queue');
     try {
-      await documentModel.updateOcrQueueStatus(documentId, 'processing', { incrementAttempts: true });
-      progress('download', 'Downloading the original document');
-      const { data, mimeType } = await this.downloadDocument(documentId);
-      progress('ocr', `Sending document to ${config.ocr.provider}`);
-      const text = config.ocr.provider === 'mistral'
-        ? await this.extractWithMistral(data, mimeType)
-        : await this.extractWithLocalProvider(data, mimeType, progress);
-      await documentModel.updateOcrQueueStatus(documentId, 'ocr_complete', { text });
-      progress('writeback', 'Writing OCR text back to Paperless-ngx');
-      const wroteBack = await this.writeBack(documentId, text);
-      await documentModel.updateOcrQueueStatus(documentId, 'done', { text });
-      await documentModel.resetFailedDocument(documentId);
-      progress('done', wroteBack ? 'OCR completed and content was updated' : 'OCR completed; text is stored locally');
-      return { text, wroteBack };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      await documentModel.updateOcrQueueStatus(documentId, 'failed', { error: message });
-      await documentModel.addFailedDocument(documentId, item.title, 'ocr_failed', 'ocr', message);
-      progress('error', message);
-      throw error;
+      const maxAttempts = Math.max(1, Number(config.maxRetries) || 3);
+      let lastError: unknown = null;
+      for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+        try {
+          await documentModel.updateOcrQueueStatus(documentId, 'processing', { incrementAttempts: true });
+          progress('download', `Downloading the original document (attempt ${attempt}/${maxAttempts})`);
+          const { data, mimeType } = await this.downloadDocument(documentId);
+          progress('ocr', `Sending document to ${config.ocr.provider}`);
+          const text = config.ocr.provider === 'mistral'
+            ? await this.extractWithMistral(data, mimeType)
+            : await this.extractWithLocalProvider(data, mimeType, progress);
+          await documentModel.updateOcrQueueStatus(documentId, 'ocr_complete', { text });
+          progress('writeback', 'Writing OCR text back to Paperless-ngx');
+          const wroteBack = await this.writeBack(documentId, text);
+          await documentModel.updateOcrQueueStatus(documentId, 'done', { text });
+          await documentModel.resetFailedDocument(documentId);
+          progress('done', wroteBack ? 'OCR completed and content was updated' : 'OCR completed; text is stored locally');
+          return { text, wroteBack };
+        } catch (error) {
+          lastError = error;
+          const message = error instanceof Error ? error.message : String(error);
+          if (attempt < maxAttempts) {
+            await documentModel.updateOcrQueueStatus(documentId, 'pending', { error: message });
+            progress('retry', `OCR attempt ${attempt} failed. Retrying automatically.`);
+            continue;
+          }
+          await documentModel.updateOcrQueueStatus(documentId, 'failed', { error: message });
+          await documentModel.addFailedDocument(documentId, item.title, 'ocr_failed', 'ocr', message);
+          progress('error', message);
+        }
+      }
+      throw lastError instanceof Error ? lastError : new Error(String(lastError || 'OCR processing failed'));
     } finally {
       this.active.delete(documentId);
     }

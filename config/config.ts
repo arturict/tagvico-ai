@@ -11,7 +11,7 @@ const { resolveDataDirectory } = require('../services/dataDirectory');
 const { applyPersistedAiSelection } = require('../services/managedAiSelection');
 const currentDir = decodeURIComponent(process.cwd());
 const dataDir = resolveDataDirectory();
-let packageVersion = '3.1.0';
+let packageVersion = '3.1.1';
 try {
   packageVersion = JSON.parse(fs.readFileSync(path.join(/*turbopackIgnore: true*/ process.cwd(), 'package.json'), 'utf8')).version || packageVersion;
 } catch {
@@ -80,7 +80,7 @@ module.exports = {
   ignoreTags: process.env.IGNORE_TAGS || '',
   tagGroupsJson: process.env.TAG_GROUPS_JSON || '',
   controlledTaggingEnabled: parseEnvBoolean(process.env.CONTROLLED_TAGGING_ENABLED, 'no'),
-  tagMaxPerDocument: Math.min(10, Math.max(1, parseInt(process.env.TAG_MAX_PER_DOCUMENT || '3', 10) || 3)),
+  tagMaxPerDocument: Math.min(10, Math.max(1, parseInt(process.env.TAG_MAX_PER_DOCUMENT || '4', 10) || 4)),
   tagCacheTtlSeconds: Math.max(30, parseInt(process.env.TAG_CACHE_TTL_SECONDS || '300', 10)),
   reconciliationEnabled: parseEnvBoolean(process.env.RECONCILIATION_ENABLED, 'yes'),
   reconciliationInterval: process.env.RECONCILIATION_INTERVAL || '0 * * * *',

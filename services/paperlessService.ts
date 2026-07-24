@@ -2,6 +2,8 @@
 import axios from 'axios';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const config = require('../config/config');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const triggerTagPolicy = require('./triggerTagPolicy');
 import { parse, isValid, parseISO, format } from 'date-fns';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { compareMetadata } = require('./metadataDiff');
@@ -738,7 +740,8 @@ class PaperlessService {
     let documents: Record<string, unknown>[] = [];
     let page = 1;
     let hasMore = true;
-    const shouldFilterByTags = process.env.PROCESS_PREDEFINED_DOCUMENTS === 'yes';
+    const triggerPolicy = triggerTagPolicy.getPolicy(process.env);
+    const shouldFilterByTags = triggerPolicy.filterActive;
     const tagIds: number[] = [];
     const ignoredTagIds: number[] = [];
 
@@ -751,17 +754,15 @@ class PaperlessService {
     }
 
     // Vorverarbeitung der Tags, wenn Filter aktiv ist
+    if (triggerPolicy.fellBackToAllDocuments) {
+      console.warn('[WARN] Trigger-tag filtering was enabled without tags. Scanning all eligible documents instead.');
+    }
+
     if (shouldFilterByTags) {
-      if (!process.env.TAGS) {
-        console.warn('[DEBUG] PROCESS_PREDEFINED_DOCUMENTS is set to yes but no TAGS are defined');
-        return [];
-      }
-      
       // Hole die Tag-IDs für die definierten Tags
-      const tagNames = process.env.TAGS.split(',').map(tag => tag.trim());
       await this.ensureTagCache();
       
-      for (const tagName of tagNames) {
+      for (const tagName of triggerPolicy.tags) {
         const tag = await this.findExistingTag(tagName);
         if (tag) {
           tagIds.push(tag.id);
@@ -883,21 +884,20 @@ class PaperlessService {
     let documents: Record<string, unknown>[] = [];
     let page = 1;
     let hasMore = true;
-    const shouldFilterByTags = process.env.PROCESS_PREDEFINED_DOCUMENTS === 'yes';
+    const triggerPolicy = triggerTagPolicy.getPolicy(process.env);
+    const shouldFilterByTags = triggerPolicy.filterActive;
     const tagIds: number[] = [];
 
     // Vorverarbeitung der Tags, wenn Filter aktiv ist
+    if (triggerPolicy.fellBackToAllDocuments) {
+      console.warn('[WARN] Trigger-tag filtering was enabled without tags. Scanning all eligible documents instead.');
+    }
+
     if (shouldFilterByTags) {
-      if (!process.env.TAGS) {
-        console.warn('[DEBUG] PROCESS_PREDEFINED_DOCUMENTS is set to yes but no TAGS are defined');
-        return [];
-      }
-      
       // Hole die Tag-IDs für die definierten Tags
-      const tagNames = process.env.TAGS.split(',').map(tag => tag.trim());
       await this.ensureTagCache();
       
-      for (const tagName of tagNames) {
+      for (const tagName of triggerPolicy.tags) {
         const tag = await this.findExistingTag(tagName);
         if (tag) {
           tagIds.push(tag.id);

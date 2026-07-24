@@ -16,7 +16,7 @@ function initializeInChild(dataDirectory) {
     const script = `
       const model = require(${JSON.stringify(modulePath)});
       (async () => {
-        if (model.getSchemaVersion() !== 6) process.exit(2);
+        if (model.getSchemaVersion() !== 7) process.exit(2);
         await model.closeDatabase();
       })().catch((error) => { console.error(error); process.exit(3); });
     `;
@@ -47,7 +47,7 @@ test('parallel application starts serialize schema migration and create one vali
     assert.equal(backupNames.length, 1);
 
     const live = new Database(path.join(dataDirectory, 'documents.db'), { readonly: true });
-    assert.equal(live.pragma('user_version', { simple: true }), 6);
+    assert.equal(live.pragma('user_version', { simple: true }), 7);
     assert.equal(live.pragma('integrity_check', { simple: true }), 'ok');
     live.close();
 

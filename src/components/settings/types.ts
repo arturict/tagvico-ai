@@ -28,6 +28,7 @@ export type ProviderDescriptor = {
   driverId: string;
   name: string;
   description: string;
+  icon: { path: string; source?: string } | null;
   runtimeAdapter: string;
   recommended: boolean;
   available: boolean;
@@ -102,6 +103,8 @@ export type SettingsResponse = {
     assignCustomFields: boolean;
     assignOwner: boolean;
     ownerProfiles: string;
+    customPrompt: string;
+    advancedSystemPrompt: string;
   };
   tags: {
     controlled: boolean;

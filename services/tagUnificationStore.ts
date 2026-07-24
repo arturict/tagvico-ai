@@ -135,7 +135,7 @@ function completeRun(runId: string, suggestions: SuggestionInput[]): TagUnificat
     WHERE status IN ('suggested', 'approved', 'moving', 'moved', 'deleting', 'failed')
       AND (
         source_tag_id IN (?, ?)
-        OR target_tag_id IN (?, ?)
+        OR target_tag_id = ?
       )
     LIMIT 1
   `);
@@ -150,8 +150,7 @@ function completeRun(runId: string, suggestions: SuggestionInput[]): TagUnificat
       if (activeConflict.get(
         suggestion.source.id,
         suggestion.target.id,
-        suggestion.source.id,
-        suggestion.target.id
+        suggestion.source.id
       )) continue;
       insert.run(
         crypto.randomUUID(),

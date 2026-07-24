@@ -12,8 +12,6 @@ setup wizard or by setting `AI_PROVIDER` in `data/.env`.
 | OpenCode Go  | `opencode`          | [opencode.md](opencode.md)           |
 | GitHub Copilot | `copilot`          | [copilot.md](copilot.md)             |
 | LM Studio    | `custom`            | [lmstudio.md](lmstudio.md)           |
-| Azure OpenAI | `azure`             | [azure.md](azure.md)                 |
-| Anthropic    | `anthropic`         | Settings/onboarding                  |
 | ChatGPT subscription | `codex`       | [codex.md](codex.md)                 |
 | Compatible   | `compatible`        | [openai-compatible.md](openai-compatible.md) |
 

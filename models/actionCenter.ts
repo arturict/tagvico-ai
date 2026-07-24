@@ -240,9 +240,57 @@ export function addMessage(sessionId: string, role: 'user' | 'assistant' | 'syst
   const encoded = json(content);
   if (Buffer.byteLength(encoded, 'utf8') > 128 * 1024) throw new Error('Companion message is too large');
   const messageId = id();
-  db.prepare('INSERT INTO companion_messages (id, session_id, role, content_json) VALUES (?, ?, ?, ?)').run(messageId, sessionId, role, encoded);
-  db.prepare('UPDATE companion_sessions SET updated_at=CURRENT_TIMESTAMP WHERE id=?').run(sessionId);
+  db.transaction(() => {
+    db.prepare('INSERT INTO companion_messages (id, session_id, role, content_json) VALUES (?, ?, ?, ?)').run(messageId, sessionId, role, encoded);
+    if (role === 'user' && content && typeof content === 'object' && typeof (content as { text?: unknown }).text === 'string') {
+      const title = String((content as { text: string }).text).replace(/\s+/g, ' ').trim().slice(0, 72);
+      if (title) {
+        db.prepare("UPDATE companion_sessions SET title=? WHERE id=? AND title='New conversation'").run(title, sessionId);
+      }
+    }
+    db.prepare('UPDATE companion_sessions SET updated_at=CURRENT_TIMESTAMP WHERE id=?').run(sessionId);
+  })();
   return messageId;
+}
+
+export function listSessions(
+  householdId: string,
+  memberId: string | null,
+  channel: 'web' | 'telegram' = 'web'
+) {
+  return db.prepare(`
+    SELECT cs.id, cs.title, cs.channel, cs.created_at, cs.updated_at,
+      COUNT(cm.id) AS message_count,
+      COALESCE((
+        SELECT json_extract(content_json, '$.text')
+        FROM companion_messages preview
+        WHERE preview.session_id=cs.id AND preview.role IN ('user','assistant')
+        ORDER BY preview.created_at DESC, preview.rowid DESC LIMIT 1
+      ), '') AS preview
+    FROM companion_sessions cs
+    LEFT JOIN companion_messages cm ON cm.session_id=cs.id AND cm.role IN ('user','assistant')
+    WHERE cs.household_id=? AND cs.member_id IS ? AND cs.channel=?
+    GROUP BY cs.id
+    ORDER BY cs.updated_at DESC, cs.created_at DESC, cs.rowid DESC
+    LIMIT 100
+  `).all(householdId, memberId, channel);
+}
+
+export function renameSession(householdId: string, memberId: string | null, sessionId: string, title: string) {
+  const normalized = assertText(title.replace(/\s+/g, ' ').trim(), 'Conversation title', 72);
+  const result = db.prepare(
+    'UPDATE companion_sessions SET title=?, updated_at=CURRENT_TIMESTAMP WHERE id=? AND household_id=? AND member_id IS ?'
+  ).run(normalized, sessionId, householdId, memberId);
+  if (!result.changes) throw new Error('Companion session not found');
+  return getSession(householdId, sessionId);
+}
+
+export function deleteSession(householdId: string, memberId: string | null, sessionId: string) {
+  const result = db.prepare(
+    'DELETE FROM companion_sessions WHERE id=? AND household_id=? AND member_id IS ?'
+  ).run(sessionId, householdId, memberId);
+  if (!result.changes) throw new Error('Companion session not found');
+  return true;
 }
 
 export function getCompanionModelSelection(householdId: string, sessionId: string) {

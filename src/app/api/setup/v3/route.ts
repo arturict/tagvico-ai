@@ -47,13 +47,6 @@ export async function POST(request: Request) {
       disableAutomaticProcessing: false,
       aiReasoningEffort: 'auto'
     };
-    if (input.provider.instanceId === 'azure') {
-      payload.azureEndpoint = providerEnvironment.AZURE_ENDPOINT;
-      payload.azureApiKey = providerEnvironment.AZURE_API_KEY;
-      payload.azureApiVersion = providerEnvironment.AZURE_API_VERSION;
-      payload.azureDeploymentName = input.provider.modelId;
-    }
-
     const backend = process.env.TAGVICO_BACKEND_URL || 'http://127.0.0.1:3001';
     const response = await fetch(`${backend}/setup`, {
       method: 'POST',

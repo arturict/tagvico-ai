@@ -12,11 +12,6 @@ export function runtimeConfiguration(selection?: CompanionModelSelection | null)
   const selectedModel = selection?.modelId;
   if (provider === 'codex') return { provider: 'codex' as const, model: selectedModel || runtimeEnvironmentValue('CODEX_MODEL', config.codex.model) };
   if (provider === 'copilot') return { provider: 'copilot' as const, model: selectedModel || runtimeEnvironmentValue('COPILOT_MODEL', config.copilot.model) };
-  if (provider === 'anthropic') return {
-    provider: 'anthropic' as const,
-    apiKey: runtimeEnvironmentValue('ANTHROPIC_API_KEY', config.anthropic.apiKey),
-    model: selectedModel || runtimeEnvironmentValue('ANTHROPIC_MODEL', config.anthropic.model)
-  };
   if (provider === 'ollama' || provider === 'ollama-cloud') return {
     provider: provider as 'ollama' | 'ollama-cloud',
     baseURL: provider === 'ollama-cloud'

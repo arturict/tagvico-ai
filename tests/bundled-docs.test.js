@@ -43,12 +43,14 @@ test('documentation navigation stays on the current Tagvico instance', () => {
 test('application and versioned docs use the same Tagvico favicon and metadata', () => {
   const favicon = fs.readFileSync(path.join(root, 'public', 'favicon.ico'));
   const appFavicon = fs.readFileSync(path.join(root, 'src', 'app', 'favicon.ico'));
+  const staticDocsFavicon = fs.readFileSync(path.join(root, 'docs', 'favicon.ico'));
   const v2Favicon = fs.readFileSync(path.join(root, 'website', 'versions', 'v2', 'public', 'favicon.ico'));
   const v3Favicon = fs.readFileSync(path.join(root, 'website', 'versions', 'v3', 'public', 'favicon.ico'));
   const appLayout = fs.readFileSync(path.join(root, 'src', 'app', 'layout.tsx'), 'utf8');
   const legacyLayout = fs.readFileSync(path.join(root, 'views', 'layout.ejs'), 'utf8');
 
   assert.deepEqual(appFavicon, favicon);
+  assert.deepEqual(staticDocsFavicon, favicon);
   assert.deepEqual(v2Favicon, favicon);
   assert.deepEqual(v3Favicon, favicon);
   assert.match(appLayout, /applicationName: 'Tagvico AI'/);

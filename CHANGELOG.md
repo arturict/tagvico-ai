@@ -1,5 +1,71 @@
 # Changelog
 
+## 3.1.1 - 2026-07-24
+
+### Providers and Companion
+
+- Consolidate Settings around eight supported runtimes: OpenRouter, Ollama,
+  Ollama Cloud, OpenCode Go, GitHub Copilot, CLI Proxy / Compatible, OpenAI,
+  and ChatGPT subscription. Direct Anthropic and Azure OpenAI configuration is
+  no longer exposed.
+- Add locally cached SVGL provider artwork, independent write-only credential
+  forms, live connection probes, scrollable runtime model catalogs, and
+  first-class ChatGPT and GitHub Copilot device authentication.
+- Add persistent multi-conversation Companion navigation with new-chat,
+  search, rename, guarded delete, suggested questions, provider/model choice,
+  response retry/stop/copy actions, and visible privacy-safe Paperless tool
+  activity.
+- Replace the unconditional subscription-adapter document search with
+  intent-aware research. Greetings no longer touch Paperless, total counts use
+  the real collection count, recent-document requests use ordered metadata,
+  and content questions read only the bounded matching documents.
+- Keep non-chat catalog entries such as embedding, image, speech, moderation,
+  realtime, and legacy completion models out of the Companion picker.
+- Move approvals into an on-demand panel and collapse conversations on mobile
+  so the chat and composer keep a usable reading width.
+- Hide the Review queue navigation item when Automatic write mode is active;
+  queued review records remain preserved and reappear when Review first is
+  enabled.
+
+### Automation and recovery
+
+- Make trigger tags optional and fail open to all eligible new documents when
+  an older installation has trigger filtering enabled without configured tags.
+  Settings now explain the active eligibility rule, and manual scans report
+  eligible, processed, staged, skipped and failed counts instead of a generic
+  success message.
+- Re-register the background scan schedule when the persisted automation
+  configuration changes, without requiring a container restart.
+- Keep four tags as the default hard ceiling while asking every provider for
+  the smallest useful tag set and preventing tags from duplicating language,
+  correspondent or document type.
+- Preserve history and original restore snapshots during single, bulk and
+  all-document rescans. Explicit rescans now bypass trigger-tag filters through
+  a durable rescan queue instead of deleting audit data.
+- Record processing success only after Paperless-ngx accepts the metadata
+  update; local history, token metrics and processed state can no longer claim
+  success after a failed remote write.
+- Retry both AI classification and OCR rescue up to three times before moving
+  a document into the terminal-failure queue.
+- Add a permanent ignored-document queue with optional reasons, explicit
+  un-ignore and automatic rescan, plus Failed and Ignored badge counts in the
+  sidebar.
+
+### History and product quality
+
+- Add a normal archive-specific custom prompt plus an Advanced system-prompt
+  editor. Immutable prompt-injection, minimal-tagging and structured-output
+  contracts remain enforced for every provider.
+- Present duplicate cleanup as clear many-to-one groups such as
+  `Invoices, Bills -> Invoice`, while preserving approval and the explicit
+  move/delete phases for every source tag.
+- Add a complete Activity detail view with metadata, color-coded before/after
+  changes, custom fields, token usage, original state and event history.
+- Add bulk rescan, exact restore, history validation and deliberate cleanup of
+  records whose Paperless documents no longer exist.
+- Add an in-product changelog at `/changelog` using the same green Tagvico
+  design as the rest of the app.
+
 ## 3.1.0 - 2026-07-23
 
 - Unified every user-facing workflow in the green Next.js shell, including the

@@ -12,6 +12,7 @@ const tagGroupService = require('./tagGroupService');
 const { normalizeProvider } = require('./providerCatalogService');
 const { loadThumbnail, buildUserMessage } = require('./thumbnailHelper');
 const confidenceGuard = require('./confidenceGuard');
+const promptPolicyService = require('./promptPolicyService');
 const customFieldsService = require('./customFieldsService');
 const openaiBatchService = require('./openaiBatchService');
 const { ProviderAdapter } = require('./providerAdapter');
@@ -119,6 +120,7 @@ class OpenAIService extends ProviderAdapter {
       let systemPrompt = '';
       let systemPromptExtra = '';
       let promptTags = '';
+      const configuredPrompt = promptPolicyService.configuredPrompt(customPrompt);
       const provider = normalizeProvider(config.aiProvider);
       const model = provider === 'openrouter'
         ? config.openrouter.model
@@ -148,6 +150,7 @@ class OpenAIService extends ProviderAdapter {
         .split('\n')
         .map(line => '    ' + line)  // Add proper indentation
         .join('\n');
+      const requiredPrompt = config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr);
 
       // Discover live custom fields from Paperless and append a JSON
       // description block. Falls back to the static env-var list when
@@ -169,11 +172,10 @@ class OpenAIService extends ProviderAdapter {
         Pre-existing tags: ${existingTagsList}\n\n
         Pre-existing correspondents: ${existingCorrespondentList}\n\n
         Pre-existing document types: ${existingDocumentTypesList.join(', ')}\n\n
-        ` + process.env.SYSTEM_PROMPT + '\n\n' + config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr);
+        ` + configuredPrompt + '\n\n' + requiredPrompt;
         promptTags = '';
       } else {
-        config.mustHavePrompt = config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr);
-        systemPrompt = process.env.SYSTEM_PROMPT + '\n\n' + config.mustHavePrompt;
+        systemPrompt = configuredPrompt + '\n\n' + requiredPrompt;
         promptTags = '';
       }
 
@@ -194,13 +196,9 @@ class OpenAIService extends ProviderAdapter {
         promptTags = process.env.PROMPT_TAGS || '';
         systemPrompt = `
         Take these tags and try to match one or more to the document content.\n\n
-        ` + config.specialPromptPreDefinedTags;
+        ` + configuredPrompt + '\n\n' + config.specialPromptPreDefinedTags;
       }
 
-      if (customPrompt) {
-        console.log('[DEBUG] Replace system prompt with custom prompt via WebHook');
-        systemPrompt = customPrompt + '\n\n' + config.mustHavePrompt;
-      }
       if (tagGroupService.promptContract() && !systemPrompt.includes('CONTROLLED TAGGING:')) systemPrompt += `\n\n${tagGroupService.promptContract()}`;
 
       // Append the confidence-scoring contract so the model returns per-field
