@@ -47,6 +47,15 @@ type DashboardPayload = {
 };
 
 type CollectionItem = { name?: string; document_count?: number; count?: number };
+type ScanResult = {
+  visible: number;
+  eligible: number;
+  processed: number;
+  stagedForReview: number;
+  skipped: number;
+  failed: number;
+  stopped: boolean;
+};
 
 const integer = new Intl.NumberFormat('en-US');
 const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
@@ -61,18 +70,18 @@ export function AutomationDashboard() {
   const [collection, setCollection] = useState<{ title: string; items: CollectionItem[] } | null>(null);
   const processingPollInFlight = useRef(false);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (options: { preserveStatus?: boolean } = {}) => {
     setLoading(true);
     setLoadError('');
     try {
       const next = await fetchJson<DashboardPayload>('/api/dashboard');
       setPayload(next);
       setProcessing(next.processing || {});
-      setStatus('');
+      if (!options.preserveStatus) setStatus('');
     } catch (error) {
       setProcessing({});
       setLoadError(error instanceof Error ? error.message : 'Dashboard data is unavailable.');
-      setStatus('');
+      if (!options.preserveStatus) setStatus('');
     } finally {
       setLoading(false);
     }
@@ -102,9 +111,12 @@ export function AutomationDashboard() {
     setBusy(true);
     setStatus('Starting a document scan…');
     try {
-      await fetchJson('/api/scan/now', { method: 'POST' });
-      setStatus('Scan started. Live state will update automatically.');
-      await load();
+      const result = await fetchJson<ScanResult>('/api/scan/now', { method: 'POST' });
+      const completed = result.processed + result.stagedForReview;
+      setStatus(result.eligible === 0
+        ? `Scan complete: 0 eligible documents. No new document is waiting; trigger tags are optional. ${result.skipped} skipped.`
+        : `Scan complete: ${completed} of ${result.eligible} eligible documents handled (${result.processed} applied, ${result.stagedForReview} staged); ${result.skipped} skipped; ${result.failed} failed${result.stopped ? ' · stopped early' : ''}.`);
+      await load({ preserveStatus: true });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : 'The scan could not be started.');
     } finally {

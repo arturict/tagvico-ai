@@ -47,6 +47,13 @@ test('action center provisions solo households, multi-step cases, and approval a
     assert.equal(actions.getOrCreateSession(workspace.id, workspace.member_id, 'web'), firstSession);
     actions.addMessage(firstSession, 'user', { text: 'Remember this' });
     assert.equal(actions.getSession(workspace.id, firstSession).messages[0].content.text, 'Remember this');
+    assert.equal(actions.listSessions(workspace.id, workspace.member_id, 'web')[0].title, 'Remember this');
+    const secondSession = actions.createSession(workspace.id, workspace.member_id, 'web');
+    actions.renameSession(workspace.id, workspace.member_id, secondSession, 'Renewal research');
+    assert.equal(actions.listSessions(workspace.id, workspace.member_id, 'web')[0].title, 'Renewal research');
+    assert.throws(() => actions.renameSession(otherWorkspace.id, otherWorkspace.member_id, secondSession, 'Wrong household'), /not found/);
+    assert.equal(actions.deleteSession(workspace.id, workspace.member_id, secondSession), true);
+    assert.equal(actions.getSession(workspace.id, secondSession), null);
     assert.equal(actions.getCompanionModelSelection(workspace.id, firstSession), null);
     actions.setCompanionModelSelection(workspace.id, firstSession, workspace.member_id, {
       providerInstanceId: 'codex',

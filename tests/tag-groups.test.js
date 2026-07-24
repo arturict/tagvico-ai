@@ -39,6 +39,13 @@ test('legacy mode preserves open tag suggestions', () => {
   assert.deepEqual(groups.enforceSuggestions(['One', 'one', 'Two'], {}).valid, ['One', 'Two']);
 });
 
+test('open tagging still enforces the default four-tag ceiling', () => {
+  assert.deepEqual(
+    groups.enforceSuggestions(['One', 'Two', 'Three', 'Four', 'Five'], {}).valid,
+    ['One', 'Two', 'Three', 'Four']
+  );
+});
+
 test('controlled prompt includes exact vocabulary and maximum', () => {
   const prompt = groups.promptContract({
     CONTROLLED_TAGGING_ENABLED: 'yes', TAG_MAX_PER_DOCUMENT: '1',
@@ -46,4 +53,11 @@ test('controlled prompt includes exact vocabulary and maximum', () => {
   });
   assert.match(prompt, /at most 1 tags/);
   assert.match(prompt, /\["Canonical Tag"\]/);
+});
+
+test('general prompt asks for a minimal non-redundant tag set', () => {
+  const prompt = groups.promptContract({});
+  assert.match(prompt, /at most 4 tags/);
+  assert.match(prompt, /smallest sufficient set/);
+  assert.match(prompt, /language, correspondent, document type/);
 });

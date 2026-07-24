@@ -43,7 +43,15 @@ test('action sync retries local writes, isolates member credentials, and redacts
       document = { ...document, ...(await readBody(request)) };
       return json(response, 200, document);
     }
-    if (url.pathname === '/api/documents/' && request.method === 'GET') return json(response, 200, { results: [] });
+    if (url.pathname === '/api/documents/' && request.method === 'GET') {
+      return json(response, 200, {
+        count: 2,
+        results: [
+          { id: 43, title: 'Newest document', created: '2030-01-02' },
+          { id: 42, title: document.title, created: '2030-01-01' }
+        ].slice(0, Number(url.searchParams.get('page_size') || 2))
+      });
+    }
     return json(response, 404, { error: 'not found' });
   });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -72,6 +80,10 @@ test('action sync retries local writes, isolates member credentials, and redacts
     const workspace = actions.ensureWorkspaceForUser(userId, 'owner');
     const managedMember = actions.addHouseholdMember(workspace.id, 'Member', 'member');
     await assert.rejects(() => sync.searchPaperlessDocuments(workspace.id, managedMember.id, 'invoice'), /personal Paperless token/);
+    assert.deepEqual(await sync.countPaperlessDocuments(workspace.id, workspace.member_id), { count: 2 });
+    assert.deepEqual(await sync.listRecentPaperlessDocuments(workspace.id, workspace.member_id, 1), [
+      { id: 43, title: 'Newest document', created: '2030-01-02' }
+    ]);
 
     const created = actions.createCase(workspace.id, workspace.member_id, { paperlessDocumentId: 42, title: 'Pay invoice', dueAt: '2030-01-01' });
     const first = await sync.reconcileAllCases();

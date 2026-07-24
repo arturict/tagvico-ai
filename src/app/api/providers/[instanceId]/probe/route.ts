@@ -2,7 +2,7 @@ import { assertSameOrigin, apiError, ApiError, requireApiUser } from '@/lib/serv
 import { workspaceFor } from '@/lib/server/workspace';
 import providerDiscoveryService from '@root/services/providerDiscoveryService';
 import providerRegistry from '@root/services/providerRegistry';
-import setupService from '@root/services/setupService';
+import { getEffectiveProviderEnvironment } from '@root/services/settingsV3Service';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,9 +17,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ ins
     if (!providerRegistry.getProviderDefinition(instanceId)) {
       throw new ApiError(404, `Provider instance "${instanceId}" is unavailable.`);
     }
-    const persisted = (await setupService.loadConfig()) || {};
     return Response.json(
-      await providerDiscoveryService.probeProvider(instanceId, { ...process.env, ...persisted }),
+      await providerDiscoveryService.probeProvider(instanceId, await getEffectiveProviderEnvironment()),
       { headers: { 'Cache-Control': 'no-store' } }
     );
   } catch (error) {

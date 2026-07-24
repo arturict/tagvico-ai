@@ -170,6 +170,32 @@ export async function searchPaperlessDocuments(householdId: string, memberId: st
   return Array.isArray(response.data?.results) ? response.data.results : [];
 }
 
+export async function countPaperlessDocuments(householdId: string, memberId: string | null) {
+  const client = clientFor(householdId, memberId);
+  const response = await client.get('/documents/', {
+    params: { page_size: 1, fields: 'id' }
+  });
+  const count = Number(response.data?.count);
+  return { count: Number.isSafeInteger(count) && count >= 0 ? count : 0 };
+}
+
+export async function listRecentPaperlessDocuments(
+  householdId: string,
+  memberId: string | null,
+  limit = 8
+) {
+  const client = clientFor(householdId, memberId);
+  const pageSize = Math.max(1, Math.min(20, Math.trunc(Number(limit) || 8)));
+  const response = await client.get('/documents/', {
+    params: {
+      ordering: '-created',
+      page_size: pageSize,
+      fields: 'id,title,created,modified'
+    }
+  });
+  return Array.isArray(response.data?.results) ? response.data.results : [];
+}
+
 type ReconciliationResult = { checked: number; changed: number; failed: number };
 let activeReconciliation: Promise<ReconciliationResult> | null = null;
 

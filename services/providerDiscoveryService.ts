@@ -47,10 +47,8 @@ async function discoverProviderModels(instanceId: string, env: Environment): Pro
   switch (definition.discovery) {
     case 'openai': return providerRegistry.discoverOpenAIModels(definition, env);
     case 'ollama': return providerRegistry.discoverOllamaModels(definition, env);
-    case 'anthropic': return providerRegistry.discoverAnthropicModels(definition, env);
     case 'codex': return discoverCodexModels();
     case 'copilot': return discoverCopilotModels(env);
-    case 'manual': return [];
     default: return [];
   }
 }
@@ -59,15 +57,6 @@ async function probeProvider(instanceId: string, env: Environment) {
   const definition = providerRegistry.getProviderDefinition(instanceId);
   if (!definition) throw new Error(`Provider instance "${instanceId}" is not available in this Tagvico build.`);
   const startedAt = Date.now();
-  if (definition.discovery === 'manual') {
-    const configured = definition.fields
-      .filter((field: { required: boolean }) => field.required)
-      .every((field: { environmentKey: string; legacyEnvironmentKeys?: string[] }) => Boolean(
-        providerRegistry.environmentValue(env, field.environmentKey, field.legacyEnvironmentKeys)
-      ));
-    if (!configured) throw new Error('Complete the required provider fields before probing.');
-    return { ok: true, latencyMs: Date.now() - startedAt, models: 0, mode: 'configuration' as const };
-  }
   const models = await discoverProviderModels(instanceId, env);
   return { ok: true, latencyMs: Date.now() - startedAt, models: models.length, mode: 'catalog' as const };
 }

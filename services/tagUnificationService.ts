@@ -101,7 +101,8 @@ function safeSuggestions(
   output: Awaited<ReturnType<InferenceDependency['analyze']>>['output']
 ) {
   const byId = new Map(tags.map((tag) => [tag.id, tag]));
-  const usedTags = new Set<number>();
+  const usedSources = new Set<number>();
+  const usedTargets = new Set<number>();
   const usedPairs = new Set<string>();
   const suggestions: Array<{
     source: PaperlessTagSnapshot;
@@ -112,11 +113,18 @@ function safeSuggestions(
   for (const candidate of output.suggestions) {
     const source = byId.get(candidate.sourceTagId);
     const target = byId.get(candidate.targetTagId);
-    if (!source || !target || source.id === target.id || usedTags.has(source.id) || usedTags.has(target.id)) continue;
+    if (
+      !source
+      || !target
+      || source.id === target.id
+      || usedSources.has(source.id)
+      || usedTargets.has(source.id)
+      || usedSources.has(target.id)
+    ) continue;
     const unorderedPair = [source.id, target.id].sort((a, b) => a - b).join(':');
     if (usedPairs.has(unorderedPair)) continue;
-    usedTags.add(source.id);
-    usedTags.add(target.id);
+    usedSources.add(source.id);
+    usedTargets.add(target.id);
     usedPairs.add(unorderedPair);
     suggestions.push({
       source,

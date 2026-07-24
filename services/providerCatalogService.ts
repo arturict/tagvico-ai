@@ -6,14 +6,12 @@ type ProviderId =
   | 'copilot'
   | 'compatible'
   | 'openai'
-  | 'anthropic'
-  | 'codex'
-  | 'azure';
+  | 'codex';
 type EnvLike = Record<string, string | undefined>;
 const providerRegistryModule = require('./providerRegistry');
 const providerRegistry = providerRegistryModule.default || providerRegistryModule;
 const PROVIDER_IDS = [
-  'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'anthropic', 'codex', 'azure'
+  'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'codex'
 ] as const;
 
 const OPENROUTER_PRESETS = [
@@ -100,8 +98,6 @@ const DEFAULT_MODELS = {
   copilot: 'gpt-5.4-mini',
   compatible: '',
   openai: 'gpt-5.4-mini',
-  azure: '',
-  anthropic: 'claude-haiku-4-5',
   codex: 'gpt-5.4-mini'
 };
 

@@ -29,7 +29,15 @@ type Statement = ReturnType<typeof db.prepare>;
 interface Statements { insert: Statement; byId: Statement; byDocument: Statement; latestByDocument: Statement }
 interface HistoryRow {
   id: number; document_id: number; tags: string | null; title: string | null;
-  correspondent: string | null; diff: string | null; created_at: string;
+  correspondent: string | null; diff: string | null; event_type?: string | null;
+  source?: string | null; metadata_json?: string | null; metrics_json?: string | null;
+  created_at: string;
+}
+interface HistoryOptions {
+  eventType?: string;
+  source?: string;
+  metadata?: Record<string, unknown> | null;
+  metrics?: Record<string, unknown> | null;
 }
 let _stmts: Statements | null = null;
 
@@ -37,14 +45,15 @@ function getStmts(): Statements {
   if (_stmts) return _stmts;
   _stmts = {
     insert: db.prepare(`
-      INSERT INTO history_documents (document_id, tags, title, correspondent, diff)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO history_documents
+        (document_id, tags, title, correspondent, diff, event_type, source, metadata_json, metrics_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `),
     byId: db.prepare(`SELECT * FROM history_documents WHERE id = ?`),
     byDocument: db.prepare(`
       SELECT * FROM history_documents
       WHERE document_id = ?
-      ORDER BY created_at DESC
+      ORDER BY datetime(created_at) DESC, id DESC
     `),
     latestByDocument: db.prepare(`
       SELECT * FROM history_documents
@@ -82,6 +91,21 @@ function migrate() {
   if (!hasDiff) {
     db.prepare(`ALTER TABLE history_documents ADD COLUMN diff TEXT`).run();
   }
+  const refreshedColumns = db.prepare(`PRAGMA table_info(history_documents)`).all();
+  const names = new Set(refreshedColumns.map((column: unknown) =>
+    typeof column === 'object' && column !== null && 'name' in column ? String(column.name) : ''));
+  if (!names.has('event_type')) {
+    db.prepare("ALTER TABLE history_documents ADD COLUMN event_type TEXT DEFAULT 'processed'").run();
+  }
+  if (!names.has('source')) {
+    db.prepare("ALTER TABLE history_documents ADD COLUMN source TEXT DEFAULT 'automatic'").run();
+  }
+  if (!names.has('metadata_json')) {
+    db.prepare("ALTER TABLE history_documents ADD COLUMN metadata_json TEXT DEFAULT '{}'").run();
+  }
+  if (!names.has('metrics_json')) {
+    db.prepare("ALTER TABLE history_documents ADD COLUMN metrics_json TEXT DEFAULT '{}'").run();
+  }
 
   // Drop the cached prepared statements so the new column is reflected.
   _stmts = null;
@@ -97,7 +121,14 @@ function migrate() {
  * @param {Array<object>} [diff] - Output of metadataDiff.compareMetadata
  * @returns {boolean}
  */
-function addToHistory(documentId: number | string, tagIds: number[], title: string | null, correspondent: string | null, diff?: object[]) {
+function addToHistory(
+  documentId: number | string,
+  tagIds: number[],
+  title: string | null,
+  correspondent: string | null,
+  diff?: object[],
+  options: HistoryOptions = {}
+) {
   try {
     // Make sure the table exists with the diff column. Cheap on subsequent
     // calls — the PRAGMA + ALTER TABLE both no-op.
@@ -105,7 +136,17 @@ function addToHistory(documentId: number | string, tagIds: number[], title: stri
     const stmts = getStmts();
     const tagIdsString = JSON.stringify(tagIds || []);
     const diffString = diff === undefined || diff === null ? null : JSON.stringify(diff);
-    const result = stmts.insert.run(documentId, tagIdsString, title, correspondent, diffString);
+    const result = stmts.insert.run(
+      documentId,
+      tagIdsString,
+      title,
+      correspondent,
+      diffString,
+      options.eventType || 'processed',
+      options.source || 'automatic',
+      JSON.stringify(options.metadata || {}),
+      JSON.stringify(options.metrics || {})
+    );
     if (result.changes > 0) {
       console.log(`[DEBUG] Document ${title} added to history with diff (${Array.isArray(diff) ? diff.length : 0} entries)`);
       return true;
@@ -189,6 +230,15 @@ function parseRow(row: HistoryRow) {
       parsedDiff = null;
     }
   }
+  const parseObject = (value: string | null | undefined) => {
+    if (!value) return {};
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      return {};
+    }
+  };
 
   return {
     id: row.id,
@@ -197,6 +247,10 @@ function parseRow(row: HistoryRow) {
     correspondent: row.correspondent,
     tags: parsedTags,
     diff: parsedDiff,
+    event_type: row.event_type || 'processed',
+    source: row.source || 'automatic',
+    metadata: parseObject(row.metadata_json),
+    metrics: parseObject(row.metrics_json),
     created_at: row.created_at
   };
 }

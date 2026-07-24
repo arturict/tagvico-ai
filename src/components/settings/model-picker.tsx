@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Check, RefreshCw, Search, Star, X } from 'lucide-react';
 import { Dialog } from 'radix-ui';
+import { ProviderIcon } from '@/components/provider-icon';
 import type { ModelDescriptor, ProviderDescriptor } from './types';
 
 const FAVORITES_KEY = 'tagvicoModelFavoritesV3';
@@ -70,9 +71,12 @@ export function ModelPicker({
   }}>
     <Dialog.Trigger asChild>
       <button className="settings-model-trigger" type="button">
-        <span>
-          <small>{provider?.name || activeProviderId}</small>
-          <strong>{activeModelId || 'Choose a model'}</strong>
+        <span className="settings-model-trigger-provider">
+          <ProviderIcon icon={provider?.icon || null} name={provider?.name || activeProviderId} />
+          <span>
+            <small>{provider?.name || activeProviderId}</small>
+            <strong>{activeModelId || 'Choose a model'}</strong>
+          </span>
         </span>
         <span aria-hidden="true">⌄</span>
       </button>
@@ -100,7 +104,10 @@ export function ModelPicker({
               disabled={!candidate.available}
               onClick={() => void onProviderChange(candidate.instanceId)}
             >
-              <span>{candidate.name}</span>
+              <span className="settings-provider-label">
+                <ProviderIcon icon={candidate.icon} name={candidate.name} />
+                <span>{candidate.name}</span>
+              </span>
               {!candidate.available ? <small>Unavailable</small> : candidate.recommended ? <small>Recommended</small> : null}
             </button>)}
           </nav>
@@ -115,14 +122,14 @@ export function ModelPicker({
                 <RefreshCw className={loading ? 'is-spinning' : undefined} aria-hidden="true" />
               </button>
             </div>
-            {loading ? <div className="settings-model-empty">Loading the runtime catalog…</div> : null}
-            {!loading && error ? <div className="settings-model-empty is-error">{error}</div> : null}
-            {!loading && !error && !visibleModels.length ? <div className="settings-model-empty">
-              {provider?.manualModelInput
-                ? 'No live models returned. Close this picker and enter a model ID manually.'
-                : 'The runtime returned no selectable models.'}
-            </div> : null}
             <div className="settings-model-list">
+              {loading ? <div className="settings-model-empty">Loading the runtime catalog…</div> : null}
+              {!loading && error ? <div className="settings-model-empty is-error">{error}</div> : null}
+              {!loading && !error && !visibleModels.length ? <div className="settings-model-empty">
+                {provider?.manualModelInput
+                  ? 'No live models returned. Close this picker and enter a model ID manually.'
+                  : 'The runtime returned no selectable models.'}
+              </div> : null}
               {visibleModels.map((model) => {
                 const isFavorite = favorites.includes(favoriteKey(model.id));
                 return <div className="settings-model-row" key={model.id}>

@@ -18,7 +18,9 @@ const swaggerSpec = require('./swagger');
 const ownerProfileService = require('./services/ownerProfileService');
 const historyService = require('./services/historyService');
 const customFieldsService = require('./services/customFieldsService');
+const { compareMetadata } = require('./services/metadataDiff');
 const { resolveEnv } = require('./services/configHelpers');
+const scanScheduler = require('./services/scanScheduler');
 type HttpRequest = Record<string, unknown>;
 type NextFunction = () => void;
 interface HttpResponse {
@@ -246,6 +248,7 @@ async function processDocument(doc: DocumentRecord, existingTags: string[], exis
   const isProcessed = await documentModel.isDocumentProcessed(doc.id);
   if (isProcessed) return null;
   if (await documentModel.isDocumentFailed(doc.id)) return null;
+  if (await documentModel.isDocumentIgnored(doc.id)) return null;
   // A queued review remains authoritative even if Automatic mode is enabled later.
   // Do not pay for inference again or write around the human review decision.
   if (await reviewService.hasActiveSuggestion(doc.id)) return null;
@@ -501,28 +504,54 @@ async function buildUpdateData(analysis: AnalysisRecord, doc: DocumentRecord, co
 
 async function saveDocumentChanges(docId: number, updateData: UpdateData, analysis: AnalysisRecord, originalData: OriginalData) {
   await documentModel.saveOriginalSnapshot(docId, originalData);
-  await Promise.all([
-    paperlessService.updateDocument(docId, updateData),
-    documentModel.addProcessedDocument(docId, updateData.title),
-    documentModel.addOpenAIMetrics(
-      docId, 
-      analysis.metrics?.promptTokens || 0,
-      analysis.metrics?.completionTokens || 0,
-      analysis.metrics?.totalTokens || 0
-    ),
-    documentModel.addToHistory(docId, updateData.tags, updateData.title, analysis.document.correspondent)
-  ]);
+  const before = await paperlessService.getDocument(docId);
+  const after = await paperlessService.updateDocument(docId, { ...updateData });
+  if (!after) throw new Error(`Paperless-ngx rejected the metadata update for document ${docId}`);
+  const metrics = {
+    promptTokens: analysis.metrics?.promptTokens || 0,
+    completionTokens: analysis.metrics?.completionTokens || 0,
+    totalTokens: analysis.metrics?.totalTokens || 0
+  };
+  const historySaved = historyService.addToHistory(
+    docId,
+    Array.isArray(after.tags) ? after.tags : updateData.tags || [],
+    after.title || updateData.title || null,
+    analysis.document.correspondent || null,
+    compareMetadata(before || {}, after || {}),
+    {
+      eventType: 'processed',
+      source: 'automatic',
+      metadata: after,
+      metrics
+    }
+  );
+  if (!historySaved) throw new Error(`Could not persist history for document ${docId}`);
+  const metricsSaved = await documentModel.addOpenAIMetrics(
+    docId,
+    metrics.promptTokens,
+    metrics.completionTokens,
+    metrics.totalTokens
+  );
+  if (!metricsSaved) throw new Error(`Could not persist token metrics for document ${docId}`);
+  await documentModel.addProcessedDocument(docId, after.title || updateData.title);
 }
 
 async function processAndSaveDocument(doc: DocumentRecord, existingTagNames: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number | null) {
   for (let attempt = 1; attempt <= config.maxRetries; attempt += 1) {
     try {
       const result = await processDocument(doc, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
-      if (!result) return;
-      if (result.reviewSuggestion) return;
+      if (!result) {
+        await documentModel.completeRescanRequest(doc.id);
+        return;
+      }
+      if (result.reviewSuggestion) {
+        await documentModel.completeRescanRequest(doc.id);
+        return;
+      }
       const { analysis, originalData, content } = result;
       const updateData = await buildUpdateData(analysis, doc, content);
       await saveDocumentChanges(doc.id, updateData, analysis, originalData);
+      await documentModel.completeRescanRequest(doc.id);
       return;
     } catch (error) {
       console.error(`[ERROR] processing document ${doc.id} (attempt ${attempt}/${config.maxRetries}):`, error);
@@ -530,9 +559,28 @@ async function processAndSaveDocument(doc: DocumentRecord, existingTagNames: str
         const message = error instanceof Error ? error.message : String(error);
         await documentModel.addFailedDocument(doc.id, doc.title, 'ai_failed', 'ai', message);
         await documentModel.setProcessingStatus(doc.id, doc.title, 'failed');
+        await documentModel.completeRescanRequest(doc.id);
       }
     }
   }
+}
+
+async function includeRequestedRescans(documents: DocumentRecord[]) {
+  const merged = new Map(documents.map((document) => [Number(document.id), document]));
+  const requests = await documentModel.getPendingRescanRequests(500);
+  for (const request of requests) {
+    const documentId = Number(request.document_id);
+    if (!Number.isInteger(documentId) || merged.has(documentId)) continue;
+    try {
+      const document = await paperlessService.getDocument(documentId);
+      if (document?.id) merged.set(documentId, document);
+      else await documentModel.completeRescanRequest(documentId);
+    } catch (error) {
+      console.warn(`[WARN] Could not load requested rescan document ${documentId}:`, errorMessage(error));
+      await documentModel.completeRescanRequest(documentId);
+    }
+  }
+  return [...merged.values()];
 }
 
 async function processDocumentCollection(documents: DocumentRecord[], existingTagNames: string[], existingCorrespondentList: string[], existingDocumentTypesList: string[], ownUserId: number | null) {
@@ -570,6 +618,7 @@ async function scanInitial() {
     // Extract tag names from tag objects
     const existingTagNames = existingTags.map((tag: NamedResource) => tag.name);
 
+    documents = await includeRequestedRescans(documents);
     await processDocumentCollection(documents, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
   } catch (error) {
     console.error('[ERROR] during initial document scan:', error);
@@ -577,7 +626,7 @@ async function scanInitial() {
 }
 
 async function scanDocuments() {
-  if (runningTask) {
+  if (runningTask || scanControl.running) {
     console.log('[DEBUG] Task already running');
     return;
   }
@@ -605,6 +654,7 @@ async function scanDocuments() {
     // Extract tag names from tag objects
     const existingTagNames = existingTags.map((tag: NamedResource) => tag.name);
 
+    documents = await includeRequestedRescans(documents);
     await processDocumentCollection(documents, existingTagNames, existingCorrespondentList, existingDocumentTypesList, ownUserId);
   } catch (error) {
     console.error('[ERROR]  during document scan:', error);
@@ -736,12 +786,8 @@ async function startScanning() {
     console.log(`Starting initial scan at ${new Date().toISOString()}`);
     if(config.disableAutomaticProcessing != 'yes') {
       await scanInitial();
-  
-      cron.schedule(config.scanInterval, async () => {
-        console.log(`Starting scheduled scan at ${new Date().toISOString()}`);
-        await scanDocuments();
-      });
     }
+    scanScheduler.register(scanDocuments, () => setupService.reloadRuntimeConfig());
     if (config.reconciliationEnabled === 'yes') {
       const reconciliationService = require('./services/reconciliationService');
       cron.schedule(config.reconciliationInterval, async () => {

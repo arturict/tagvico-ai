@@ -1,6 +1,9 @@
 # Provider icons
 
-These provider marks are copied from the MIT-licensed
-[`anomalyco/opencode`](https://github.com/anomalyco/opencode) provider icon set
-at commit `13b9e55`. They are kept local so the setup UI does not depend on a
-third-party icon CDN and each provider keeps its correct identity.
+The branded marks in this directory are cached from
+[SVGL](https://svgl.app/docs/api) so self-hosted Settings pages do not depend on
+a third-party CDN at runtime. The provider registry records the exact SVGL
+source URL for every branded icon.
+
+`inference.svg` is Tagvico's neutral icon for user-defined OpenAI-compatible
+endpoints, because those endpoints do not share one brand.

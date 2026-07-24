@@ -12,11 +12,9 @@ service.
 | Ollama | Fully local inference | Local `/api/chat` endpoint | Keeps processing on infrastructure you control; model quality and speed depend on hardware. |
 | Ollama Cloud | Hosted Ollama models | API key | No local GPU required; document text leaves your network. |
 | OpenAI direct | Native OpenAI models, Flex, and Batch | API key | Loads the API account's live `/v1/models` catalog; Flex and Batch remain model-dependent. |
-| Anthropic direct | Claude and Message Batches | API key | Supports standard requests and discounted asynchronous batches. |
 | OpenCode Go | Subscription inference gateway | Go API key | OpenAI-compatible request path with provider-controlled limits. |
 | GitHub Copilot | Account-scoped model discovery | OAuth device login or supported token | Uses the official SDK; every agent tool is denied. |
 | CLI Proxy / OpenAI-compatible | CLIProxyAPI, LM Studio, LiteLLM, vLLM, custom gateways | `/v1` base URL and optional key | Uses Vercel AI SDK v6. Tagvico can load the endpoint's `/models` catalog or accept a model ID manually. |
-| Azure OpenAI | Existing Azure deployments and governance | Endpoint, deployment, API key | Model availability follows your Azure deployment. |
 | ChatGPT subscription | Optional private, low-volume model adapter | Stable Codex device login | Uses the bundled official Codex runtime and loads the signed-in account's live `model/list` catalog. It is not an API SLA. |
 
 ## Cost-conscious recommendations
@@ -32,11 +30,9 @@ model is good enough for Automatic mode.
 | Ollama | **Qwen 3.5 4B** on modest hardware; **Qwen 3.5 9B** when it fits comfortably | Qwen 3.5 is the current value-oriented starting family for structured, multilingual filing. The 4B download is about 3.4 GB; the 9B build is about 6.6 GB and is the better quality target when memory allows. **Gemma 3 4B** is a strong compact alternative. Gemma 4 is newer, but even its E2B/E4B edge variants have larger model files and are less attractive for a cheapest-first setup. |
 | Ollama Cloud | **gpt-oss:20b-cloud** | Tagvico's default balances capability with a moderate hosted footprint and avoids buying or running a GPU. Recheck the cloud catalog and account limits before committing to it. |
 | OpenAI direct | **GPT-5.4 Mini**; use **Batch** for non-urgent archives | Mini is the balanced default. **GPT-5.4 Nano** can reduce cost further for predictable invoices and statements. Batch is preferable when turnaround can wait; Flex is useful when supported and occasional slower availability is acceptable. |
-| Anthropic direct | **Claude Haiku 4.5**; use Message Batches when latency is unimportant | Haiku is the speed-and-cost tier and is normally sufficient for titles, tags, and other structured fields. Move to a larger Claude model only for difficult layouts or extraction failures. |
 | OpenCode Go | **DeepSeek V4 Flash** | This is Tagvico's budget-oriented default for the Go gateway. It suits classification-heavy workloads; confirm the current subscription allowance and gateway model catalog. |
 | GitHub Copilot | **GPT-5.4 Mini** when the signed-in plan exposes it | It offers a strong quality/cost balance without a separate per-token key inside Tagvico. Prefer a model with the lowest billing multiplier that still passes your test set, because plan entitlements differ. |
 | CLI Proxy / OpenAI-compatible | A subscription-backed model returned by CLIProxyAPI, or a **mini**, **flash**, or roughly **8B–20B instruct** model supported by your gateway | Compatible endpoints vary too much for one universal slug. Load the live catalog, start small, require reliable JSON, and increase model size only when the error rate justifies it. |
-| Azure OpenAI | A deployment of **GPT-5.4 Mini** | Mini is the normal value choice when Azure governance is required. Azure deployment availability and regional pricing take precedence over the public model name. |
 | ChatGPT subscription | The configured Codex model supported by the signed-in account | Suitable for one trusted, low-volume installation when subscription-backed inference is preferable. Model availability remains account-controlled and is not an API service guarantee. |
 
 ## Companion runtime architecture
@@ -73,7 +69,7 @@ that capability response. For example, one Codex model may expose `low` through
 invent a global list or claim unsupported efforts are available.
 
 ::: tip A practical selection rule
-Start with the recommended mini, flash, or Haiku tier and low reasoning.
+Start with the recommended mini or flash tier and low reasoning.
 Measure incorrect or missing fields—not how impressive the prose sounds. Move
 up one tier only when the cheaper model fails the same field or document type
 repeatedly.
@@ -112,7 +108,7 @@ deleting the previous provider's values.
 - **Standard** processes each document immediately.
 - **OpenAI Flex** reduces cost for supported OpenAI models in exchange for
   slower or less predictable availability.
-- **Batch** submits asynchronous discounted work to OpenAI or Anthropic and may
+- **Batch** submits asynchronous discounted work to OpenAI and may
   take up to 24 hours.
 
 ::: warning Catalogs change

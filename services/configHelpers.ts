@@ -121,7 +121,7 @@ function buildUiConfig(env: Environment = process.env, version = '') {
     TAG_GROUPS: tagGroupService.parseGroups(env.TAG_GROUPS_JSON),
     TAG_GROUP_PRESETS: tagGroupService.PRESETS,
     CONTROLLED_TAGGING_ENABLED: parseBooleanFlag(env.CONTROLLED_TAGGING_ENABLED, 'no'),
-    TAG_MAX_PER_DOCUMENT: Math.min(10, Math.max(1, parseInt(env.TAG_MAX_PER_DOCUMENT || '3', 10) || 3)),
+    TAG_MAX_PER_DOCUMENT: Math.min(10, Math.max(1, parseInt(env.TAG_MAX_PER_DOCUMENT || '4', 10) || 4)),
     ADD_AI_PROCESSED_TAG: parseBooleanFlag(env.ADD_AI_PROCESSED_TAG, 'no'),
     AI_PROCESSED_TAG_NAME: env.AI_PROCESSED_TAG_NAME || 'ai-processed',
     USE_EXISTING_DATA: parseBooleanFlag(env.USE_EXISTING_DATA, 'no'),

@@ -6,7 +6,6 @@ import { runtimeConfiguration } from './credential-store';
 import type { RuntimeModel } from './types';
 import codexService from '../../../../services/codexService';
 import copilotService from '../../../../services/copilotService';
-import anthropicService from '../../../../services/anthropicService';
 
 export function resolveRuntimeModel(selection?: CompanionModelSelection | null): RuntimeModel {
   const selected = runtimeConfiguration(selection);
@@ -25,15 +24,6 @@ export function resolveRuntimeModel(selection?: CompanionModelSelection | null):
       provider: 'copilot',
       modelId: selected.model,
       generateText: (prompt) => copilotService.generateText(prompt, { model: selected.model })
-    };
-  }
-  if (selected.provider === 'anthropic') {
-    if (!selected.apiKey) throw new Error('No API key configured for anthropic');
-    return {
-      kind: 'text-adapter',
-      provider: 'anthropic',
-      modelId: selected.model,
-      generateText: (prompt) => anthropicService.generateText(prompt, { model: selected.model })
     };
   }
   if (!selected.apiKey && selected.provider !== 'ollama') {

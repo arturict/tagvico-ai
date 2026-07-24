@@ -30,8 +30,14 @@ the selected model never receives shell or filesystem access.
 Read tools run immediately. Write tools only create a durable proposal. An
 owner or adult must approve it before the deterministic executor changes
 Tagvico or Paperless. The web chat uses AI SDK v6 streams and AI Elements.
+Paperless research is intent-aware: a greeting stays a normal conversation,
+library totals use an exact count, and document content is read only when the
+question requires it. Each research card can reveal the safe search term,
+matching document IDs, titles, dates, and result count without exposing OCR.
+Approvals appear only when a proposal is pending, and conversations can be
+created, searched, renamed, switched, and deleted from the chat workspace.
 
-![Tagvico v3 Companion answering a synthetic deadline question beside its approval queue](/screenshots/companion-v3.png)
+![Tagvico v3 Companion answering a synthetic deadline question with visible Paperless research](/screenshots/companion-v3.png)
 
 The answer shown here was produced by the synthetic release provider fixture;
 no personal documents or hosted-provider credentials were used.
@@ -40,7 +46,9 @@ no personal documents or hosted-provider credentials were used.
 
 The dashboard shows processing progress, runner state, Paperless vocabulary
 counts, recent activity, and token/cost-efficiency signals. **Scan now** starts
-an on-demand pass without waiting for the schedule.
+an on-demand pass without waiting for the schedule and reports how many
+documents were eligible, applied, staged, skipped, or failed. Trigger tags are
+optional: with no trigger tags, every new unprocessed document is eligible.
 
 Actions, Ask Tagvico, Automation, Review queue, Activity, and Settings stay
 inside one React application shell. Recovery and Manual processing are
@@ -53,7 +61,10 @@ for user-facing workflows are no longer part of the visible application.
 
 Choose whether the model may create open-ended tags or must stay within a
 controlled vocabulary. Tag groups make a larger Paperless tag catalog easier
-to manage, and a per-document maximum prevents noisy assignments.
+to manage, and a per-document maximum prevents noisy assignments. Four is the
+default hard ceiling in both modes. The shared provider prompt asks for the
+smallest useful set and avoids repeating language, correspondent, or document
+type as tags.
 
 ![Controlled tagging groups with generic finance, legal, home, insurance, health, and work tags](/screenshots/controlled-tagging.png)
 
@@ -63,11 +74,21 @@ credentials, account identifiers, or private endpoints are visible.
 ## Review-first tag unification
 
 Tag library can load the current Paperless vocabulary and let one configured,
-live-discovered model propose likely duplicates. The model only plans and
-explains; it cannot write to Paperless. Every proposed merge is approved or
-rejected separately. Approved work runs as two explicit, idempotent phases:
-move document references to the chosen target, verify the result, then delete
-the now-unused source tag.
+live-discovered model propose likely duplicates. Suggestions are grouped
+visually as several source tags becoming one canonical target, while every
+source remains independently reviewable. The model only plans and explains; it
+cannot write to Paperless. Every proposed merge is approved or rejected
+separately. Approved work runs as two explicit, idempotent phases: move
+document references to the chosen target, verify the result, then delete the
+now-unused source tag.
+
+## Prompt control
+
+The maintained general prompt works across providers. **Custom filing prompt**
+adds archive-specific terminology and preferences without replacing Tagvico's
+contracts. **Advanced system prompt** can replace the general role
+instructions, while prompt-injection protection, minimal-tagging rules and the
+structured response contract remain mandatory.
 
 ## Review-first filing
 
@@ -81,17 +102,39 @@ dates, languages, custom fields, and optional owner assignment.
 
 ## History, restoration, and retry control
 
-Every processing run records status and usage. History supports manual reruns,
-rescan, and restoration from the first metadata snapshot captured before
-Tagvico changed a document. Provider failures are retried, then moved to a
-terminal state instead of looping forever.
+Every processing run records assigned metadata, field-level before/after
+changes, custom fields, token usage, event source, and the original snapshot.
+Single and bulk rescans use the current provider settings and deliberately
+bypass the normal trigger-tag filter. Rescanning never deletes the audit trail
+or the first restore snapshot.
+
+**Restore original** replaces title, tags, correspondent, document type, date,
+language, custom fields, and owner with the first state Tagvico captured. Use
+**Validate history** to preview records whose Paperless documents no longer
+exist, then clean up only those orphaned local records.
+
+AI and OCR provider failures are attempted up to three times before moving into
+**Permanently failed**. Resetting a failed document makes it eligible again.
+Documents that must never be processed can instead be moved to the permanent
+**Ignored documents** list with an optional reason. Un-ignoring one explicitly
+queues a filter-bypassing rescan. Failed and Ignored counts remain visible in
+the sidebar.
 
 ## OCR rescue
 
 Documents with insufficient OCR can enter a durable rescue queue. Configure
 Mistral OCR, an OpenAI-compatible vision endpoint, or Ollama vision. Local PDF
 OCR limits rendered pages with `OCR_MAX_PAGES`; interrupted work returns to the
-pending queue after restart.
+pending queue after restart. OCR retries use the same bounded three-attempt
+discipline as document classification and cannot block the main scan queue
+forever.
+
+## In-product changelog
+
+**What’s new** in the sidebar opens the release notes bundled with the running
+instance. The top **Next** entry documents improvements present in the current
+build but not yet assigned to a release number; older released notes stay
+available below it.
 
 ## Subscription-backed model access
 

@@ -23,6 +23,7 @@ import { SettingSwitch } from './setting-switch';
 import { SettingsRow, SettingsSection } from './settings-section';
 import { TagGroupCard } from './tag-group-card';
 import { TagUnification } from './tag-unification';
+import { ProviderIcon } from '@/components/provider-icon';
 import type {
   ModelDescriptor,
   SettingsResponse,
@@ -106,6 +107,7 @@ export function SettingsWorkspace({
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState('');
   const [probeStatus, setProbeStatus] = useState('');
+  const [configuredProviderId, setConfiguredProviderId] = useState(initialSettings.ai.activeProviderInstanceId);
   const [codexLogin, setCodexLogin] = useState('');
   const [codexLoginOutput, setCodexLoginOutput] = useState('');
   const [copilotLogin, setCopilotLogin] = useState('');
@@ -146,6 +148,11 @@ export function SettingsWorkspace({
       }
       settingsRef.current = body;
       setSettings(body);
+      if (body?.automation?.writeMode) {
+        window.dispatchEvent(new CustomEvent('tagvico:write-mode', {
+          detail: { writeMode: body.automation.writeMode }
+        }));
+      }
       showMessage('success', successMessage);
       return body as SettingsResponse;
     });
@@ -160,6 +167,9 @@ export function SettingsWorkspace({
   const activeProvider = settings.ai.providers.find(
     (provider) => provider.instanceId === settings.ai.activeProviderInstanceId
   );
+  const configuredProvider = settings.ai.providers.find(
+    (provider) => provider.instanceId === configuredProviderId
+  ) || activeProvider;
   const activeModels = modelsByProvider[settings.ai.activeProviderInstanceId] || [];
   const activeModel = activeModels.find((model) => model.id === settings.ai.activeModelId);
 
@@ -197,15 +207,15 @@ export function SettingsWorkspace({
     }, `${model.name} selected.`);
   };
 
-  const probeProvider = async () => {
-    const instanceId = settingsRef.current.ai.activeProviderInstanceId;
+  const probeProvider = async (instanceId = configuredProviderId) => {
     setProbeStatus('Checking connection…');
     try {
       const response = await fetch(`/api/providers/${encodeURIComponent(instanceId)}/probe`, { method: 'POST' });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Provider probe failed.');
       setProbeStatus(`Connected in ${body.latencyMs} ms · ${body.models} live models`);
-      showMessage('success', `${activeProvider?.name || instanceId} is reachable.`);
+      const providerName = settingsRef.current.ai.providers.find((provider) => provider.instanceId === instanceId)?.name;
+      showMessage('success', `${providerName || instanceId} is reachable.`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Provider probe failed.';
       setProbeStatus(message);
@@ -366,10 +376,11 @@ export function SettingsWorkspace({
   })();
 
   useEffect(() => {
-    void loadProviderAuth(settings.ai.activeProviderInstanceId);
-    // The selected provider is the only setting that changes which account session is relevant here.
+    void loadProviderAuth(configuredProviderId);
+    setProbeStatus('');
+    // Authentication is shown for the provider currently being configured.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.ai.activeProviderInstanceId]);
+  }, [configuredProviderId]);
 
   const content = (() => {
     if (section === 'general') {
@@ -438,6 +449,97 @@ export function SettingsWorkspace({
     }
     if (section === 'providers') {
       return <>
+        <SettingsSection
+          title="Provider connections"
+          description="Configure every runtime independently. Selecting a card here does not change the provider used for automation."
+        >
+          <SettingsRow title="Choose a provider to configure" description="Secrets are write-only and existing values are never sent back to this browser." stack>
+            <div className="settings-provider-grid">
+              {settings.ai.providers.map((provider) => <button
+                type="button"
+                key={provider.instanceId}
+                className={`settings-provider-card${provider.instanceId === configuredProvider?.instanceId ? ' is-active' : ''}`}
+                onClick={() => setConfiguredProviderId(provider.instanceId)}
+              >
+                <ProviderIcon icon={provider.icon} name={provider.name} size={26} />
+                <span>
+                  <strong>{provider.name}</strong>
+                  <small>{provider.instanceId === settings.ai.activeProviderInstanceId ? 'Used for automation' : provider.description}</small>
+                </span>
+              </button>)}
+            </div>
+          </SettingsRow>
+          {configuredProvider ? <SettingsRow
+            title={`${configuredProvider.name} configuration`}
+            description={configuredProvider.description}
+            stack
+          >
+            {configuredProvider.fields.length ? <div className="settings-fields-grid">
+              {configuredProvider.fields.map((field) => {
+                const stored = configuredProvider.configuration[field.key];
+                return <DraftField
+                  key={field.key}
+                  label={field.label}
+                  description={field.description}
+                  type={field.type}
+                  value={typeof stored === 'string' ? stored : ''}
+                  configured={typeof stored === 'object' && stored.configured}
+                  placeholder={field.placeholder}
+                  onCommit={async (value) => {
+                    const saved = await applyPatch({
+                      provider: { instanceId: configuredProvider.instanceId, values: { [field.key]: value } }
+                    }, `${field.label} saved.`);
+                    if (saved) {
+                      setModelsByProvider((current) => {
+                        const next = { ...current };
+                        delete next[configuredProvider.instanceId];
+                        return next;
+                      });
+                    }
+                  }}
+                />;
+              })}
+            </div> : <InlineStatus kind="neutral">This runtime uses account authentication instead of an API-key field.</InlineStatus>}
+            {configuredProvider.instanceId === 'codex' ? <div className="settings-auth-panel">
+              <div className="settings-action-cluster">
+                <InlineStatus kind={providerAuth.loading ? 'loading' : providerAuth.authenticated ? 'success' : 'neutral'}>
+                  {providerAuth.loading ? 'Checking account…' : providerAuth.label}
+                </InlineStatus>
+                <button className="settings-button" type="button" disabled={Boolean(codexLogin)} onClick={() => void startCodexLogin()}>
+                  {codexLogin ? 'Waiting for sign-in…' : providerAuth.authenticated ? 'Reconnect ChatGPT' : 'Sign in with ChatGPT'}
+                </button>
+                {providerAuth.authenticated
+                  ? <button className="settings-button is-danger" type="button" onClick={() => void logoutProvider('codex')}>Sign out</button>
+                  : null}
+              </div>
+              {codexLoginOutput ? <pre className="settings-auth-output">{codexLoginOutput}</pre> : null}
+            </div> : null}
+            {configuredProvider.instanceId === 'copilot' ? <div className="settings-auth-panel">
+              <div className="settings-action-cluster">
+                <InlineStatus kind={providerAuth.loading ? 'loading' : providerAuth.authenticated ? 'success' : 'neutral'}>
+                  {providerAuth.loading ? 'Checking account…' : providerAuth.label}
+                </InlineStatus>
+                <button className="settings-button" type="button" disabled={Boolean(copilotLogin)} onClick={() => void startCopilotLogin()}>
+                  {copilotLogin ? 'Waiting for sign-in…' : providerAuth.authenticated ? 'Reconnect Copilot' : 'Sign in with GitHub'}
+                </button>
+                {providerAuth.authenticated
+                  ? <button className="settings-button is-danger" type="button" onClick={() => void logoutProvider('copilot')}>Sign out</button>
+                  : null}
+              </div>
+              {copilotChallenge.verificationUrl ? <div className="settings-auth-challenge">
+                <span>Code <strong>{copilotChallenge.userCode}</strong></span>
+                <a href={copilotChallenge.verificationUrl} target="_blank" rel="noreferrer">Open GitHub device sign-in</a>
+              </div> : null}
+            </div> : null}
+            <div className="settings-action-cluster">
+              <button className="settings-button" type="button" onClick={() => void probeProvider(configuredProvider.instanceId)}>
+                Test {configuredProvider.name}
+              </button>
+              {probeStatus ? <InlineStatus kind={probeStatus.startsWith('Connected') ? 'success' : probeStatus.includes('…') ? 'loading' : 'error'}>{probeStatus}</InlineStatus> : null}
+            </div>
+          </SettingsRow> : null}
+        </SettingsSection>
+
         <SettingsSection title="Active runtime" description="Models and their thinking options are discovered from the runtime, not invented in Tagvico.">
           <SettingsRow title="Provider and model" description="Search live models, favorite frequent choices and inspect capabilities." stack>
             <ModelPicker
@@ -477,72 +579,6 @@ export function SettingsWorkspace({
           </SettingsRow>
         </SettingsSection>
 
-        {activeProvider ? <SettingsSection title={`${activeProvider.name} connection`} description={activeProvider.description}>
-          {activeProvider.fields.length ? <SettingsRow title="Provider configuration" description="Fields are generated from the provider schema." stack>
-            <div className="settings-fields-grid">
-              {activeProvider.fields.map((field) => {
-                const stored = activeProvider.configuration[field.key];
-                return <DraftField
-                  key={field.key}
-                  label={field.label}
-                  description={field.description}
-                  type={field.type}
-                  value={typeof stored === 'string' ? stored : ''}
-                  configured={typeof stored === 'object' && stored.configured}
-                  placeholder={field.placeholder}
-                  onCommit={(value) => applyPatch({
-                    provider: { instanceId: activeProvider.instanceId, values: { [field.key]: value } }
-                  }, `${field.label} saved.`)}
-                />;
-              })}
-            </div>
-          </SettingsRow> : null}
-          {activeProvider.instanceId === 'codex' ? <SettingsRow
-            title="ChatGPT account"
-            description="The official Codex runtime owns the account session and reports Luna, Terra, Sol and their capabilities when available."
-            stack
-          >
-            <div className="settings-action-cluster">
-              <InlineStatus kind={providerAuth.loading ? 'loading' : providerAuth.authenticated ? 'success' : 'neutral'}>
-                {providerAuth.loading ? 'Checking account…' : providerAuth.label}
-              </InlineStatus>
-              <button className="settings-button" type="button" disabled={Boolean(codexLogin)} onClick={() => void startCodexLogin()}>
-                {codexLogin ? 'Waiting for sign-in…' : providerAuth.authenticated ? 'Reconnect ChatGPT' : 'Sign in with ChatGPT'}
-              </button>
-              {providerAuth.authenticated
-                ? <button className="settings-button is-danger" type="button" onClick={() => void logoutProvider('codex')}>Sign out</button>
-                : null}
-            </div>
-            {codexLoginOutput ? <pre className="settings-auth-output">{codexLoginOutput}</pre> : null}
-          </SettingsRow> : null}
-          {activeProvider.instanceId === 'copilot' ? <SettingsRow
-            title="GitHub Copilot account"
-            description="Use the Copilot device flow, then load the models available to that account."
-            stack
-          >
-            <div className="settings-action-cluster">
-              <InlineStatus kind={providerAuth.loading ? 'loading' : providerAuth.authenticated ? 'success' : 'neutral'}>
-                {providerAuth.loading ? 'Checking account…' : providerAuth.label}
-              </InlineStatus>
-              <button className="settings-button" type="button" disabled={Boolean(copilotLogin)} onClick={() => void startCopilotLogin()}>
-                {copilotLogin ? 'Waiting for sign-in…' : providerAuth.authenticated ? 'Reconnect Copilot' : 'Sign in with GitHub'}
-              </button>
-              {providerAuth.authenticated
-                ? <button className="settings-button is-danger" type="button" onClick={() => void logoutProvider('copilot')}>Sign out</button>
-                : null}
-            </div>
-            {copilotChallenge.verificationUrl ? <div className="settings-auth-challenge">
-              <span>Code <strong>{copilotChallenge.userCode}</strong></span>
-              <a href={copilotChallenge.verificationUrl} target="_blank" rel="noreferrer">Open GitHub device sign-in</a>
-            </div> : null}
-          </SettingsRow> : null}
-          <SettingsRow title="Connection probe" description="Checks authentication and model discovery without changing the selected model.">
-            <div className="settings-action-cluster">
-              <button className="settings-button" type="button" onClick={() => void probeProvider()}>Test connection</button>
-              {probeStatus ? <InlineStatus kind={probeStatus.startsWith('Connected') ? 'success' : probeStatus.includes('…') ? 'loading' : 'error'}>{probeStatus}</InlineStatus> : null}
-            </div>
-          </SettingsRow>
-        </SettingsSection> : null}
       </>;
     }
     if (section === 'automation') {
@@ -561,12 +597,12 @@ export function SettingsWorkspace({
             onCheckedChange={(automaticProcessing) => void applyPatch({ automation: { automaticProcessing } })}
           />
         </SettingsRow>
-        <SettingsRow title="Require trigger tags" description="When enabled, automatic processing considers only documents carrying one of the trigger tags configured in Tag library.">
-          <SettingSwitch
-            checked={settings.automation.processPredefinedDocuments}
-            label="Require trigger tags"
-            onCheckedChange={(processPredefinedDocuments) => void applyPatch({ automation: { processPredefinedDocuments } })}
-          />
+        <SettingsRow title="Eligible documents" description="Trigger tags are optional. Without them, every new unprocessed document is scanned.">
+          <InlineStatus kind={settings.tags.triggerTags.length ? 'neutral' : 'success'}>
+            {settings.tags.triggerTags.length
+              ? `Only documents tagged ${settings.tags.triggerTags.join(', ')} are eligible.`
+              : 'All new documents are eligible. No trigger tag is required.'}
+          </InlineStatus>
         </SettingsRow>
         <SettingsRow title="Processing mode" description="Batch mode may trade latency for lower provider cost.">
           <select
@@ -635,6 +671,34 @@ export function SettingsWorkspace({
             onCommit={(ownerProfiles) => applyPatch({ automation: { ownerProfiles } }, 'Owner profiles saved.')}
           />
         </SettingsRow>
+      </SettingsSection>
+      <SettingsSection title="AI instructions" description="Tune filing behavior without replacing Tagvico's structured-output and safety contracts.">
+        <SettingsRow title="Custom filing prompt" description="Optional instructions for your own archive, terminology and filing preferences." stack>
+          <DraftTextarea
+            label="Additional instructions"
+            value={settings.automation.customPrompt}
+            rows={7}
+            placeholder="For example: Prefer broad reusable tags. Treat apprenticeship documents as Education."
+            description="Applied to automatic scans and manual document analysis. Leave empty to use Tagvico's general prompt."
+            onCommit={(customPrompt) => applyPatch({ automation: { customPrompt } }, 'Custom filing prompt saved.')}
+          />
+        </SettingsRow>
+        <details className="settings-advanced">
+          <summary>Advanced system prompt</summary>
+          <div className="settings-advanced-content">
+            <InlineStatus kind="neutral">
+              Advanced changes affect every provider. Tagvico still appends its immutable prompt-injection, minimal-tagging and structured-output rules.
+            </InlineStatus>
+            <DraftTextarea
+              label="System instructions"
+              value={settings.automation.advancedSystemPrompt}
+              rows={10}
+              placeholder="Leave empty to use Tagvico's maintained general system prompt."
+              description="Use this only when the normal custom filing prompt is not sufficient."
+              onCommit={(advancedSystemPrompt) => applyPatch({ automation: { advancedSystemPrompt } }, 'Advanced system prompt saved.')}
+            />
+          </div>
+        </details>
       </SettingsSection></>;
     }
     if (section === 'tags') {
@@ -732,13 +796,18 @@ export function SettingsWorkspace({
               onCommit={(processedTagName) => applyPatch({ tags: { processedTagName } }, 'Processed tag name saved.')}
             />
           </SettingsRow>
-          <SettingsRow title="Trigger tags" description="When configured, only documents carrying one of these comma-separated tags enter automatic processing.">
+          <SettingsRow title="Optional trigger tags" description="Leave empty to scan every new document. Add tags only when you intentionally want an opt-in queue." stack>
             <DraftField
-              label="Tags"
+              label="Only scan documents tagged"
               value={settings.tags.triggerTags.join(', ')}
               placeholder="todo-ai, inbox-ai"
               onCommit={(value) => applyPatch({ tags: { triggerTags: value.split(',').map((tag) => tag.trim()).filter(Boolean) } }, 'Trigger tags saved.')}
             />
+            <InlineStatus kind={settings.tags.triggerTags.length ? 'neutral' : 'success'}>
+              {settings.tags.triggerTags.length
+                ? `${settings.tags.triggerTags.length} trigger tag${settings.tags.triggerTags.length === 1 ? '' : 's'} restrict automatic scanning.`
+                : 'No trigger tags configured — all new unprocessed documents will be scanned.'}
+            </InlineStatus>
           </SettingsRow>
         </SettingsSection>
         <SettingsSection title="Existing vocabulary boundaries" description="Prevent automation from creating new filing entities in Paperless.">

@@ -80,15 +80,17 @@ test('history renders empty results only after a successful load', () => {
   assert.doesNotMatch(history, /loadState === 'error' && !rows\.length/);
 });
 
-test('operations exposes independent status, OCR and failure load failures', () => {
+test('operations exposes independent status, OCR, failure and ignored load failures', () => {
   const operations = source('src/components/operations-workspace.tsx');
 
-  assert.match(operations, /Promise\.allSettled\(\[loadStatus\(\), loadOcr\(\), loadFailures\(\)\]\)/);
+  assert.match(operations, /Promise\.allSettled\(\[loadStatus\(\), loadOcr\(\), loadFailures\(\), loadIgnored\(\)\]\)/);
   assert.doesNotMatch(operations, /Promise\.all\(\[\s*loadStatus\(\),\s*loadOcr\(\),\s*loadFailures\(\)/);
   assert.match(operations, /title="Recovery status is unavailable"/);
   assert.match(operations, /title="OCR queue is unavailable"/);
   assert.match(operations, /title="Failure queue is unavailable"/);
+  assert.match(operations, /title="Ignored documents are unavailable"/);
   assert.match(operations, /onRetry=\{\(\) => void loadStatus\(\)\}/);
   assert.match(operations, /onRetry=\{\(\) => void loadOcr\(\)\}/);
   assert.match(operations, /onRetry=\{\(\) => void loadFailures\(\)\}/);
+  assert.match(operations, /onRetry=\{\(\) => void loadIgnored\(\)\}/);
 });

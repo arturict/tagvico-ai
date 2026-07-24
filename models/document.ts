@@ -319,6 +319,38 @@ const MIGRATIONS = [
           ON tag_unification_audit(suggestion_id, created_at);
       `);
     }
+  },
+  {
+    version: 7,
+    up() {
+      if (!columnExists('history_documents', 'metadata_json')) {
+        db.exec("ALTER TABLE history_documents ADD COLUMN metadata_json TEXT DEFAULT '{}'");
+      }
+      if (!columnExists('history_documents', 'metrics_json')) {
+        db.exec("ALTER TABLE history_documents ADD COLUMN metrics_json TEXT DEFAULT '{}'");
+      }
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS ignored_documents (
+          id INTEGER PRIMARY KEY,
+          document_id INTEGER NOT NULL UNIQUE,
+          title TEXT,
+          reason TEXT,
+          created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_ignored_documents_updated
+          ON ignored_documents(updated_at DESC);
+
+        CREATE TABLE IF NOT EXISTS rescan_requests (
+          id INTEGER PRIMARY KEY,
+          document_id INTEGER NOT NULL UNIQUE,
+          requested_by TEXT NOT NULL DEFAULT 'history',
+          requested_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_rescan_requests_requested
+          ON rescan_requests(requested_at);
+      `);
+    }
   }
 ];
 
@@ -915,6 +947,16 @@ const documentModel = {
     return { rows, total, filtered };
   },
 
+  async getLatestMetrics(documentId: number) {
+    return db.prepare(`
+      SELECT promptTokens, completionTokens, totalTokens, created_at
+      FROM openai_metrics
+      WHERE document_id = ?
+      ORDER BY datetime(created_at) DESC, id DESC
+      LIMIT 1
+    `).get(documentId) || null;
+  },
+
   async addToOcrQueue(documentId: number, title: string, reason = 'manual') {
     const result = db.prepare(`
       INSERT INTO ocr_queue (document_id, title, reason, status)
@@ -1008,14 +1050,137 @@ const documentModel = {
     return transaction() > 0;
   },
 
+  async requestRescan(documentId: number, requestedBy = 'history') {
+    return db.transaction(() => {
+      if (db.prepare('SELECT 1 FROM ignored_documents WHERE document_id = ?').get(documentId)) {
+        return false;
+      }
+      db.prepare('DELETE FROM processed_documents WHERE document_id = ?').run(documentId);
+      db.prepare('DELETE FROM processing_status WHERE document_id = ?').run(documentId);
+      db.prepare('DELETE FROM failed_documents WHERE document_id = ?').run(documentId);
+      db.prepare(`
+        UPDATE review_suggestions
+        SET status = 'superseded',
+            review_note = COALESCE(review_note, 'Superseded by an explicit rescan'),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE document_id = ? AND status IN ('staging', 'pending', 'applying')
+      `).run(documentId);
+      db.prepare(`
+        INSERT INTO rescan_requests (document_id, requested_by)
+        VALUES (?, ?)
+        ON CONFLICT(document_id) DO UPDATE SET
+          requested_by = excluded.requested_by,
+          requested_at = CURRENT_TIMESTAMP
+      `).run(documentId, String(requestedBy || 'history').slice(0, 80));
+      return true;
+    })();
+  },
+
+  async getPendingRescanRequests(limit = 100) {
+    return db.prepare(`
+      SELECT document_id, requested_by, requested_at
+      FROM rescan_requests
+      ORDER BY requested_at ASC
+      LIMIT ?
+    `).all(Math.min(Math.max(Number(limit) || 100, 1), 500));
+  },
+
+  async completeRescanRequest(documentId: number) {
+    return db.prepare('DELETE FROM rescan_requests WHERE document_id = ?').run(documentId).changes > 0;
+  },
+
   async resetForRescan(documentId: number) {
     return db.transaction(() => {
       db.prepare('DELETE FROM processed_documents WHERE document_id = ?').run(documentId);
       db.prepare('DELETE FROM processing_status WHERE document_id = ?').run(documentId);
       db.prepare('DELETE FROM failed_documents WHERE document_id = ?').run(documentId);
-      db.prepare('DELETE FROM review_suggestions WHERE document_id = ?').run(documentId);
+      db.prepare(`
+        UPDATE review_suggestions
+        SET status = 'superseded',
+            review_note = COALESCE(review_note, 'Superseded by an explicit rescan'),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE document_id = ? AND status IN ('staging', 'pending', 'applying')
+      `).run(documentId);
       return true;
     })();
+  },
+
+  async ignoreDocument(documentId: number, title = '', reason = '') {
+    return db.transaction(() => {
+      db.prepare(`
+        INSERT INTO ignored_documents (document_id, title, reason)
+        VALUES (?, ?, ?)
+        ON CONFLICT(document_id) DO UPDATE SET
+          title = excluded.title,
+          reason = excluded.reason,
+          updated_at = CURRENT_TIMESTAMP
+      `).run(
+        documentId,
+        String(title || `Document ${documentId}`).slice(0, 500),
+        String(reason || '').slice(0, 2000)
+      );
+      db.prepare('DELETE FROM rescan_requests WHERE document_id = ?').run(documentId);
+      db.prepare('DELETE FROM processing_status WHERE document_id = ?').run(documentId);
+      db.prepare('DELETE FROM ocr_queue WHERE document_id = ?').run(documentId);
+      db.prepare('DELETE FROM failed_documents WHERE document_id = ?').run(documentId);
+      db.prepare(`
+        UPDATE review_suggestions
+        SET status = 'ignored',
+            review_note = COALESCE(review_note, 'Document moved to the permanent ignore list'),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE document_id = ? AND status IN ('staging', 'pending', 'applying')
+      `).run(documentId);
+      return true;
+    })();
+  },
+
+  async unignoreDocument(documentId: number) {
+    return db.transaction(() => {
+      const removed = db.prepare('DELETE FROM ignored_documents WHERE document_id = ?').run(documentId).changes;
+      if (!removed) return false;
+      db.prepare('DELETE FROM processed_documents WHERE document_id = ?').run(documentId);
+      db.prepare(`
+        INSERT INTO rescan_requests (document_id, requested_by)
+        VALUES (?, 'unignore')
+        ON CONFLICT(document_id) DO UPDATE SET
+          requested_by = 'unignore',
+          requested_at = CURRENT_TIMESTAMP
+      `).run(documentId);
+      return true;
+    })();
+  },
+
+  async isDocumentIgnored(documentId: number) {
+    return Boolean(db.prepare('SELECT 1 FROM ignored_documents WHERE document_id = ?').get(documentId));
+  },
+
+  async getIgnoredDocumentsPage({ search = '', limit = 10, offset = 0 } = {}) {
+    const pattern = `%${search}%`;
+    const rows = db.prepare(`
+      SELECT * FROM ignored_documents
+      WHERE (? = '' OR title LIKE ? OR reason LIKE ? OR CAST(document_id AS TEXT) LIKE ?)
+      ORDER BY updated_at DESC LIMIT ? OFFSET ?
+    `).all(
+      search,
+      pattern,
+      pattern,
+      pattern,
+      Math.min(Math.max(Number(limit) || 10, 1), 100),
+      Math.max(Number(offset) || 0, 0)
+    );
+    const total = db.prepare(`
+      SELECT COUNT(*) AS count FROM ignored_documents
+      WHERE (? = '' OR title LIKE ? OR reason LIKE ? OR CAST(document_id AS TEXT) LIKE ?)
+    `).get(search, pattern, pattern, pattern).count;
+    return { rows, total };
+  },
+
+  async getRecoveryCounts() {
+    return {
+      failed: Number(db.prepare('SELECT COUNT(*) AS count FROM failed_documents').get().count || 0),
+      ignored: Number(db.prepare('SELECT COUNT(*) AS count FROM ignored_documents').get().count || 0),
+      ocr: Number(db.prepare("SELECT COUNT(*) AS count FROM ocr_queue WHERE status NOT IN ('done')").get().count || 0)
+    };
   },
 
   async getTrackedDocumentIds() {
@@ -1026,6 +1191,8 @@ const documentModel = {
         SELECT document_id FROM original_documents UNION ALL
         SELECT document_id FROM ocr_queue UNION ALL
         SELECT document_id FROM failed_documents UNION ALL
+        SELECT document_id FROM ignored_documents UNION ALL
+        SELECT document_id FROM rescan_requests UNION ALL
         SELECT document_id FROM review_suggestions
       )
     `).all().map((row: { document_id: number | string }) => Number(row.document_id));
@@ -1033,7 +1200,7 @@ const documentModel = {
 
   async purgeLocalDocument(documentId: number) {
     db.transaction(() => {
-      for (const table of ['processed_documents', 'history_documents', 'original_documents', 'processing_status', 'ocr_queue', 'failed_documents', 'review_suggestions', 'openai_metrics']) {
+      for (const table of ['processed_documents', 'history_documents', 'original_documents', 'processing_status', 'ocr_queue', 'failed_documents', 'ignored_documents', 'rescan_requests', 'review_suggestions', 'openai_metrics']) {
         db.prepare(`DELETE FROM ${table} WHERE document_id = ?`).run(documentId);
       }
     })();

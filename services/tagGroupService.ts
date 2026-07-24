@@ -68,14 +68,14 @@ function flattenVocabulary(groups: TagGroup[]): string[] {
 
 function getConfig(env: Environment = process.env) {
   const groups = parseGroups(env.TAG_GROUPS_JSON);
-  const maximum = Math.min(10, Math.max(1, Number.parseInt(String(env.TAG_MAX_PER_DOCUMENT || '3'), 10) || 3));
+  const maximum = Math.min(10, Math.max(1, Number.parseInt(String(env.TAG_MAX_PER_DOCUMENT || '4'), 10) || 4));
   return { enabled: String(env.CONTROLLED_TAGGING_ENABLED || 'no') === 'yes', maximum, groups, vocabulary: flattenVocabulary(groups) };
 }
 
 function enforceSuggestions(suggestions: unknown, env: Environment = process.env) {
   const policy = getConfig(env);
   const unknown: string[] = [];
-  if (!policy.enabled) return { valid: cleanTags(suggestions), unknown, policy };
+  if (!policy.enabled) return { valid: cleanTags(suggestions).slice(0, policy.maximum), unknown, policy };
   const canonical = new Map(policy.vocabulary.map((tag) => [normalizeTag(tag), tag]));
   const valid: string[] = [];
   const seen = new Set<string>();
@@ -92,8 +92,9 @@ function enforceSuggestions(suggestions: unknown, env: Environment = process.env
 
 function promptContract(env: Environment = process.env): string {
   const policy = getConfig(env);
-  if (!policy.enabled) return '';
-  return `CONTROLLED TAGGING: Return at most ${policy.maximum} tags. Use only exact, case-sensitive names from this JSON vocabulary: ${JSON.stringify(policy.vocabulary)}. Never translate, alter, or invent a tag.`;
+  const minimal = `TAGGING POLICY: Return at most ${policy.maximum} tags, but choose the smallest sufficient set. Zero tags is valid when no tag clearly improves filing. Do not repeat the document language, correspondent, document type, title words or one-off document details as tags.`;
+  if (!policy.enabled) return minimal;
+  return `${minimal} CONTROLLED TAGGING: Use only exact, case-sensitive names from this JSON vocabulary: ${JSON.stringify(policy.vocabulary)}. Never translate, alter, or invent a tag.`;
 }
 
 export = { PRESETS, defaults, parseGroups, cleanTags, normalizeTag, flattenVocabulary, getConfig, enforceSuggestions, promptContract };

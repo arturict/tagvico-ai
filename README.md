@@ -25,7 +25,7 @@ record. Reviewable AI metadata automation remains included.
 - **AI with approval boundaries** — the Companion can read permitted documents and prepare changes; only an owner or adult can execute a write.
 - **Your choice of model** — the Companion uses Vercel AI SDK v6 for OpenCode Go, OpenRouter, OpenAI, and compatible gateways, plus an optional read-only Codex SDK adapter.
 - **Useful metadata, automatically** — retain titles, tags, correspondents, document types, dates, languages, custom fields, and optional owner assignment.
-- **Cost-aware processing** — pick immediate requests, OpenAI Flex, or asynchronous OpenAI/Anthropic batches.
+- **Cost-aware processing** — pick immediate requests, OpenAI Flex, or asynchronous OpenAI batches.
 - **Designed for homelabs** — one container, one persistent volume, and SQLite for processing history and retries.
 - **Optional Telegram access** — allowlisted family members can search, upload, list actions, and approve or reject proposals using their own Paperless tokens.
 - **Built to recover** — durable OCR and terminal-failure queues, safe rescans, original-metadata restore, and interrupted-job recovery.
@@ -62,7 +62,7 @@ which account-scoped model is active, and which vocabulary the model may use.
 
 <p align="center"><em>Sanitized screens from the established document-automation interface. Live document names were replaced for privacy.</em></p>
 
-## Stable quick start (v3.1.0)
+## Stable quick start (v3.1.1)
 
 Use only immutable tags that are present on the
 [GitHub releases page](https://github.com/arturict/tagvico-ai/releases).
@@ -76,7 +76,7 @@ services:
   tagvico-ai:
     # Pin an immutable release tag for upgrades you can rely on.
     # See https://github.com/arturict/tagvico-ai/releases for the current version.
-    image: ghcr.io/arturict/tagvico-ai:3.1.0
+    image: ghcr.io/arturict/tagvico-ai:3.1.1
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -129,7 +129,7 @@ docker run -d \
   -e TAGVICO_AI_PORT=3000 \
   -e ALLOW_REMOTE_SETUP=yes \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:3.1.0
+  ghcr.io/arturict/tagvico-ai:3.1.1
 ```
 
 After setup succeeds, remove and recreate the container without
@@ -152,11 +152,9 @@ Owner matching is conservative: optional hint profiles add context, and assignme
 | Ollama | Fully local inference |
 | Ollama Cloud | Hosted Ollama models with an API key |
 | OpenAI direct | Native OpenAI access with Flex and Batch pricing |
-| Anthropic direct | Claude with standard or discounted Message Batches |
 | OpenCode Go | Go subscription API key and OpenAI-compatible inference gateway |
 | GitHub Copilot | Official Copilot SDK, OAuth device login, and account-scoped model discovery |
 | OpenAI-compatible | LM Studio, LiteLLM, vLLM, and custom gateways |
-| Azure OpenAI | Existing Azure deployments |
 | ChatGPT subscription | Optional read-only Codex SDK adapter with stable device login |
 
 Provider-specific setup and troubleshooting live in [`docs/providers/`](docs/providers/README.md).
@@ -165,7 +163,7 @@ Provider-specific setup and troubleshooting live in [`docs/providers/`](docs/pro
 
 - **Standard** — process each document immediately. Best for interactive feedback and low-volume setups.
 - **OpenAI Flex** — trades latency and guaranteed availability for Batch-level pricing. Available only for supported OpenAI models, selected in the provider step.
-- **Batch** — asynchronous, discounted jobs that may take up to 24 hours. Available for OpenAI direct and Anthropic direct; Tagvico groups all documents discovered in the same scan into one batch.
+- **Batch** — asynchronous, discounted jobs that may take up to 24 hours. Available for OpenAI direct; Tagvico groups all documents discovered in the same scan into one batch.
 - **ChatGPT subscription** — sign in directly from Settings with the stable `codex login --device-auth` flow. The official Codex SDK supplies read-only inference; Tagvico does not depend on the experimental app-server and never exposes tokens to the browser.
 - **GitHub Copilot subscription** — uses the official SDK with every agent tool denied. Authenticate through the Settings device flow, `npm run auth:copilot`, or a supported token. The dropdown is populated with `listModels()` for the authenticated account.
 
@@ -214,14 +212,14 @@ calculated totals as assistant summaries rather than accounting-grade results.
 
 ### OCR rescue and failure recovery
 
-Documents with insufficient OCR enter a durable rescue queue when `OCR_ENABLED=yes`. Open **Operations** to run Mistral OCR, an OpenAI-compatible vision endpoint, or native Ollama vision. Local PDF OCR renders at most `OCR_MAX_PAGES` pages with `pdftoppm`. Provider failures are retried and then enter a terminal-failure queue so a broken document cannot loop forever.
+Documents with insufficient OCR enter a durable rescue queue when `OCR_ENABLED=yes`. Open **Recovery** to run Mistral OCR, an OpenAI-compatible vision endpoint, or native Ollama vision. Local PDF OCR renders at most `OCR_MAX_PAGES` pages with `pdftoppm`. AI and OCR provider failures are attempted up to three times and then enter **Permanently failed**, so a broken document cannot loop forever.
 
-History supports explicit rescan and restoration of the first metadata snapshot captured before Tagvico changed the document. Restoration is deliberately separate from rescan.
+Activity supports single and bulk rescan, exact restoration of the first metadata snapshot, token and custom-field details, and orphan validation/cleanup. Explicit rescans bypass trigger-tag filters but preserve history and restore snapshots. Documents that should never be processed belong in the permanent **Ignored documents** list; un-ignoring one queues a deliberate rescan.
 
 ## Upgrades
 
 1. Check the latest release at <https://github.com/arturict/tagvico-ai/releases>.
-2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page—for example `ghcr.io/arturict/tagvico-ai:3.1.0`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
+2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page—for example `ghcr.io/arturict/tagvico-ai:3.1.1`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
 3. `docker compose pull && docker compose up -d`.
 
 The container is replaceable, while configuration, processing history, the local admin account, encrypted member tokens, and the installation secret live in the `tagvico_ai_data` volume. Back up and restore that volume as one unit; changing or losing the JWT secret makes encrypted member tokens unreadable.
@@ -231,12 +229,12 @@ The container is replaceable, while configuration, processing history, the local
 - **Setup page does not load after first start.** Confirm the container is healthy with `docker compose ps` and `docker compose logs tagvico-ai`. The health endpoint is `http://localhost:8080/health`.
 - **Cannot reach Paperless-ngx.** Use the "Test connection" button. Do not include `/api`. `localhost` inside the Tagvico container means that container—not your Docker host. Use `host.docker.internal`, the host LAN IP, or a shared Docker-network service name as described above.
 - **Model calls fail.** Verify the API key and model slug in Settings. For Ollama and OpenAI-compatible endpoints, confirm the host is reachable from inside the container (`docker exec -it tagvico-ai curl ...`).
-- **Batch jobs not completing.** Batch mode may take up to 24 hours and is only supported for OpenAI direct and Anthropic direct. Switch to Standard or Flex in Settings to process immediately.
+- **Batch jobs not completing.** Batch mode may take up to 24 hours and is supported for OpenAI direct. Switch to Standard or Flex in Settings to process immediately.
 - **Forgot the local admin password.** Stop the container, back up the volume, and recreate the admin by resetting setup state, or start a fresh `tagvico_ai_data` volume.
 
 ## Security and privacy
 
-With Ollama or another endpoint on your network, OCR text and metadata can remain on infrastructure you control. When you select OpenAI, OpenRouter, or Azure, the document content required for classification is sent to that provider. Secrets are stored in `data/.env` and are not written to the processing database.
+With Ollama or another endpoint on your network, OCR text and metadata can remain on infrastructure you control. When you select OpenAI, OpenRouter, Ollama Cloud, OpenCode Go, GitHub Copilot, or a subscription runtime, the document content required for classification is sent to that provider. Secrets are stored in `data/.env` and are not written to the processing database.
 
 The container drops Linux capabilities and enables `no-new-privileges`. See [SECURITY.md](SECURITY.md) and [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for the full policies.
 

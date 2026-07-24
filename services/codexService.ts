@@ -2,6 +2,7 @@
 const config = require('../config/config');
 const tagGroupService = require('./tagGroupService');
 const confidenceGuard = require('./confidenceGuard');
+const promptPolicyService = require('./promptPolicyService');
 const fs = require('fs').promises;
 const os = require('os');
 const path = require('path');
@@ -140,7 +141,7 @@ class CodexService {
         required: ['title', 'correspondent', 'tags', 'document_type', 'document_date', 'language', 'owner', 'custom_fields', 'confidence'],
         additionalProperties: false
       };
-      const prompt = `You are a document metadata extractor. Do not use tools. Analyze only the supplied OCR text and return the requested JSON.\n${process.env.SYSTEM_PROMPT || ''}\n${config.mustHavePrompt}\n${tagGroupService.promptContract()}\nExisting tags: ${existingTags.join(', ')}\nExisting correspondents: ${correspondents.join(', ')}\nExisting document types: ${documentTypes.join(', ')}\nDocument OCR:\n${content}`;
+      const prompt = `${promptPolicyService.configuredPrompt()}\n${config.mustHavePrompt}\n${tagGroupService.promptContract()}\nExisting tags: ${existingTags.join(', ')}\nExisting correspondents: ${correspondents.join(', ')}\nExisting document types: ${documentTypes.join(', ')}\nDocument OCR:\n${content}`;
       const result = await thread.run(prompt, { outputSchema: schema, signal: AbortSignal.timeout(config.codex.timeoutMs) });
       const document = confidenceGuard.annotateHeldFields(JSON.parse(result.finalResponse));
       const usage = result.usage || {};

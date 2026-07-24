@@ -7,14 +7,13 @@ export type RuntimeProvider =
   | 'compatible'
   | 'codex'
   | 'copilot'
-  | 'anthropic'
   | 'ollama'
   | 'ollama-cloud';
 export type RuntimeModel =
   | { kind: 'ai-sdk'; provider: RuntimeProvider; modelId: string; model: LanguageModel }
   | {
       kind: 'text-adapter';
-      provider: Extract<RuntimeProvider, 'codex' | 'copilot' | 'anthropic'>;
+      provider: Extract<RuntimeProvider, 'codex' | 'copilot'>;
       modelId: string;
       generateText: (prompt: string, signal?: AbortSignal) => Promise<string>;
     };

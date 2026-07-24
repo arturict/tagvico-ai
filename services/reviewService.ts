@@ -462,7 +462,13 @@ async function applySuggestion(id: number, reviewedBy: string | null = null) {
       historyTags,
       historyTitle,
       historyCorrespondent,
-      result.diff || []
+      result.diff || [],
+      {
+        eventType: 'processed',
+        source: parsed.source || 'review',
+        metadata: result.after || patch,
+        metrics: parsed.analysis_metrics || {}
+      }
     );
     const completed = await documentModel.completeReviewSuggestion(id, {
       diff: result.diff || [],
@@ -516,7 +522,12 @@ async function applyMetadata(documentId: number, metadata: Metadata = {}) {
     metadata.tags || result.after?.tags || [],
     metadata.title || result.after?.title || null,
     metadata.correspondent || result.after?.correspondent || null,
-    result.diff || []
+    result.diff || [],
+    {
+      eventType: 'processed',
+      source: 'manual',
+      metadata: result.after || metadata
+    }
   );
   return { ok: true, dryRun: isDryRunEnabled(), diff: result.diff || [] };
 }

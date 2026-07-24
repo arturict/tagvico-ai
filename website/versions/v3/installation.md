@@ -11,7 +11,7 @@ Create a new directory and save this as `docker-compose.yml`:
 ```yaml
 services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:3.1.0
+    image: ghcr.io/arturict/tagvico-ai:3.1.1
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -131,7 +131,7 @@ docker run -d \
   -e TAGVICO_AI_PORT=3000 \
   -e ALLOW_REMOTE_SETUP=yes \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:3.1.0
+  ghcr.io/arturict/tagvico-ai:3.1.1
 ```
 
 After setup, remove `ALLOW_REMOTE_SETUP=yes` unless you specifically need to

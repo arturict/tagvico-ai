@@ -148,7 +148,7 @@ for (const page of ['/actions', `/actions/${actionId}`, '/companion', '/settings
   assert.equal(new URL(response.url).pathname, page, `${page} redirected to ${response.url}`);
   assert.match(response.headers.get('content-type') || '', /text\/html/);
   const html = await response.text();
-  assert.match(html, page === '/companion' ? /Household companion/i : page === '/settings' ? /Settings \| Tagvico AI/i : /Action center|Compare renewal offer/i);
+  assert.match(html, page === '/companion' ? /Ask Tagvico/i : page === '/settings' ? /Settings \| Tagvico AI/i : /Action center|Compare renewal offer/i);
 }
 
 process.stdout.write(JSON.stringify({ ok: true, actionId, ownerMemberId, memberId, checks: 46 }, null, 2) + '\n');

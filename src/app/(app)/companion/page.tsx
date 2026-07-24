@@ -6,9 +6,19 @@ import type { CompanionToolActivity } from '@root/contracts/companion';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Ask Tagvico' };
-export default async function CompanionPage() {
+export default async function CompanionPage({
+  searchParams
+}: {
+  searchParams: Promise<{ chat?: string }>;
+}) {
   const user = await requireUser(); const workspace = workspaceFor(user);
-  const sessionId = actionCenter.getOrCreateSession(workspace.householdId, workspace.memberId, 'web');
+  const requestedSessionId = String((await searchParams).chat || '').trim();
+  const requestedSession = requestedSessionId
+    ? actionCenter.getSession(workspace.householdId, requestedSessionId) as { member_id?: unknown } | null
+    : null;
+  const sessionId = requestedSession?.member_id === workspace.memberId
+    ? requestedSessionId
+    : actionCenter.getOrCreateSession(workspace.householdId, workspace.memberId, 'web');
   const session = actionCenter.getSession(workspace.householdId, sessionId) as {
     messages?: Array<{
       id: string;
@@ -41,5 +51,12 @@ export default async function CompanionPage() {
       };
     });
   const approvals = actionCenter.listApprovals(workspace.householdId) as Array<Record<string, unknown>>;
-  return <div className="page"><header className="page-head"><div><p className="eyebrow">Research with a seatbelt</p><h1>Ask Tagvico</h1><p className="lede">Research letters, deadlines, bills and contracts in Paperless. Reading is immediate; every change waits for an owner or adult to approve it.</p></div></header><Companion sessionId={sessionId} initialMessages={initialMessages} initialApprovals={JSON.parse(JSON.stringify(approvals))} canApprove={['owner', 'adult'].includes(workspace.role)} /></div>;
+  const sessions = actionCenter.listSessions(workspace.householdId, workspace.memberId, 'web') as Array<Record<string, unknown>>;
+  return <div className="page companion-page"><Companion
+    sessionId={sessionId}
+    initialMessages={initialMessages}
+    initialApprovals={JSON.parse(JSON.stringify(approvals))}
+    initialSessions={JSON.parse(JSON.stringify(sessions))}
+    canApprove={['owner', 'adult'].includes(workspace.role)}
+  /></div>;
 }

@@ -13,6 +13,7 @@ const tagGroupService = require('./tagGroupService');
 const { normalizeProvider } = require('./providerCatalogService');
 const { loadThumbnail, buildUserMessage } = require('./thumbnailHelper');
 const confidenceGuard = require('./confidenceGuard');
+const promptPolicyService = require('./promptPolicyService');
 type AnalysisOptions = { externalApiData?: unknown };
 type CustomField = { value: string };
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : String(error);
@@ -129,6 +130,7 @@ class CustomOpenAIService {
 
       let systemPrompt = '';
       let promptTags = '';
+      const configuredPrompt = promptPolicyService.configuredPrompt(customPrompt);
       const model = this.model;
       if (!model) throw new Error('Choose an OpenAI-compatible model before processing documents');
 
@@ -156,6 +158,7 @@ class CustomOpenAIService {
         .split('\n')
         .map(line => '    ' + line)  // Add proper indentation
         .join('\n');
+      const requiredPrompt = config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr);
 
       // Get system prompt based on configuration
       if (config.useExistingData === 'yes' && config.restrictToExistingTags === 'no' && config.restrictToExistingCorrespondents === 'no') {
@@ -163,11 +166,10 @@ class CustomOpenAIService {
         Pre-existing tags: ${existingTagsList}\n\n
         Pre-existing correspondents: ${existingCorrespondentList}\n\n
         Pre-existing document types: ${existingDocumentTypesList.join(', ')}\n\n
-        ` + process.env.SYSTEM_PROMPT + '\n\n' + config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr);
+        ` + configuredPrompt + '\n\n' + requiredPrompt;
         promptTags = '';
       } else {
-        config.mustHavePrompt = config.mustHavePrompt.replace('%CUSTOMFIELDS%', customFieldsStr);
-        systemPrompt = process.env.SYSTEM_PROMPT + '\n\n' + config.mustHavePrompt;
+        systemPrompt = configuredPrompt + '\n\n' + requiredPrompt;
         promptTags = '';
       }
 
@@ -189,14 +191,9 @@ class CustomOpenAIService {
         promptTags = process.env.PROMPT_TAGS || '';
         systemPrompt = `
         Take these tags and try to match one or more to the document content.\n\n
-        ` + config.specialPromptPreDefinedTags;
+        ` + configuredPrompt + '\n\n' + config.specialPromptPreDefinedTags;
       }
 
-      // Custom prompt override if provided
-      if (customPrompt) {
-        console.log('[DEBUG] Replace system prompt with custom prompt');
-        systemPrompt = customPrompt + '\n\n' + config.mustHavePrompt;
-      }
       if (tagGroupService.promptContract() && !systemPrompt.includes('CONTROLLED TAGGING:')) systemPrompt += `\n\n${tagGroupService.promptContract()}`;
 
       // Append the confidence-scoring contract so the model returns per-field

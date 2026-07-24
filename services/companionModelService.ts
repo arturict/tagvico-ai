@@ -7,8 +7,7 @@ import type {
 import type { ModelDescriptor } from '../contracts/provider';
 import providerDiscoveryService from './providerDiscoveryService';
 import providerRegistry from './providerRegistry';
-import { applyPersistedAiSelection } from './managedAiSelection';
-import setupService from './setupService';
+import { getEffectiveProviderEnvironment } from './settingsV3Service';
 
 type Environment = Record<string, string | undefined>;
 type ProviderDefinition = ReturnType<typeof providerRegistry.getProviderDefinitions>[number];
@@ -18,10 +17,11 @@ const SUPPORTED_ADAPTERS = new Set([
   'ai-sdk-compatible',
   'codex-runtime',
   'copilot-sdk',
-  'native-anthropic',
   'native-ollama'
 ]);
 const CACHE_TTL_MS = 60_000;
+const NON_CHAT_MODEL_ID = /(?:^|[-_.])(?:embedding|embeddings|whisper|tts|moderation|realtime|audio|transcribe|transcription|image|vision-only|sora)(?:$|[-_.])/i;
+const LEGACY_COMPLETION_MODEL_ID = /^(?:text-|davinci(?:-|$)|babbage(?:-|$)|curie(?:-|$)|ada(?:-|$))/i;
 
 let cachedCatalog: {
   expiresAt: number;
@@ -31,7 +31,12 @@ let cachedCatalog: {
 let inFlight: { fingerprint: string; promise: Promise<CompanionModelCatalog> } | null = null;
 
 export function supportsCompanionRuntime(definition: Pick<ProviderDefinition, 'runtimeAdapter' | 'discovery'>) {
-  return definition.discovery !== 'manual' && SUPPORTED_ADAPTERS.has(definition.runtimeAdapter);
+  return SUPPORTED_ADAPTERS.has(definition.runtimeAdapter);
+}
+
+export function supportsCompanionModel(model: Pick<ModelDescriptor, 'id'>) {
+  const id = String(model.id || '').trim();
+  return Boolean(id) && !NON_CHAT_MODEL_ID.test(id) && !LEGACY_COMPLETION_MODEL_ID.test(id);
 }
 
 export function hasCompanionConfiguration(definition: ProviderDefinition, env: Environment) {
@@ -79,8 +84,7 @@ export function selectionIsAvailable(
 }
 
 async function effectiveEnvironment(): Promise<Environment> {
-  const persisted = (await setupService.loadConfig()) || {};
-  return applyPersistedAiSelection({ ...persisted, ...process.env }, persisted);
+  return getEffectiveProviderEnvironment();
 }
 
 function configurationFingerprint(env: Environment) {
@@ -103,11 +107,13 @@ async function discoverVerifiedProvider(
 ): Promise<CompanionModelProvider | null> {
   if (!supportsCompanionRuntime(definition) || !hasCompanionConfiguration(definition, env)) return null;
   try {
-    const models = await providerDiscoveryService.discoverProviderModels(definition.id, env) as ModelDescriptor[];
+    const models = (await providerDiscoveryService.discoverProviderModels(definition.id, env) as ModelDescriptor[])
+      .filter(supportsCompanionModel);
     if (!models.length) return null;
     return {
       instanceId: definition.id,
       name: definition.name,
+      icon: definition.icon,
       models
     };
   } catch {
@@ -168,6 +174,7 @@ const companionModelService = {
   hasCompanionConfiguration,
   pickCompanionDefault,
   selectionIsAvailable,
+  supportsCompanionModel,
   supportsCompanionRuntime
 };
 

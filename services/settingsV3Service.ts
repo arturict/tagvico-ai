@@ -13,6 +13,7 @@ const providerRegistryModule = require('./providerRegistry');
 const providerRegistry = providerRegistryModule.default || providerRegistryModule;
 const tagGroupService = require('./tagGroupService');
 const runtimeConfig = require('../config/config');
+const retiredProviderIds = new Set(['anthropic', 'azure']);
 const externallyManagedEnvironmentKeys = new Set<string>(
   runtimeConfig.injectedEnvironment instanceof Set
     ? [...runtimeConfig.injectedEnvironment]
@@ -38,6 +39,8 @@ const sectionEnvironmentKeys = [
   'ACTIVATE_CUSTOM_FIELDS',
   'ACTIVATE_OWNER_ASSIGNMENT',
   'OWNER_PROFILES',
+  'CUSTOM_PROMPT',
+  'SYSTEM_PROMPT',
   'CONTROLLED_TAGGING_ENABLED',
   'TAG_MAX_PER_DOCUMENT',
   'TAG_GROUPS_JSON',
@@ -77,6 +80,10 @@ function flag(value: boolean): string {
 
 function commaList(value: string | undefined): string[] {
   return String(value || '').split(',').map((entry) => entry.trim()).filter(Boolean);
+}
+
+function normalizedPrompt(value: string): string {
+  return value.replace(/\r\n/g, '\n').trim();
 }
 
 function customFields(value: string | undefined) {
@@ -165,6 +172,10 @@ async function environment(): Promise<{ persisted: Environment; effective: Envir
   };
 }
 
+export async function getEffectiveProviderEnvironment(): Promise<Environment> {
+  return (await environment()).effective;
+}
+
 function publicField(field: {
   key: string;
   label: string;
@@ -191,6 +202,7 @@ async function getSettings() {
     id: string;
     name: string;
     description: string;
+    icon: { path: string; source?: string } | null;
     runtimeAdapter: string;
     recommended?: boolean;
     discovery: string;
@@ -200,13 +212,15 @@ async function getSettings() {
     suggestedModels: Array<{ id: string; name: string; description?: string }>;
     manualModelInput: boolean;
   }>;
-  const configuredProvider = String(effective.AI_PROVIDER || effective.COMPANION_PROVIDER || 'openrouter').trim();
+  const requestedProvider = String(effective.AI_PROVIDER || effective.COMPANION_PROVIDER || 'openrouter').trim();
+  const configuredProvider = retiredProviderIds.has(requestedProvider) ? 'openrouter' : requestedProvider;
   const activeDefinition = providerRegistry.getProviderDefinition(configuredProvider);
   const providers = knownDefinitions.map((definition) => ({
     instanceId: definition.id,
     driverId: definition.id,
     name: definition.name,
     description: definition.description,
+    icon: definition.icon,
     runtimeAdapter: definition.runtimeAdapter,
     recommended: Boolean(definition.recommended),
     available: true,
@@ -227,6 +241,7 @@ async function getSettings() {
       driverId: configuredProvider,
       name: configuredProvider,
       description: 'This provider is preserved from the existing configuration but is unavailable in this build.',
+      icon: null,
       runtimeAdapter: 'unknown',
       recommended: false,
       available: false,
@@ -263,7 +278,8 @@ async function getSettings() {
     automation: {
       scanInterval: effective.SCAN_INTERVAL || '*/30 * * * *',
       automaticProcessing: !yes(effective.DISABLE_AUTOMATIC_PROCESSING),
-      processPredefinedDocuments: yes(effective.PROCESS_PREDEFINED_DOCUMENTS),
+      processPredefinedDocuments:
+        yes(effective.PROCESS_PREDEFINED_DOCUMENTS) && commaList(effective.TAGS).length > 0,
       processingMode: ['flex', 'batch'].includes(String(effective.AI_PROCESSING_MODE))
         ? effective.AI_PROCESSING_MODE
         : 'standard',
@@ -271,7 +287,9 @@ async function getSettings() {
       useExistingData: yes(effective.USE_EXISTING_DATA),
       assignCustomFields: yes(effective.ACTIVATE_CUSTOM_FIELDS, true),
       assignOwner: yes(effective.ACTIVATE_OWNER_ASSIGNMENT, true),
-      ownerProfiles: String(effective.OWNER_PROFILES || '')
+      ownerProfiles: String(effective.OWNER_PROFILES || ''),
+      customPrompt: String(effective.CUSTOM_PROMPT || effective.TAGVICO_CUSTOM_PROMPT || ''),
+      advancedSystemPrompt: String(effective.SYSTEM_PROMPT || '')
     },
     tags: {
       controlled: tagPolicy.enabled,
@@ -303,7 +321,7 @@ async function getSettings() {
       customFields: customFields(effective.CUSTOM_FIELDS)
     },
     diagnostics: {
-      version: effective.TAGVICO_AI_VERSION || '3.1.0',
+      version: effective.TAGVICO_AI_VERSION || '3.1.1',
       configured: yes(effective.TAGVICO_AI_INITIAL_SETUP),
       providerRegistrySize: knownDefinitions.length
     }
@@ -357,9 +375,6 @@ function applySectionPatch(parsed: SettingsV3Patch, effective: Environment): Rec
     if (payload.automation.automaticProcessing !== undefined) {
       patch.DISABLE_AUTOMATIC_PROCESSING = flag(!payload.automation.automaticProcessing);
     }
-    if (payload.automation.processPredefinedDocuments !== undefined) {
-      patch.PROCESS_PREDEFINED_DOCUMENTS = flag(payload.automation.processPredefinedDocuments);
-    }
     if (payload.automation.processingMode !== undefined) {
       patch.AI_PROCESSING_MODE = payload.automation.processingMode;
     }
@@ -370,6 +385,10 @@ function applySectionPatch(parsed: SettingsV3Patch, effective: Environment): Rec
     if (payload.automation.assignCustomFields !== undefined) patch.ACTIVATE_CUSTOM_FIELDS = flag(payload.automation.assignCustomFields);
     if (payload.automation.assignOwner !== undefined) patch.ACTIVATE_OWNER_ASSIGNMENT = flag(payload.automation.assignOwner);
     if (payload.automation.ownerProfiles !== undefined) patch.OWNER_PROFILES = payload.automation.ownerProfiles.replace(/\r\n/g, '\n');
+    if (payload.automation.customPrompt !== undefined) patch.CUSTOM_PROMPT = normalizedPrompt(payload.automation.customPrompt);
+    if (payload.automation.advancedSystemPrompt !== undefined) {
+      patch.SYSTEM_PROMPT = normalizedPrompt(payload.automation.advancedSystemPrompt);
+    }
   }
   if (payload.tags) {
     if (payload.tags.controlled !== undefined) patch.CONTROLLED_TAGGING_ENABLED = flag(payload.tags.controlled);
@@ -385,7 +404,10 @@ function applySectionPatch(parsed: SettingsV3Patch, effective: Environment): Rec
     if (payload.tags.assignCorrespondents !== undefined) patch.ACTIVATE_CORRESPONDENTS = flag(payload.tags.assignCorrespondents);
     if (payload.tags.assignDocumentType !== undefined) patch.ACTIVATE_DOCUMENT_TYPE = flag(payload.tags.assignDocumentType);
     if (payload.tags.assignTitle !== undefined) patch.ACTIVATE_TITLE = flag(payload.tags.assignTitle);
-    if (payload.tags.triggerTags !== undefined) patch.TAGS = payload.tags.triggerTags.join(',');
+    if (payload.tags.triggerTags !== undefined) {
+      patch.TAGS = payload.tags.triggerTags.join(',');
+      patch.PROCESS_PREDEFINED_DOCUMENTS = flag(payload.tags.triggerTags.length > 0);
+    }
     if (payload.tags.restrictToExistingTags !== undefined) patch.RESTRICT_TO_EXISTING_TAGS = flag(payload.tags.restrictToExistingTags);
     if (payload.tags.restrictToExistingCorrespondents !== undefined) patch.RESTRICT_TO_EXISTING_CORRESPONDENTS = flag(payload.tags.restrictToExistingCorrespondents);
     if (payload.tags.restrictToExistingDocumentTypes !== undefined) patch.RESTRICT_TO_EXISTING_DOCUMENT_TYPES = flag(payload.tags.restrictToExistingDocumentTypes);
@@ -400,6 +422,15 @@ function applySectionPatch(parsed: SettingsV3Patch, effective: Environment): Rec
     if (payload.security.externalApiBody?.trim()) patch.EXTERNAL_API_BODY = payload.security.externalApiBody;
     if (payload.security.externalApiSelector !== undefined) patch.EXTERNAL_API_TRANSFORM = payload.security.externalApiSelector;
     if (payload.security.customFields !== undefined) patch.CUSTOM_FIELDS = JSON.stringify({ custom_fields: payload.security.customFields });
+  }
+  if (
+    payload.automation?.processPredefinedDocuments !== undefined
+    && payload.tags?.triggerTags === undefined
+  ) {
+    const triggerTags = commaList(patch.TAGS ?? effective.TAGS);
+    patch.PROCESS_PREDEFINED_DOCUMENTS = flag(
+      payload.automation.processPredefinedDocuments && triggerTags.length > 0
+    );
   }
   return patch;
 }
@@ -418,6 +449,7 @@ async function patchSettings(input: unknown) {
 const settingsV3Service = {
   RevisionConflictError,
   getSettings,
+  getEffectiveProviderEnvironment,
   patchSettings,
   revisionFor
 };

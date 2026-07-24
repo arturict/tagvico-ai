@@ -54,6 +54,13 @@ export const providerFieldDescriptorSchema = z.object({
 
 export type ProviderFieldDescriptor = z.infer<typeof providerFieldDescriptorSchema>;
 
+export const providerIconDescriptorSchema = z.object({
+  path: z.string().min(1),
+  source: z.string().url().optional()
+});
+
+export type ProviderIconDescriptor = z.infer<typeof providerIconDescriptorSchema>;
+
 const httpUrlSchema = z.string()
   .trim()
   .max(2048)
@@ -111,7 +118,9 @@ export const settingsV3PatchSchema = z.object({
       useExistingData: z.boolean().optional(),
       assignCustomFields: z.boolean().optional(),
       assignOwner: z.boolean().optional(),
-      ownerProfiles: z.string().max(12_000).optional()
+      ownerProfiles: z.string().max(12_000).optional(),
+      customPrompt: z.string().max(20_000).optional(),
+      advancedSystemPrompt: z.string().max(40_000).optional()
     }).strict().optional(),
     tags: z.object({
       controlled: z.boolean().optional(),
