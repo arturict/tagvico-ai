@@ -89,7 +89,7 @@
     "geist": "1.7.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "1.25.0",
-    "next": "16.2.11",
+    "next": "16.3.3",
     "node-cron": "^4.5.0",
     "nodemon": "^3.1.9",
     "openai": "^4.86.2",
@@ -133,9 +133,11 @@
   "overrides": {
     "postcss": "8.5.25",
     "brace-expansion@^5.0.0": "5.0.9",
-    "fast-uri@^3.0.0": "3.1.5",
+    "fast-uri@^3.0.0": "3.1.6",
     "undici@^6.0.0": "6.28.0",
-    "sharp": "0.35.3",
-    "vite": "6.4.3"
+    "sharp": "0.35.4",
+    "vite": "6.4.3",
+    "js-yaml": "4.3.2",
+    "qs": "6.16.0"
   }
 }
