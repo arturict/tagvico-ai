@@ -1,5 +1,22 @@
 # Release notes
 
+## v3.4.1
+
+Released 15 September 2026.
+
+Tagvico 3.4.1 is a dependency-security patch for stable v3, with no
+application code changes. `next` is updated from 16.2.11 to 16.3.3, the first
+release fixing a critical unauthenticated remote code execution advisory
+(GHSA-p293-qw3h-jr36, GHSA-2xp9-vwfh-vxw4). Dependency overrides clear the
+remaining high/critical audit findings: `fast-uri` to 3.1.6, `sharp` to
+0.35.4, `js-yaml` pinned to 4.3.2, `qs` pinned to 6.16.0. `npm audit --omit=dev
+--audit-level=high` reports zero findings again.
+
+Upgrade by backing up `tagvico_ai_data`, pinning
+`ghcr.io/arturict/tagvico-ai:3.4.1`, and recreating only the Tagvico
+container. This release does not change the data schema.
+
+
 ## v3.4.0
 
 Released 2 September 2026.
