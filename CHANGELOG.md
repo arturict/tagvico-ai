@@ -1,5 +1,34 @@
 # Changelog
 
+## 3.4.1 - 2026-09-15
+
+### Security
+
+- `next`: `16.2.11` -> `16.3.3`, the first release patching a critical
+  unauthenticated remote code execution advisory (GHSA-p293-qw3h-jr36,
+  GHSA-2xp9-vwfh-vxw4).
+- Dependency overrides for advisories reported by `npm audit
+  --omit=dev --audit-level=high`: `fast-uri` `3.1.5` -> `3.1.6`
+  (GHSA-5jgf-p345-68v8 and three related host-confusion/SSRF advisories),
+  `sharp` `0.35.3` -> `0.35.4` (GHSA-rgj7-g3m4-5g8c, libheif), `js-yaml`
+  pinned to `4.3.2` (GHSA-2883-xcg3-v3hh, transitive through
+  `swagger-jsdoc`), `qs` pinned to `6.16.0` (GHSA-x5fp-wj9c-mxmx,
+  GHSA-4mjr-xmp4-gh2g, transitive through `body-parser`, which has no
+  patched `1.x` release).
+- `npm audit --omit=dev --audit-level=high` reports zero findings again; this
+  is a dependency-only patch with no application code changes.
+
+### Documentation
+
+- Contributor and agent operating instructions (`AGENTS.md`) were tuned so
+  an explicitly selected agent implements and verifies directly instead of
+  being diverted to a different one; no application behavior changed.
+
+### Upgrade note
+
+- Back up `tagvico_ai_data`, pull the pinned `3.4.1` image, and recreate only
+  the Tagvico container. This release does not change the data schema.
+
 ## 3.4.0 - 2026-09-02
 
 ### Product direction and v4 preparation

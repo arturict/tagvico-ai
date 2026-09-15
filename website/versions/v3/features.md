@@ -163,7 +163,7 @@ forever.
 ## In-product changelog
 
 **What’s new** in the sidebar opens the release notes bundled with the running
-instance. The top entry is the released v3.4.0 changelog, followed by v3.3.0, v3.2.6, v3.2.5,
+instance. The top entry is the released v3.4.1 changelog, followed by v3.4.0, v3.3.0, v3.2.6, v3.2.5,
 v3.2.0 and the complete v3.1 history. An entry stays marked as unreleased until its
 image and tag are actually published.
 

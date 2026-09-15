@@ -103,7 +103,7 @@ which account-scoped model is active, and which vocabulary the model may use.
 
 <p align="center"><em>Sanitized v3.2 screens from a representative installation. No document contents, credentials, endpoints, or account identifiers are shown.</em></p>
 
-## Stable quick start (v3.4.0)
+## Stable quick start (v3.4.1)
 
 Use only immutable tags that are present on the
 [GitHub releases page](https://github.com/arturict/tagvico-ai/releases).
@@ -117,7 +117,7 @@ services:
   tagvico-ai:
     # Pin an immutable release tag for upgrades you can rely on.
     # See https://github.com/arturict/tagvico-ai/releases for the current version.
-    image: ghcr.io/arturict/tagvico-ai:3.4.0
+    image: ghcr.io/arturict/tagvico-ai:3.4.1
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -180,7 +180,7 @@ docker run -d \
   -e TAGVICO_AI_BIND_ADDRESS=127.0.0.1 \
   -e TAGVICO_TELEMETRY_ENDPOINT=https://telemetry.tagvico.arturf.ch/v1/heartbeat \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:3.4.0
+  ghcr.io/arturict/tagvico-ai:3.4.1
 ```
 
 For remote setup, replace the published address with
@@ -344,7 +344,7 @@ Activity supports single and bulk rescan, exact restoration of the first metadat
 ## Upgrades
 
 1. Check the latest release at <https://github.com/arturict/tagvico-ai/releases>.
-2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page, for example `ghcr.io/arturict/tagvico-ai:3.4.0`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
+2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page, for example `ghcr.io/arturict/tagvico-ai:3.4.1`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
 3. `docker compose pull && docker compose up -d`.
 
 The container is replaceable, while configuration, processing history, the local admin account, encrypted member tokens, and the installation secret live in the `tagvico_ai_data` volume. Back up and restore that volume as one unit; changing or losing the JWT secret makes encrypted member tokens unreadable.

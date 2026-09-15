@@ -9,6 +9,23 @@ export type ChangelogEntry = {
 
 export const changelogEntries: ChangelogEntry[] = [
   {
+    version: '3.4.1',
+    date: '15 September 2026',
+    title: 'Dependency security patch',
+    summary: 'Patches a critical Next.js remote code execution advisory and other high/critical npm audit findings. No application code changes.',
+    status: 'released',
+    groups: [
+      {
+        title: 'Security',
+        items: [
+          'next updated 16.2.11 to 16.3.3, the first release fixing a critical unauthenticated remote code execution advisory (GHSA-p293-qw3h-jr36, GHSA-2xp9-vwfh-vxw4).',
+          'Dependency overrides clear the remaining high/critical audit findings: fast-uri to 3.1.6, sharp to 0.35.4, js-yaml pinned to 4.3.2, qs pinned to 6.16.0.',
+          'npm audit --omit=dev --audit-level=high reports zero findings.'
+        ]
+      }
+    ]
+  },
+  {
     version: '3.4.0',
     date: '2 September 2026',
     title: 'Action Center focus, proactive bots and Paperless API pin',
@@ -266,4 +283,4 @@ export const changelogEntries: ChangelogEntry[] = [
   }
 ];
 
-export const currentChangelogAnnouncement = changelogEntries.find((entry) => entry.version === '3.4.0')!;
+export const currentChangelogAnnouncement = changelogEntries.find((entry) => entry.version === '3.4.1')!;

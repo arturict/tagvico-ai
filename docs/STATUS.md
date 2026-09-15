@@ -1,15 +1,18 @@
 # Project status
 
-**Status:** stable v3. The latest stable release is `3.4.0`.
+**Status:** stable v3. The latest stable release is `3.4.1`.
 
 ## Stable v3 contract
 
 Tagvico AI v3.0.0 established the accountable action and approval layer for the
-stable, reviewable Paperless-ngx workflow. The current v3.4.0 release
-repositions the product around the Action Center, adds the Discord companion
-bot, makes both family bots proactive and hardened, and pins the Paperless-ngx
-REST API version, without changing the v3 compatibility contract. The
-following are commitments for the complete v3 release line:
+stable, reviewable Paperless-ngx workflow. The v3.4.0 release repositioned the
+product around the Action Center, added the Discord companion bot, made both
+family bots proactive and hardened, and pinned the Paperless-ngx REST API
+version. The current v3.4.1 release is a dependency-security patch on top of
+v3.4.0 (patches a critical Next.js remote code execution advisory and other
+high/critical `npm audit` findings; no application code changes), without
+changing the v3 compatibility contract. The following are commitments for the
+complete v3 release line:
 
 - Existing v2 and v3 data volumes are upgraded with versioned, idempotent SQLite
   migrations and a pre-migration database backup.
@@ -27,7 +30,7 @@ The household, Action Case, checklist, approval, and encrypted member-token
 records introduced by schema v5 are also preserved through compatible v3
 upgrades. Breaking changes to these contracts require a new major version.
 
-As of v3.4.0, OCR rescue, the ChatGPT-subscription (Codex) adapter, the
+As of v3.4.0 (unchanged in v3.4.1), OCR rescue, the ChatGPT-subscription (Codex) adapter, the
 GitHub Copilot adapter, and OpenAI Flex/Batch modes are in **maintenance
 mode**: they remain fully supported and receive bug and security fixes for
 the entire v3 line, but gain no new capabilities and are removal candidates

@@ -11,7 +11,7 @@ Create a new directory and save this as `docker-compose.yml`:
 ```yaml
 services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:3.4.0
+    image: ghcr.io/arturict/tagvico-ai:3.4.1
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -205,7 +205,7 @@ docker run -d \
   -e TAGVICO_AI_BIND_ADDRESS=127.0.0.1 \
   -e TAGVICO_TELEMETRY_ENDPOINT=https://telemetry.tagvico.arturf.ch/v1/heartbeat \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:3.4.0
+  ghcr.io/arturict/tagvico-ai:3.4.1
 ```
 
 For a remote browser, replace the published address with
