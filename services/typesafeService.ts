@@ -1,11 +1,12 @@
-import { buildFilingPlan, mapAnswersToDocument } from './typesafeFiling';
+import { buildFilingPlan, buildTextAssistPrompt, mapAnswersToDocument, parseTextAssist } from './typesafeFiling';
+import { generateWith } from './textGenerationService';
 import type { Answer, Question } from './typesafeFiling';
 
 const config = require('../config/config');
 const confidenceGuard = require('./confidenceGuard');
 const tagGroupService = require('./tagGroupService');
 
-type AnalysisOptions = { externalApiData?: unknown };
+type AnalysisOptions = { externalApiData?: unknown; restrictToExistingCorrespondents?: boolean };
 type Connection = { apiUrl: string; apiKey: string; model: string };
 type SystemOneResponse = {
   answers?: Record<string, Answer>;
@@ -31,6 +32,8 @@ class TypeSafeService {
       apiUrl: String(typesafe.apiUrl || 'https://api.typesafe.ai/v1').replace(/\/+$/, ''),
       apiKey: String(typesafe.apiKey || ''),
       model: String(typesafe.model || 'jev-latest'),
+      textProvider: String(typesafe.textProvider || '').trim().toLowerCase(),
+      textModel: String(typesafe.textModel || '').trim(),
       tagThreshold: Number(typesafe.tagThreshold) > 0 && Number(typesafe.tagThreshold) <= 1 ? Number(typesafe.tagThreshold) : 0.6
     };
   }
@@ -70,8 +73,32 @@ class TypeSafeService {
         tagThreshold: this.settings().tagThreshold,
         maxTags: policy.enabled ? policy.maximum : 10
       });
-      const inputTokens = Number(response.usage?.input_tokens || 0);
-      const outputTokens = Number(response.usage?.output_tokens || 0);
+      let inputTokens = Number(response.usage?.input_tokens || 0);
+      // Jev's output tokens are free; counting them would inflate the cost estimate.
+      let outputTokens = 0;
+
+      // Optional text assist: a generative provider writes the title and, when Jev found
+      // no matching correspondent, names the sender. A failure keeps Jev's own answer.
+      const { textProvider, textModel } = this.settings();
+      if (textProvider) {
+        try {
+          const nameSender = !document.correspondent && !options.restrictToExistingCorrespondents && config.restrictToExistingCorrespondents !== 'yes';
+          const assist = await generateWith(textProvider, buildTextAssistPrompt(state, nameSender), { model: textModel || undefined });
+          const answer = parseTextAssist(assist.text);
+          if (answer.title) {
+            document.title = answer.title;
+            document.confidence.title = answer.titleConfidence;
+          }
+          if (nameSender && answer.sender) {
+            document.correspondent = answer.sender;
+            document.confidence.correspondent = answer.senderConfidence;
+          }
+          inputTokens += assist.promptTokens;
+          outputTokens += assist.completionTokens;
+        } catch (error) {
+          console.warn(`[WARNING] TypeSafe text assist via ${textProvider} failed for document ${id}: ${errorMessage(error)}`);
+        }
+      }
       console.log(`[DEBUG] TypeSafe request for document ${id}: ${Object.keys(plan.questions).length} questions, ${inputTokens} input tokens`);
 
       return {

@@ -47,6 +47,16 @@ in the text. Nothing new is ever created, the custom prompt is not used, and
 custom fields and the owner stay for review. `TYPESAFE_TAG_THRESHOLD` (default
 `0.6`) sets the probability from which a tag is suggested.
 
+Jev cannot write, so pair it with a text provider: set
+`TYPESAFE_TEXT_PROVIDER` to any configured text provider (OpenRouter, OpenAI,
+Ollama, a compatible endpoint, or the ChatGPT-subscription and GitHub Copilot
+adapters) and one small extra call per document writes the title and names
+senders that are not in the archive yet. In a synthetic test of 60 documents
+good titles rose from 32% with Jev alone to 98% with GPT-5.6 Luna as text
+provider, while Jev kept correspondent at 98%, date at 100% and document type
+at 88%, level with the generative models. A subscription-backed or local text
+provider leaves Jev's roughly USD 0.10 per 1,000 documents as the whole bill.
+
 In a synthetic test of 14 Swiss household documents (12 German, 2 English)
 against 25 tags, 22 correspondents and 12 document types, correspondent,
 title, date and language were right 14 out of 14 times, the document type 12

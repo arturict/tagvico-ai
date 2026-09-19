@@ -278,13 +278,35 @@ const definitions = [
     modelEnvironmentKey: 'TYPESAFE_MODEL',
     configurationSchema: z.object({
       apiKey: optionalString,
-      baseUrl: optionalUrl
+      baseUrl: optionalUrl,
+      textProvider: z.enum(['', 'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'codex']).optional(),
+      textModel: z.string().trim().max(200).optional()
     }).strict(),
     fields: [
       secret('apiKey', 'API key', 'TYPESAFE_API_KEY', true),
       {
         ...url('baseUrl', 'Base URL', 'TYPESAFE_BASE_URL', false, 'https://api.typesafe.ai/v1'),
         placeholder: 'https://api.typesafe.ai/v1'
+      },
+      {
+        key: 'textProvider',
+        label: 'Text provider for titles (optional)',
+        environmentKey: 'TYPESAFE_TEXT_PROVIDER',
+        type: 'text',
+        required: false,
+        secret: false,
+        placeholder: 'openrouter',
+        description: 'Jev cannot write text. Name a configured provider (openrouter, openai, ollama, ollama-cloud, opencode, compatible, codex, copilot) to have it write the title and name senders that are not in the archive yet. Empty: the title is a line of the document.'
+      },
+      {
+        key: 'textModel',
+        label: 'Text model (optional)',
+        environmentKey: 'TYPESAFE_TEXT_MODEL',
+        type: 'text',
+        required: false,
+        secret: false,
+        placeholder: 'openai/gpt-5.6-luna',
+        description: 'Defaults to the model configured for that provider.'
       }
     ],
     suggestedModels: [

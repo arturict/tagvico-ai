@@ -182,7 +182,9 @@ module.exports = {
     apiUrl: process.env.TYPESAFE_BASE_URL || 'https://api.typesafe.ai/v1',
     apiKey: process.env.TYPESAFE_API_KEY || '',
     model: process.env.TYPESAFE_MODEL || getDefaultModel('typesafe'),
-    tagThreshold: parseFloat(process.env.TYPESAFE_TAG_THRESHOLD || '0.6')
+    tagThreshold: parseFloat(process.env.TYPESAFE_TAG_THRESHOLD || '0.6'),
+    textProvider: process.env.TYPESAFE_TEXT_PROVIDER || '',
+    textModel: process.env.TYPESAFE_TEXT_MODEL || ''
   },
   custom: {
     apiUrl: process.env.COMPATIBLE_BASE_URL || process.env.CUSTOM_BASE_URL || '',

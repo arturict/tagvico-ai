@@ -2103,6 +2103,8 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
     TYPESAFE_BASE_URL: currentConfig.TYPESAFE_BASE_URL || '',
     TYPESAFE_MODEL: providerPayload.provider === 'typesafe' ? providerPayload.selectedModel || 'jev-latest' : currentConfig.TYPESAFE_MODEL || 'jev-latest',
     TYPESAFE_TAG_THRESHOLD: currentConfig.TYPESAFE_TAG_THRESHOLD || '',
+    TYPESAFE_TEXT_PROVIDER: currentConfig.TYPESAFE_TEXT_PROVIDER || '',
+    TYPESAFE_TEXT_MODEL: currentConfig.TYPESAFE_TEXT_MODEL || '',
     AZURE_ENDPOINT: providerPayload.azureEndpoint || currentConfig.AZURE_ENDPOINT || '',
     AZURE_API_KEY: providerPayload.azureApiKey || currentConfig.AZURE_API_KEY || '',
     AZURE_DEPLOYMENT_NAME: providerPayload.azureDeploymentName || currentConfig.AZURE_DEPLOYMENT_NAME || '',

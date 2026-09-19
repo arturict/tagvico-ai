@@ -15,8 +15,15 @@
   existing review threshold and "held for review" behaviour apply unchanged.
   `TYPESAFE_TAG_THRESHOLD` (default `0.6`) sets the probability from which a
   tag is suggested.
-- Not supported with this provider, by design: new vocabulary, custom field
-  values, owner suggestions, the custom and system prompt, external API
+- **Text provider pairing.** `TYPESAFE_TEXT_PROVIDER` names any configured
+  text provider (including the ChatGPT-subscription and GitHub Copilot
+  adapters and local Ollama); one small extra call per document writes the
+  title and, only when Jev finds no matching correspondent, names the sender.
+  `TYPESAFE_TEXT_MODEL` overrides the model. In a 60-document synthetic test
+  good titles rose from 32% to 98% and all 13 missing senders were named,
+  while Jev kept correspondent 98%, date 100% and document type 88%.
+- Not supported with this provider, by design: new tags and document types,
+  custom field values, owner suggestions, the custom and system prompt, external API
   enrichment, thumbnails, and the Companion and family bots. Keep a
   text-generating provider configured for the Companion.
 - `scripts/jev-eval.mjs` reproduces the synthetic test documented in
