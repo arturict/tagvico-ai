@@ -9,6 +9,24 @@ export type ChangelogEntry = {
 
 export const changelogEntries: ChangelogEntry[] = [
   {
+    version: '3.5.0',
+    date: 'Unreleased',
+    title: 'TypeSafe Jev provider',
+    summary: 'Closed-list filing with a decision model: only existing tags, correspondents and document types, with a probability on every field.',
+    status: 'unreleased',
+    groups: [
+      {
+        title: 'Providers',
+        items: [
+          'New provider TypeSafe Jev: one yes/no question per existing tag, a choice among existing correspondents and document types, the title chosen from the document lines and the date from the dates found in the text.',
+          'The probability of each chosen option is the field confidence, so the review threshold works unchanged. TYPESAFE_TAG_THRESHOLD (default 0.6) sets when a tag is suggested.',
+          'Pair it with any configured text provider (TYPESAFE_TEXT_PROVIDER, including subscription adapters and local Ollama): one small extra call writes the title and names senders that are not in the archive yet. In a 60-document synthetic test good titles rose from 32% to 98%.',
+          'By design no new tags or document types, custom fields, owner suggestions, custom prompt or Companion with this provider; keep a text-generating provider configured for the Companion.'
+        ]
+      }
+    ]
+  },
+  {
     version: '3.4.1',
     date: '15 September 2026',
     title: 'Dependency security patch',

@@ -16,7 +16,8 @@ test('provider definitions are unique and own their schemas and runtime adapters
     'copilot',
     'compatible',
     'openai',
-    'codex'
+    'codex',
+    'typesafe'
   ]);
   assert.equal(new Set(definitions.map((definition) => definition.id)).size, definitions.length);
   for (const definition of definitions) {

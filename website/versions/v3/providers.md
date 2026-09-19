@@ -15,6 +15,7 @@ service.
 | OpenCode Go | Subscription inference gateway | Go API key | OpenAI-compatible request path with provider-controlled limits. |
 | GitHub Copilot | Account-scoped model discovery | OAuth device login or supported token | Uses the official SDK; every agent tool is denied. |
 | CLI Proxy / OpenAI-compatible | CLIProxyAPI, LM Studio, LiteLLM, vLLM, custom gateways | `/v1` base URL and optional key | Uses Vercel AI SDK v6. Tagvico can load the endpoint's `/models` catalog or accept a model ID manually. |
+| TypeSafe Jev | Closed-list filing: picks only from existing tags, correspondents and document types | API key (early access) | A decision model, not a text generator: no new names, no custom fields, no Companion. Every field carries a probability. See [TypeSafe Jev](#typesafe-jev). |
 | ChatGPT subscription | Optional private, low-volume model adapter | Stable Codex device login | Uses the bundled official Codex runtime and loads the signed-in account's live `model/list` catalog. It is not an API SLA. |
 
 ## Cost-conscious recommendations
@@ -33,7 +34,37 @@ model is good enough for Automatic mode.
 | OpenCode Go | **DeepSeek V4 Flash** | This is Tagvico's budget-oriented default for the Go gateway. It suits classification-heavy workloads; confirm the current subscription allowance and gateway model catalog. |
 | GitHub Copilot | **GPT-5.4 Mini** when the signed-in plan exposes it | It offers a strong quality/cost balance without a separate per-token key inside Tagvico. Prefer a model with the lowest billing multiplier that still passes your test set, because plan entitlements differ. |
 | CLI Proxy / OpenAI-compatible | A subscription-backed model returned by CLIProxyAPI, or a **mini**, **flash**, or roughly **8B–20B instruct** model supported by your gateway | Compatible endpoints vary too much for one universal slug. Load the live catalog, start small, require reliable JSON, and increase model size only when the error rate justifies it. |
+| TypeSafe Jev | **jev-latest** | By far the cheapest hosted option in our synthetic test (about USD 0.08 per 1,000 documents, about 300 ms each), because only input tokens are billed and the text is billed once for all questions. Only worth it when your Paperless vocabulary is settled. |
 | ChatGPT subscription | The configured Codex model supported by the signed-in account | Suitable for one trusted, low-volume installation when subscription-backed inference is preferable. Model availability remains account-controlled and is not an API service guarantee. |
+
+## TypeSafe Jev
+
+Jev answers typed questions about the OCR text and returns probabilities; it
+does not write text. Tagvico asks one yes/no question per existing tag, lets
+Jev choose the correspondent and document type from your existing lists, the
+title from the first lines of the document and the date from the dates found
+in the text. Nothing new is ever created, the custom prompt is not used, and
+custom fields and the owner stay for review. `TYPESAFE_TAG_THRESHOLD` (default
+`0.6`) sets the probability from which a tag is suggested.
+
+Jev cannot write, so pair it with a text provider: set
+`TYPESAFE_TEXT_PROVIDER` to any configured text provider (OpenRouter, OpenAI,
+Ollama, a compatible endpoint, or the ChatGPT-subscription and GitHub Copilot
+adapters) and one small extra call per document writes the title and names
+senders that are not in the archive yet. In a synthetic test of 60 documents
+good titles rose from 32% with Jev alone to 98% with GPT-5.6 Luna as text
+provider, while Jev kept correspondent at 98%, date at 100% and document type
+at 88%, level with the generative models. A subscription-backed or local text
+provider leaves Jev's roughly USD 0.10 per 1,000 documents as the whole bill.
+
+In a synthetic test of 14 Swiss household documents (12 German, 2 English)
+against 25 tags, 22 correspondents and 12 document types, correspondent,
+title, date and language were right 14 out of 14 times, the document type 12
+out of 14, and tags reached precision 0.80 at recall 0.82. That is a smoke
+test, not a benchmark: validate on your own documents in **Review first**.
+Keep a text-generating provider configured as well if you use the Companion or
+the family bots. The repository's `docs/providers/typesafe.md` has the details
+and the script that reproduces the numbers.
 
 ## Companion runtime architecture
 

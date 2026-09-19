@@ -49,6 +49,10 @@ async function discoverProviderModels(instanceId: string, env: Environment): Pro
     case 'ollama': return providerRegistry.discoverOllamaModels(definition, env);
     case 'codex': return discoverCodexModels();
     case 'copilot': return discoverCopilotModels(env);
+    // TypeSafe publishes no model catalog endpoint; the aliases are fixed.
+    case 'static': return providerRegistry.normalizeModels(definition.suggestedModels.map((model, index) => ({
+      id: model.id, name: model.name, isDefault: index === 0, options: []
+    })));
     default: return [];
   }
 }

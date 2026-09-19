@@ -1,5 +1,36 @@
 # Changelog
 
+## 3.5.0 - Unreleased
+
+### TypeSafe Jev provider
+
+- New provider `typesafe` for [TypeSafe's Jev](https://docs.typesafe.ai), a
+  decision model that answers typed questions with probabilities instead of
+  generating text. Tagvico uses it for closed-list filing: one yes/no question
+  per existing tag, a choice among the existing correspondents and document
+  types, the title chosen from the first lines of the document and the date
+  chosen from the dates found in the text. It never creates a new tag,
+  correspondent or document type.
+- The probability of each chosen option is the field confidence, so the
+  existing review threshold and "held for review" behaviour apply unchanged.
+  `TYPESAFE_TAG_THRESHOLD` (default `0.6`) sets the probability from which a
+  tag is suggested.
+- **Text provider pairing.** `TYPESAFE_TEXT_PROVIDER` names any configured
+  text provider (including the ChatGPT-subscription and GitHub Copilot
+  adapters and local Ollama); one small extra call per document writes the
+  title and, only when Jev finds no matching correspondent, names the sender.
+  `TYPESAFE_TEXT_MODEL` overrides the model. In a 60-document synthetic test
+  good titles rose from 32% to 98% and all 13 missing senders were named,
+  while Jev kept correspondent 98%, date 100% and document type 88%.
+- Not supported with this provider, by design: new tags and document types,
+  custom field values, owner suggestions, the custom and system prompt, external API
+  enrichment, thumbnails, and the Companion and family bots. Keep a
+  text-generating provider configured for the Companion.
+- `scripts/jev-eval.mjs` reproduces the synthetic test documented in
+  `docs/providers/typesafe.md` (14 documents: correspondent, title, date and
+  language 14/14, document type 12/14, tags precision 0.80 at recall 0.82,
+  about 300 ms and about USD 0.08 per 1,000 documents).
+
 ## 3.4.1 - 2026-09-15
 
 ### Security

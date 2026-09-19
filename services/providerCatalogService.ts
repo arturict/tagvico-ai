@@ -6,12 +6,13 @@ type ProviderId =
   | 'copilot'
   | 'compatible'
   | 'openai'
-  | 'codex';
+  | 'codex'
+  | 'typesafe';
 type EnvLike = Record<string, string | undefined>;
 const providerRegistryModule = require('./providerRegistry');
 const providerRegistry = providerRegistryModule.default || providerRegistryModule;
 const PROVIDER_IDS = [
-  'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'codex'
+  'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'codex', 'typesafe'
 ] as const;
 
 const OPENROUTER_PRESETS = [
@@ -98,7 +99,8 @@ const DEFAULT_MODELS = {
   copilot: 'gpt-5.4-mini',
   compatible: '',
   openai: 'gpt-5.4-mini',
-  codex: 'gpt-5.4-mini'
+  codex: 'gpt-5.4-mini',
+  typesafe: 'jev-latest'
 };
 
 function normalizeOpenAIModel(model?: string, env: EnvLike = process.env) {

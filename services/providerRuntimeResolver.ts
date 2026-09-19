@@ -3,13 +3,15 @@ const ollamaService = require('./ollamaService');
 const customService = require('./customService');
 const codexService = require('./codexService');
 const copilotService = require('./copilotService');
+const typesafeService = require('./typesafeService');
 
 const services: Record<string, unknown> = {
   'ai-sdk-openai': openaiService,
   'ai-sdk-compatible': customService,
   'codex-runtime': codexService,
   'copilot-sdk': copilotService,
-  'native-ollama': ollamaService
+  'native-ollama': ollamaService,
+  'typesafe-systemone': typesafeService
 };
 
 function getRuntimeService(runtimeAdapter?: string) {
