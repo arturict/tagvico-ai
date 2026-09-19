@@ -1,0 +1,1105 @@
+{
+ "writer": "openai/gpt-5.6-terra",
+ "generated": "2026-09-19",
+ "docs": [
+  {
+   "id": "doc-001",
+   "language": "it",
+   "correspondentMode": "known",
+   "correspondent": "Booking.com",
+   "sender": "Booking.com",
+   "documentType": "Quittung",
+   "date": "2025-04-07",
+   "titleMode": "none",
+   "dateMode": "multiple",
+   "noise": "ocr",
+   "text": "BOOKING.COM B.V.\nHerengracht 597, 1017 CE Arnsterdam, Paesi Bassi\nwww.booking.corn   |   Reg. IVA NL805734958B01\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\nSvizzera\n\nGentile Sig.ra Muster,\n\nla ringraziarno per la prenotazione effettuata i1 12.03.2025.\nIl soggiorno presso Hotel Lago Blu, Via del Porto 18,\n6900 Lugano, si è svolto dal 03.04.2025 al 05.04.2025\n(2 notti, 1 camera doppia).\n\nImporto camera                 CHF 318.00\nTassa di soggiorno              CHF  12.00\nCommissione di servizio         CHF   0.00\nTotale pagato                   CHF 330.00\nMetodo di pagamento: carta terminante in 4421\nPagamento ricevuto i1 03.04.2025 — saldo CHF 0.00\n\nQuesta quietanza conferma che l'importo indicato è stato\npagato integralmente. Non è richiesto alcun ulteriore paga-\nmento. Per eventuali domande, conservare il numero di\nprenotazione 7845 219 036.\n\nData di emissione: 07.04.2025\n\nCordiali saluti,\nServizio clienti Booking.com\n\n--- SCAN-REF: BKG/CH 0O7-25 | pagina 1/1 | llllO0 ---",
+   "tags": [
+    "Reise",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Quittanza soggiorno Lugano, 3–5 aprile 2025"
+  },
+  {
+   "id": "doc-002",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "IKEA",
+   "sender": "IKEA",
+   "documentType": "Bescheinigung",
+   "date": "",
+   "titleMode": "none",
+   "dateMode": "none",
+   "noise": "clean",
+   "text": "IKEA Schweiz AG\nKundendienst\nBirchstrasse 12\n8304 Wallisellen\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nGuten Tag Frau Muster\n\nhiermit bestätigen wir, dass die nachfolgend aufgeführten Artikel Ihrem IKEA Kundenkonto zugeordnet sind und über unseren Vertrieb bezogen wurden:\n\nBestellnummer: CH-78451926\nArtikel: KALLAX Regal, weiss, 77 × 147 cm\nArtikelnummer: 602.758.12\nMenge: 1 Stück\n\nDiese Bescheinigung kann als Nachweis für die Zuordnung des Artikels zu Ihrem Haushalt verwendet werden. Sie enthält die bei IKEA Schweiz gespeicherten Angaben zum Artikel und zur Bestellnummer.\n\nFür Garantie- oder Serviceanfragen bitten wir Sie, diese Bescheinigung zusammen mit einem allfälligen Kaufbeleg aufzubewahren. Die gesetzlichen Gewährleistungsrechte sowie die für den Artikel geltenden Garantiebedingungen bleiben davon unberührt.\n\nBei Fragen steht Ihnen unser Kundendienst gerne zur Verfügung.\n\nFreundliche Grüsse\n\nIKEA Schweiz AG\nKundendienst",
+   "tags": [
+    "Garantie",
+    "Haushalt"
+   ],
+   "referenceTitle": "Bescheinigung zu KALLAX Regal"
+  },
+  {
+   "id": "doc-003",
+   "language": "en",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Notariat Sursee",
+   "documentType": "Offerte",
+   "date": "2024-09-27",
+   "titleMode": "none",
+   "dateMode": "single",
+   "noise": "ocr",
+   "text": "Notariat Sursee\nRathausgasse 14\n6210 Sursee\nTel. 041 920 18 40\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nSursee, 2024-09-27\n\nDear Ms Muster,\n\nThank you for your enquiry regarding the preparation and notarisation of a property purchase agreement in Switzerland. We are pleased to provide the following estimate for our services.\n\nInitial review of the draft agreement, land register extracts and supporting documents: CHF 480.00. Preparation of the notarial deed and coordination with the parties: CHF 1,250.00. Notarisation appointment and certification: CHF 650.00. Estimated total, excl. disbursements and VAT where applicable: CHF 2,380.00.\n\nLand register fees, cantonal charges and any translation costs are not included, as these depend on the final transaction. Should additional clauses or amendments be required, work will be charged at CHF 260.00 per hour.\n\nThis offer is based on the documents available to us and remains valid for 30 days. We will begin work after your written confirmation. Please return a signed copy by post or e-mail.\n\nYours sincerely,\n\nNotariat Sursee\n\n-- Sca n: R3F 0.8 / archive copy --",
+   "tags": [
+    "Vertrag"
+   ],
+   "referenceTitle": "Offer for property purchase agreement notarisation"
+  },
+  {
+   "id": "doc-004",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Livit AG",
+   "sender": "Livit AG",
+   "documentType": "Kündigung",
+   "date": "2024-09-28",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "Livit AG\nBewirtschaftung Zentralschweiz\nPostfach\n6002 Luzern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nMietvertrag vom 01. Januar 2022\n\nBestätigung Ihrer Kündigung des Mietverhältnisses\n\nLuzern, 28. September 2024\n\nSehr geehrte Frau Muster\n\nWir bestätigen den Eingang Ihrer schriftlichen Kündigung vom 15. September 2024 für die Wohnung an der Bahnhofstrasse 9, 6003 Luzern.\n\nDas Mietverhältnis endet vertragsgemäss am 31. Dezember 2024. Bitte geben Sie die Mieträume spätestens an diesem Datum vollständig geräumt, gereinigt und mit sämtlichen Schlüsseln zurück. Die Wohnungsabnahme findet voraussichtlich am 19. Dezember 2024 statt. Den genauen Termin sowie eine Checkliste für die Rückgabe erhalten Sie separat.\n\nBitte melden Sie uns bis zum 30. November 2024 eine allfällige Nachmieterin oder einen allfälligen Nachmieter schriftlich. Eine vorzeitige Entlassung aus dem Mietvertrag kann erst nach Prüfung der eingereichten Unterlagen bestätigt werden.\n\nDie Schlussabrechnung über Mietzins, Nebenkosten und allfällige Instandsetzungskosten wird nach der Wohnungsabnahme erstellt. Ein allfälliges Guthaben wird auf die von Ihnen mitzuteilende Schweizer Bankverbindung überwiesen.\n\nFreundliche Grüsse\n\nLivit AG\nBewirtschaftung Zentralschweiz",
+   "tags": [
+    "Miete",
+    "Vertrag",
+    "Kündigung"
+   ],
+   "referenceTitle": "Bestätigung Kündigung Mietverhältnis Bahnhofstrasse 9"
+  },
+  {
+   "id": "doc-005",
+   "language": "de",
+   "correspondentMode": "alias",
+   "correspondent": "Helsana",
+   "sender": "Helsana",
+   "documentType": "Quittung",
+   "date": "2026-03-14",
+   "titleMode": "explicit",
+   "dateMode": "month_name",
+   "noise": "ocr",
+   "text": "HELSANA Versicherungen AG\nPostfach, 8081 Zürich\nTel. 0844 80 81 82\n\nQ U I T T U N G  –  Prämienzahlung\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nAusgestellt am 14. März 2026\nVersicherungsvertrag: 71.482.906.3\nVersicherte Person: Anna Muster\n\nWir bestätigen den Eingang Ihrer Zahlung für die\nKrankenversicherung (Grundversicherung) für den\nMonat Februar 2026.\n\nRechnungsdatum: 01.02.2026     Zahlungsdatum: 28.02.2026\nPrämie Grundversicheru ng              CHF 386.40\nUnfalldeckung                           CHF  12.60\n---------------------------------------------------\nTotal bezahlt                           CHF 399.00\nZahlungsart: eBill / Banküberweisung\n\nDer Betrag wurde Ihrem Versicherungsvertrag gutge-\nschrieben. Es besteht für die oben aufgeführte Prämie\nkein offener Saldo. Bitte bewahren Sie diese Quittung\nfür Ihre Unterlagen auf.\n\nBei Fragen geben Sie bitte die Vertragsnummer an.\n\nHelsana Versicherungen AG\nKundenservice\n\n@@ Scan-ID: HLS-26/0314 | Seite 1 v0n 1 | 8O81 Züri ch @@",
+   "tags": [
+    "Versicherung",
+    "Gesundheit",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Quittung Prämienzahlung Februar 2026"
+  },
+  {
+   "id": "doc-006",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Zurich Versicherung",
+   "sender": "Zurich Versicherung",
+   "documentType": "Brief",
+   "date": "2024-01-28",
+   "titleMode": "none",
+   "dateMode": "month_name",
+   "noise": "ocr",
+   "text": "Zürich Versicherungs-Gesellschaft AG\nKundenservice | Postfach, 8085 Zürich\nTel. 0800 80 80 80   www.zurich.ch\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nZürich, 28. Januar 2024\n\nSehr geehrte Frau Muster\n\nbesten Dank für Ihr Vertrauen in die Zürich Versicherung. Wir\nbestätigen Ihnen, dass Ihre Jahresprämie für die Hausrat- und\nPrivathaftpflichtversicherung per 1. März 2024 angepasst wird.\n\nDer neue Gesamtbetrag beträgt CHF 286.40 und wird am 15. März\n2024 über die vereinbarte Zahlungsart erhoben. Die Änderung ergibt\nsich aus der jährlichen Überprüfung der Tarifgrundlagen sowie der\nTeuerungsanpassung. Ihr Versicherungsschutz und die vereinbarten\nLeistungen bleiben unverändert.\n\nBitte prüfen Sie die Angaben in Ihrer Police. Falls sich Ihre Adresse,\ndie versicherten Gegenstände oder Ihre persönlichen Verhältnisse\ngeändert haben, teilen Sie uns dies bitte innert 30 Tagen mit. Bei\nFragen steht Ihnen unser Kundendienst gerne zur Verfügung.\n\nFreundliche Grüsse\n\nZürich Versicherung\nKundenservice Privatkunden\n\nSca n-Ref.: ZH/24-01/8O8  |  Seite 1 von 1  l  P0stfach 8085 Zürich",
+   "tags": [
+    "Versicherung"
+   ],
+   "referenceTitle": "Anpassung der Jahresprämie Hausrat und Privathaftpflicht"
+  },
+  {
+   "id": "doc-007",
+   "language": "de",
+   "correspondentMode": "alias",
+   "correspondent": "EWZ",
+   "sender": "EWZ",
+   "documentType": "Vertrag",
+   "date": "2025-02-16",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "ocr",
+   "text": "Elektrizitätswerk der Stadt Zürich (ewz)\nPostfach, 8050 Zürich\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nVertrag über die Lieferung von Ökostrom\n\nBestellung vom 03.02.2025 / Kundennummer: 4187-00391\nLieferadresse: Bahnhofstrasse 9, 6003 Luzern\n\nWir bestätigen Ihren Vertrag für das Produkt ewz.solartop. Der\nLieferbeginn ist am 01.04.2025; die Mindestvertragsdauer endet am\n31.03.2026. Danach kann der Vertrag mit einer Frist von 30 Tagen\nauf das Monatsende schriftlich gekündigt werden.\n\nDer Arbeitspreis beträgt CHF 0.31 pro kWh, zuzüglich gesetzlicher\nAbgaben und Netznutzung gemäss gültigem Tarif. Die Rechnungsstellung\nertolgt vierteljährlich. Die erste Zahlung ist bis 15.05.2025 fällig.\nBei Zahlungsverzug können Mahnspesen von CHF 20.00 erhoben werden.\n\nBitte prüfen Sie die Angaben. Änderungen melden Sie uns innert\n10 Tagen nach Erhalt dieses Schreibens.\n\nAusgestellt am 16.02.2025\n\nScan-Ref. EWZ|V-2025|04187   Seite 1/1  --- lII 0CR-Prüfung\nElektrizitätswerk der Stadt Zürich · Telefon 058 319 47 00",
+   "tags": [
+    "Strom",
+    "Vertrag"
+   ],
+   "referenceTitle": "Vertrag Ökostrom Bahnhofstrasse 9 ab 01.04.2025"
+  },
+  {
+   "id": "doc-008",
+   "language": "de",
+   "correspondentMode": "alias",
+   "correspondent": "Amazon",
+   "sender": "Amazon",
+   "documentType": "Police",
+   "date": "2026-12-12",
+   "titleMode": "explicit",
+   "dateMode": "single",
+   "noise": "ocr",
+   "text": "Amazon EU S.à r.l., Succursale Suisse\nKundenservice Geräteschutz | Postfach, 8000 Zürich\n\nVERSICHERUNGSPOLICE – Amazon Geräteschutz\n\nVersicherungsnehmerin:\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nAusstellungsdatum: 2026-12-12\nPolicen-Nr.: AZ-CH-7O1l9-44M\n\nSehr geehrte Frau Muster\n\nhiermit bestätigen wir den Abschluss Ihres Amazon Geräte-\nschutzes für das in Ihrem Kundenkonto hinterlegte Elektrogerät.\nDer Schutz umfasst, gemäss den vereinbarten Bedingungen,\nplötzliche Beschädigungen durch Sturz, Bruch sowie Flüssig-\nkeitsschäden. Nicht gedeckt sind Verlust, Diebstahl, normale\nAbnützung und Schäden infolge unsachgemässer Verwendung.\n\nVersicherte Leistung: Reparatur oder Ersatz bis zum ursprüng-\nlichen Kaufpreis. Bei einem Schadenfall kann ein Selbstbehalt\nvon CHF 49.00 anfallen. Die Prämie beträgt CHF 8.90 pro Monat\nund wird über die hinterlegte Zahlungsart belastet.\n\nBitte bewahren Sie diese Police zusammen mit der Bestell-\nbestätigung auf. Schäden melden Sie bitte über Ihr Amazon-\nKonto; halten Sie dabei die Policen-Nr. bereit.\n\nFreundliche Grüsse\nAmazon EU S.à r.l., Succursale Suisse\n\n-- scan: A7/CH | Seitenrand 0O1 | vrsn. l.3 --",
+   "tags": [
+    "Versicherung",
+    "Vertrag"
+   ],
+   "referenceTitle": "Versicherungspolice Amazon Geräteschutz"
+  },
+  {
+   "id": "doc-009",
+   "language": "fr",
+   "correspondentMode": "known",
+   "correspondent": "Migros",
+   "sender": "Migros",
+   "documentType": "Quittung",
+   "date": "2024-01-07",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "MIGROS ONLINE\nService clientèle\nLimmatstrasse 152, 8031 Zurich\n\nQuittance de commande\n\nCliente :\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nCommande no MO-240104-5817\nDate de commande : 04.01.2024\nDate de préparation : 05.01.2024\nDate de livraison : 06.01.2024\n\nArticles livrés :\n- Pain complet, 500 g                         CHF 2.40\n- Lait entier UHT, 6 x 1 l                    CHF 9.90\n- Pommes Gala, 1 kg                           CHF 3.95\n- Lessive liquide, 1,5 l                      CHF 8.50\n- Sacs à ordures 35 l, rouleau de 20          CHF 4.70\n\nSous-total                                     CHF 29.45\nFrais de livraison                             CHF 0.00\nTotal TTC                                      CHF 29.45\n\nPaiement par carte de débit le 06.01.2024 : CHF 29.45\nMontant encaissé : CHF 29.45\nSolde : CHF 0.00\n\nDate d’émission : 07.01.2024\n\nLes articles non alimentaires peuvent être retournés jusqu’au 05.02.2024, sur présentation de cette quittance et selon les conditions Migros. Merci de votre achat. Conservez ce document comme preuve de paiement.\n\nMigros Online – une entreprise du groupe Migros",
+   "tags": [
+    "Haushalt",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Quittance de commande du 07.01.2024"
+  },
+  {
+   "id": "doc-010",
+   "language": "de",
+   "correspondentMode": "alias",
+   "correspondent": "Steueramt Kanton Luzern",
+   "sender": "Steueramt Kanton Luzern",
+   "documentType": "Quittung",
+   "date": "2025-12-23",
+   "titleMode": "broken",
+   "dateMode": "multiple",
+   "noise": "ocr",
+   "text": "Dienststelle Steuern des Kantons Luzern\nZentralstrasse 28, 6002 Luzern\n\nSteuerkonto: 47-381.926.5   |   Eingang: 18.12.2025\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nBetreff: Quittu ng für die Staats- und Gemeinde-\nsteuern 2024 / Zahlungseinga ng bestätigt\n\nSehr geehrte Frau Muster\n\nWir bestätigen den Zahlungseingang für die definitive\nSteuerveranlagung der Steuerperiode 01.01.2024 bis\n31.12.2024. Die Veranlagungsverfügung datiert vom\n14.10.2025; der ursprüngliche Fälligkeitstermin war der\n15.12.2025.\n\nZahlung eingegangen am: 18.12.2025\nZahlungsart: eBill / Referenz 00 00047 38192 65000 2025\nBetrag: CHF 1'284.60\nVerrechnete Verzugszinse: CHF 0.00\nTotal bezahlt: CHF 1'284.60\n\nIhr Steuerkonto weist per 20.12.2025 einen Saldo von\nCHF 0.00 auf. Diese Quittung dient als Zahlungsnachweis.\nBitte bewahren Sie sie zusammen mit der Veranlagung auf.\n\nAusgestellt am 23.12.2025\n\nFreundliche Grüsse\nDienststelle Steuern Kanton Luzern\n\n## LU-STEUER//SC4N  2025-12-23  |  Seite l/1  x*",
+   "tags": [
+    "Steuern",
+    "Behörde",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Quittung Staats- und Gemeindesteuern 2024"
+  },
+  {
+   "id": "doc-011",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Apple",
+   "sender": "Apple",
+   "documentType": "Rechnung",
+   "date": "2025-10-03",
+   "titleMode": "explicit",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "Apple\nApple Distribution International Ltd.\nHollyhill Industrial Estate, Hollyhill, Cork, Irland\n\nRechnung\n\nRechnungsdatum: 2025-10-03\nRechnungsnummer: CH-APL-5841937\nBestellnummer: W847291503\n\nRechnungsadresse\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\nSchweiz\n\nVielen Dank für Ihren Einkauf im Apple Store. Nachfolgend finden Sie die Abrechnung Ihrer Bestellung.\n\nArtikel\nApple USB-C auf Lightning Kabel (1 m)                 CHF 19.00\nVersand                                                CHF 0.00\n\nZwischensumme                                         CHF 19.00\nMWST 8.1 %                                            CHF  1.42\nGesamtbetrag                                          CHF 20.42\n\nZahlungsart: Kreditkarte\nZahlungsstatus: Zahlung offen\n\nBitte begleichen Sie den Gesamtbetrag gemäss den bei der Bestellung vereinbarten Zahlungsbedingungen. Der Betrag wird über die hinterlegte Zahlungsmethode belastet. Eine separate Überweisung ist nicht erforderlich.\n\nBei Fragen zu dieser Rechnung oder Ihrer Bestellung besuchen Sie bitte die Apple Support-Seite. Bitte bewahren Sie dieses Dokument für Ihre Unterlagen auf.\n\nApple",
+   "tags": [
+    "Rechnung",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Rechnung Apple USB-C auf Lightning Kabel"
+  },
+  {
+   "id": "doc-012",
+   "language": "de",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Fitnesspark Allmend",
+   "documentType": "Brief",
+   "date": "2026-05-05",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "Fitnesspark Allmend\nAllmendstrasse 15\n6005 Luzern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nMitgliedschaftsrechnung Sommerhalbjahr 2026\n\nGuten Tag Frau Muster\n\nFür Ihre Mitgliedschaft im Fitnesspark Allmend stellen wir Ihnen den Beitrag für den Zeitraum vom 01.06.2026 bis 30.11.2026 in Rechnung. Ihre Mitgliedschaft wurde am 15.11.2025 abgeschlossen und verlängert sich gemäss den vereinbarten Bedingungen.\n\nRechnungsnummer: FA-2026-0518\nRechnungsdatum: 05.05.2026\nMitgliedsnummer: 104782\n\nMitgliedschaft Fitness und Wellness, 6 Monate     CHF 420.00\n\nTotal inkl. MWST                                      CHF 420.00\n\nBitte überweisen Sie den offenen Betrag bis spätestens 31.05.2026 unter Angabe der Rechnungsnummer auf unser Konto. Eine Einzahlung kann auch direkt am Empfang während der Öffnungszeiten vorgenommen werden.\n\nSollte sich Ihre Adresse oder Ihre Zahlungsart geändert haben, teilen Sie uns dies bitte vor dem Fälligkeitstermin mit. Bei Fragen zu Ihrer Mitgliedschaft stehen wir Ihnen gerne zur Verfügung.\n\nFreundliche Grüsse\n\nFitnesspark Allmend\nMitgliederverwaltung",
+   "tags": [
+    "Rechnung",
+    "Abo",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Mitgliedschaftsrechnung Sommerhalbjahr 2026"
+  },
+  {
+   "id": "doc-013",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Kantonsspital Luzern",
+   "sender": "Kantonsspital Luzern",
+   "documentType": "Bescheinigung",
+   "date": "2026-02-06",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "Kantonsspital Luzern\nPatientenadministration\nSpitalstrasse 16\n6000 Luzern 16\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nBescheinigung über ambulante Behandlung\n\nFrau Anna Muster, geboren am 14.09.1987, wurde am 29.01.2026 in der ambulanten Sprechstunde des Kantonsspitals Luzern behandelt.\n\nDie Behandlung erfolgte aufgrund einer medizinischen Abklärung und dauerte von 09.10 Uhr bis 11.35 Uhr. Für die anschliessende Erholung sowie allfällige organisatorische Termine wird eine Arbeitsunfähigkeit von 100 % für den 29.01.2026 bescheinigt.\n\nDiese Bescheinigung dient zur Vorlage bei Arbeitgeber, Versicherung oder zuständigen Behörden. Medizinische Diagnosen und weitere vertrauliche Angaben sind in diesem Dokument nicht enthalten.\n\nDie Leistungsabrechnung wird separat erstellt. Ein allfälliger Selbstbehalt ist nach Erhalt der Rechnung bis zum 08.03.2026 zu begleichen.\n\nLuzern, 06.02.2026\n\nKantonsspital Luzern\nPatientenadministration\n\nDieses Dokument wurde elektronisch erstellt und ist ohne Unterschrift gültig.",
+   "tags": [
+    "Gesundheit",
+    "Versicherung"
+   ],
+   "referenceTitle": "Bescheinigung ambulante Behandlung vom 29.01.2026"
+  },
+  {
+   "id": "doc-014",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Sunrise",
+   "sender": "Sunrise",
+   "documentType": "Police",
+   "date": "2025-08-11",
+   "titleMode": "explicit",
+   "dateMode": "month_name",
+   "noise": "ocr",
+   "text": "SUNRISE\nPostfach · 8050 Zürich                 Kundendienst 0800 707 707\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nZürich, 11. August 2025\n\nRECHNUNG Mobile-Abonnement\n\nKundennummer: 1048O271   Rechnungsnummer: 2025-0811-7742\nRechnungsperiode: 01.07.2025–31.07.2025\n\nLeistung                                      Betrag CHF\nSunrise Mobile Abo, monatlich                     49.90\nDatenoption Schweiz                                  5.00\nGesprächsgebühren Ausland                            8.45\nZwischensumme                                      63.35\nMWST 8,1 %                                          5.13\nRechnungsbetrag                                    68.48\n\nBitte überweisen Sie CHF 68.48 bis zum 25.08.2025\nmit dem beiliegenden Einzahlungsschein. Bei Fragen\nhalten Sie bitte Ihre Kundennummer bereit.\n\nZahlungsinforrnation: Eine bereits erfolgte Zahlung\nkann sich mit dieser Rechnung gekreuzt haben.\n\nSunrise GmbH · Thurgauerstrasse 101B · 8152 Glattpark\nUID CHE-123.456.789 MWST   ||| Sca n 08/25 · Seite 1/1",
+   "tags": [
+    "Rechnung",
+    "Telekom"
+   ],
+   "referenceTitle": "Rechnung Mobile-Abonnement Juli 2025"
+  },
+  {
+   "id": "doc-015",
+   "language": "de",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Zahnarztpraxis Dr. med. dent. Keller",
+   "documentType": "Quittung",
+   "date": "2026-01-04",
+   "titleMode": "explicit",
+   "dateMode": "month_name",
+   "noise": "clean",
+   "text": "Zahnarztpraxis Dr. med. dent. Keller\nPilatusstrasse 18\n6003 Luzern\n\nLuzern, 4. Januar 2026\n\nQuittung\n\nPatientin:\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nHiermit bestätigen wir den vollständigen Erhalt der Zahlung für die zahnärztliche Behandlung vom 18.12.2025.\n\nLeistungen:\n- Zahnärztliche Kontrolle und Befundaufnahme\n- Professionelle Zahnreinigung\n- Fluoridierung\n\nBehandlungsbetrag                         CHF 185.00\nBereits erhaltene Zahlung                 CHF 185.00\nOffener Betrag                            CHF   0.00\n\nZahlungsart: Kartenzahlung\nZahlungseingang: 4. Januar 2026\n\nDie oben aufgeführte Rechnung ist vollständig beglichen. Diese Quittung dient als Zahlungsnachweis für Ihre Unterlagen sowie gegebenenfalls zur Einreichung bei Ihrer Kranken- oder Zahnzusatzversicherung.\n\nZahnärztliche Leistungen sind gemäss geltenden Bestimmungen nicht mehrwertsteuerpflichtig. Bitte bewahren Sie dieses Dokument zusammen mit der detaillierten Rechnung auf.\n\nFreundliche Grüsse\n\nZahnarztpraxis Dr. med. dent. Keller\n\nQuittungsnummer: Q-2026-0104-185",
+   "tags": [
+    "Gesundheit",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Quittung Zahnbehandlung vom 18.12.2025"
+  },
+  {
+   "id": "doc-016",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Zurich Versicherung",
+   "sender": "Zurich Versicherung",
+   "documentType": "Mahnung",
+   "date": "2024-11-14",
+   "titleMode": "broken",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "Zurich Versicherungs-Gesellschaft AG\nKundenservice Prämien\nPostfach 3001 Bern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\n14.11.2024\n\nMahnung zu Ihrer Versicherungspräm\nie – Zahlungsaufforderung\n\nSehr geehrte Frau Muster\n\nFür Ihre bei uns geführte Versicherung ist die untenstehende Prämie trotz unserer bisherigen Zahlungsaufforderung noch nicht bei uns eingegangen.\n\nOffener Betrag: CHF 248.60\nVersicherungsnummer: ZH-48-731-920\n\nWir bitten Sie, den offenen Betrag umgehend unter Angabe der Versicherungsnummer zu begleichen. Bitte verwenden Sie dazu den beiliegenden Einzahlungsschein oder bezahlen Sie über Ihr eBill-Konto, sofern dieses aktiviert ist.\n\nSollte Ihre Zahlung unsere Buchhaltung bereits gekreuzt haben, betrachten Sie dieses Schreiben bitte als gegenstandslos. Andernfalls können zusätzliche Kosten für die Bearbeitung des Zahlungsverzugs entstehen. Der Versicherungsschutz kann bei weiterem Ausbleiben der Zahlung beeinträchtigt werden.\n\nFür Fragen zu dieser Mahnung steht Ihnen unser Kundenservice gerne zur Verfügung.\n\nFreundliche Grüsse\n\nZurich Versicherung\nKundenservice Prämien",
+   "tags": [
+    "Versicherung",
+    "Mahnung",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Mahnung zur offenen Versicherungsprämie"
+  },
+  {
+   "id": "doc-017",
+   "language": "fr",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Elektro Meier AG",
+   "documentType": "Kündigung",
+   "date": "2025-08-16",
+   "titleMode": "broken",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "Elektro Meier AG\nService clientèle\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\n16.08.2025\n\nObjet : Résiliation de votre contrat d’entre-\ntien des installations électriques\n\nMadame,\n\nNous vous informons par la présente que Elektro Meier AG met fin à votre contrat d’entretien relatif aux installations électriques de votre logement à l’adresse indiquée ci-dessus.\n\nCette résiliation intervient conformément aux conditions contractuelles applicables. Les prestations déjà commandées et réalisées jusqu’à la fin de la relation contractuelle seront facturées séparément, le cas échéant. Aucun montant n’est actuellement exigible au titre de cette communication.\n\nNous vous remercions de bien vouloir nous communiquer toute instruction nécessaire concernant l’accès au logement, la remise d’éventuels documents techniques ou la coordination d’une dernière intervention.\n\nNous vous remercions de la confiance accordée à notre entreprise et restons à votre disposition pour toute question concernant cette résiliation.\n\nVeuillez agréer, Madame, nos salutations distinguées.\n\nElektro Meier AG\nService clientèle",
+   "tags": [
+    "Kündigung",
+    "Vertrag",
+    "Strom"
+   ],
+   "referenceTitle": "Résiliation du contrat d’entretien électrique"
+  },
+  {
+   "id": "doc-018",
+   "language": "it",
+   "correspondentMode": "alias",
+   "correspondent": "Digitec Galaxus",
+   "sender": "Digitec Galaxus",
+   "documentType": "Kontoauszug",
+   "date": "2025-05-01",
+   "titleMode": "explicit",
+   "dateMode": "single",
+   "noise": "ocr",
+   "text": "Digitec Galaxus AG\nServizio clienti · Pfingstweidstrasse 60, 8005 Zurigo\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nESTRATTO CONTO CLIENTE\nData di emissione: 01.05.2025\n\nGentile Signora Muster,\ndi seguito trova il riepilogo del suo conto cliente.\n\nDescrizione                         Addebito  Accredito  Saldo\nAcquisto online, ordine consegnato   CHF 89.90            CHF 89.90\nPagamento carta di credito                     CHF 89.90  CHF 0.00\n\nSaldo attuale:                                      CHF 0.00\nStato: tutte le posizioni risultano paga te.\nNon è richiesto alcun ulteriore versamento.\n\nPer eventuali domande, acceda al suo account cliente\noppure contatti il nostro servizio clien ti. Conservi\nquesto documento insieme alla conferma d'ordin e.\n\nGrazie per il suo acquisto presso Digitec Galaxus AG.\n\n--- sca n 0CR: doc. clt/5-1 | pagina 1/1 | zZ7* ---",
+   "tags": [
+    "Rechnung",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Estratto conto cliente - saldo CHF 0.00"
+  },
+  {
+   "id": "doc-019",
+   "language": "de",
+   "correspondentMode": "alias",
+   "correspondent": "Serafe",
+   "sender": "Serafe",
+   "documentType": "Police",
+   "date": "2026-02-26",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "Serafe AG\nSchweizerische Erhebungsstelle für die Radio- und Fernsehabgabe\nPostfach, 8010 Zürich\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nRechnung Radio- und Fernsehabgabe 2026\n\nAbgabeperiode: 1. Januar 2026 bis 31. Dezember 2026\nRechnungsnummer: 260226-CH-481927\nKundennummer: 1048 375 219\n\nFür den oben genannten Haushalt stellen wir Ihnen die jährliche Radio- und Fernsehabgabe gemäss Bundesgesetz über Radio und Fernsehen in Rechnung.\n\nRadio- und Fernsehabgabe Haushalt                 CHF 335.00\n\nTotal zahlbar                                     CHF 335.00\n\nZahlbar bis: 28. März 2026\nBitte verwenden Sie für Ihre Zahlung ausschliesslich die beiliegende QR-Rechnung. Bei fristgerechter Zahlung entstehen keine weiteren Kosten.\n\nRechnungsdatum: 26. Februar 2026\n\nFalls sich Ihre Wohn- oder Haushaltssituation seit dem 1. Januar 2026 geändert hat, melden Sie uns dies bitte innert 30 Tagen über das Kundenportal oder schriftlich unter Angabe Ihrer Kundennummer.\n\nFreundliche Grüsse\nSerafe AG\nSchweizerische Erhebungsstelle für die Radio- und Fernsehabgabe",
+   "tags": [
+    "Rechnung",
+    "Haushalt",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Rechnung Radio- und Fernsehabgabe 2026"
+  },
+  {
+   "id": "doc-020",
+   "language": "fr",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Zahnarztpraxis Dr. med. dent. Keller",
+   "documentType": "Vertrag",
+   "date": "2024-03-21",
+   "titleMode": "none",
+   "dateMode": "month_name",
+   "noise": "clean",
+   "text": "Zahnarztpraxis Dr. med. dent. Keller\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLuzern, le 21 mars 2024\n\nMadame,\n\nPar la présente, nous convenons des conditions applicables au traitement dentaire prévu dans notre cabinet. Le plan de traitement remis le 15.03.2024 fait partie intégrante du présent accord.\n\nLes prestations seront fournies selon les règles reconnues de l’art dentaire et après information préalable sur les alternatives thérapeutiques, les risques et les coûts estimés. Le montant prévisionnel communiqué est de CHF 1'850.00. Toute prestation supplémentaire nécessaire sera discutée avec vous avant son exécution, dans la mesure du possible.\n\nLes factures sont établies après le traitement ou par étapes et sont payables dans un délai de 30 jours. Les prestations non prises en charge par votre assurance maladie ou votre assurance complémentaire restent à votre charge.\n\nVous pouvez annuler ou déplacer un rendez-vous au moins 24 heures à l’avance. En cas d’absence non excusée, des frais peuvent être facturés.\n\nNous vous remercions de confirmer votre accord en signant ci-dessous.\n\nVeuillez agréer, Madame, nos salutations distinguées.\n\nZahnarztpraxis Dr. med. dent. Keller\n\nAccord de la patiente : ____________________\nDate : ____________________",
+   "tags": [
+    "Vertrag",
+    "Gesundheit"
+   ],
+   "referenceTitle": "Accord de traitement dentaire"
+  },
+  {
+   "id": "doc-021",
+   "language": "it",
+   "correspondentMode": "alias",
+   "correspondent": "PostFinance",
+   "sender": "PostFinance",
+   "documentType": "Bescheinigung",
+   "date": "2026-06-05",
+   "titleMode": "none",
+   "dateMode": "multiple",
+   "noise": "ocr",
+   "text": "PostFinance SA\nServizio clienti | 3030 Berna\n[scan: PF-ARCHIV 7l/26 -- ||| 00A]\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nGentile Signora Muster,\n\ncon la presente confermiamo che Lei è titolare della relazione\ncliente n. 87 0042 19 presso PostFinance SA. Il conto privato\nIBAN CH93 0900 0000 8700 4219 0 è stato aperto il 15.03.2021\ne risulta attivo alla data del 31.05.2026.\n\nPer il periodo dal 01.01.2026 al 31.05.2026, il saldo registrato\nsul conto era di CHF 4'286.70. Questa attestazione è rilasciata\nsu Sua richiesta, ricevuta il 28.05.2026, e può essere presentata\nalle autorità o ad altri enti svizzeri quale prova della relazione\nbancaria. Non costituisce una garanzia di credito né una promessa\ndi pagamento.\n\nI dati indicati si basano sui registri elettronici disponibili al\nmomento dell'emissione. Eventuali movirnenti contabilizzati dopo\nil 31.05.2026 non sono inclusi. Per ragioni di sicurezza, non\ncomunichi il numero di conto o i codici di accesso a terzi.\n\nBerna, 05.06.2026\n\nCordiali saluti\nPostFinance SA\nServizio clienti\n\n-- fine docurnento / lettura automatica: 8O% --",
+   "tags": [
+    "Bank"
+   ],
+   "referenceTitle": "Attestazione di titolarità e saldo conto"
+  },
+  {
+   "id": "doc-022",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Livit AG",
+   "sender": "Livit AG",
+   "documentType": "Police",
+   "date": "",
+   "titleMode": "broken",
+   "dateMode": "none",
+   "noise": "ocr",
+   "text": "Livit AG\nBewirtschaftung & Vermietung\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nVersicherungs-Poli\nce zur Mietkauti0n – Objekt Bahnhofstrasse 9\n\nSehr geehrte Frau Muster\n\nFür das oben genannte Mietverhältnis führen wir die Unterlagen zur\nMietkautionsversicherung in unserer Verwaltung. Die versicherte\nKautionssumme beträgt CHF 3'000.00. Bitte bewahren Sie diese Police\nzusammen mit dem Mietvertrag auf.\n\nDie Kaution dient zur Sicherung von Forderungen aus dem Mietverhält-\nnis, insbesondere für ausstehende Mietzinse, Nebenkosten oder Schäden\nam Mietobjekt. Eine Auszahlung oder Freigabe der Kaution kann nur mit\nder erforderlichen Zustimmung der beteiligten Parteien erfolgen.\n\nÄnderungen Ihrer Korrespondenzadresse sind uns unverzüglich mitzutei-\nlen. Bei Fragen zur Police oder zum Stand der Kaution wenden Sie sich\nbitte an Ihre Bewirtschaftung.\n\nFreundliche Grüsse\nLivit AG\n\nDok.-Nr. MK-4l8O7   |   Archiv: Vermietung/Ku0tion\n@@ scan 1/1  Livit AG · interne Ablage · ZeiIe unvollständig",
+   "tags": [
+    "Versicherung",
+    "Miete"
+   ],
+   "referenceTitle": "Versicherungspolice zur Mietkaution Bahnhofstrasse 9"
+  },
+  {
+   "id": "doc-023",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Booking.com",
+   "sender": "Booking.com",
+   "documentType": "Police",
+   "date": "2024-08-26",
+   "titleMode": "broken",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "Booking.com\nReiseversicherungsservice\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\n26. August 2024\n\nBetreff: Ihre Reiseversicherungs-\npol1ce zum Buchungsschutz\n\nGuten Tag Frau Muster\n\nwir bestätigen den Abschluss Ihres Reise-Buchungsschutzes über Booking.com. Diese Police dokumentiert den vereinbarten Versicherungsschutz für die bei uns hinterlegte Reisebuchung.\n\nPolicennummer: BC-CH-8472916\nVersicherte Person: Anna Muster\nWohnsitz: Bahnhofstrasse 9, 6003 Luzern\nPrämie: CHF 39.90\n\nDer Schutz umfasst gemäss den anwendbaren Versicherungsbedingungen Leistungen bei Reiseannullierung, Reiseabbruch, Notfallhilfe sowie Unterstützung bei verspäteter Anreise. Massgebend für Umfang, Ausschlüsse, Selbstbehalte und Meldefristen sind die beigefügten Bedingungen.\n\nBitte bewahren Sie dieses Dokument zusammen mit Ihrer Buchungsbestätigung auf. Im Schadenfall melden Sie den Vorfall unverzüglich über Ihr Booking.com-Konto und reichen die verlangten Belege ein.\n\nFreundliche Grüsse\n\nBooking.com\nReiseversicherungsservice\n\nDies ist eine elektronisch erstellte Police und ist ohne Unterschrift gültig.",
+   "tags": [
+    "Versicherung",
+    "Reise"
+   ],
+   "referenceTitle": "Reise-Buchungsschutz Police"
+  },
+  {
+   "id": "doc-024",
+   "language": "fr",
+   "correspondentMode": "known",
+   "correspondent": "Salt",
+   "sender": "Salt",
+   "documentType": "Kontoauszug",
+   "date": "2026-04-24",
+   "titleMode": "broken",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "Salt Mobile SA\nRue du Caudray 4, 1020 Renens\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nPériode de facturation : du 01.03.2026 au 31.03.2026\nDate de commande : 12.02.2024\n\nRelevé de co\nmpte client – abonnement mobile\n\nNuméro client : 10485729\nNuméro de facture : 2026-031-784521\n\nSolde précédent au 28.02.2026                         CHF 0.00\nAbonnement Salt Swiss Max, mars 2026                 CHF 49.95\nOptions et communications hors forfait               CHF  5.00\nRabais fidélité                                      CHF -5.00\nTVA 8,1 % incluse                                    CHF  3.75\n\nMontant total                                        CHF 49.95\nPaiement reçu le 08.04.2026                          CHF 49.95\nSolde au 31.03.2026                                  CHF 0.00\n\nAucun montant n’est actuellement exigible. Votre prochain prélèvement est prévu le 08.05.2026, sous réserve de nouvelles prestations. Ce relevé récapitule les mouvements enregistrés durant la période indiquée.\n\nDate d’émission : 24.04.2026\n\nSalt Mobile SA • Service clientèle • Case postale 202, 1020 Renens\nwww.salt.ch • Tous les montants sont indiqués en CHF.",
+   "tags": [
+    "Telekom",
+    "Abo",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Relevé de compte mobile – mars 2026"
+  },
+  {
+   "id": "doc-025",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "PostFinance",
+   "sender": "PostFinance",
+   "documentType": "Offerte",
+   "date": "2025-07-19",
+   "titleMode": "explicit",
+   "dateMode": "month_name",
+   "noise": "clean",
+   "text": "PostFinance AG\nMingerstrasse 20\n3030 Bern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nBern, 19. Juli 2025\n\nOfferte: PostFinance Privatkonto mit E-Finance\n\nSehr geehrte Frau Muster\n\nBesten Dank für Ihr Interesse an unseren Bankdienstleistungen. Gerne unterbreiten wir Ihnen folgende unverbindliche Offerte für die Eröffnung eines PostFinance Privatkontos in Schweizer Franken.\n\nDas Privatkonto CHF umfasst die Kontoführung, eine PostFinance Card sowie den Zugang zu E-Finance und der PostFinance App. Damit können Sie Zahlungen erfassen, Daueraufträge verwalten und Ihre Kontoübersicht jederzeit digital einsehen.\n\nDie Kontoführung ist bei regelmässiger Nutzung kostenlos. Für zusätzliche Leistungen gelten die Preise gemäss dem aktuell gültigen Preis- und Leistungsverzeichnis. Eine Ersatzkarte kostet CHF 40.00. Zahlungen innerhalb der Schweiz in CHF können über E-Finance gemäss den geltenden Konditionen ausgelöst werden.\n\nDiese Offerte ist bis zum 30. September 2025 gültig. Für die Kontoeröffnung benötigen wir einen gültigen amtlichen Ausweis und Ihre persönlichen Angaben. Die Vertragsunterlagen erhalten Sie nach Ihrer Anmeldung digital oder in einer PostFinance-Filiale.\n\nFreundliche Grüsse\n\nPostFinance AG\nKundenberatung\n\nDiese Offerte ist unverbindlich und vorbehaltlich einer erfolgreichen Kundenprüfung.",
+   "tags": [
+    "Bank",
+    "Vertrag"
+   ],
+   "referenceTitle": "Offerte Privatkonto CHF mit E-Finance"
+  },
+  {
+   "id": "doc-026",
+   "language": "en",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Schreinerei Imfeld",
+   "documentType": "Kündigung",
+   "date": "2026-07-03",
+   "titleMode": "none",
+   "dateMode": "month_name",
+   "noise": "ocr",
+   "text": "Schreinerei Imfeld\nWerkstatt & Innenausbau\n6000 Luzern   Tel. 041 555 18 40\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLuzern, 3 July 2026\n\nDear Ms Muster,\n\nWe refer to the maintenance agreement for the fitted wardrobe and kitchen cabinet fittings at the above address, concluded on 15.09.2024.\n\nWe hereby give notice to terminate this agreement at the next regular date, 30 September 2026. From that date onward, no further annual maintenance visits or call-out cover will be provided under the agreement.\n\nAny work already ordered before 30 September 2026 will be completed and invoiced in the usual way. According to our records, your account shows no outstanding balance. If you require an inspection before the end date, please contact us by 31 August 2026. The agreed service fee remains CHF 180.00 until the termination takes effect.\n\nWe regret that we cannot continue the arrangement and thank you for your custom. Please keep this letter with your contract documents.\n\nKind regards,\n\nSchreinerei Imfeld\nManagement\n\n--- Scan ref: IMF/26-071  l  Page 1/1 ---",
+   "tags": [
+    "Kündigung",
+    "Vertrag"
+   ],
+   "referenceTitle": "Termination of maintenance agreement"
+  },
+  {
+   "id": "doc-027",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Die Mobiliar",
+   "sender": "Die Mobiliar",
+   "documentType": "Quittung",
+   "date": "2025-10-15",
+   "titleMode": "broken",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "Die Mobiliar\nSchweizerische Mobiliar Versicherungsgesellschaft AG\nGeneralagentur Luzern\nHirschmattstrasse 25, 6003 Luzern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLuzern, 2025-10-15\n\nBetreff: Prämienzahlung – Quit-\ntung zu Ihrer Hausratversicherung\n\nSehr geehrte Frau Muster\n\nWir bestätigen den vollständigen Eingang Ihrer Prämienzahlung für die bei uns geführte Hausrat- und Privathaftpflichtversicherung.\n\nVersicherungsnehmerin: Anna Muster\nPolice: HM-8472-6159\nVersicherte Adresse: Bahnhofstrasse 9, 6003 Luzern\n\nEingegangener Betrag: CHF 428.60\nZahlungsart: E-Banking\nVerwendungszweck: Jahresprämie Hausrat und Privathaftpflicht\n\nDer genannte Betrag wurde Ihrem Versicherungsvertrag gutgeschrieben. Es besteht aus dieser Prämienforderung keine offene Zahlung. Diese Quittung dient als Zahlungsnachweis für Ihre Unterlagen.\n\nBitte bewahren Sie dieses Dokument zusammen mit Ihrer Police auf. Bei Fragen zu Ihrem Versicherungsschutz oder zu dieser Zahlung hilft Ihnen Ihre Generalagentur Luzern gerne weiter.\n\nFreundliche Grüsse\n\nDie Mobiliar\nSchweizerische Mobiliar Versicherungsgesellschaft AG\nGeneralagentur Luzern",
+   "tags": [
+    "Versicherung",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Quittung Prämienzahlung Hausrat- und Privathaftpflichtversicherung"
+  },
+  {
+   "id": "doc-028",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Raiffeisen",
+   "sender": "Raiffeisen",
+   "documentType": "Lohnabrechnung",
+   "date": "2026-10-20",
+   "titleMode": "explicit",
+   "dateMode": "single",
+   "noise": "ocr",
+   "text": "RAIFFEISEN\nRaiffeisen Schweiz Genossenschaft\nPersonaladministration | St. Gallen\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLohnabrechnung\n\nAusstelldatum: 20.10.2026\nPersonal-Nr.: 047381   Kostenstelle: 1180\nFunktion: Kundenberaterin\n\nBruttolohn                              CHF 6'850.00\nZulage Kundenberatung                   CHF   180.00\nBrutto total                            CHF 7'030.00\n\nAHV/IV/EO 5.30 %                       CHF  -372.60\nALV 1.10 %                              CHF   -77.35\nBVG Arbeitnehmerbeitrag                 CHF  -318.40\nNichtberufsunfa1lversicherung            CHF   -96.75\nQuellensteuer                            CHF  -421.20\n\nAbzüge total                            CHF-1'286.30\nNetto1ohn                                CHF 5'743.70\n\nAuszahlung auf Ihr hinterlegtes Lohnkonto: CHF 5'743.70\nDer Betrag wird gemäss Zahlungsauftrag überwiesen.\n\nBei Fragen wenden Sie sich bitte an die Personaladministration.\nDiese Abrechnung ist e1ektronisch erstellt und ohne Unterschrift gültig.\n\n--- RAIFFEISEN / HR-OUT  1l8O::scan 0K ---\nVertraulich • Bitte sorgfältig aufbewahren.",
+   "tags": [
+    "Lohn",
+    "Bank"
+   ],
+   "referenceTitle": "Lohnabrechnung CHF 5'743.70"
+  },
+  {
+   "id": "doc-029",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Salt",
+   "sender": "Salt",
+   "documentType": "Mahnung",
+   "date": "2024-05-18",
+   "titleMode": "none",
+   "dateMode": "single",
+   "noise": "ocr",
+   "text": "Salt Mobile SA\nKundenservice | Rue du Caudray 4, 1020 Renens\nTel. 0800 700 700   www.salt.ch   Kd.-Nr. 7l39482\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nRenens, 2024-05-18\n\nGuten Tag Frau Muster\n\ntrotz unserer bisherigen Erinnerung konnten wir bis heute keinen\nZahlungseingang für Ihre Mobilfunkdienstleistungen feststellen. Der\noffene Betrag von CHF 89.90 ist weiterhin ausstehend.\n\nWir bitten Sie, den Betrag innerhalb von 10 Tagen auf unser Konto zu\nüberweisen. Bitte geben Sie bei der Zahlung Ihre Kundennummer 7l39482\nan, damit wir den Betrag korrekt zuordnen können. Sollte Ihre Zahlung\nunsere Kreuzung bereits erreicht haben, betrachten Sie dieses Schreiben\nbitte als gegenstandslos.\n\nBei Nichtzahlung müssen wir leider eine Bearbeitungsgebühr erheben und\nbehalten uns weitere Schritte vor. Dies möchten wir gerne vermeiden.\nFalls Sie Fragen haben oder eine Zahlungserleichterung benötigen,\nmelden Sie sich bitte umgehend bei unserem Kundenservice.\n\nFreundliche Grüsse\n\nSalt Mobile SA\nForderungsmanagement\n\n-- Sca n: Salt / F0rderungen | Seite l von l --",
+   "tags": [
+    "Telekom",
+    "Mahnung",
+    "Zahlung offen",
+    "Wichtig"
+   ],
+   "referenceTitle": "Mahnung offene Mobilfunkrechnung CHF 89.90"
+  },
+  {
+   "id": "doc-030",
+   "language": "de",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Zahnarztpraxis Dr. med. dent. Keller",
+   "documentType": "Brief",
+   "date": "2026-10-05",
+   "titleMode": "explicit",
+   "dateMode": "month_name",
+   "noise": "clean",
+   "text": "Zahnarztpraxis Dr. med. dent. Keller\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLuzern, 5. Oktober 2026\n\nBetreff: Information zur geplanten Zahnbehandlung\n\nSehr geehrte Frau Muster\n\nbei Ihrer Untersuchung vom 18.09.2026 haben wir den Zustand des oberen rechten Backenzahns besprochen. Aufgrund der bestehenden Füllung und der festgestellten Undichtigkeit empfehlen wir eine erneute Versorgung des Zahns mit einer Teilkrone.\n\nDie Behandlung umfasst die Vorbereitung des Zahns, einen digitalen Abdruck, die Anfertigung der Teilkrone im Labor sowie das definitive Einsetzen. Der voraussichtliche Aufwand beträgt insgesamt CHF 1'240.00. Je nach Verlauf der Behandlung können zusätzliche Leistungen notwendig werden; darüber würden wir Sie vorgängig informieren.\n\nBitte vereinbaren Sie für die Behandlung einen Termin mit unserem Empfang. Falls Sie eine Kostenübernahme durch eine Zusatzversicherung prüfen möchten, reichen wir Ihnen auf Wunsch einen detaillierten Kostenvoranschlag ein.\n\nFür Fragen stehen wir Ihnen gerne zur Verfügung.\n\nFreundliche Grüsse\n\nZahnarztpraxis Dr. med. dent. Keller",
+   "tags": [
+    "Gesundheit"
+   ],
+   "referenceTitle": "Information zur geplanten Zahnbehandlung"
+  },
+  {
+   "id": "doc-031",
+   "language": "fr",
+   "correspondentMode": "known",
+   "correspondent": "Booking.com",
+   "sender": "Booking.com",
+   "documentType": "Rechnung",
+   "date": "2026-07-03",
+   "titleMode": "explicit",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "Booking.com B.V.\nService clientèle\nHerengracht 597\n1017 CE Amsterdam, Pays-Bas\n\nDestinataire\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\nSuisse\n\nFACTURE – Hébergement réservé\n\nDate d’émission : 03.07.2026\nNuméro de facture : BC-CH-7641938\nRéférence de réservation : 4829 731 605\n\nDescription\nCommission et frais de service liés à votre réservation d’hébergement, conformément aux conditions applicables sur la plateforme Booking.com.\n\nMontant de l’hébergement : CHF 428.00\nFrais de service : CHF 0.00\nTVA : CHF 0.00\n\nTotal facturé : CHF 428.00\nMontant payé : CHF 428.00\nSolde dû : CHF 0.00\n\nLe paiement a été traité par le moyen de paiement sélectionné lors de la réservation. Aucun autre montant n’est à régler pour cette facture.\n\nCette facture est établie électroniquement et peut être conservée comme justificatif de paiement. Pour toute question concernant la réservation ou le paiement, veuillez consulter votre compte Booking.com en indiquant la référence ci-dessus.\n\nBooking.com B.V. agit comme intermédiaire de réservation selon les conditions du service.",
+   "tags": [
+    "Rechnung",
+    "Reise",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Facture d’hébergement – réservation 4829 731 605"
+  },
+  {
+   "id": "doc-032",
+   "language": "en",
+   "correspondentMode": "known",
+   "correspondent": "Strassenverkehrsamt",
+   "sender": "Strassenverkehrsamt",
+   "documentType": "Kontoauszug",
+   "date": "2025-08-18",
+   "titleMode": "none",
+   "dateMode": "month_name",
+   "noise": "ocr",
+   "text": "Strassenverkehrsamt des Kantons Luzern\nBereich Finanzen und Gebühren\nArsenalstrasse 43, 6010 Kriens\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLuzern, 18 August 2025\n\nDear Ms Muster,\n\nPlease find below your account information as at 31.07.2025. This statement lists charges and payments recorded for your vehicle registration and driving licence services.\n\nDate       Details                         Debit CHF  Credit CHF  Balance CHF\n03.06.2025 Vehicle registration fee          60.00       0.00       60.00\n03.06.2025 Licence plate deposit             50.00       0.00      110.00\n19.06.2025 Payment received                  0.00      60.00       50.00\n31.07.2025 Annual vehicle tax instalment    245.00       0.00      295.00\n\nThe outstanding balance is CHF 295.00. Please pay this amount by 15.09.2025 using the enclosed payment slip. Payments received after this date may not yet appear on this account statement.\n\nIf you believe an entry is incorrect, please contact our Finance Department and quote your customer number 0-1847-291.\n\nKind regards\n\nStrassenverkehrsamt\nFinance Department\n\n--- Scan ref: SVA-LU | FIN-08/25 | page 1/1 | lI0O rnerged ---",
+   "tags": [
+    "Auto",
+    "Behörde",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Account statement – outstanding vehicle charges"
+  },
+  {
+   "id": "doc-033",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Helsana",
+   "sender": "Helsana",
+   "documentType": "Steuerdokument",
+   "date": "2026-05-19",
+   "titleMode": "explicit",
+   "dateMode": "month_name",
+   "noise": "ocr",
+   "text": "HELSANA Versicherungen AG\nPostfach, 8081 Zürich\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nZürich, 19. Mai 2026\n\nSteuerbescheinigung 2025 – Krankenversicherungsprämien\n\nSehr geehrte Frau Muster\n\nFür Ihre Steuererklärung bestätigen wir die im Kalenderjahr 2025\nverbuchten Prämien und Kostenbeteiligungen. Massgebend ist der\nZeitraum vom 01.01.2025 bis 31.12.2025.\n\nVersicherte Person            Prämien CHF   Kostenbeteiligung CHF\nAnna Muster                   4'286.40      620.00\n\nTotal bezahlte Prämien        CHF 4'286.40\nTotal Kostenbetei1igung       CHF   620.00\n\nDie Prämien betreffen die obligatorische Krankenpflegeversicherung\nsowie die bei Helsana geführten Zusatzversicherungen. Nicht bezahlte\noder erst nach dem 31.12.2025 eingegangene Beträge sind in dieser\nBescheinigung nicht enthalten.\n\nBitte bewahren Sie dieses Dokument zusammen mit Ihren übrigen\nSteuerunterlagen auf. Bei Fragen erreichen Sie uns unter\n0844 80 81 82.\n\nFreundliche Grüsse\nHelsana Versicherungen AG\n\n-- Scan-Ref.: HSL-2025/Tax | Seite 1 v0n 1 | 0CR-Prüfung --\nKundennummer: 10 274 581 9   Belegnr. ST-2025-004817",
+   "tags": [
+    "Versicherung",
+    "Steuern",
+    "Gesundheit"
+   ],
+   "referenceTitle": "Steuerbescheinigung 2025 Krankenversicherungsprämien"
+  },
+  {
+   "id": "doc-034",
+   "language": "de",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Velo Zürcher AG",
+   "documentType": "Mahnung",
+   "date": "2024-02-17",
+   "titleMode": "none",
+   "dateMode": "month_name",
+   "noise": "clean",
+   "text": "Velo Zürcher AG\nWerkhofstrasse 18\n8005 Zürich\nTelefon 044 555 18 20\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nZürich, 17. Februar 2024\n\nSehr geehrte Frau Muster\n\nbei der Durchsicht unserer Buchhaltung haben wir festgestellt, dass die Rechnung für die Reparatur Ihres Velos vom 15. Januar 2024 bislang nicht beglichen wurde. Möglicherweise ist unsere Rechnung im Alltag untergegangen.\n\nDer offene Betrag beläuft sich auf CHF 186.50. Wir bitten Sie, diesen Betrag innerhalb von 10 Tagen ab Erhalt dieser Mahnung auf unser Konto zu überweisen. Bitte verwenden Sie bei der Zahlung die Rechnungsnummer R-2024-0115 als Referenz, damit wir Ihre Überweisung korrekt zuordnen können.\n\nSollten Sie den Betrag inzwischen bezahlt haben, betrachten Sie dieses Schreiben bitte als gegenstandslos. Falls es Unklarheiten zur Rechnung oder zur ausgeführten Reparatur gibt, kontaktieren Sie uns bitte telefonisch oder per E-Mail. Wir helfen Ihnen gerne weiter.\n\nFreundliche Grüsse\n\nVelo Zürcher AG\nBuchhaltung",
+   "tags": [
+    "Mahnung",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Mahnung für Veloreparatur, CHF 186.50"
+  },
+  {
+   "id": "doc-035",
+   "language": "fr",
+   "correspondentMode": "known",
+   "correspondent": "Coop",
+   "sender": "Coop",
+   "documentType": "Rechnung",
+   "date": "2024-11-06",
+   "titleMode": "explicit",
+   "dateMode": "month_name",
+   "noise": "clean",
+   "text": "Coop Société Coopérative\nService clients et facturation\nThiersteinerallee 12, 4053 Bâle\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nFACTURE N° CP-2024-1106-4837\n\nDate d’émission : 6 novembre 2024\nDate de livraison : 02.11.2024\n\nMadame,\n\nNous vous facturons les achats effectués dans le cadre de votre commande Coop@home. Merci de vérifier les articles et les montants ci-dessous.\n\nArticles alimentaires et produits ménagers        CHF 74.60\nFrais de préparation de commande                  CHF 4.90\nLivraison                                         CHF 6.90\nRabais promotionnel                              -CHF 5.00\n\nTotal TTC                                        CHF 81.40\nTVA incluse conformément aux taux en vigueur.\n\nMontant à payer : CHF 81.40\nÉchéance : 20 novembre 2024\n\nVeuillez effectuer le paiement en indiquant le numéro de facture CP-2024-1106-4837. Le paiement peut être effectué par e-banking ou au guichet postal à l’aide des informations de paiement jointes.\n\nSi vous avez déjà réglé cette facture, nous vous remercions et vous prions de ne pas tenir compte de ce rappel.\n\nAvec nos salutations distinguées,\nCoop Société Coopérative\nService de facturation\n\nPour toute question : coop.ch/serviceclients",
+   "tags": [
+    "Rechnung",
+    "Haushalt",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Facture Coop@home du 6 novembre 2024"
+  },
+  {
+   "id": "doc-036",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Salt",
+   "sender": "Salt",
+   "documentType": "Offerte",
+   "date": "2026-08-28",
+   "titleMode": "explicit",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "Salt Mobile SA\nRue du Caudray 4\n1020 Renens VD\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nRenens, 28.08.2026\n\nOfferte: Salt Mobile Abo Swiss Max\n\nBesten Dank für Ihr Interesse an unseren Mobilfunkdiensten. Gerne unterbreiten wir Ihnen folgendes unverbindliches Angebot für einen Mobilfunkanschluss:\n\nSalt Mobile Abo Swiss Max\n• Unlimitierte Anrufe und SMS innerhalb der Schweiz\n• Unlimitiertes Datenvolumen in der Schweiz mit 5G-Zugang\n• 20 GB Datenroaming in Europa und den USA\n• Mobile Hotspot-Nutzung inklusive\n\nMonatlicher Abopreis: CHF 49.95\nEinmalige Aktivierungsgebühr: CHF 59.00\n\nDie Mindestvertragsdauer beträgt 24 Monate. Nach Ablauf der Mindestvertragsdauer kann das Abonnement unter Einhaltung der vertraglich vereinbarten Kündigungsfrist beendet werden. Nicht enthaltene Dienste sowie zusätzliche Roaming-Nutzung werden gemäss der gültigen Preisliste verrechnet.\n\nDieses Angebot gilt für einen neuen Privatkundenanschluss und setzt eine erfolgreiche Bonitätsprüfung voraus. Die Rufnummernübernahme von einem bestehenden Schweizer Anbieter ist auf Wunsch möglich. Bitte geben Sie bei der Bestellung die gewünschte Rufnummer sowie Ihren bisherigen Anbieter an.\n\nWir freuen uns, Sie bei Salt begrüssen zu dürfen.\n\nFreundliche Grüsse\nSalt Mobile SA\nKundenberatung",
+   "tags": [
+    "Telekom",
+    "Abo",
+    "Vertrag"
+   ],
+   "referenceTitle": "Offerte Mobilabo Swiss Max"
+  },
+  {
+   "id": "doc-037",
+   "language": "fr",
+   "correspondentMode": "known",
+   "correspondent": "Zalando",
+   "sender": "Zalando",
+   "documentType": "Rechnung",
+   "date": "2024-02-18",
+   "titleMode": "explicit",
+   "dateMode": "single",
+   "noise": "ocr",
+   "text": "ZALANDO Suisse\nService clientèle | Case postale  | 8000 Zürich\n\nFACTURE n° CH-7A4l9-208\n\nLuzern, le 18.02.2024\n\nFacturé à :\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nMerci pour votre comrnande sur Zalando. Veuillez trouver ci-\ndessous le détail de vos achats :\n\nArticle                         Qté   Prix       Total\nBaskets urba1nes, blanc         1     CHF 89.95  CHF 89.95\nPull en maille, gris             1     CHF 54.90  CHF 54.90\nFrais de livrais0n               1     CHF 0.00   CHF 0.00\n\nSous-total                             CHF 144.85\nTVA incluse (8,1 %)                    CHF 10.86\nTOTAL À PAYER                          CHF 144.85\n\nMode de paiement : carte de crédit\nStatut : payé — aucun montant restant dû.\n\nPour toute question concernant cette facture ou un retour,\nconsultez la rubrique Aide dans votre compte client. Conservez\nce document comme justificatif de paiement.\n\n--- ZALAND0 // scan_04  |  C0pie client  x7 ---\nAdresse de retour : Zalando, centre logistique CH, 4624 Härkingen\nMerci de faire vos achats chez nous.",
+   "tags": [
+    "Rechnung",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Facture achats mode, CHF 144.85"
+  },
+  {
+   "id": "doc-038",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "CKW",
+   "sender": "CKW",
+   "documentType": "Bescheinigung",
+   "date": "2024-03-04",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "CKW\nCKW AG\nPostfach, 6002 Luzern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nBescheinigung über die Stromversorgung\n\nWir bestätigen, dass für die Verbrauchsstelle Bahnhofstrasse 9, 6003 Luzern, ein aktiver Stromliefervertrag besteht.\n\nDie Belieferung begann am 01.01.2024 und erfolgt für den Abrechnungszeitraum vom 01.01.2024 bis 31.12.2024. Die Kundennummer lautet 104582739, die Vertragsnummer 78004126.\n\nGemäss den uns vorliegenden Daten wird die Verbrauchsstelle mit Energie aus dem Produkt CKW Basis versorgt. Die monatlichen Akontozahlungen betragen CHF 85.00 und sind jeweils bis zum 25. Tag des Folgemonats fällig. Die nächste Zahlung ist am 25.03.2024 fällig.\n\nDiese Bescheinigung wird auf Wunsch der Kundin ausgestellt und dient als Nachweis der bestehenden Stromversorgung. Sie enthält keine Zahlungsaufforderung und ersetzt keine Jahresabrechnung.\n\nAusgestellt in Luzern am 04.03.2024.\n\nFreundliche Grüsse\nCKW AG\nKundenservice\nwww.ckw.ch | 041 249 51 11",
+   "tags": [
+    "Strom",
+    "Haushalt"
+   ],
+   "referenceTitle": "Bescheinigung über die Stromversorgung"
+  },
+  {
+   "id": "doc-039",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Livit AG",
+   "sender": "Livit AG",
+   "documentType": "Quittung",
+   "date": "2025-05-01",
+   "titleMode": "none",
+   "dateMode": "month_name",
+   "noise": "clean",
+   "text": "Livit AG\nBewirtschaftung Zentralschweiz\nPilatusstrasse 35\n6003 Luzern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLuzern, 1. Mai 2025\n\nGuten Tag Frau Muster\n\nWir bestätigen den Eingang Ihrer Mietzinszahlung für die Wohnung an der Bahnhofstrasse 9, 6003 Luzern.\n\nAm 30.04.2025 wurde der Betrag von CHF 1'850.00 unserem Mietzinskonto gutgeschrieben. Die Zahlung umfasst den Mietzins für Mai 2025 einschliesslich Akonto-Nebenkosten gemäss Ihrem Mietvertrag.\n\nDie Buchung wurde vollständig verbucht. Per heutigem Datum besteht für die genannte Mietperiode kein offener Betrag. Bitte bewahren Sie diese Quittung zusammen mit Ihrem Zahlungsbeleg auf.\n\nBesten Dank für Ihre fristgerechte Zahlung.\n\nFreundliche Grüsse\n\nLivit AG\nBewirtschaftung Zentralschweiz\n\nDiese Quittung wurde elektronisch erstellt und ist ohne Unterschrift gültig.",
+   "tags": [
+    "Miete",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Quittung Mietzins Mai 2025"
+  },
+  {
+   "id": "doc-040",
+   "language": "en",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Schreinerei Imfeld",
+   "documentType": "Bescheinigung",
+   "date": "2025-04-14",
+   "titleMode": "broken",
+   "dateMode": "multiple",
+   "noise": "ocr",
+   "text": "Schreinerei Imfeld\nWerkstatt für Möbel und Innenausbau\nIndustriestrasse 18, 6010 Kriens  |  Tel. 041 555 18 40\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nOrder received: 12.02.2025   Completion: 28.03.2025\nInvoice no. SI-25038 was paid on 04.04.2025, CHF 3'480.00.\n\nSubj ect: Certiflcate of comp1etion and warran\nty for fitted hallway cabinet\n\nThis certifies that Schreinerei Imfeld supplied and installed\nthe custom-made oak veneered hallway cabinet at the above\nSwiss address. The work was inspected with the customer on\n28.03.2025 and was accepted without noted defects.\n\nThe warranty period runs from 28.03.2025 until 27.03.2027.\nIt covers workmanship and material defects under normal\nhousehold use. Damage caused by moisture, improper cleaning,\nor alteration by third parties is not covered. Please retain\nthis certificate together with the paid invoice.\n\nIssued in Kriens, 14.04.2025\n\nFor Schreinerei Imfeld\nM. Imfe1d, Owner\n\n--- SCAN REF: SI/25-038 | pge 1/1 | 0RIGINAL ---",
+   "tags": [
+    "Haushalt",
+    "Garantie",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Certificate of completion and warranty for hallway cabinet"
+  },
+  {
+   "id": "doc-041",
+   "language": "it",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Elektro Meier AG",
+   "documentType": "Kündigung",
+   "date": "2026-09-10",
+   "titleMode": "none",
+   "dateMode": "single",
+   "noise": "ocr",
+   "text": "Elektro Meier AG\nInstallazioni elettriche · 6005 Luzern\nTe1. 041 555 18 20   |   info@elektro-meier.example\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLuzern, 10.09.2026\n\nGentile Signora Muster,\n\ncon la presente Le comunichiamo la disdetta del contratto di\nmanutenzione relativo all'impianto elettrico della Sua abitazione.\nLa disdetta è motivata dalla riorganizzazione interna del nostro\nservizio di assistenza per gli impianti domestici nella zona di\nLuzern.\n\nProvvederemo a completare gli interventi già concordati e a\nconsegnare, su richiesta, la documentazione tecnica disponibile.\nEventuali lavori urgenti potranno essere affidati a un altro\ninstallatore autorizzato. Non verranno addebitati costi per la\nchiusura della pratica.\n\nLa preghiamo di conservare questa comunicazione insieme ai\ndocumenti dell'impianto. Per chiarimenti può contattarci per\nte1efono durante gli orari d'ufficio.\n\nCordiali saluti\n\nElektro Meier AG\nServizio c1ienti\n\n--- SCAN 0CR: arch. el. / pag. 1 rnargine dx ---",
+   "tags": [
+    "Kündigung",
+    "Strom",
+    "Vertrag"
+   ],
+   "referenceTitle": "Disdetta del contratto di manutenzione elettrica"
+  },
+  {
+   "id": "doc-042",
+   "language": "fr",
+   "correspondentMode": "known",
+   "correspondent": "AXA",
+   "sender": "AXA",
+   "documentType": "Rechnung",
+   "date": "2024-03-13",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "ocr",
+   "text": "AXA Assurances SA\nService clientèle, General-Guisan-Strasse 40, 8401 Winterthur\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nContrat n° 21.458.903.7 – période d’assurance: 01.04.2024 au 31.03.2025\n\nFACTURE – prime d’assurance ménage\n\nMadame,\n\nSuite au renouvellement de votre assurance ménage, nous vous facturons la prime annuelle indiquée ci-dessous. Votre couverture débute le 01.04.2024; l’ancienne période a pris fin le 31.03.2024.\n\nPrime assurance inventaire du ménage         CHF 248.00\nProtection responsabilité civile              CHF  62.00\nDroit de timbre                               CHF   7.45\n                                              ---------\nMontant total à payer                         CHF 317.45\n\nDate de facturation: 13.03.2024\nÉchéance: 12.04.2024\n\nVeuillez verser ce montant au plus tard à l’échéance, en utilisant le bulletin de versement joint. En cas de paiement déjà effectué, veuillez ignorer cette facture. Toute modification d’adresse doit nous être communiquée sans délai.\n\nAXA Assurances SA  |  IBAN CH93 0076 2011 6238 5295 7\nRéf. paiement: 214589037-2024  /  scan: lNVOlCE--4x7\n\nPage 1/1  ## A×A  03-13-24  // rnontant CHF317.45",
+   "tags": [
+    "Rechnung",
+    "Versicherung",
+    "Haushalt",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Facture prime assurance ménage 2024/2025"
+  },
+  {
+   "id": "doc-043",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Rotes Kreuz",
+   "sender": "Rotes Kreuz",
+   "documentType": "Kündigung",
+   "date": "2026-01-01",
+   "titleMode": "explicit",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "Schweizerisches Rotes Kreuz\nKantonalverband Luzern\nMaihofstrasse 95\n6006 Luzern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLuzern, 01.01.2026\n\nKündigung Ihrer Mitgliedschaft\n\nSehr geehrte Frau Muster\n\nwir bestätigen Ihnen den Eingang Ihrer Kündigung. Ihre Mitgliedschaft beim Schweizerischen Roten Kreuz, Kantonalverband Luzern, wird gemäss den geltenden Mitgliederbedingungen beendet.\n\nMit dem Ende der Mitgliedschaft erlischt auch Ihre Einwilligung zum Einzug künftiger Mitgliederbeiträge. Bereits geleistete Beiträge werden nicht zurückerstattet. Ein offener Mitgliederbeitrag von CHF 0.00 besteht nicht.\n\nWir danken Ihnen herzlich für Ihre bisherige Unterstützung und Ihr Vertrauen. Ihre Beiträge haben unsere Angebote für Menschen in schwierigen Lebenssituationen im Kanton Luzern mitgetragen.\n\nFalls Sie zu einem späteren Zeitpunkt wieder Mitglied werden oder unsere Arbeit mit einer Spende unterstützen möchten, stehen wir Ihnen gerne zur Verfügung.\n\nFreundliche Grüsse\n\nSchweizerisches Rotes Kreuz\nKantonalverband Luzern\nMitgliederservice",
+   "tags": [
+    "Kündigung",
+    "Vertrag"
+   ],
+   "referenceTitle": "Bestätigung der Kündigung der Mitgliedschaft"
+  },
+  {
+   "id": "doc-044",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Kantonsspital Luzern",
+   "sender": "Kantonsspital Luzern",
+   "documentType": "Mahnung",
+   "date": "2026-03-23",
+   "titleMode": "none",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "Kantonsspital Luzern\nFinanz- und Rechnungswesen\nSpitalstrasse\n6000 Luzern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLuzern, 23.03.2026\n\nSehr geehrte Frau Muster\n\nLeider konnten wir für eine frühere Behandlung am Kantonsspital Luzern bis heute keinen Zahlungseingang feststellen. Der noch offene Betrag beträgt CHF 184.50.\n\nWir bitten Sie, den ausstehenden Betrag innerhalb von 10 Tagen auf unser Konto zu überweisen. Bitte geben Sie bei der Zahlung unbedingt die Rechnungsnummer KS-468291 an, damit wir Ihre Überweisung korrekt zuordnen können.\n\nSollten Sie den Betrag inzwischen beglichen haben, betrachten Sie dieses Schreiben bitte als gegenstandslos. Falls Sie Fragen zur Rechnung haben oder eine Zahlungsvereinbarung benötigen, wenden Sie sich bitte an unser Finanz- und Rechnungswesen.\n\nBei ausbleibender Zahlung sehen wir uns veranlasst, den Betrag nach Ablauf der genannten Frist weiterzuleiten. Dadurch können zusätzliche Kosten entstehen.\n\nFreundliche Grüsse\n\nKantonsspital Luzern\nFinanz- und Rechnungswesen",
+   "tags": [
+    "Gesundheit",
+    "Mahnung",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Mahnung offene Behandlungskosten"
+  },
+  {
+   "id": "doc-045",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "British Airways",
+   "sender": "British Airways",
+   "documentType": "Police",
+   "date": "2025-05-28",
+   "titleMode": "explicit",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "BRITISH AIRWAYS\nKundenservice Schweiz\nPostfach 214\n8058 Zürich\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\n28.05.2025\n\nBETREFF: Police zur Reisegepäck- und Reiseannullationsversicherung\n\nSehr geehrte Frau Muster\n\nwir bestätigen den Abschluss Ihrer Reiseversicherung im Zusammenhang mit einer bei British Airways gebuchten Reise. Diese Police bietet Versicherungsschutz für Reiseannullation, Reiseabbruch, verspätetes Reisegepäck sowie den Verlust oder die Beschädigung von persönlichem Reisegepäck gemäss den geltenden Versicherungsbedingungen.\n\nDie vereinbarte Versicherungssumme für Reiseannullation und Reiseabbruch beträgt CHF 5'000.00 pro versicherte Person. Für Reisegepäck gilt eine Höchstentschädigung von CHF 2'000.00. Schäden sind unverzüglich zu melden und mit geeigneten Belegen, insbesondere Buchungsbestätigungen, Rechnungen und Schadenprotokollen, nachzuweisen.\n\nDie Prämie von CHF 68.00 ist in Ihrer Reisebuchung enthalten. Bitte bewahren Sie dieses Dokument zusammen mit Ihren Reiseunterlagen auf. Massgebend für Leistungen, Ausschlüsse und Selbstbehalte sind die Versicherungsbedingungen.\n\nFreundliche Grüsse\n\nBritish Airways\nKundenservice Schweiz",
+   "tags": [
+    "Versicherung",
+    "Reise"
+   ],
+   "referenceTitle": "Police Reiseversicherung"
+  },
+  {
+   "id": "doc-046",
+   "language": "de",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Verein Pro Natura Luzern",
+   "documentType": "Offerte",
+   "date": "2026-11-26",
+   "titleMode": "broken",
+   "dateMode": "multiple",
+   "noise": "ocr",
+   "text": "Verein Pro Natura Luzern\nHirschmattstrasse 12, 6003 Luzern  |  Tel. 041 555 18 40\n\nGültig bis 15.12.2026\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nOfferte Nr. PN-26-1187                 Kundennr. 10482\nAusgestellt am 26.11.2026\n\nBetreff: Offerte zur Pflege Ihrer natur-\nnahen Grünf1äche im Gartenjahr 2027\n\nBesten Dank für Ihre Anfrage vom 20.11.2026. Gerne bieten\nwir Ihnen die fachgerechte Pflege der bestehenden Wildhecke\nund Blühfläche an. Der Einsatz ist für den Zeitraum vom\n01.04.2027 bis 31.10.2027 vorgesehen.\n\nLeistung                         Menge   Preis CHF\nFrühjahrsrückschnitt              1 x       185.00\nPflegegang Blühfläche             2 x       240.00\nAbfuhr Schnittgut, pauschal       1 x        65.00\n                                        -----------\nZwischensurnme                              490.00\nMWST (nicht geschuldet)                       0.00\nTotal Offerte CHF                             490.00\n\nBitte senden Sie uns Ihre schriftliche Bestellung bis\n02.12.2026. Nach Auftragsbestätigung vereinbaren wir den\nTermin gemeinsam. Die Rechnungsstellung erfolgt nach dem\nletzten Pflegegang; zahlbar innert 30 Tagen.\n\nScaN-Ref: LZ/0F-26  ::  Seite 1|1  ###\nFreundliche Grüsse\nVerein Pro Natura Luzern",
+   "tags": [
+    "Haushalt"
+   ],
+   "referenceTitle": "Offerte Pflege naturnahe Grünfläche 2027"
+  },
+  {
+   "id": "doc-047",
+   "language": "en",
+   "correspondentMode": "known",
+   "correspondent": "Swisscom",
+   "sender": "Swisscom",
+   "documentType": "Kontoauszug",
+   "date": "2024-01-22",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "Swisscom (Schweiz) AG\nCustomer Services\n3050 Bern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nAccount Statement\n\nStatement period: 01 December 2023 to 31 December 2023\nCustomer number: 1002456789\nMobile subscription: blue Mobile S\n\nDate        Description                                      Amount (CHF)\n01.12.2023  Opening balance                                      0.00\n05.12.2023  Monthly subscription, December 2023                 69.90\n18.12.2023  International call charges                            4.50\n31.12.2023  Payment received, reference 948271                  -50.00\n\nBalance carried forward as at 31 December 2023:                 24.40\n\nIssue date: 22 January 2024\nPayment due date: 12 February 2024\n\nThe outstanding balance of CHF 24.40 remains payable. Please use the payment reference shown on your invoice when making payment. If you have already paid this amount after the statement period, please disregard this notice.\n\nFor questions about your account or subscription, please visit swisscom.ch/contact.\n\nThank you for choosing Swisscom.\n\nSwisscom (Schweiz) AG, Alte Tiefenaustrasse 6, 3050 Bern",
+   "tags": [
+    "Rechnung",
+    "Telekom",
+    "Abo",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Account Statement December 2023"
+  },
+  {
+   "id": "doc-048",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Kantonsschule Alpenquai",
+   "sender": "Kantonsschule Alpenquai",
+   "documentType": "Brief",
+   "date": "2024-09-01",
+   "titleMode": "broken",
+   "dateMode": "multiple",
+   "noise": "ocr",
+   "text": "KANTONSSCHULE ALPENQUAI\nAlpenquai 46, 6005 Luzern  |  Tel. 041 228 14 14\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLuzern, 01.09.2024\n\nBetreff: Rechnung Schulmaterial und Exkur-\nsionsbeitrag, Herbstsemester 2024/25\n\nSehr geehrte Frau Muster\n\nFür Ihre Tochter Lea Muster, geboren am 14.03.2008,\nerlauben wir uns, die Kosten für das Herbstsemester in\nRechnung zu stellen. Die Materialbestellung wurde am\n20.08.2024 erfasst; die Exkursion findet vom 17.10.2024\nbis 18.10.2024 statt.\n\nSchulmaterial                 CHF  86.50\nExkursionsbeitrag             CHF  45.00\n---------------------------------------\nTotal                         CHF 131.50\n\nBitte überweisen Sie den Betrag bis 30.09.2024 unter\nAngabe der Referenz 2024-091-ALP auf unser Konto:\nIBAN CH93 0076 2011 6238 5295 7, Kantonsschule\nAlpenquai, 6005 Luzern. Bei bereits erfolgter Zah1ung\nbitten wir, dieses Schreiben als gegenstandslos zu\nbetrachten.\n\nFreundliche Grüsse\nKantonsschule Alpenquai\nSekretariat\n\n@@ KSA-LU / Scan 0CR 01-09-24 // Seite 1|1 @@",
+   "tags": [
+    "Rechnung",
+    "Schule",
+    "Kinder"
+   ],
+   "referenceTitle": "Rechnung Schulmaterial und Exkursionsbeitrag Herbstsemester 2024/25"
+  },
+  {
+   "id": "doc-049",
+   "language": "de",
+   "correspondentMode": "alias",
+   "correspondent": "UBS",
+   "sender": "UBS",
+   "documentType": "Offerte",
+   "date": "2026-08-01",
+   "titleMode": "explicit",
+   "dateMode": "single",
+   "noise": "ocr",
+   "text": "UBS Switzerland AG\nKundenberatung Privatkunden\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nAusgabedatum: 2026-08-01\n\nOfferte – Anlageberatung «UBS Advice»\n\nSehr geehrte Frau Muster\n\nBesten Dank für Ihr Interesse an einer persönlichen Anlageberatung. Gerne offerieren wir Ihnen das Mandat UBS Advice für ein Anlagevermögen ab CHF 50'000.00.\n\nLeistungen: Besprechung Ihrer Ziele, Risikoprofil, Anlagevorschläge sowie laufende Überwachung Ihres Portfolios. Die Beratung erfolgt durch Ihre Kundenberaterin oder Ihren Kundenberater in Luzern.\n\nPauschale Beratungsgebühr: CHF 720.00 pro Jahr, zuzüglich allfälliger Produktkosten und gesetzlicher Abgaben. Die Gebühr wird quartalsweise Ihrem Konto belastet. Transaktionskosten sind gemäss geltender Preisliste geschuldet.\n\nDiese Offerte ist unverbindlich; ein Vertrag kommt erst nach Unterzeichnung der entsprechenden Vereinbarung zustande. Bitte beachten Sie, dass Anlagewerte schwanken können und Kapitalverluste möglich sind.\n\nFür Fragen oder einen Termin kontaktieren Sie uns bitte.\n\nFreundliche Grüsse\nUBS Switzerland AG\n\n-- Scan: Kundennr. 0O18l7 | Seite l/1 | Pr0dukt: Advice rn--",
+   "tags": [
+    "Bank",
+    "Vertrag"
+   ],
+   "referenceTitle": "Offerte Anlageberatung UBS Advice"
+  },
+  {
+   "id": "doc-050",
+   "language": "de",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Tierarztpraxis Sonnenberg",
+   "documentType": "Mahnung",
+   "date": "2025-03-24",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "Tierarztpraxis Sonnenberg\nSonnenbergweg 12\n6005 Luzern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nMahnung – offene Rechnung für tierärztliche Behandlung\n\nFür die Behandlung Ihres Haustiers am 14.02.2025 haben wir Ihnen am 17.02.2025 die Rechnung Nr. TS-2025-184 über CHF 186.40 zugestellt. Der ursprüngliche Zahlungstermin vom 03.03.2025 ist ohne Zahlungseingang verstrichen.\n\nLuzern, 24.03.2025\n\nWir bitten Sie, den offenen Betrag von CHF 186.40 bis spätestens 07.04.2025 zu begleichen. Bitte geben Sie bei der Zahlung die Rechnungsnummer TS-2025-184 an.\n\nFalls Sie die Zahlung bereits veranlasst haben, betrachten Sie dieses Schreiben bitte als gegenstandslos. Sollte es Unstimmigkeiten zur Rechnung geben oder benötigen Sie eine Ratenzahlung, kontaktieren Sie uns bitte vor Ablauf der genannten Frist.\n\nNach unbenutztem Ablauf der Frist behalten wir uns vor, weitere Mahnkosten zu erheben.\n\nFreundliche Grüsse\n\nTierarztpraxis Sonnenberg\nAdministration",
+   "tags": [
+    "Mahnung",
+    "Zahlung offen",
+    "Gesundheit"
+   ],
+   "referenceTitle": "Mahnung offene Tierarztrechnung Nr. TS-2025-184"
+  },
+  {
+   "id": "doc-051",
+   "language": "en",
+   "correspondentMode": "alias",
+   "correspondent": "Migros",
+   "sender": "Migros",
+   "documentType": "Offerte",
+   "date": "2026-08-06",
+   "titleMode": "explicit",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "Migros-Genossenschafts-Bund\nLimmatstrasse 152\n8031 Zürich\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nIssue date: 2026-08-06\n\nSubject: Offer for home delivery and household essentials\n\nDear Ms Muster\n\nThank you for your interest in our Migros home delivery service. We are pleased to offer you a convenient household shopping package tailored to regular deliveries in the Luzern area.\n\nThe package includes weekly delivery of selected groceries, cleaning products and household paper goods, with flexible order quantities through the Migros online shop. Delivery is available to your address for CHF 4.90 per order. Orders above CHF 99.00 qualify for free delivery.\n\nAs an introductory benefit, we offer a CHF 15.00 discount on your first order with a minimum basket value of CHF 80.00. The discount is applied automatically at checkout after registration.\n\nThis offer is non-binding and subject to product availability and the applicable delivery conditions. Prices include Swiss VAT. No payment is due unless you place an order.\n\nKind regards\n\nMigros Customer Service\nMigros-Genossenschafts-Bund",
+   "tags": [
+    "Haushalt"
+   ],
+   "referenceTitle": "Offer for home delivery and household essentials"
+  },
+  {
+   "id": "doc-052",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Digitec Galaxus",
+   "sender": "Digitec Galaxus",
+   "documentType": "Lohnabrechnung",
+   "date": "2026-01-18",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "Digitec Galaxus AG\nLohnbuchhaltung\nPfingstweidstrasse 60b, 8005 Zürich\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLohnabrechnung Januar 2026\n\nPersonal-Nr.: 104872\nGeburtsdatum: 14.05.1991\nEintrittsdatum: 01.08.2024\nLohnperiode: 01.01.2026 bis 31.01.2026\nAuszahlungsdatum: 30.01.2026\n\nBruttolohn                                      CHF 5'800.00\nZulage Homeoffice                               CHF   100.00\n\nBruttoeinkommen                                CHF 5'900.00\nAHV/IV/EO 5.30 %                               CHF  -312.70\nALV 1.10 %                                     CHF   -64.90\nNBU 0.85 %                                     CHF   -50.15\nBVG Arbeitnehmerbeitrag                        CHF  -218.00\nKTG Arbeitnehmerbeitrag                        CHF   -42.00\nQuellensteuer                                  CHF     0.00\n\nNettolohn                                      CHF 5'212.25\n\nDer Nettolohn wird am 30.01.2026 auf das bei der Lohnbuchhaltung hinterlegte Schweizer Bankkonto überwiesen. Bitte prüfen Sie die Abrechnung und melden Sie Unstimmigkeiten innerhalb von 30 Tagen schriftlich an die Lohnbuchhaltung.\n\nAusgestellt am 18.01.2026\nDigitec Galaxus AG, Lohnbuchhaltung",
+   "tags": [
+    "Lohn"
+   ],
+   "referenceTitle": "Lohnabrechnung Januar 2026"
+  },
+  {
+   "id": "doc-053",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Strassenverkehrsamt",
+   "sender": "Strassenverkehrsamt",
+   "documentType": "Lohnabrechnung",
+   "date": "2025-09-10",
+   "titleMode": "explicit",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "Strassenverkehrsamt des Kantons Luzern\nPersonal- und Finanzdienst\nArsenalstrasse 43, 6010 Kriens\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLohnabrechnung September 2025\n\nPersonal-Nr.: 10482\nGeburtsdatum: 15. März 1988\nAbrechnungsperiode: 1. September 2025 bis 30. September 2025\nEintrittsdatum: 1. Januar 2024\n\nGrundlohn                                      CHF 5'800.00\nZulage Pikettdienst                            CHF   180.00\nBruttolohn                                     CHF 5'980.00\n\nAHV/IV/EO                                      CHF   316.95\nALV                                             CHF    65.78\nNBU                                             CHF    53.82\nPensionskasse                                  CHF   298.00\nQuellensteuer                                  CHF   412.50\n\nNettolohn                                     CHF 4'832.95\n\nAuszahlung am 25. September 2025 auf das bei der Personalabteilung hinterlegte Bankkonto.\n\nAusgestellt am 10. September 2025. Diese Lohnabrechnung dient als Nachweis für die genannten Bezüge und Abzüge. Bitte bewahren Sie das Dokument auf und melden Sie Unstimmigkeiten innerhalb von 30 Tagen schriftlich an die Personal- und Finanzdienststelle.\n\nStrassenverkehrsamt des Kantons Luzern\nPersonal- und Finanzdienst",
+   "tags": [
+    "Lohn",
+    "Behörde"
+   ],
+   "referenceTitle": "Lohnabrechnung September 2025"
+  },
+  {
+   "id": "doc-054",
+   "language": "it",
+   "correspondentMode": "known",
+   "correspondent": "EWZ",
+   "sender": "EWZ",
+   "documentType": "Kontoauszug",
+   "date": "2024-03-08",
+   "titleMode": "explicit",
+   "dateMode": "month_name",
+   "noise": "ocr",
+   "text": "ewz – Elektrizitätswerk der Stadt Zürich\nServizio clienti | 8001 Zurigo\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nZurigo, 8 marzo 2024\n\nESTRATTO CONTO – fornitura di energia elettrica\nConto cliente: 41O7-88219   Periodo: 1 gennaio 2024 – 29 febbraio 2024\n\nGentile Signora Muster,\ndi seguito riportiamo i movimenti registrati sul Suo conto ewz.\n\nData       Descrizione                         Addebito  Accredito Saldo\n01.01.24  Saldo precedente                                      CHF  0.00\n15.01.24  Fattura energia n. 2024-011784       CHF  86.45         CHF 86.45\n05.02.24  Pagamento ricevuto                               86.45 CHF  0.00\n20.02.24  Fattura energia n. 2024-022091       CHF  79.30         CHF 79.30\n\nSaldo a Suo carico al 29.02.2024:                       CHF 79.30\nScadenza del pagarnento: 20 marzo 2024.\n\nLa preghiamo di versare l’importo entro la data indicata,\nutilizzando il bollettino allegato. In caso di pagamento già\neffettuato, ignori questo estratto. Eventuali accrediti possono\nrichiedere 2–3 giorni lavorativi per essere visualizzati.\n\nPer informazioni: ewz.ch/kont0 oppure 058 319 47 47.\n\n-- ewz/FIN  03|24  SCAN-ID: ZH-4l07  :::  0O1 --\nEstratto generato automaticamente; valido senza firma.",
+   "tags": [
+    "Strom",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Estratto conto energia elettrica – saldo CHF 79.30"
+  },
+  {
+   "id": "doc-055",
+   "language": "de",
+   "correspondentMode": "unknown",
+   "correspondent": null,
+   "sender": "Fitnesspark Allmend",
+   "documentType": "Quittung",
+   "date": "2026-10-26",
+   "titleMode": "none",
+   "dateMode": "multiple",
+   "noise": "ocr",
+   "text": "Fitnesspark Allmend\nSport- und Gesundheitszentrum\nAllmendweg 12, 6005 Luzern\nTel. 041 555 14 80   |   Kasse-Nr. 03 / Beleg 8l47\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nGuten Tag Frau Muster\n\nWir bestätigen Ihnen den Empfang Ihrer Zahlung für das Fitness-Abonnement. Die Anmeldung erfolgte am 03.10.2026; das Abonnement gilt vom 01.11.2026 bis 31.10.2027.\n\nMitgliedschaft Jahresabo                 CHF  890.00\nEintrittsband (Depot)                    CHF   30.00\nZwischensumme                            CHF  920.00\nMWST. (inkl.)                            CHF    0.00\nBezahlt mit Karte am 24.10.2026          CHF  920.00\n\nOffener Betrag: CHF 0.00\n\nDie Karte wurde am Empfang aktiviert. Bitte bewahren Sie diese Quittung auf; bei Verlust des Eintrittsbands kann ein Ersatz nur gegen Gebühr ausgestellt werden. Das Depot wird bei Rückgabe des funktionsfähigen Bands nach Ablauf der Mitglie-dschaft zurückerstattet.\n\nAusgestellt in Luzern, 26.10.2026\n\nFreundliche Grüsse\nFitnesspark Allmend\n\n--- Scan-Ref. FP-A11/2026 | 0riginalbeleg: Kasse 03 ---",
+   "tags": [
+    "Gesundheit",
+    "Abo",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Quittung Jahresabo Fitness 2026/2027"
+  },
+  {
+   "id": "doc-056",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "AXA",
+   "sender": "AXA",
+   "documentType": "Quittung",
+   "date": "2025-11-16",
+   "titleMode": "broken",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "AXA Versicherungen AG\nGeneral-Guisan-Strasse 40\n8400 Winterthur\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nVertragsnummer: CH-SYN-4827-19\nRechnungsdatum: 20.10.2025\nVersicherungsperiode: 01.01.2025 bis 31.12.2025\nZahlungseingang: 12.11.2025\n\nQuittung zur Prämienzah-\nlung Ihrer Hausratversicherung\n\nSehr geehrte Frau Muster\n\nWir bestätigen den vollständigen Eingang Ihrer Prämie für die oben genannte Versicherungsperiode. Der Betrag wurde fristgerecht vor dem Fälligkeitsdatum 15.11.2025 bezahlt und Ihrem Versicherungsvertrag gutgeschrieben.\n\nEinzahlung\nPrämie Hausratversicherung                 CHF 286.40\nBearbeitungsgebühr                         CHF   0.00\nTotal bezahlt                              CHF 286.40\n\nZahlungsart: E-Banking\nZahlungsreferenz: RF 4837 9201 5570\nStatus: bezahlt, keine offene Forderung.\n\nDiese Quittung dient als Zahlungsnachweis. Bitte bewahren Sie das Dokument zusammen mit Ihren Versicherungsunterlagen auf. Bei Fragen zu Vertrag, Deckung oder Zahlung erreichen Sie uns über das AXA Kundenportal oder telefonisch.\n\nAusgestellt am 16.11.2025\n\nFreundliche Grüsse\nAXA Versicherungen AG\nKundenservice Privatkunden",
+   "tags": [
+    "Versicherung",
+    "Bezahlt"
+   ],
+   "referenceTitle": "Quittung Prämienzahlung Hausratversicherung 2025"
+  },
+  {
+   "id": "doc-057",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Raiffeisen",
+   "sender": "Raiffeisen",
+   "documentType": "Rechnung",
+   "date": "2024-02-23",
+   "titleMode": "broken",
+   "dateMode": "single",
+   "noise": "ocr",
+   "text": "Raiffeisenbank Luzern\nDienstleistungscenter | Pilatusstrasse 12 | 6003 Luzern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nAusgestellt: 2024-02-23\nKundennr.: 7l-048291  /  Beleg: RF-240223-118\n\nRechnu ng für Kontofüh-\nrung und Zahlungsverkehr\n\nSehr geehrte Frau Muster\n\nFür die nachstehend aufgeführten Bankdienstleistungen stellen wir\nIhnen folgenden Betrag in Rechnung. Die Positionen wurden gemäss\nunserem Preis- und Leistungsverzeichnis berechnet.\n\nLeistung                              Anzahl   Betrag CHF\nKontoführung Privatkonto                  1        5.00\nPapier-Kontoauszug                        1        2.00\nZahlungsauftrag, manuell                  1        3.50\n                                                    ------\nTotal inkl. MWST                                   10.50\n\nBitte überweisen Sie den Rechnungsbetrag innert 30 Tagen unter\nAngabe der Referenz RF240223118 auf unser Konto:\nIBAN CH00 8080 8000 0000 0000 0, Raiffeisenbank Luzern.\nBei Belastung Ihres Kontos durch uns ist keine eigene Zahlung\nnotwendig. Allfällige Rückfragen richten Sie bitte an Ihr Beratungs-\nteam.\n\n-- R4IFFEISEN / Scan-Archiv 0CR: 1-7a --\n\nFreundliche Grüsse\nRaiffeisenbank Luzern\nRechnungswesen",
+   "tags": [
+    "Rechnung",
+    "Bank",
+    "Zahlung offen"
+   ],
+   "referenceTitle": "Kontoführung und Zahlungsverkehr"
+  },
+  {
+   "id": "doc-058",
+   "language": "fr",
+   "correspondentMode": "known",
+   "correspondent": "Zurich Versicherung",
+   "sender": "Zurich Versicherung",
+   "documentType": "Steuerdokument",
+   "date": "2024-02-21",
+   "titleMode": "none",
+   "dateMode": "single",
+   "noise": "clean",
+   "text": "Zurich Assurances\nService clientèle\nCase postale\n8085 Zurich\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nZurich, le 21.02.2024\n\nMadame,\n\nNous vous transmettons les informations nécessaires à votre déclaration fiscale concernant votre contrat d’assurance auprès de Zurich Assurances.\n\nPour la période fiscale écoulée, les primes effectivement versées et fiscalement prises en compte s’élèvent à CHF 1’248.00. Ce montant concerne les couvertures d’assurance privée enregistrées à votre nom et peut être déclaré dans la rubrique prévue pour les primes d’assurance et les intérêts de capitaux d’épargne, conformément aux instructions de votre autorité fiscale cantonale.\n\nCette attestation est établie sur la base des paiements comptabilisés dans nos systèmes. Les éventuels remboursements, adaptations de primes ou prestations versées sont déjà pris en considération lorsque cela est requis.\n\nNous vous recommandons de conserver ce document avec vos autres justificatifs fiscaux. En cas de demande de l’autorité fiscale, il pourra servir de preuve des primes déclarées.\n\nPour toute question relative à ces informations, notre service clientèle se tient volontiers à votre disposition.\n\nAvec nos salutations distinguées,\n\nZurich Assurances\nService clientèle",
+   "tags": [
+    "Versicherung",
+    "Steuern"
+   ],
+   "referenceTitle": "Attestation fiscale des primes d’assurance"
+  },
+  {
+   "id": "doc-059",
+   "language": "fr",
+   "correspondentMode": "known",
+   "correspondent": "Coop",
+   "sender": "Coop",
+   "documentType": "Police",
+   "date": "2026-05-23",
+   "titleMode": "broken",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "COOP ASSURANCES\nService clientèle\nRue du Commerce 18, 1003 Lausanne\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nObjet : Poliçe d’assuranc\ne ménage et responsabilité civile privée\n\nNous confirmons votre demande enregistrée le 18.05.2026 pour le ménage sis à Bahnhofstrasse 9, 6003 Luzern. La personne assurée principale, née le 14.02.1988, bénéficie des garanties décrites ci-dessous.\n\nVotre contrat prend effet le 01.06.2026 et est conclu pour une durée initiale jusqu’au 31.05.2027. Il se renouvelle ensuite d’année en année, sauf résiliation écrite dans les délais contractuels.\n\nGaranties principales : assurance inventaire du ménage jusqu’à CHF 80’000, dommages causés par l’eau et le feu, vol avec effraction, ainsi que responsabilité civile privée jusqu’à CHF 5’000’000.\n\nLa prime annuelle s’élève à CHF 214.80, frais et taxes compris. Elle est payable au plus tard le 15.06.2026 au moyen du bulletin de versement joint. Veuillez indiquer le numéro de police CP-26-481-907 lors de tout paiement ou contact.\n\nLa présente police est établie le 23.05.2026. Les conditions générales d’assurance font partie intégrante du contrat.\n\nAvec nos salutations distinguées\nCoop Assurances\nService des polices",
+   "tags": [
+    "Versicherung",
+    "Vertrag",
+    "Haushalt"
+   ],
+   "referenceTitle": "Police d’assurance ménage et responsabilité civile"
+  },
+  {
+   "id": "doc-060",
+   "language": "de",
+   "correspondentMode": "known",
+   "correspondent": "Die Post",
+   "sender": "Die Post",
+   "documentType": "Kontoauszug",
+   "date": "2025-02-02",
+   "titleMode": "none",
+   "dateMode": "multiple",
+   "noise": "clean",
+   "text": "Die Schweizerische Post AG\nPostFinance\nMingerstrasse 20\n3030 Bern\n\nAnna Muster\nBahnhofstrasse 9\n6003 Luzern\n\nLuzern, 2. Februar 2025\n\nGuten Tag Frau Muster\n\nFür Ihr Privatkonto CHF mit der IBAN CH93 0900 0000 1234 5678 9 erhalten Sie nachfolgend die Übersicht der gebuchten Bewegungen für den Zeitraum vom 1. Januar 2025 bis 31. Januar 2025.\n\nAnfangssaldo per 1. Januar 2025: CHF 2'480.65\n\n15. Januar 2025   Zahlungseingang Lohn                 CHF 4'250.00\n20. Januar 2025   Kartenzahlung Lebensmittel           CHF -86.40\n27. Januar 2025   Dauerauftrag Miete                   CHF -1'650.00\n31. Januar 2025   Kontoführungsgebühr                  CHF -5.00\n\nEndsaldo per 31. Januar 2025: CHF 4'989.25\n\nDie aufgeführten Buchungen gelten als genehmigt, sofern Sie uns nicht innerhalb von 30 Tagen nach dem Ausgabedatum schriftlich benachrichtigen. Bitte bewahren Sie diesen Auszug für Ihre Unterlagen auf.\n\nFreundliche Grüsse\n\nDie Schweizerische Post AG\nPostFinance",
+   "tags": [
+    "Bank"
+   ],
+   "referenceTitle": "Kontoauszug Januar 2025"
+  }
+ ]
+}
