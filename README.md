@@ -212,6 +212,7 @@ Owner matching is conservative: optional hint profiles add context, and assignme
 | GitHub Copilot | Official Copilot SDK, OAuth device login, and account-scoped model discovery |
 | OpenAI-compatible | LM Studio, LiteLLM, vLLM, and custom gateways |
 | ChatGPT subscription | Optional read-only Codex SDK adapter with stable device login |
+| TypeSafe Jev | Closed-list filing with a decision model: only existing tags, correspondents and types, a probability per field, about USD 0.08 per 1,000 documents; no text generation and no Companion |
 
 Provider-specific setup and troubleshooting live in [`docs/providers/`](docs/providers/README.md).
 

@@ -14,6 +14,7 @@ setup wizard or by setting `AI_PROVIDER` in `data/.env`.
 | LM Studio    | `custom`            | [lmstudio.md](lmstudio.md)           |
 | ChatGPT subscription | `codex`       | [codex.md](codex.md)                 |
 | Compatible   | `compatible`        | [openai-compatible.md](openai-compatible.md) |
+| TypeSafe Jev | `typesafe`          | [typesafe.md](typesafe.md)           |
 
 LM Studio and any other endpoint that speaks the OpenAI Chat Completions API
 are configured through the same `custom` provider — see

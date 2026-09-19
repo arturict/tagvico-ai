@@ -178,6 +178,12 @@ module.exports = {
     apiKey: process.env.COMPATIBLE_API_KEY || process.env.CUSTOM_API_KEY || '',
     model: process.env.COMPATIBLE_MODEL || process.env.CUSTOM_MODEL || ''
   },
+  typesafe: {
+    apiUrl: process.env.TYPESAFE_BASE_URL || 'https://api.typesafe.ai/v1',
+    apiKey: process.env.TYPESAFE_API_KEY || '',
+    model: process.env.TYPESAFE_MODEL || getDefaultModel('typesafe'),
+    tagThreshold: parseFloat(process.env.TYPESAFE_TAG_THRESHOLD || '0.6')
+  },
   custom: {
     apiUrl: process.env.COMPATIBLE_BASE_URL || process.env.CUSTOM_BASE_URL || '',
     apiKey: process.env.COMPATIBLE_API_KEY || process.env.CUSTOM_API_KEY || '',

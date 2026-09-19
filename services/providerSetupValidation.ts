@@ -1,5 +1,7 @@
 import setupService from './setupService';
 
+const typesafeService = require('./typesafeService');
+
 type ProviderSetupValues = Record<string, string>;
 
 async function validateProviderSetupModel(
@@ -39,6 +41,8 @@ async function validateProviderSetupModel(
       );
     case 'compatible':
       return setupService.validateCustomConfig(values.baseUrl, values.apiKey, model);
+    case 'typesafe':
+      return typesafeService.validate(values.apiKey, model, values.baseUrl);
     default:
       return false;
   }

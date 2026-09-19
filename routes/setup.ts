@@ -2098,6 +2098,11 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
     CUSTOM_BASE_URL: providerPayload.compatibleBaseUrl || currentConfig.CUSTOM_BASE_URL || '',
     CUSTOM_API_KEY: providerPayload.compatibleApiKey || currentConfig.CUSTOM_API_KEY || '',
     CUSTOM_MODEL: providerPayload.provider === 'compatible' ? providerPayload.selectedModel : currentConfig.CUSTOM_MODEL || '',
+    // TypeSafe is configured in Settings; this legacy save path only preserves it.
+    TYPESAFE_API_KEY: currentConfig.TYPESAFE_API_KEY || '',
+    TYPESAFE_BASE_URL: currentConfig.TYPESAFE_BASE_URL || '',
+    TYPESAFE_MODEL: providerPayload.provider === 'typesafe' ? providerPayload.selectedModel || 'jev-latest' : currentConfig.TYPESAFE_MODEL || 'jev-latest',
+    TYPESAFE_TAG_THRESHOLD: currentConfig.TYPESAFE_TAG_THRESHOLD || '',
     AZURE_ENDPOINT: providerPayload.azureEndpoint || currentConfig.AZURE_ENDPOINT || '',
     AZURE_API_KEY: providerPayload.azureApiKey || currentConfig.AZURE_API_KEY || '',
     AZURE_DEPLOYMENT_NAME: providerPayload.azureDeploymentName || currentConfig.AZURE_DEPLOYMENT_NAME || '',

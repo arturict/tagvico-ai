@@ -13,8 +13,9 @@ type RuntimeAdapter =
   | 'ai-sdk-compatible'
   | 'codex-runtime'
   | 'copilot-sdk'
-  | 'native-ollama';
-type DiscoveryKind = 'openai' | 'ollama' | 'codex' | 'copilot';
+  | 'native-ollama'
+  | 'typesafe-systemone';
+type DiscoveryKind = 'openai' | 'ollama' | 'codex' | 'copilot' | 'static';
 const MAX_DISCOVERY_RESPONSE_BYTES = 1024 * 1024;
 const MAX_DISCOVERY_MODELS = 500;
 
@@ -265,6 +266,32 @@ const definitions = [
     fields: [],
     suggestedModels: [],
     manualModelInput: false
+  },
+  {
+    id: 'typesafe',
+    name: 'TypeSafe Jev',
+    description: 'Decision model for closed-list filing: picks from your existing tags, correspondents and document types with calibrated probabilities. No text generation, no Companion.',
+    icon: null,
+    runtimeAdapter: 'typesafe-systemone',
+    serviceModule: './typesafeService',
+    discovery: 'static',
+    modelEnvironmentKey: 'TYPESAFE_MODEL',
+    configurationSchema: z.object({
+      apiKey: optionalString,
+      baseUrl: optionalUrl
+    }).strict(),
+    fields: [
+      secret('apiKey', 'API key', 'TYPESAFE_API_KEY', true),
+      {
+        ...url('baseUrl', 'Base URL', 'TYPESAFE_BASE_URL', false, 'https://api.typesafe.ai/v1'),
+        placeholder: 'https://api.typesafe.ai/v1'
+      }
+    ],
+    suggestedModels: [
+      { id: 'jev-latest', name: 'Jev (latest)', description: 'Stable alias published by TypeSafe.' },
+      { id: 'jev-preview', name: 'Jev (preview)', description: 'Preview alias; may equal the stable release.' }
+    ],
+    manualModelInput: true
   }
 ] as const satisfies readonly ProviderDefinition[];
 
@@ -348,6 +375,7 @@ function baseUrlFor(definition: ProviderDefinition, env: Environment): string {
   if (definition.id === 'ollama-cloud') return 'https://ollama.com';
   if (definition.id === 'opencode') return 'https://opencode.ai/zen/go/v1';
   if (definition.id === 'openai') return 'https://api.openai.com/v1';
+  if (definition.id === 'typesafe') return 'https://api.typesafe.ai/v1';
   return '';
 }
 
