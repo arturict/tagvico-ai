@@ -31,6 +31,18 @@
   language 14/14, document type 12/14, tags precision 0.80 at recall 0.82,
   about 300 ms and about USD 0.08 per 1,000 documents).
 
+### GPT-6 Luna
+
+- Luna recommendations move from GPT-5.6 Luna to `gpt-6-luna`
+  (`openai/gpt-6-luna` on OpenRouter): the TypeSafe text-model placeholder,
+  `.env.example` and the provider docs. The offline cost estimate knows
+  GPT-6 Luna at USD 0.10/0.50 per 1M input/output tokens and still prices
+  `gpt-5.6-luna` for installations that keep it.
+- Removed the stale `OPENAI_ENABLE_GPT_5_6_PREVIEW` mentions from the README,
+  `.env.example` and provider docs. The flag has had no effect since 3.1.0,
+  when OpenAI direct started accepting any model ID; setting it still does
+  nothing.
+
 ## 3.4.1 - 2026-09-15
 
 ### Security

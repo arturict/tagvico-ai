@@ -81,11 +81,11 @@ test('model normalization maps runtime reasoning efforts to model-scoped options
 
 test('normalization keeps runtime ordering, defaults and unique model IDs', () => {
   assert.deepEqual(registry.normalizeModels([
-    { id: 'gpt-5.6-luna', name: 'Luna', isDefault: true, options: [] },
+    { id: 'gpt-6-luna', name: 'Luna', isDefault: true, options: [] },
     { id: 'gpt-5.6-terra', name: 'Terra', isDefault: false, options: [] },
-    { id: 'gpt-5.6-luna', name: 'Duplicate', isDefault: false, options: [] }
+    { id: 'gpt-6-luna', name: 'Duplicate', isDefault: false, options: [] }
   ]).map((model) => [model.id, model.isDefault]), [
-    ['gpt-5.6-luna', true],
+    ['gpt-6-luna', true],
     ['gpt-5.6-terra', false]
   ]);
 });

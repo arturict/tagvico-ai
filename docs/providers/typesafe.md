@@ -39,7 +39,7 @@ TYPESAFE_TAG_THRESHOLD=0.6
 # opencode, compatible, codex, copilot. Empty switches the assist off.
 TYPESAFE_TEXT_PROVIDER=openrouter
 # Optional; defaults to the model configured for that provider.
-TYPESAFE_TEXT_MODEL=openai/gpt-5.6-luna
+TYPESAFE_TEXT_MODEL=openai/gpt-6-luna
 ```
 
 With a text provider set, Jev still decides tags, correspondent, document
@@ -61,7 +61,10 @@ have checked a sample.
 In our 60-document test (see below) Jev alone produced a good title for 32% of
 the documents, and for none of the 29 without a clean title line. With GPT-5.6
 Luna as text provider 98% of the titles were good and all 13 senders missing
-from the archive were named correctly.
+from the archive were named correctly. The example above now names its
+successor, GPT-6 Luna (USD 0.10/0.50 per 1M input/output tokens); the
+measurements below were taken with GPT-5.6 Luna and have not been repeated
+with GPT-6 Luna.
 
 ## How each field is decided
 

@@ -59,7 +59,7 @@ test('settings render account-scoped runtime models and model capabilities', () 
   const registry = fs.readFileSync(path.join(root, 'services', 'providerRegistry.ts'), 'utf8');
   const routes = fs.readFileSync(path.join(root, 'routes', 'setup.ts'), 'utf8');
 
-  assert.doesNotMatch(fs.readFileSync(path.join(root, 'services', 'codexAuthService.ts'), 'utf8'), /gpt-5\.6-(?:luna|terra|sol)/);
+  assert.doesNotMatch(fs.readFileSync(path.join(root, 'services', 'codexAuthService.ts'), 'utf8'), /gpt-(?:5\.6|6)-(?:luna|terra|sol)/);
   assert.match(picker, /Availability and capabilities come from the selected runtime/);
   assert.match(picker, /Curated suggestions/);
   assert.match(workspace, /activeModel\?\.options/);

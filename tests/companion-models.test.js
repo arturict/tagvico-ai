@@ -12,7 +12,7 @@ const providers = [
     instanceId: 'codex',
     name: 'ChatGPT subscription',
     models: [
-      { id: 'gpt-5.6-luna', name: 'Luna', isDefault: true, options: [] },
+      { id: 'gpt-6-luna', name: 'Luna', isDefault: true, options: [] },
       { id: 'gpt-5.6-terra', name: 'Terra', isDefault: false, options: [] }
     ]
   },
@@ -38,7 +38,7 @@ test('Companion defaults to the active tagging selection when the verified catal
 test('Companion rejects stale or invented models and falls back to a runtime default', () => {
   const catalog = {
     providers,
-    defaultSelection: { providerInstanceId: 'codex', modelId: 'gpt-5.6-luna' }
+    defaultSelection: { providerInstanceId: 'codex', modelId: 'gpt-6-luna' }
   };
   assert.equal(modelService.selectionIsAvailable(catalog, {
     providerInstanceId: 'codex',
@@ -49,7 +49,7 @@ test('Companion rejects stale or invented models and falls back to a runtime def
     modelId: 'made-up-model'
   }), {
     providerInstanceId: 'codex',
-    modelId: 'gpt-5.6-luna'
+    modelId: 'gpt-6-luna'
   });
 });
 

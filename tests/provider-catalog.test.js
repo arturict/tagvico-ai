@@ -17,7 +17,7 @@ test('subscription and cloud providers normalize to first-class provider IDs', (
 });
 
 test('OpenAI accepts custom model IDs without inventing an account catalog', () => {
-  assert.equal(catalog.normalizeOpenAIModel('gpt-5.6-luna', {}), 'gpt-5.6-luna');
+  assert.equal(catalog.normalizeOpenAIModel('gpt-6-luna', {}), 'gpt-6-luna');
   assert.equal(catalog.normalizeOpenAIModel('organization-model-alias', {}), 'organization-model-alias');
   assert.equal('openaiDirectModels' in catalog.buildCatalog({ AI_PROVIDER: 'openai' }), false);
 });
@@ -26,9 +26,9 @@ test('catalog effective model follows the selected provider-specific model', () 
   const result = catalog.buildCatalog({
     AI_PROVIDER: 'codex',
     AI_MODEL: 'openai/gpt-5.4-mini',
-    CODEX_MODEL: 'gpt-5.6-luna'
+    CODEX_MODEL: 'gpt-6-luna'
   });
-  assert.equal(result.effectiveModel, 'gpt-5.6-luna');
+  assert.equal(result.effectiveModel, 'gpt-6-luna');
 });
 
 test('provider payload keeps OpenCode, Copilot, and Ollama Cloud credentials separate', () => {

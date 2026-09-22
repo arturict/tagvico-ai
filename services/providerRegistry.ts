@@ -305,7 +305,7 @@ const definitions = [
         type: 'text',
         required: false,
         secret: false,
-        placeholder: 'openai/gpt-5.6-luna',
+        placeholder: 'openai/gpt-6-luna',
         description: 'Defaults to the model configured for that provider.'
       }
     ],

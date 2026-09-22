@@ -232,10 +232,11 @@ high-volume documents when cost matters more than edge cases. OpenRouter also
 offers `openrouter/free` for a low-stakes trial, but its free-model routing is
 intentionally not the reliability default.
 
-OpenAI's GPT-5.6 Sol, Terra, and Luna are included only behind the
-`OPENAI_ENABLE_GPT_5_6_PREVIEW=yes` trusted-partner flag. Luna is the preview
-recommendation for organizations that actually have access; it is not assumed
-to be available to normal API or ChatGPT subscription accounts.
+For the Luna tier, use `gpt-6-luna` (OpenAI direct) or `openai/gpt-6-luna`
+(OpenRouter); it is generally available and lists at $0.10/$0.50 per 1M
+input/output tokens. `gpt-5.6-luna` still works for accounts that select it.
+ChatGPT subscription accounts see Luna only when their Codex model list reports
+it.
 
 ## Environment contract
 
