@@ -177,7 +177,7 @@ test('rejected suggestions can never mutate Paperless', async () => {
   const service = createTagUnificationService({ paperless, inference: fakeInference(), store });
   const analysis = await service.analyze({
     providerInstanceId: 'codex',
-    modelId: 'gpt-5.6-luna'
+    modelId: 'gpt-6-luna'
   });
   const suggestion = analysis.suggestions[0];
   assert.equal(service.decide(suggestion.id, { decision: 'rejected' }, 'owner').status, 'rejected');
