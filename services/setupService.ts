@@ -3,8 +3,10 @@ import path from 'node:path';
 import axios from 'axios';
 import { PAPERLESS_ACCEPT } from './paperlessApi';
 import { AzureOpenAI, OpenAI } from 'openai';
+import type { ChatCompletionReasoningEffort } from 'openai/resources/chat/completions';
 import dotenv from 'dotenv';
 import { resolveDataDirectory } from './dataDirectory';
+import { chatCompletionsToolReasoningEffort, isOpenAIReasoningModel as isReasoningModel } from './openaiModelParameters';
 const runtimeConfig = require('../config/config');
 const { normalizeProvider } = require('./providerCatalogService');
 
@@ -16,11 +18,6 @@ const SETUP_TOOL_STANDARD_TOKEN_BUDGET = 64;
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
-}
-
-function isReasoningModel(model: string) {
-  const unqualifiedModel = String(model || '').split('/').at(-1) || '';
-  return /^(?:gpt-5|o\d)/i.test(unqualifiedModel);
 }
 
 function tokenLimitParam(
@@ -69,7 +66,11 @@ function toolValidationRequest(
       function: { name: SETUP_TOOL_NAME }
     },
     ...tokenLimitParam(model, options.forceCompletionTokens, options.forceStandardTokens),
-    ...(reasoningModel && options.reasoningEffort ? { reasoning_effort: 'low' as const } : {})
+    ...(reasoningModel && options.reasoningEffort
+      // The pinned openai 4.x types predate the "none" effort that GPT-6 Luna
+      // and Sol need here; the API accepts it.
+      ? { reasoning_effort: chatCompletionsToolReasoningEffort(model) as ChatCompletionReasoningEffort }
+      : {})
   };
 }
 

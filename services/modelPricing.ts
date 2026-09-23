@@ -48,6 +48,7 @@ const PRICEBOOK: PricebookEntry[] = [
   // Substring match, longest wins: a future 'gpt-6-luna-pro' needs its own
   // entry, otherwise it would be estimated at the Luna rate.
   { match: 'gpt-6-luna', label: 'GPT-6 Luna', input: 0.1, output: 0.5 },
+  { match: 'gpt-6-sol', label: 'GPT-6 Sol', input: 2, output: 10 },
   { match: 'gpt-5.6-luna', label: 'GPT-5.6 Luna', input: 1, output: 6 },
   { match: 'gpt-5.6-terra', label: 'GPT-5.6 Terra', input: 2.5, output: 15 },
   { match: 'gpt-5.6-sol', label: 'GPT-5.6 Sol', input: 5, output: 30 },

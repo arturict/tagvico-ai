@@ -42,6 +42,19 @@
   `.env.example` and provider docs. The flag has had no effect since 3.1.0,
   when OpenAI direct started accepting any model ID; setting it still does
   nothing.
+- GPT-6 models are recognised as reasoning models on every OpenAI path.
+  Before, only `gpt-5*` and o-series ids were, so `gpt-6-luna` was sent
+  `temperature`, which OpenAI rejects when reasoning is on. Document
+  analysis, the playground, status checks, manual analysis and the Companion
+  no longer send `temperature` to them. Setup validation now asks GPT-6 Luna
+  and Sol for a tool call at reasoning effort `none`, the only effort at which
+  Chat Completions accepts tools for them.
+- `AI_REASONING_EFFORT` is mapped to values GPT-6 accepts: `minimal` becomes
+  `low`, `ultra` becomes `max`, and `none` becomes `low` for GPT-6 Astra.
+  The Companion forces the pinned OpenAI SDK to treat GPT-6 as a reasoning
+  model, so a selected effort is no longer dropped.
+- The offline cost estimate prices `gpt-6-sol` at USD 2/10 per 1M
+  input/output tokens.
 
 ## 3.4.1 - 2026-09-15
 

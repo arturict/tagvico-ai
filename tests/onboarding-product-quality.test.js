@@ -91,10 +91,10 @@ test('provider probe validates the selected model and supports catalog-less comp
   assert.match(setupService, /hasSetupToolCall/);
   assert.match(setupService, /hasSupportedSetupArguments/);
   assert.match(setupService, /record\.supported === true/);
-  assert.match(setupService, /split\('\/'\)\.at\(-1\)/);
+  assert.match(setupService, /isOpenAIReasoningModel as isReasoningModel/);
   assert.match(setupService, /SETUP_TOOL_REASONING_TOKEN_BUDGET = 2048/);
   assert.match(setupService, /SETUP_TOOL_STANDARD_TOKEN_BUDGET = 64/);
-  assert.match(setupService, /reasoning_effort: 'low'/);
+  assert.match(setupService, /reasoning_effort: chatCompletionsToolReasoningEffort\(model\)/);
   assert.match(setupService, /\{ forceCompletionTokens: true \}/);
   assert.match(setupService, /\{ forceStandardTokens: true \}/);
   assert.match(setupService, /max_completion_tokens\|unsupported/);
