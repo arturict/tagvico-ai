@@ -27,6 +27,11 @@ import {
   shouldReadCompanionSearchResults,
   type CompanionResearchStep
 } from '../../../../services/companionResearchService';
+import {
+  isGpt6Model,
+  isOpenAIReasoningModel,
+  openAIReasoningEffort
+} from '../../../../services/openaiModelParameters';
 
 const actionCenter = require('../../../../models/actionCenter') as typeof import('../../../../models/actionCenter');
 const actionSync = require('../../../../services/actionSyncService') as typeof import('../../../../services/actionSyncService');
@@ -523,15 +528,26 @@ export async function streamCompanion(
     return createUIMessageStreamResponse({ stream, headers: { 'Cache-Control': 'no-store' } });
   }
   const reasoningEffort = String(selection.reasoningEffort || process.env.AI_REASONING_EFFORT || 'auto');
+  const openAIModel = model.provider === 'openai';
+  const effectiveEffort = openAIModel
+    ? openAIReasoningEffort(model.modelId, reasoningEffort)
+    : (reasoningEffort === 'auto' ? undefined : reasoningEffort);
+  const providerOptions = {
+    ...(effectiveEffort ? { reasoningEffort: effectiveEffort } : {}),
+    // The pinned @ai-sdk/openai predates GPT-6 and would treat it as a
+    // non-reasoning model: it would drop the effort and pass temperature on.
+    ...(openAIModel && isGpt6Model(model.modelId) ? { forceReasoning: true } : {})
+  };
   const result = streamText({
     model: model.model,
     system: SYSTEM,
     messages: await convertToModelMessages(history, { tools: toolsFor(context), ignoreIncompleteToolCalls: true }),
     tools: toolsFor(context),
     stopWhen: stepCountIs(6),
-    ...(reasoningEffort === 'auto' ? { temperature: 0.2 } : {}),
-    ...(reasoningEffort !== 'auto'
-      ? { providerOptions: { [model.provider]: { reasoningEffort } } }
+    // Reasoning models (GPT-5 and later) reject temperature.
+    ...(reasoningEffort === 'auto' && !isOpenAIReasoningModel(model.modelId) ? { temperature: 0.2 } : {}),
+    ...(Object.keys(providerOptions).length
+      ? { providerOptions: { [model.provider]: providerOptions } }
       : {}),
     abortSignal: signal,
     onFinish: async ({ text, steps }) => {

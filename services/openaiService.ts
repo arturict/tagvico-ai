@@ -16,6 +16,7 @@ const promptPolicyService = require('./promptPolicyService');
 const customFieldsService = require('./customFieldsService');
 const openaiBatchService = require('./openaiBatchService');
 const { ProviderAdapter } = require('./providerAdapter');
+const { isOpenAIReasoningModel, openAIReasoningEffort } = require('./openaiModelParameters');
 type AnalysisOptions = { externalApiData?: unknown };
 type CustomField = { value: string };
 const errorMessage = (error: unknown): string => error instanceof Error ? error.message : String(error);
@@ -251,12 +252,13 @@ class OpenAIService extends ProviderAdapter {
         ]
       };
 
-      if (!/^gpt-5/i.test(model) && !/^o[134]/i.test(model)) {
+      if (!isOpenAIReasoningModel(model)) {
         responsePayload.temperature = 0.3;
       }
 
-      if ((process.env.AI_REASONING_EFFORT || 'auto') !== 'auto') {
-        responsePayload.reasoning_effort = process.env.AI_REASONING_EFFORT || 'low';
+      const reasoningEffort = openAIReasoningEffort(model, process.env.AI_REASONING_EFFORT);
+      if (reasoningEffort) {
+        responsePayload.reasoning_effort = reasoningEffort;
       }
 
       if (provider === 'openai' && config.processingMode === 'flex') {
@@ -403,12 +405,13 @@ class OpenAIService extends ProviderAdapter {
         ]
       };
 
-      if (!/^gpt-5/i.test(model) && !/^o[134]/i.test(model)) {
+      if (!isOpenAIReasoningModel(model)) {
         responsePayload.temperature = 0.3;
       }
 
-      if ((process.env.AI_REASONING_EFFORT || 'auto') !== 'auto') {
-        responsePayload.reasoning_effort = process.env.AI_REASONING_EFFORT || 'low';
+      const reasoningEffort = openAIReasoningEffort(model, process.env.AI_REASONING_EFFORT);
+      if (reasoningEffort) {
+        responsePayload.reasoning_effort = reasoningEffort;
       }
 
       const response = await this.client.chat.completions.create(responsePayload);
@@ -483,7 +486,7 @@ class OpenAIService extends ProviderAdapter {
             content: prompt
           }
         ],
-        temperature: 0.7
+        ...(isOpenAIReasoningModel(model) ? {} : { temperature: 0.7 })
       });
 
       if (!response?.choices?.[0]?.message?.content) {
@@ -513,7 +516,7 @@ class OpenAIService extends ProviderAdapter {
             content: "Test"
           }
         ],
-        temperature: 0.7
+        ...(isOpenAIReasoningModel(process.env.OPENAI_MODEL) ? {} : { temperature: 0.7 })
       });
       if (!response?.choices?.[0]?.message?.content) {
         throw new Error('Invalid API response structure');

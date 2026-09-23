@@ -14,7 +14,7 @@ OPENAI_MODEL=gpt-5.4-mini
 Optional:
 
 ```env
-AI_REASONING_EFFORT=medium   # low | medium | high, for reasoning models
+AI_REASONING_EFFORT=medium   # reasoning models; GPT-6: none | low | medium | high | xhigh | max
 RESPONSE_TOKENS=1024         # max tokens in the model response
 TOKEN_LIMIT=128000           # context window cap for input truncation
 ```

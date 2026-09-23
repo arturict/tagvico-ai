@@ -2,6 +2,7 @@ import fs from 'fs';
 import axios from 'axios';
 import OpenAI from 'openai';
 import { AzureOpenAI } from 'openai';
+import { isOpenAIReasoningModel } from './openaiModelParameters';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { writePromptToFile } = require('./serviceUtils');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -91,7 +92,7 @@ class ManualService {
                 content: content
             }
             ],
-            ...(model !== 'o3-mini' && { temperature: 0.3 }),
+            ...(!isOpenAIReasoningModel(model) && { temperature: 0.3 }),
         });
     
         let jsonContent = response.choices[0].message.content ?? '';
@@ -183,7 +184,7 @@ class ManualService {
                     content: content
                 }
                 ],
-                ...(model !== 'o3-mini' && { temperature: 0.3 }),
+                ...(!isOpenAIReasoningModel(model) && { temperature: 0.3 }),
             });
         
             let jsonContent = response.choices[0].message.content ?? '';
