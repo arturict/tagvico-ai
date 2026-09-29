@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, FileStack, KeyRound, Sparkles } from 'lucide-react';
+import { ChatGPTPlanSignIn } from './chatgpt-plan-sign-in';
 import { InlineStatus } from './inline-status';
 import { PaperlessDiscovery } from './paperless-discovery';
 import { SettingsRow, SettingsSection } from './settings-section';
@@ -64,6 +65,7 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
   const [status, setStatus] = useState<SetupStatus>(null);
   const [hydrated, setHydrated] = useState(false);
   const [codexLoginId, setCodexLoginId] = useState('');
+  const [chatgptConnected, setChatgptConnected] = useState(false);
   const [codexLoginOutput, setCodexLoginOutput] = useState('');
   const codexPollTimer = useRef<number | null>(null);
   const providerProbeId = useRef(0);
@@ -507,6 +509,25 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
             {field.description ? <span className="settings-field-help">{field.description}</span> : null}
           </label>)}
         </div>
+      </SettingsRow> : null}
+      {provider?.instanceId === 'chatgpt' ? <SettingsRow
+        title="ChatGPT account"
+        description="Sign in with ChatGPT so an eligible Plus or Pro plan pays for filing and the Companion. No API key is needed."
+        stack
+      >
+        <ChatGPTPlanSignIn
+          apiBase="/api/setup/v3/chatgpt"
+          authenticated={chatgptConnected}
+          onConnected={() => {
+            providerProbeId.current += 1;
+            setChatgptConnected(true);
+            setModels([]);
+            setVerifiedModelId('');
+            setState((current) => ({ ...current, modelId: '' }));
+            setStatus({ kind: 'success', message: 'ChatGPT is connected. Check the runtime to load the models your plan offers.' });
+          }}
+          onError={(message) => setStatus({ kind: 'error', message })}
+        />
       </SettingsRow> : null}
       {provider?.instanceId === 'codex' ? <SettingsRow
         title="ChatGPT account"

@@ -9,6 +9,7 @@ import providerDiscoveryService from './providerDiscoveryService';
 import providerRegistry from './providerRegistry';
 import { getEffectiveProviderEnvironment } from './settingsV3Service';
 import codexService from './codexService';
+import chatgptPlanService from './chatgptPlanService';
 import copilotService from './copilotService';
 import companionModelService from './companionModelService';
 
@@ -156,7 +157,14 @@ async function analyze(
   const { definition } = await assertLiveModel(input, env);
   const prompt = promptFor(tags);
   let output: TagUnificationModelOutput;
-  if (definition.runtimeAdapter === 'codex-runtime') {
+  if (definition.runtimeAdapter === 'chatgpt-plan') {
+    const text = await chatgptPlanService.generateText(prompt, undefined, {
+      model: input.modelId,
+      reasoningEffort: input.reasoningEffort,
+      outputSchema: outputJsonSchema
+    });
+    output = parseJsonObject(text);
+  } else if (definition.runtimeAdapter === 'codex-runtime') {
     const text = await codexService.generateText(prompt, undefined, {
       model: input.modelId,
       reasoningEffort: input.reasoningEffort,

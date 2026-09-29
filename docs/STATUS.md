@@ -47,8 +47,9 @@ by the provider and can change independently of Tagvico.
 - Back up the complete `tagvico_ai_data` volume before every upgrade.
 - Start in **Review first** and test representative, non-sensitive documents
   before enabling Automatic mode.
-- Treat ChatGPT subscription access as experimental and account-specific; it is
-  not an API SLA.
+- ChatGPT plan access (Sign in with ChatGPT) is an OpenAI preview: it counts
+  toward the plan's usage limits and is not an API SLA. The older Codex adapter
+  remains experimental and account-specific.
 - Keep anonymous installation analytics disabled unless you explicitly choose
   to share the locally previewed aggregate heartbeat.
 

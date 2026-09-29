@@ -2,6 +2,32 @@
 
 ## 3.5.0 - Unreleased
 
+### Sign in with ChatGPT
+
+- New provider `chatgpt` (**ChatGPT plan**): an eligible ChatGPT Plus or Pro
+  plan pays for document filing, the Companion, tag unification and TypeSafe
+  titles, without an API key. It uses OpenAI's Sign in with ChatGPT flow for
+  open-source apps (released 2026-09-29): OAuth with PKCE, dynamic client
+  registration, a stable per-installation host ID, and the public Responses
+  API with `store: false` and streaming, as the preview requires.
+- Because Tagvico usually runs on a different machine from the browser, the
+  sign-in ends on a `127.0.0.1` page that does not load; you paste its address
+  into Tagvico, which alone holds the PKCE verifier and exchanges the one-time
+  code. Settings and first-run setup both offer **Continue with ChatGPT**,
+  **Manage usage** (ChatGPT Settings → Usage) and **Sign out**, which revokes
+  the session at OpenAI.
+- The ID token is verified against OpenAI's signing keys (issuer, audience,
+  nonce, expiry). Tokens are stored owner-only in `data/chatgpt/auth.json` and
+  never reach the browser. Access tokens are renewed automatically; a lock file
+  keeps the backend and web processes from spending the same rotating refresh
+  token.
+- Usage-limit, eligibility and unsupported-request errors from OpenAI stop the
+  request with a specific message; Tagvico never falls back to another
+  provider. The model picker shows only the models the plan lists;
+  `CHATGPT_MODEL` defaults to `gpt-6-luna`.
+- The Codex-based provider is renamed **ChatGPT via Codex (legacy)** and stays
+  in maintenance mode for existing installations.
+
 ### TypeSafe Jev provider
 
 - New provider `typesafe` for [TypeSafe's Jev](https://docs.typesafe.ai), a

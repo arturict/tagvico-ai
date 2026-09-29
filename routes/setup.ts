@@ -43,6 +43,8 @@ const azureService = require('../services/azureService.js');
 const anthropicService = require('../services/anthropicService.js');
 const codexService = require('../services/codexService.js');
 const codexAuthService = require('../services/codexAuthService.js');
+const chatgptPlanAuthService = require('../services/chatgptPlanAuthService.js').default;
+const chatgptPlanService = require('../services/chatgptPlanService.js').default;
 const copilotService = require('../services/copilotService.js');
 const copilotAuthService = require('../services/copilotAuthService.js');
 const documentModel = require('../models/document.js');
@@ -78,6 +80,7 @@ const { createRateLimiter } = require('../services/rateLimiter');
 const loginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'login' });
 const setupLimiter = createRateLimiter({ windowMs: 60_000, max: 10, keyPrefix: 'setup' });
 const codexLoginLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 5, keyPrefix: 'codex-login' });
+const chatgptLoginLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 10, keyPrefix: 'chatgpt-login' });
 const totpService = require('../services/totpService');
 const pendingMfaSecrets = new Map();
 
@@ -240,6 +243,7 @@ let PUBLIC_ROUTES = [
   '/api/paperless/discover',
   '/api/paperless/probe',
   '/api/ollama/models',
+  '/api/chatgpt',
   '/api/codex',
   '/api/copilot'
 ];
@@ -2079,6 +2083,7 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
     OPENAI_MODEL: providerPayload.provider === 'openai' ? providerPayload.selectedModel : currentConfig.OPENAI_MODEL || 'gpt-5.4-mini',
     ANTHROPIC_API_KEY: providerPayload.provider === 'anthropic' ? providerPayload.anthropicApiKey : currentConfig.ANTHROPIC_API_KEY || '',
     ANTHROPIC_MODEL: providerPayload.provider === 'anthropic' ? providerPayload.selectedModel : currentConfig.ANTHROPIC_MODEL || 'claude-haiku-4-5',
+    CHATGPT_MODEL: providerPayload.provider === 'chatgpt' ? providerPayload.selectedModel : currentConfig.CHATGPT_MODEL || 'gpt-6-luna',
     CODEX_MODEL: providerPayload.provider === 'codex' ? providerPayload.selectedModel : currentConfig.CODEX_MODEL || 'gpt-5.4-mini',
     AI_PROCESSING_MODE: ['standard', 'flex', 'batch'].includes(String(payload.aiProcessingMode)) ? String(payload.aiProcessingMode) : (currentConfig.AI_PROCESSING_MODE || 'standard'),
     OLLAMA_API_URL: providerPayload.ollamaUrl || currentConfig.OLLAMA_API_URL || 'http://localhost:11434',
@@ -4298,6 +4303,14 @@ router.post('/setup', setupLimiter, express.json(), async (req: Req, res: Res) =
           error: `GitHub Copilot connection failed: ${status.error || 'the selected model is unavailable to this account.'}`
         });
       }
+    } else if (effectiveProvider === 'chatgpt') {
+      const status = await withSetupProviderTimeout<SetupProviderStatus>(chatgptPlanService.healthcheck())
+        .catch((error): SetupProviderStatus => ({ ok: false, models: [], error: errorMessage(error) }));
+      if (!status.ok || !status.models.includes(effectiveSetupConfig.CHATGPT_MODEL || effectiveSetupConfig.AI_MODEL)) {
+        return res.status(400).json({
+          error: `ChatGPT plan connection failed: ${status.error || 'sign in with ChatGPT and choose a model your plan offers.'}`
+        });
+      }
     } else if (effectiveProvider === 'codex') {
       try {
         const models = await codexAuthService.models();
@@ -4713,6 +4726,14 @@ router.post('/settings', express.json(), async (req: Req, res: Res) => {
           error: `GitHub Copilot connection failed: ${status.error || 'the selected model is unavailable to this account.'}`
         });
       }
+    } else if (providerConfig.provider === 'chatgpt') {
+      const status = await chatgptPlanService.healthcheck();
+      const selectedModel = providerConfig.selectedModel || currentConfig.CHATGPT_MODEL;
+      if (!status.ok || !status.models.includes(selectedModel)) {
+        return res.status(400).json({
+          error: `ChatGPT plan connection failed: ${status.error || 'sign in with ChatGPT and choose a model your plan offers.'}`
+        });
+      }
     } else if (providerConfig.provider === 'codex') {
       const selectedModel = providerConfig.selectedModel || currentConfig.CODEX_MODEL;
       try {
@@ -5043,6 +5064,44 @@ router.post('/api/history/:id/restore', async (req: Req, res: Res) => {
     }
   );
   res.json({ success: true });
+});
+
+router.get('/api/chatgpt/status', allowDuringSetup, (req: Req, res: Res) => {
+  res.json({ ...chatgptPlanAuthService.status(), model: chatgptPlanService.model() });
+});
+
+router.get('/api/chatgpt/models', allowDuringSetup, async (req: Req, res: Res) => {
+  try {
+    const models = await chatgptPlanService.listModels();
+    if (!models.length) return res.status(404).json({ success: false, error: 'ChatGPT returned no models for this plan.' });
+    res.json({ success: true, models, defaultModel: models[0].id });
+  } catch (error) {
+    res.status(502).json({ success: false, error: errorMessage(error) || 'Could not load ChatGPT plan models' });
+  }
+});
+
+router.post('/api/chatgpt/login', allowDuringSetup, chatgptLoginLimiter, (req: Req, res: Res) => {
+  try { res.json(chatgptPlanAuthService.startLogin()); }
+  catch (error) { res.status(502).json({ error: errorMessage(error) }); }
+});
+
+router.post('/api/chatgpt/login/:loginId/complete', allowDuringSetup, chatgptLoginLimiter, express.json({ limit: '16kb' }), async (req: Req, res: Res) => {
+  try {
+    const status = await chatgptPlanAuthService.completeLogin(req.params.loginId, String(req.body?.callbackUrl || ''));
+    resetRuntimeServices();
+    res.json({ success: true, ...status });
+  } catch (error) {
+    res.status(400).json({ success: false, error: errorMessage(error) });
+  }
+});
+
+router.post('/api/chatgpt/login/:loginId/cancel', allowDuringSetup, (req: Req, res: Res) => {
+  res.json(chatgptPlanAuthService.cancelLogin(req.params.loginId));
+});
+
+router.post('/api/chatgpt/logout', allowDuringSetup, async (req: Req, res: Res) => {
+  try { res.json(await chatgptPlanAuthService.logout()); }
+  catch (error) { res.status(502).json({ error: errorMessage(error) }); }
 });
 
 router.get('/api/codex/status', allowDuringSetup, async (req: Req, res: Res) => {

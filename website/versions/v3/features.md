@@ -169,7 +169,11 @@ image and tag are actually published.
 
 ## Subscription-backed model access
 
-The optional ChatGPT provider uses the bundled official Codex runtime for
+The **ChatGPT plan** provider uses OpenAI's official Sign in with ChatGPT flow:
+an eligible Plus or Pro plan pays for filing and the Companion without an API
+key, and the model picker shows the models that plan offers.
+
+The older ChatGPT-via-Codex provider uses the bundled official Codex runtime for
 inference and the stable `codex login --device-auth` flow. Its model picker is
 fed by the signed-in account's live `model/list` response, including the
 runtime default and each model's supported reasoning efforts. Curated names are

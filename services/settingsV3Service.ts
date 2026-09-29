@@ -455,7 +455,7 @@ async function patchSettings(input: unknown) {
   const activeProviderId = String(patch.AI_PROVIDER || effective.AI_PROVIDER || 'openrouter').trim();
   const activeCopilotCredentialsChanged = activeProviderId === 'copilot'
     && parsed.patch.provider?.instanceId === 'copilot';
-  if ((selectionChanged || activeCopilotCredentialsChanged) && ['codex', 'copilot'].includes(activeProviderId)) {
+  if ((selectionChanged || activeCopilotCredentialsChanged) && ['chatgpt', 'codex', 'copilot'].includes(activeProviderId)) {
     const definition = providerRegistry.getProviderDefinition(activeProviderId);
     const candidateEnvironment = effectiveEnvironment({ ...effective, ...patch });
     const selectedModelId = definition

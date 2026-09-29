@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { DraftField } from './draft-field';
 import { DraftTextarea } from './draft-textarea';
+import { ChatGPTPlanSignIn } from './chatgpt-plan-sign-in';
 import { CustomFieldsEditor } from './custom-fields-editor';
 import { HouseholdSettings, type HouseholdMember } from './household-settings';
 import { InlineStatus } from './inline-status';
@@ -194,7 +195,7 @@ export function SettingsWorkspace({
 
   const selectProvider = async (instanceId: string) => {
     const selectionId = ++providerSelectionId.current;
-    if (['codex', 'copilot'].includes(instanceId)) {
+    if (['chatgpt', 'codex', 'copilot'].includes(instanceId)) {
       const models = await loadModels(instanceId);
       if (selectionId !== providerSelectionId.current) return;
       const selectedModel = models.find((model) => model.id === settingsRef.current.ai.activeModelId)
@@ -295,7 +296,7 @@ export function SettingsWorkspace({
   };
 
   const loadProviderAuth = async (providerId = settingsRef.current.ai.activeProviderInstanceId) => {
-    if (!['codex', 'copilot'].includes(providerId)) {
+    if (!['chatgpt', 'codex', 'copilot'].includes(providerId)) {
       setProviderAuth({ loading: false, authenticated: false, label: '' });
       return;
     }
@@ -303,12 +304,14 @@ export function SettingsWorkspace({
     try {
       const response = await fetch(`/api/${providerId}/status`, { cache: 'no-store' });
       const body = await response.json().catch(() => ({}));
-      const authenticated = body.authenticated === true;
+      const authenticated = providerId === 'chatgpt' ? body.planUsage === true : body.authenticated === true;
       const plan = providerId === 'codex' && body.account?.planType ? ` · ${body.account.planType}` : '';
       setProviderAuth({
         loading: false,
         authenticated,
-        label: authenticated ? `Connected${plan}` : 'Not connected'
+        label: providerId === 'chatgpt'
+          ? String(body.account?.email || '')
+          : authenticated ? `Connected${plan}` : 'Not connected'
       });
     } catch {
       setProviderAuth({ loading: false, authenticated: false, label: 'Status unavailable' });
@@ -345,13 +348,17 @@ export function SettingsWorkspace({
     }
   };
 
-  const logoutProvider = async (providerId: 'codex' | 'copilot') => {
+  const logoutProvider = async (providerId: 'chatgpt' | 'codex' | 'copilot') => {
     try {
       const response = await fetch(`/api/${providerId}/logout`, { method: 'POST' });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not sign out.');
       await loadProviderAuth(providerId);
-      showMessage('success', `${providerId === 'codex' ? 'ChatGPT' : 'GitHub Copilot'} signed out.`);
+      if (providerId === 'chatgpt' && body.revoked === false) {
+        showMessage('error', 'Signed out locally, but ChatGPT did not confirm the disconnect. Remove Tagvico under ChatGPT Settings.');
+        return;
+      }
+      showMessage('success', `${providerId === 'copilot' ? 'GitHub Copilot' : 'ChatGPT'} signed out.`);
     } catch (error) {
       showMessage('error', error instanceof Error ? error.message : 'Could not sign out.');
     }
@@ -527,6 +534,18 @@ export function SettingsWorkspace({
                 />;
               })}
             </div> : <InlineStatus kind="neutral">This runtime uses account authentication instead of an API-key field.</InlineStatus>}
+            {configuredProvider.instanceId === 'chatgpt' ? <ChatGPTPlanSignIn
+              apiBase="/api/chatgpt"
+              authenticated={providerAuth.authenticated}
+              accountLabel={providerAuth.label}
+              onConnected={async () => {
+                showMessage('success', 'ChatGPT plan connected.');
+                await loadProviderAuth('chatgpt');
+                await loadModels('chatgpt');
+              }}
+              onError={(message) => showMessage('error', message)}
+              onLogout={() => logoutProvider('chatgpt')}
+            /> : null}
             {configuredProvider.instanceId === 'codex' ? <div className="settings-auth-panel">
               <div className="settings-action-cluster">
                 <InlineStatus kind={providerAuth.loading ? 'loading' : providerAuth.authenticated ? 'success' : 'neutral'}>

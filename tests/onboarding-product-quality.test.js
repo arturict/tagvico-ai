@@ -218,7 +218,7 @@ test('account providers are selected atomically with a live model', () => {
     settings.indexOf('const selectProvider'),
     settings.indexOf('const selectModel')
   );
-  assert.match(selector, /\['codex', 'copilot'\]\.includes\(instanceId\)/);
+  assert.match(selector, /\['chatgpt', 'codex', 'copilot'\]\.includes\(instanceId\)/);
   assert.match(selector, /const models = await loadModels\(instanceId\)/);
   assert.match(selector, /const selectionId = \+\+providerSelectionId\.current/);
   assert.match(selector, /if \(selectionId !== providerSelectionId\.current\) return/);

@@ -6,13 +6,14 @@ type ProviderId =
   | 'copilot'
   | 'compatible'
   | 'openai'
+  | 'chatgpt'
   | 'codex'
   | 'typesafe';
 type EnvLike = Record<string, string | undefined>;
 const providerRegistryModule = require('./providerRegistry');
 const providerRegistry = providerRegistryModule.default || providerRegistryModule;
 const PROVIDER_IDS = [
-  'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'codex', 'typesafe'
+  'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'chatgpt', 'codex', 'typesafe'
 ] as const;
 
 const OPENROUTER_PRESETS = [
@@ -99,6 +100,7 @@ const DEFAULT_MODELS = {
   copilot: 'gpt-5.4-mini',
   compatible: '',
   openai: 'gpt-5.4-mini',
+  chatgpt: 'gpt-6-luna',
   codex: 'gpt-5.4-mini',
   typesafe: 'jev-latest'
 };

@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const registry = require('../dist/services/providerRegistry');
 const discovery = require('../dist/services/providerDiscoveryService');
 const codexAuth = require('../dist/services/codexAuthService');
+const chatgptPlan = require('../dist/services/chatgptPlanService').default;
 const copilot = require('../dist/services/copilotService');
 
 test('provider definitions are unique and own their schemas and runtime adapters', () => {
@@ -16,6 +17,7 @@ test('provider definitions are unique and own their schemas and runtime adapters
     'copilot',
     'compatible',
     'openai',
+    'chatgpt',
     'codex',
     'typesafe'
   ]);
@@ -152,9 +154,10 @@ test('empty secret values retain the configured secret and provider fields map c
   });
 });
 
-test('all eight provider discovery adapters normalize a live catalog', async () => {
+test('every provider discovery adapter normalizes a live catalog', async () => {
   const originalFetch = global.fetch;
   const originalCodexModels = codexAuth.models;
+  const originalChatGPTModels = chatgptPlan.listModels;
   const originalCopilotStatus = copilot.status;
   global.fetch = async (url) => new Response(
     String(url).endsWith('/api/tags')
@@ -173,6 +176,7 @@ test('all eight provider discovery adapters normalize a live catalog', async () 
     isDefault: true,
     reasoningEfforts: [{ id: 'high', description: 'Deliberate' }]
   }];
+  chatgptPlan.listModels = async () => [{ id: 'gpt-6-luna', name: 'GPT-6 Luna', isDefault: true }];
   copilot.status = async () => ({
     ok: true,
     authenticated: true,
@@ -198,6 +202,7 @@ test('all eight provider discovery adapters normalize a live catalog', async () 
   } finally {
     global.fetch = originalFetch;
     codexAuth.models = originalCodexModels;
+    chatgptPlan.listModels = originalChatGPTModels;
     copilot.status = originalCopilotStatus;
   }
 });

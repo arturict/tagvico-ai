@@ -16,7 +16,8 @@ service.
 | GitHub Copilot | Account-scoped model discovery | OAuth device login or supported token | Uses the official SDK; every agent tool is denied. |
 | CLI Proxy / OpenAI-compatible | CLIProxyAPI, LM Studio, LiteLLM, vLLM, custom gateways | `/v1` base URL and optional key | Uses Vercel AI SDK v6. Tagvico can load the endpoint's `/models` catalog or accept a model ID manually. |
 | TypeSafe Jev | Closed-list filing: picks only from existing tags, correspondents and document types | API key (early access) | A decision model, not a text generator: no new names, no custom fields, no Companion. Every field carries a probability. See [TypeSafe Jev](#typesafe-jev). |
-| ChatGPT subscription | Optional private, low-volume model adapter | Stable Codex device login | Uses the bundled official Codex runtime and loads the signed-in account's live `model/list` catalog. It is not an API SLA. |
+| ChatGPT plan | A Plus or Pro plan you already pay for | Sign in with ChatGPT (official OAuth, no API key) | Loads the models the signed-in plan offers. Usage counts toward the plan; set a limit for Tagvico in ChatGPT Settings. See [ChatGPT plan](#chatgpt-plan). |
+| ChatGPT via Codex (legacy) | Optional private, low-volume model adapter | Stable Codex device login | Uses the bundled official Codex runtime and loads the signed-in account's live `model/list` catalog. It is not an API SLA. |
 
 ## Cost-conscious recommendations
 
@@ -35,7 +36,25 @@ model is good enough for Automatic mode.
 | GitHub Copilot | **GPT-5.4 Mini** when the signed-in plan exposes it | It offers a strong quality/cost balance without a separate per-token key inside Tagvico. Prefer a model with the lowest billing multiplier that still passes your test set, because plan entitlements differ. |
 | CLI Proxy / OpenAI-compatible | A subscription-backed model returned by CLIProxyAPI, or a **mini**, **flash**, or roughly **8B–20B instruct** model supported by your gateway | Compatible endpoints vary too much for one universal slug. Load the live catalog, start small, require reliable JSON, and increase model size only when the error rate justifies it. |
 | TypeSafe Jev | **jev-latest** | By far the cheapest hosted option in our synthetic test (about USD 0.08 per 1,000 documents, about 300 ms each), because only input tokens are billed and the text is billed once for all questions. Only worth it when your Paperless vocabulary is settled. |
-| ChatGPT subscription | The configured Codex model supported by the signed-in account | Suitable for one trusted, low-volume installation when subscription-backed inference is preferable. Model availability remains account-controlled and is not an API service guarantee. |
+| ChatGPT plan | **GPT-6 Luna** when the plan lists it | No per-token bill. Plus shares a five-hour usage limit across all connected apps, so a large backlog can pause filing until the limit resets. |
+| ChatGPT via Codex (legacy) | The configured Codex model supported by the signed-in account | Suitable for one trusted, low-volume installation when subscription-backed inference is preferable. Model availability remains account-controlled and is not an API service guarantee. |
+
+## ChatGPT plan
+
+Since 29 September 2026, OpenAI lets eligible ChatGPT Plus and Pro users
+authorise open-source apps to use their plan for inference. Choose **ChatGPT
+plan** in **Settings → AI models** and select **Continue with ChatGPT**. Sign
+in on the ChatGPT tab and allow Tagvico to use your plan. ChatGPT then opens a
+page on `127.0.0.1` that does not load, because Tagvico usually runs on another
+machine; copy that page's full address into Tagvico and select **Finish
+sign-in**. Only this Tagvico instance can redeem the one-time code in it.
+
+Requests count toward your plan and never fall back to another provider. Under
+[ChatGPT Settings → Usage](https://chatgpt.com/settings/usage) you can see and
+limit Tagvico's usage or disconnect it. Tokens stay in `data/chatgpt/` and
+never reach the browser; **Sign out** revokes them at OpenAI. Document text is
+sent to OpenAI with `store: false`. The repository's
+`docs/providers/chatgpt.md` has the details.
 
 ## TypeSafe Jev
 
@@ -49,7 +68,7 @@ custom fields and the owner stay for review. `TYPESAFE_TAG_THRESHOLD` (default
 
 Jev cannot write, so pair it with a text provider: set
 `TYPESAFE_TEXT_PROVIDER` to any configured text provider (OpenRouter, OpenAI,
-Ollama, a compatible endpoint, or the ChatGPT-subscription and GitHub Copilot
+Ollama, a compatible endpoint, the ChatGPT plan, or the Codex and GitHub Copilot
 adapters) and one small extra call per document writes the title and names
 senders that are not in the archive yet. In a synthetic test of 60 documents
 good titles rose from 32% with Jev alone to 98% with GPT-5.6 Luna as text

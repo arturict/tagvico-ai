@@ -107,6 +107,10 @@ module.exports = {
     apiKey: process.env.ANTHROPIC_API_KEY || '',
     model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5'
   },
+  chatgpt: {
+    model: process.env.CHATGPT_MODEL || 'gpt-6-luna',
+    timeoutMs: Math.max(10000, parseInt(process.env.CHATGPT_TIMEOUT_MS || '120000', 10))
+  },
   codex: {
     model: process.env.CODEX_MODEL || 'gpt-5.4-mini',
     home: process.env.CODEX_HOME || path.join(dataDir, 'codex'),

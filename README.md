@@ -29,7 +29,7 @@ and focuses on the action layer. See
 - **Action Cases, not loose reminders** — one case per Paperless document, with priority, owner, due date, audit trail, and up to 100 checklist steps.
 - **A household, not a single user** — assign work to family members, with roles that decide who may approve what.
 - **AI with approval boundaries** — the Companion can read permitted documents and prepare changes; only an owner or adult can execute a write.
-- **Your choice of model** — the Companion uses Vercel AI SDK v6 for OpenCode Go, OpenRouter, OpenAI, and compatible gateways, plus an optional read-only Codex SDK adapter.
+- **Your choice of model** — the Companion uses Vercel AI SDK v6 for OpenCode Go, OpenRouter, OpenAI, and compatible gateways, or your ChatGPT Plus or Pro plan through the official Sign in with ChatGPT flow.
 - **Optional Telegram and Discord access** — allowlisted family members can search, upload, list actions, and approve or reject proposals using their own Paperless tokens.
 - **Designed for homelabs** — one container, one persistent volume, and SQLite for processing history and retries.
 - **Built to recover** — durable OCR and terminal-failure queues, safe rescans, original-metadata restore, and interrupted-job recovery.
@@ -211,7 +211,8 @@ Owner matching is conservative: optional hint profiles add context, and assignme
 | OpenCode Go | Go subscription API key and OpenAI-compatible inference gateway |
 | GitHub Copilot | Official Copilot SDK, OAuth device login, and account-scoped model discovery |
 | OpenAI-compatible | LM Studio, LiteLLM, vLLM, and custom gateways |
-| ChatGPT subscription | Optional read-only Codex SDK adapter with stable device login |
+| ChatGPT plan | Sign in with ChatGPT: a Plus or Pro plan pays for filing and the Companion, no API key |
+| ChatGPT via Codex (legacy) | Maintenance-mode Codex SDK adapter with device login; prefer ChatGPT plan |
 | TypeSafe Jev | Closed-list filing with a decision model: only existing tags, correspondents and types, a probability per field, about USD 0.10 per 1,000 documents; pair it with any text provider for titles and new senders; no Companion |
 
 Provider-specific setup and troubleshooting live in [`docs/providers/`](docs/providers/README.md).
@@ -221,7 +222,8 @@ Provider-specific setup and troubleshooting live in [`docs/providers/`](docs/pro
 - **Standard** — process each document immediately. Best for interactive feedback and low-volume setups.
 - **OpenAI Flex** — trades latency and guaranteed availability for Batch-level pricing. Available only for supported OpenAI models, selected in the provider step.
 - **Batch** — asynchronous, discounted jobs that may take up to 24 hours. Available for OpenAI direct; Tagvico groups all documents discovered in the same scan into one batch.
-- **ChatGPT subscription** — sign in directly from Settings with the stable `codex login --device-auth` flow. The official Codex SDK supplies read-only inference; Tagvico does not depend on the experimental app-server and never exposes tokens to the browser.
+- **ChatGPT plan** — choose **Continue with ChatGPT** in Settings and allow Tagvico to use your Plus or Pro plan. It uses OpenAI's official Sign in with ChatGPT flow for open-source apps; requests count toward your plan and you can cap Tagvico's share under ChatGPT Settings → Usage. See [`docs/providers/chatgpt.md`](docs/providers/chatgpt.md).
+- **ChatGPT via Codex (legacy)** — sign in directly from Settings with the stable `codex login --device-auth` flow. The official Codex SDK supplies read-only inference; Tagvico does not depend on the experimental app-server and never exposes tokens to the browser.
 - **GitHub Copilot subscription** — uses the official SDK with every agent tool denied. Authenticate through the Settings device flow, `npm run auth:copilot`, or a supported token. The dropdown is populated with `listModels()` for the authenticated account.
 
 ### Model selection
@@ -235,8 +237,8 @@ intentionally not the reliability default.
 For the Luna tier, use `gpt-6-luna` (OpenAI direct) or `openai/gpt-6-luna`
 (OpenRouter); it is generally available and lists at $0.10/$0.50 per 1M
 input/output tokens. `gpt-5.6-luna` still works for accounts that select it.
-ChatGPT subscription accounts see Luna only when their Codex model list reports
-it.
+ChatGPT plan and Codex accounts see Luna only when their account's model list
+reports it.
 
 ## Environment contract
 

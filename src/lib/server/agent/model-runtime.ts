@@ -4,12 +4,24 @@ import { createOpenAI } from '@ai-sdk/openai';
 import type { CompanionModelSelection } from '../../../../contracts/companion';
 import { runtimeConfiguration } from './credential-store';
 import type { RuntimeModel } from './types';
+import chatgptPlanService from '../../../../services/chatgptPlanService';
 import codexService from '../../../../services/codexService';
 import copilotService from '../../../../services/copilotService';
 
 export function resolveRuntimeModel(selection?: CompanionModelSelection | null): RuntimeModel {
   const selected = runtimeConfiguration(selection);
   if (!selected.model) throw new Error(`No model configured for ${selected.provider}`);
+  if (selected.provider === 'chatgpt') {
+    return {
+      kind: 'text-adapter',
+      provider: 'chatgpt',
+      modelId: selected.model,
+      generateText: (prompt, signal) => chatgptPlanService.generateText(prompt, signal, {
+        model: selected.model,
+        reasoningEffort: selection?.reasoningEffort
+      })
+    };
+  }
   if (selected.provider === 'codex') {
     return {
       kind: 'text-adapter',

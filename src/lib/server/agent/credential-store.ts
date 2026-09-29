@@ -10,6 +10,7 @@ export function runtimeConfiguration(selection?: CompanionModelSelection | null)
     runtimeEnvironmentValue('AI_PROVIDER', config.aiProvider || 'opencode')
   )).toLowerCase();
   const selectedModel = selection?.modelId;
+  if (provider === 'chatgpt') return { provider: 'chatgpt' as const, model: selectedModel || runtimeEnvironmentValue('CHATGPT_MODEL', config.chatgpt.model) };
   if (provider === 'codex') return { provider: 'codex' as const, model: selectedModel || runtimeEnvironmentValue('CODEX_MODEL', config.codex.model) };
   if (provider === 'copilot') return { provider: 'copilot' as const, model: selectedModel || runtimeEnvironmentValue('COPILOT_MODEL', config.copilot.model) };
   if (provider === 'ollama' || provider === 'ollama-cloud') return {

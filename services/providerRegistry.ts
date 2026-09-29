@@ -11,11 +11,12 @@ type Environment = Record<string, string | undefined>;
 type RuntimeAdapter =
   | 'ai-sdk-openai'
   | 'ai-sdk-compatible'
+  | 'chatgpt-plan'
   | 'codex-runtime'
   | 'copilot-sdk'
   | 'native-ollama'
   | 'typesafe-systemone';
-type DiscoveryKind = 'openai' | 'ollama' | 'codex' | 'copilot' | 'static';
+type DiscoveryKind = 'openai' | 'ollama' | 'chatgpt' | 'codex' | 'copilot' | 'static';
 const MAX_DISCOVERY_RESPONSE_BYTES = 1024 * 1024;
 const MAX_DISCOVERY_MODELS = 500;
 
@@ -250,9 +251,27 @@ const definitions = [
     manualModelInput: true
   },
   {
+    id: 'chatgpt',
+    name: 'ChatGPT plan',
+    description: 'Sign in with ChatGPT: an eligible Plus or Pro plan pays for filing and the Companion, with no API key. The models are the ones returned by the signed-in ChatGPT account.',
+    icon: {
+      path: '/provider-icons/openai.svg',
+      source: 'https://svgl.app/library/openai_dark.svg'
+    },
+    runtimeAdapter: 'chatgpt-plan',
+    serviceModule: './chatgptPlanService',
+    discovery: 'chatgpt',
+    modelEnvironmentKey: 'CHATGPT_MODEL',
+    legacyModelEnvironmentKeys: ['AI_MODEL'],
+    configurationSchema: z.object({}).strict(),
+    fields: [],
+    suggestedModels: [],
+    manualModelInput: false
+  },
+  {
     id: 'codex',
-    name: 'ChatGPT subscription',
-    description: 'Official Codex runtime with models and reasoning efforts returned by the signed-in ChatGPT account.',
+    name: 'ChatGPT via Codex (legacy)',
+    description: 'Maintenance mode: the Codex runtime with its device sign-in. Prefer the ChatGPT plan provider, which uses the official Sign in with ChatGPT flow.',
     icon: {
       path: '/provider-icons/openai.svg',
       source: 'https://svgl.app/library/openai_dark.svg'
@@ -279,7 +298,7 @@ const definitions = [
     configurationSchema: z.object({
       apiKey: optionalString,
       baseUrl: optionalUrl,
-      textProvider: z.enum(['', 'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'codex']).optional(),
+      textProvider: z.enum(['', 'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'chatgpt', 'codex']).optional(),
       textModel: z.string().trim().max(200).optional()
     }).strict(),
     fields: [
@@ -296,7 +315,7 @@ const definitions = [
         required: false,
         secret: false,
         placeholder: 'openrouter',
-        description: 'Jev cannot write text. Name a configured provider (openrouter, openai, ollama, ollama-cloud, opencode, compatible, codex, copilot) to have it write the title and name senders that are not in the archive yet. Empty: the title is a line of the document.'
+        description: 'Jev cannot write text. Name a configured provider (openrouter, openai, ollama, ollama-cloud, opencode, compatible, chatgpt, codex, copilot) to have it write the title and name senders that are not in the archive yet. Empty: the title is a line of the document.'
       },
       {
         key: 'textModel',

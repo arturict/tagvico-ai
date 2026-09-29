@@ -1,4 +1,5 @@
 import type { ModelDescriptor } from '../contracts/provider';
+import chatgptPlanService from './chatgptPlanService';
 import codexAuthService from './codexAuthService';
 import copilotService from './copilotService';
 import providerRegistry from './providerRegistry';
@@ -17,6 +18,14 @@ async function discoverCodexModels(): Promise<ModelDescriptor[]> {
     name: model.name || model.id,
     isDefault: Boolean(model.isDefault),
     options: providerRegistry.normalizeReasoningOptions(model.reasoningEfforts || [])
+  })));
+}
+
+async function discoverChatGPTModels(): Promise<ModelDescriptor[]> {
+  const models = await chatgptPlanService.listModels();
+  return providerRegistry.normalizeModels(models.map((model) => ({
+    ...model,
+    options: providerRegistry.normalizeReasoningOptions(['none', 'low', 'medium', 'high'], 'low')
   })));
 }
 
@@ -47,6 +56,7 @@ async function discoverProviderModels(instanceId: string, env: Environment): Pro
   switch (definition.discovery) {
     case 'openai': return providerRegistry.discoverOpenAIModels(definition, env);
     case 'ollama': return providerRegistry.discoverOllamaModels(definition, env);
+    case 'chatgpt': return discoverChatGPTModels();
     case 'codex': return discoverCodexModels();
     case 'copilot': return discoverCopilotModels(env);
     // TypeSafe publishes no model catalog endpoint; the aliases are fixed.

@@ -11,10 +11,19 @@ export const changelogEntries: ChangelogEntry[] = [
   {
     version: '3.5.0',
     date: 'Unreleased',
-    title: 'TypeSafe Jev provider',
-    summary: 'Closed-list filing with a decision model: only existing tags, correspondents and document types, with a probability on every field.',
+    title: 'Sign in with ChatGPT and the TypeSafe Jev provider',
+    summary: 'Use your ChatGPT Plus or Pro plan instead of an API key, and file with a decision model that only picks from your existing vocabulary.',
     status: 'unreleased',
     groups: [
+      {
+        title: 'Sign in with ChatGPT',
+        items: [
+          'New provider ChatGPT plan: choose Continue with ChatGPT and an eligible Plus or Pro plan pays for filing, the Companion and TypeSafe titles, with no API key.',
+          'Tagvico usually runs on another machine, so ChatGPT ends on a 127.0.0.1 page that does not load; paste its address into Tagvico to finish. Only this instance can redeem the one-time code.',
+          'Usage counts toward your plan. Manage usage opens ChatGPT Settings, where you can limit or disconnect Tagvico; Sign out revokes the session at OpenAI.',
+          'The Codex-based provider is now called ChatGPT via Codex (legacy) and stays in maintenance mode.'
+        ]
+      },
       {
         title: 'Providers',
         items: [

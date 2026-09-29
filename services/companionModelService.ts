@@ -15,6 +15,7 @@ type ProviderDefinition = ReturnType<typeof providerRegistry.getProviderDefiniti
 const SUPPORTED_ADAPTERS = new Set([
   'ai-sdk-openai',
   'ai-sdk-compatible',
+  'chatgpt-plan',
   'codex-runtime',
   'copilot-sdk',
   'native-ollama'
@@ -47,7 +48,7 @@ export function supportsCompanionModel(
 }
 
 export function hasCompanionConfiguration(definition: ProviderDefinition, env: Environment) {
-  if (definition.id === 'codex' || definition.id === 'copilot' || definition.id === 'ollama') {
+  if (['chatgpt', 'codex', 'copilot', 'ollama'].includes(definition.id)) {
     return true;
   }
   if (definition.id === 'compatible') {
