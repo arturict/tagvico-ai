@@ -1,5 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import './styles/shell.css';
+import './styles/chat.css';
+import './styles/inbox.css';
+import './styles/settings.css';
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { GeistSans } from 'geist/font/sans';
