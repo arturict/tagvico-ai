@@ -194,6 +194,67 @@ test('an expiring access token is refreshed once and the rotated refresh token i
   assert.equal(await auth.accessToken(), 'access-2');
 });
 
+test('a renewed identity that fails verification is never used', async () => {
+  const file = path.join(resolveDataDirectory(), 'chatgpt', 'auth.json');
+  const stored = JSON.parse(fs.readFileSync(file, 'utf8'));
+  fs.writeFileSync(file, JSON.stringify({ ...stored, expiresAt: Date.now() + 1000 }), { mode: 0o600 });
+  const forged = idToken({}).split('.');
+  forged[2] = forged[2].split('').reverse().join('');
+  tokenResponses.push({ access_token: 'access-unverified', refresh_token: 'refresh-unverified', id_token: forged.join('.'), token_type: 'Bearer', expires_in: 3600 });
+  await assert.rejects(auth.accessToken(), /could not be verified/);
+  await assert.rejects(auth.accessToken(), /Sign in with ChatGPT/);
+  assert.equal(auth.status().authenticated, false);
+  fs.writeFileSync(file, JSON.stringify(stored), { mode: 0o600 });
+});
+
+test('a refresh that was in flight cannot undo a sign-out', async () => {
+  const file = path.join(resolveDataDirectory(), 'chatgpt', 'auth.json');
+  const stored = JSON.parse(fs.readFileSync(file, 'utf8'));
+  fs.writeFileSync(file, JSON.stringify({ ...stored, expiresAt: Date.now() + 1000 }), { mode: 0o600 });
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const previousFetch = global.fetch;
+  global.fetch = async (input, init) => {
+    if (String(input).endsWith('/oauth/token')) {
+      await gate;
+      return Response.json({ access_token: 'access-late', refresh_token: 'refresh-late', token_type: 'Bearer', expires_in: 3600 });
+    }
+    return previousFetch(input, init);
+  };
+  try {
+    const refreshing = auth.accessToken();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const signingOut = auth.logout();
+    release();
+    assert.equal(await refreshing, 'access-late');
+    await signingOut;
+    const revoke = calls.findLast((call) => call.url.endsWith('/oauth/revoke'));
+    assert.equal(revoke.body.token, 'refresh-late');
+    assert.equal(auth.status().authenticated, false);
+    await assert.rejects(auth.accessToken(), /Sign in with ChatGPT/);
+  } finally {
+    global.fetch = previousFetch;
+    fs.writeFileSync(file, JSON.stringify(stored), { mode: 0o600 });
+  }
+});
+
+test('a declined plan permission is requested again with explicit consent', () => {
+  const file = path.join(resolveDataDirectory(), 'chatgpt', 'auth.json');
+  const stored = JSON.parse(fs.readFileSync(file, 'utf8'));
+  fs.writeFileSync(file, JSON.stringify({ ...stored, scopes: ['openid', 'email', 'profile', 'offline_access'] }), { mode: 0o600 });
+  const login = auth.startLogin();
+  assert.equal(new URL(login.authorizeUrl).searchParams.get('prompt'), 'consent');
+  auth.cancelLogin(login.loginId);
+  fs.writeFileSync(file, JSON.stringify(stored), { mode: 0o600 });
+});
+
+test('stream events survive a CRLF split across network chunks', async () => {
+  const encoder = new TextEncoder();
+  const parts = ['data: {"type":"response.output_text.delta",\r', '\ndata: "delta":"ok"}\r\n\r\n', 'data: {"type":"response.completed","response":{}}\r\n\r\n'];
+  const body = new ReadableStream({ start(controller) { for (const part of parts) controller.enqueue(encoder.encode(part)); controller.close(); } });
+  assert.equal((await planModule.readResponseStream(body)).text, 'ok');
+});
+
 test('signing out revokes the refresh token and keeps the registration for later', async () => {
   const result = await auth.logout();
   assert.deepEqual(result, { success: true, revoked: true });

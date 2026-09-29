@@ -27,7 +27,7 @@ const DYNAMIC_CLIENT = 'dynamic_agent_client';
 const AGENT_NAME = 'Tagvico';
 const LOGIN_TTL_MS = 10 * 60 * 1000;
 const REFRESH_MARGIN_MS = 5 * 60 * 1000;
-const LOCK_STALE_MS = 30_000;
+const LOCK_STALE_MS = 60_000;
 const CLOCK_TOLERANCE_S = 5;
 
 export class ChatGPTPlanError extends Error {
@@ -36,6 +36,13 @@ export class ChatGPTPlanError extends Error {
     this.name = 'ChatGPTPlanError';
   }
 }
+
+type TokenSet = {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  scopes: string[];
+};
 
 type StoredConnection = {
   version: 1;
@@ -48,6 +55,9 @@ type StoredConnection = {
   refreshToken: string | null;
   expiresAt: number;
   scopes: string[];
+  // A refresh whose new ID token is not verified yet. The old refresh token is
+  // already spent, so the rotation is kept, but not used, until it verifies.
+  pending: (TokenSet & { idToken: string }) | null;
   savedAt: string;
 };
 
@@ -120,36 +130,63 @@ function readConnection(): StoredConnection | null {
     refreshToken: typeof value.refreshToken === 'string' ? value.refreshToken : null,
     expiresAt: Number(value.expiresAt) || 0,
     scopes: Array.isArray(value.scopes) ? value.scopes.map(String) : [],
+    pending: value.pending && typeof value.pending.refreshToken === 'string' && typeof value.pending.idToken === 'string'
+      ? value.pending
+      : null,
     savedAt: String(value.savedAt || '')
   };
 }
+
+const signedOut = (connection: StoredConnection): StoredConnection => ({
+  ...connection, idToken: null, accessToken: null, refreshToken: null, expiresAt: 0, scopes: [], pending: null,
+  savedAt: new Date().toISOString()
+});
 
 function saveConnection(connection: StoredConnection) {
   writePrivateFile(connectionFile(), `${JSON.stringify(connection, null, 2)}\n`);
 }
 
-// The backend and the Next.js process both read this connection, and OpenAI
-// rotates the refresh token on every refresh. A lock file keeps two processes
-// from spending the same refresh token.
-async function withRefreshLock<T>(work: () => Promise<T>): Promise<T> {
+// The backend and the Next.js process both use this connection, and OpenAI
+// rotates the refresh token on every refresh. Every change to stored tokens
+// runs under this lock so that no two processes spend the same refresh token
+// and a sign-out cannot be undone by a refresh that was already in flight.
+async function withConnectionLock<T>(work: () => Promise<T>): Promise<T> {
   const lock = path.join(storageDirectory(), 'refresh.lock');
+  const owner = `${process.pid}:${crypto.randomUUID()}`;
   fs.mkdirSync(storageDirectory(), { recursive: true, mode: 0o700 });
   const deadline = Date.now() + LOCK_STALE_MS;
   for (;;) {
     try {
-      fs.writeFileSync(lock, String(process.pid), { flag: 'wx', mode: 0o600 });
+      fs.writeFileSync(lock, owner, { flag: 'wx', mode: 0o600 });
       break;
     } catch {
-      const age = Date.now() - (fs.statSync(lock, { throwIfNoEntry: false })?.mtimeMs ?? Date.now());
-      if (age > LOCK_STALE_MS) fs.rmSync(lock, { force: true });
-      else if (Date.now() > deadline) throw new ChatGPTPlanError('refresh_busy', 'Another Tagvico process is renewing the ChatGPT connection. Try again.');
-      else await new Promise((resolve) => setTimeout(resolve, 150));
+      const stat = fs.statSync(lock, { throwIfNoEntry: false });
+      if (stat && Date.now() - stat.mtimeMs > LOCK_STALE_MS) {
+        // Take a stale lock over by renaming it: only one process can move a
+        // given file. If what moved was not the stale lock (another process
+        // replaced it in between), put it back.
+        let staleOwner: string;
+        try { staleOwner = fs.readFileSync(lock, 'utf8').trim(); } catch { continue; }
+        const moved = `${lock}.${crypto.randomUUID()}.stale`;
+        try {
+          fs.renameSync(lock, moved);
+          if (fs.readFileSync(moved, 'utf8').trim() !== staleOwner) {
+            try { fs.linkSync(moved, lock); } catch { /* a newer lock exists; it wins */ }
+          }
+          fs.rmSync(moved, { force: true });
+        } catch { /* another process moved it first */ }
+        continue;
+      }
+      if (Date.now() > deadline) throw new ChatGPTPlanError('refresh_busy', 'Another Tagvico process is renewing the ChatGPT connection. Try again.');
+      await new Promise((resolve) => setTimeout(resolve, 150));
     }
   }
   try {
     return await work();
   } finally {
-    fs.rmSync(lock, { force: true });
+    try {
+      if (fs.readFileSync(lock, 'utf8') === owner) fs.rmSync(lock, { force: true });
+    } catch { /* already gone */ }
   }
 }
 
@@ -241,12 +278,13 @@ function tokenFields(data: Record<string, unknown>, fallbackScopes: string[] = [
     || String(data.token_type || '').toLowerCase() !== 'bearer'
     || typeof data.expires_in !== 'number' || data.expires_in <= 0
   ) throw new ChatGPTPlanError('invalid_token_response', 'ChatGPT returned incomplete credentials. Sign in again.');
-  return {
+  const tokens: TokenSet = {
     accessToken: data.access_token,
     refreshToken: data.refresh_token,
     expiresAt: Date.now() + data.expires_in * 1000,
     scopes
   };
+  return tokens;
 }
 
 /**
@@ -319,6 +357,8 @@ class ChatGPTPlanAuthService {
     // token hint is left out so that no token ever appears in a browser URL.
     if (!login.clientId) params.agent_name_hint = AGENT_NAME;
     else if (saved?.email) params.login_hint = saved.email;
+    // After an earlier decline, ask for plan-usage consent again explicitly.
+    if (saved?.subject && !saved.scopes.includes(PLAN_SCOPE) && !saved.pending) params.prompt = 'consent';
     // Percent-encode each value as OpenAI documents (spaces as %20, not '+').
     const query = Object.entries(params).map(([key, value]) => `${key}=${encodeURIComponent(value)}`).join('&');
     this.pending.set(login.loginId, login);
@@ -336,15 +376,17 @@ class ChatGPTPlanAuthService {
     if (!login) throw new ChatGPTPlanError('login_expired', 'This sign-in expired. Start a new one.');
     const { code, clientId } = parseCallback(callback, login.state, login.clientId);
     this.pending.delete(loginId);
-    const previous = readConnection();
     // Keep an issued registration even if the code exchange fails, so a retry
     // does not register a second Tagvico client on the same account.
-    if (!previous || previous.clientId !== clientId) {
-      saveConnection({
-        version: 1, clientId, subject: '', email: null, name: null, idToken: null,
-        accessToken: null, refreshToken: null, expiresAt: 0, scopes: [], savedAt: new Date().toISOString()
-      });
-    }
+    await withConnectionLock(async () => {
+      const previous = readConnection();
+      if (!previous || previous.clientId !== clientId) {
+        saveConnection({
+          version: 1, clientId, subject: '', email: null, name: null, idToken: null,
+          accessToken: null, refreshToken: null, expiresAt: 0, scopes: [], pending: null, savedAt: new Date().toISOString()
+        });
+      }
+    });
     const data = await tokenRequest(new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: clientId,
@@ -354,81 +396,107 @@ class ChatGPTPlanAuthService {
       resource: RESOURCE
     }));
     if (typeof data.id_token !== 'string') throw new ChatGPTPlanError('invalid_id_token', 'ChatGPT did not return a verifiable identity. Sign in again.');
-    const identity = await verifyIdToken(data.id_token, clientId, login.nonce);
+    const idToken = data.id_token;
+    const identity = await verifyIdToken(idToken, clientId, login.nonce);
     const fields = tokenFields(data);
-    saveConnection({
+    await withConnectionLock(async () => saveConnection({
       version: 1,
       clientId,
       ...identity,
-      idToken: data.id_token,
+      idToken,
       ...fields,
+      pending: null,
       savedAt: new Date().toISOString()
-    });
+    }));
     return this.status();
   }
 
   status(): ChatGPTPlanStatus {
     const connection = readConnection();
-    const authenticated = Boolean(connection?.refreshToken && connection.subject);
+    const authenticated = Boolean((connection?.refreshToken || connection?.pending) && connection?.subject);
     return {
       authenticated,
-      planUsage: authenticated && Boolean(connection?.scopes.includes(PLAN_SCOPE)),
+      planUsage: authenticated && Boolean(connection?.scopes.includes(PLAN_SCOPE) || connection?.pending?.scopes.includes(PLAN_SCOPE)),
       account: authenticated && connection ? { email: connection.email, name: connection.name } : null,
       expiresAt: authenticated && connection ? new Date(connection.expiresAt).toISOString() : null
     };
   }
 
-  private async refresh(connection: StoredConnection): Promise<StoredConnection> {
-    return withRefreshLock(async () => {
-      // Another process may have refreshed while this one waited for the lock.
+  // Verifies a rotation's ID token and only then makes its tokens usable.
+  // Unreachable signing keys keep the rotation for the next attempt; any other
+  // failure ends the session.
+  private async promote(current: StoredConnection, rotation: TokenSet & { idToken: string }): Promise<StoredConnection> {
+    let identity: Awaited<ReturnType<typeof verifyIdToken>>;
+    try {
+      identity = await verifyIdToken(rotation.idToken, current.clientId, undefined);
+    } catch (error) {
+      if (error instanceof ChatGPTPlanError && error.code === 'identity_verification_unavailable') throw error;
+      saveConnection(signedOut(current));
+      throw new ChatGPTPlanError('reauthorize', 'The renewed ChatGPT identity could not be verified. Sign in with ChatGPT again in Settings.');
+    }
+    if (identity.subject !== current.subject) {
+      saveConnection(signedOut(current));
+      throw new ChatGPTPlanError('account_mismatch', 'The renewed ChatGPT identity does not match. Sign in again.');
+    }
+    const { idToken, ...tokens } = rotation;
+    const next: StoredConnection = { ...current, ...identity, ...tokens, idToken, pending: null, savedAt: new Date().toISOString() };
+    saveConnection(next);
+    return next;
+  }
+
+  private async refresh(spentAccessToken: string | null): Promise<StoredConnection> {
+    return withConnectionLock(async () => {
+      // Another process may have refreshed, or signed out, while this one
+      // waited for the lock.
       const current = readConnection();
-      if (!current?.refreshToken || current.clientId !== connection.clientId) {
+      if (!current?.subject || (!current.refreshToken && !current.pending)) {
         throw new ChatGPTPlanError('not_signed_in', 'Sign in with ChatGPT in Settings first.');
       }
-      if (current.accessToken && current.expiresAt - REFRESH_MARGIN_MS > Date.now() && current.accessToken !== connection.accessToken) {
+      if (current.pending) return this.promote(current, current.pending);
+      if (current.accessToken && current.accessToken !== spentAccessToken && current.expiresAt - REFRESH_MARGIN_MS > Date.now()) {
         return current;
       }
+      const refreshToken = current.refreshToken as string;
       let data: Record<string, unknown>;
       try {
         data = await tokenRequest(new URLSearchParams({
           grant_type: 'refresh_token',
           client_id: current.clientId,
-          refresh_token: current.refreshToken,
+          refresh_token: refreshToken,
           resource: RESOURCE
         }));
       } catch (error) {
         if (error instanceof ChatGPTPlanError && /invalid_grant|refresh_token|token_expired/.test(error.code)) {
-          saveConnection({ ...current, accessToken: null, refreshToken: null, expiresAt: 0 });
+          saveConnection(signedOut(current));
           throw new ChatGPTPlanError('reauthorize', 'The ChatGPT connection expired or was disconnected. Sign in with ChatGPT again in Settings.');
         }
         throw error;
       }
-      // Persist the rotated refresh token before anything else can fail: the
-      // old one is already spent.
-      const next: StoredConnection = { ...current, ...tokenFields(data, current.scopes), savedAt: new Date().toISOString() };
-      saveConnection(next);
-      if (typeof data.id_token === 'string') {
-        const identity = await verifyIdToken(data.id_token, current.clientId, undefined);
-        if (identity.subject !== current.subject) {
-          saveConnection({ ...next, accessToken: null, refreshToken: null, expiresAt: 0 });
-          throw new ChatGPTPlanError('account_mismatch', 'The renewed ChatGPT identity does not match. Sign in again.');
-        }
-        next.idToken = data.id_token;
+      const tokens = tokenFields(data, current.scopes);
+      if (typeof data.id_token !== 'string') {
+        const next: StoredConnection = { ...current, ...tokens, savedAt: new Date().toISOString() };
         saveConnection(next);
+        return next;
       }
-      return next;
+      // Persist the rotation before verifying it: the old refresh token is spent.
+      const rotation = { ...tokens, idToken: data.id_token };
+      const withPending: StoredConnection = { ...current, accessToken: null, pending: rotation, savedAt: new Date().toISOString() };
+      saveConnection(withPending);
+      return this.promote(withPending, rotation);
     });
   }
 
   /** A valid access token for plan-backed requests, refreshed when due. */
   async accessToken(options: { forceRefresh?: boolean } = {}): Promise<string> {
     let connection = readConnection();
-    if (!connection?.refreshToken) throw new ChatGPTPlanError('not_signed_in', 'Sign in with ChatGPT in Settings first.');
-    if (!connection.scopes.includes(PLAN_SCOPE)) {
+    if (!connection?.subject || (!connection.refreshToken && !connection.pending)) {
+      throw new ChatGPTPlanError('not_signed_in', 'Sign in with ChatGPT in Settings first.');
+    }
+    if (!connection.scopes.includes(PLAN_SCOPE) && !connection.pending?.scopes.includes(PLAN_SCOPE)) {
       throw new ChatGPTPlanError('plan_usage_disabled', 'ChatGPT plan usage is not allowed for Tagvico. Sign in again and allow it, or choose another provider.');
     }
-    if (options.forceRefresh || !connection.accessToken || connection.expiresAt - REFRESH_MARGIN_MS <= Date.now()) {
-      connection = await this.refresh(connection);
+    if (options.forceRefresh || connection.pending || !connection.accessToken || connection.expiresAt - REFRESH_MARGIN_MS <= Date.now()) {
+      connection = await this.refresh(connection.accessToken);
     }
     if (!connection.accessToken) throw new ChatGPTPlanError('not_signed_in', 'Sign in with ChatGPT in Settings first.');
     return connection.accessToken;
@@ -436,25 +504,26 @@ class ChatGPTPlanAuthService {
 
   /** Revokes the renewable session and clears local tokens. */
   async logout() {
-    const connection = readConnection();
-    if (!connection) return { success: true, revoked: true };
-    let revoked = !connection.refreshToken;
-    if (connection.refreshToken) {
-      for (let attempt = 0; attempt < 2 && !revoked; attempt += 1) {
+    return withConnectionLock(async () => {
+      const connection = readConnection();
+      if (!connection) return { success: true, revoked: true };
+      const token = connection.pending?.refreshToken || connection.refreshToken;
+      let revoked = !token;
+      for (let attempt = 0; attempt < 2 && token && !revoked; attempt += 1) {
         const response = await fetch(REVOCATION_ENDPOINT, {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({ token: connection.refreshToken, token_type_hint: 'refresh_token', client_id: connection.clientId }),
+          body: new URLSearchParams({ token, token_type_hint: 'refresh_token', client_id: connection.clientId }),
           signal: AbortSignal.timeout(10_000)
         }).catch(() => null);
         await response?.body?.cancel().catch(() => {});
         revoked = response?.status === 200;
         if (response && response.status < 500) break;
       }
-    }
-    // Keep the issued client ID so a later sign-in reuses this registration.
-    saveConnection({ ...connection, idToken: null, accessToken: null, refreshToken: null, expiresAt: 0, scopes: [] });
-    return { success: true, revoked };
+      // Keep the issued client ID so a later sign-in reuses this registration.
+      saveConnection(signedOut(connection));
+      return { success: true, revoked };
+    });
   }
 }
 
