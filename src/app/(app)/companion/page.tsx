@@ -51,10 +51,14 @@ export default async function CompanionPage({
         ]
       };
     });
+  const member = (actionCenter.listMembers(workspace.householdId) as Array<{ id: string; display_name?: string }>)
+    .find((candidate) => candidate.id === workspace.memberId);
+  const displayName = String(member?.display_name || user.username).trim() || user.username;
   const approvals = actionCenter.listApprovals(workspace.householdId) as Array<Record<string, unknown>>;
   const sessions = actionCenter.listSessions(workspace.householdId, workspace.memberId, 'web') as Array<Record<string, unknown>>;
-  return <div className="page companion-page"><Companion
+  return <div className="page chat-page"><Companion
     sessionId={sessionId}
+    displayName={displayName}
     initialMessages={initialMessages}
     initialApprovals={JSON.parse(JSON.stringify(approvals))}
     initialSessions={JSON.parse(JSON.stringify(sessions))}

@@ -119,8 +119,9 @@ export function CompanionModelPicker({ sessionId }: { sessionId: string }) {
           type="button"
           disabled={loading || saving || !catalog.providers.length}
           aria-label="Choose Companion model"
+          title={selectedProvider ? `${selectedProvider.name} · ${selectedModel?.name || selection?.modelId || ''}` : undefined}
         >
-          <ProviderIcon icon={selectedProvider?.icon || null} name={selectedProvider?.name || 'AI provider'} />
+          <ProviderIcon icon={selectedProvider?.icon || null} name={selectedProvider?.name || 'AI provider'} size={16} />
           <span>
             <small>{selectedProvider?.name || (loading ? 'Loading models' : 'No verified provider')}</small>
             <strong>{selectedModel?.name || selection?.modelId || 'Configure a model'}</strong>

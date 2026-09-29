@@ -13,7 +13,7 @@ export default async function ActionsPage() {
   const stats = actionCenter.dashboard(workspace.householdId) as Record<string, number | null>;
   const members = actionCenter.listMembers(workspace.householdId) as Array<Record<string, unknown>>;
   return <div className="page">
-    <header className="page-head"><div><p className="eyebrow">Household overview</p><h1>Action center</h1><p className="lede">Every letter becomes a decision, a deadline, or a completed task—not another forgotten PDF.</p></div></header>
+    <header className="page-head"><div><p className="eyebrow">Household overview</p><h1>Action center</h1><p className="lede">Every letter becomes a decision, a deadline, or a completed task—not another forgotten PDF.</p></div><Link className="button" href="/inbox">Needs you</Link></header>
     <section className="stats" aria-label="Action statistics">
       <div className="stat"><strong>{stats.active || 0}</strong><span>Active</span></div>
       <div className="stat"><strong>{stats.suggestions || 0}</strong><span>AI suggestions</span></div>

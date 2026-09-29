@@ -82,7 +82,12 @@ export function ChatGPTPlanSignIn({
       <InlineStatus kind={authenticated ? 'success' : 'neutral'}>
         {authenticated ? `Using ChatGPT plan${accountLabel ? ` · ${accountLabel}` : ''}` : 'Not connected'}
       </InlineStatus>
-      {!pending ? <button className="settings-button" type="button" disabled={busy} onClick={() => void start()}>
+      {!pending ? <button
+        className={`settings-button${authenticated ? '' : ' is-primary'}`}
+        type="button"
+        disabled={busy}
+        onClick={() => void start()}
+      >
         {authenticated ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'}
       </button> : null}
       {authenticated ? <a className="settings-button" href={USAGE_URL} target="_blank" rel="noreferrer">Manage usage</a> : null}

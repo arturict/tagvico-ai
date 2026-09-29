@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, FileStack, KeyRound, Sparkles } from 'lucide-react';
 import { ChatGPTPlanSignIn } from './chatgpt-plan-sign-in';
 import { InlineStatus } from './inline-status';
 import { PaperlessDiscovery } from './paperless-discovery';
+import { ProviderPicker } from './provider-picker';
 import { SettingsRow, SettingsSection } from './settings-section';
 import type { ProviderDescriptor } from './types';
 
@@ -34,6 +35,15 @@ type SetupModel = {
 };
 
 const DRAFT_KEY = 'tagvicoSetupDraftV3';
+
+/**
+ * The model to preselect after a runtime check: GPT-6 Luna wherever the
+ * catalog lists it, else the runtime's own default for the ChatGPT plan.
+ */
+function preferredModel(models: SetupModel[], providerId: string) {
+  return models.find((model) => /(^|\/)gpt-6-luna$/i.test(model.id))
+    || (providerId === 'chatgpt' ? models.find((model) => model.isDefault) : undefined);
+}
 
 function providerDefaults(provider: ProviderDescriptor | undefined) {
   return Object.fromEntries((provider?.fields || []).flatMap((field) => (
@@ -70,7 +80,6 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
   const codexPollTimer = useRef<number | null>(null);
   const providerProbeId = useRef(0);
   const provider = providers.find((candidate) => candidate.instanceId === state.providerId);
-  const visibleProviders = useMemo(() => providers.filter((candidate) => candidate.available), [providers]);
 
   useEffect(() => {
     try {
@@ -201,7 +210,7 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
     }
   };
 
-  const checkProvider = async () => {
+  const checkProvider = async (modelOverride?: string) => {
     if (!provider) {
       setStatus({ kind: 'error', message: 'Choose an available AI runtime.' });
       return;
@@ -211,11 +220,12 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
       setStatus({ kind: 'error', message: `Enter ${missing.label.toLowerCase()} before checking the runtime.` });
       return;
     }
+    const requestedModelId = (modelOverride ?? state.modelId).trim();
     const probeId = ++providerProbeId.current;
     setVerifiedModelId('');
     setStatus({
       kind: 'loading',
-      message: state.modelId.trim()
+      message: requestedModelId
         ? 'Checking the runtime and verifying the selected chat model…'
         : 'Checking the runtime and loading its model catalog…'
     });
@@ -226,7 +236,7 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
         body: JSON.stringify({
           instanceId: state.providerId,
           values: state.providerValues,
-          ...(state.modelId.trim() ? { modelId: state.modelId.trim() } : {})
+          ...(requestedModelId ? { modelId: requestedModelId } : {})
         })
       });
       const body = await response.json().catch(() => ({}));
@@ -246,6 +256,18 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
             ? 'Runtime and selected model verified with a safe test tool call. You can continue.'
             : 'Runtime account and selected model verified in its live catalog. You can continue.'
         });
+      } else if (!requestedModelId && preferredModel(discovered, state.providerId)) {
+        const preselected = preferredModel(discovered, state.providerId) as SetupModel;
+        setState((current) => ({ ...current, modelId: preselected.id }));
+        if (state.providerId === 'chatgpt') {
+          // One-click ChatGPT: verify the preselected model right away.
+          await checkProvider(preselected.id);
+        } else {
+          setStatus({
+            kind: 'neutral',
+            message: `Runtime connected. ${preselected.name} is preselected; check the runtime to verify it.`
+          });
+        }
       } else {
         setStatus({
           kind: 'neutral',
@@ -473,21 +495,41 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
     </SettingsSection> : null}
 
     {step === 1 ? <SettingsSection
-      title="2. Choose an AI runtime"
-      description="Tagvico loads the live catalog when available, accepts an exact model ID when needed, and verifies the selected chat model."
+      title="2. Choose how Tagvico thinks"
+      description="Pick the quickest option now. Tagvico verifies the selected chat model before continuing, and you can change it any time under Settings."
     >
-      <SettingsRow title="Provider" description={provider?.description}>
-        <select
-          className="settings-select"
-          value={state.providerId}
-          disabled={status?.kind === 'loading'}
-          onChange={(event) => changeProvider(event.target.value)}
-        >
-          {visibleProviders.map((candidate) => <option key={candidate.instanceId} value={candidate.instanceId}>
-            {candidate.name}{candidate.badge ? ` (${candidate.badge.toLowerCase()})` : candidate.recommended ? ' (recommended)' : ''}
-          </option>)}
-        </select>
-      </SettingsRow>
+      <div className="provider-panel">
+        <ProviderPicker
+          providers={providers}
+          selectedId={state.providerId}
+          onSelect={(providerId) => {
+            if (status?.kind !== 'loading') changeProvider(providerId);
+          }}
+          heroAction={provider?.instanceId === 'chatgpt'
+            ? <ChatGPTPlanSignIn
+              apiBase="/api/setup/v3/chatgpt"
+              authenticated={chatgptConnected}
+              onConnected={() => {
+                providerProbeId.current += 1;
+                setChatgptConnected(true);
+                setModels([]);
+                setVerifiedModelId('');
+                setState((current) => ({ ...current, modelId: '' }));
+                setStatus({ kind: 'success', message: 'ChatGPT is connected. Loading the models your plan offers…' });
+                void checkProvider('');
+              }}
+              onError={(message) => setStatus({ kind: 'error', message })}
+            />
+            : <button
+              className="settings-button is-primary"
+              type="button"
+              disabled={status?.kind === 'loading'}
+              onClick={() => changeProvider('chatgpt')}
+            >
+              Use ChatGPT plan
+            </button>}
+        />
+      </div>
       {provider?.fields.length ? <SettingsRow
         title="Connection"
         description="Built-in endpoint defaults are prefilled. Secrets are stored only in Tagvico data."
@@ -509,25 +551,6 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
             {field.description ? <span className="settings-field-help">{field.description}</span> : null}
           </label>)}
         </div>
-      </SettingsRow> : null}
-      {provider?.instanceId === 'chatgpt' ? <SettingsRow
-        title="ChatGPT account"
-        description="Sign in with ChatGPT so an eligible Plus or Pro plan pays for filing and the Companion. No API key is needed."
-        stack
-      >
-        <ChatGPTPlanSignIn
-          apiBase="/api/setup/v3/chatgpt"
-          authenticated={chatgptConnected}
-          onConnected={() => {
-            providerProbeId.current += 1;
-            setChatgptConnected(true);
-            setModels([]);
-            setVerifiedModelId('');
-            setState((current) => ({ ...current, modelId: '' }));
-            setStatus({ kind: 'success', message: 'ChatGPT is connected. Check the runtime to load the models your plan offers.' });
-          }}
-          onError={(message) => setStatus({ kind: 'error', message })}
-        />
       </SettingsRow> : null}
       {provider?.instanceId === 'codex' ? <SettingsRow
         title="ChatGPT account"
@@ -571,7 +594,7 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
             >
               <option value="">Choose a model</option>
               {models.map((model) => <option key={model.id} value={model.id}>
-                {model.name}{model.isDefault ? ' (runtime default)' : ''}
+                {model.name}{/(^|\/)gpt-6-luna$/i.test(model.id) ? ' (recommended)' : model.isDefault ? ' (runtime default)' : ''}
               </option>)}
             </select>
           </label> : null}

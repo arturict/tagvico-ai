@@ -1,12 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Bot,
-  Bug,
   FileStack,
-  LockKeyhole,
   SlidersHorizontal,
   Tags,
   UsersRound
@@ -20,10 +18,11 @@ import { InlineStatus } from './inline-status';
 import { MfaSettings } from './mfa-settings';
 import { ModelPicker } from './model-picker';
 import { PaperlessDiscovery } from './paperless-discovery';
+import { ProviderPicker } from './provider-picker';
+import { settingsSectionTitles } from './sections';
 import { SettingSwitch } from './setting-switch';
 import { SettingsRow, SettingsSection } from './settings-section';
 import { TagGroupCard } from './tag-group-card';
-import { ProviderIcon } from '@/components/provider-icon';
 import type {
   ModelDescriptor,
   SettingsResponse,
@@ -32,52 +31,26 @@ import type {
 } from './types';
 
 const sections = [
-  { id: 'paperless', label: 'Paperless', Icon: FileStack },
-  { id: 'providers', label: 'AI models', Icon: Bot },
-  { id: 'automation', label: 'Automation', Icon: SlidersHorizontal },
-  { id: 'tags', label: 'Tag library', Icon: Tags },
-  { id: 'general', label: 'Household', Icon: UsersRound },
-  { id: 'security', label: 'Security & privacy', Icon: LockKeyhole },
-  { id: 'diagnostics', label: 'Diagnostics', Icon: Bug }
+  { id: 'paperless', Icon: FileStack },
+  { id: 'providers', Icon: Bot },
+  { id: 'automation', Icon: SlidersHorizontal },
+  { id: 'tags', Icon: Tags },
+  { id: 'people', Icon: UsersRound }
 ] as const;
 
-const headings: Record<SettingsSectionId, { eyebrow: string; title: string; description: string }> = {
-  general: {
-    eyebrow: 'People and preferences',
-    title: 'Household',
-    description: 'Profiles, Paperless access and local interface preferences.'
-  },
-  paperless: {
-    eyebrow: 'Connection',
-    title: 'Paperless-ngx',
-    description: 'The source of documents, permissions and filing vocabulary.'
-  },
-  providers: {
-    eyebrow: 'Intelligence',
-    title: 'AI models',
-    description: 'Runtime-discovered models, per-model capabilities and one consistent inference contract.'
-  },
-  automation: {
-    eyebrow: 'Workflow',
-    title: 'Automation',
-    description: 'Control when Tagvico processes documents and which execution mode it uses.'
-  },
-  tags: {
-    eyebrow: 'Vocabulary',
-    title: 'Tag library',
-    description: 'Control the vocabulary, clean up duplicates and define safe metadata boundaries.'
-  },
-  security: {
-    eyebrow: 'Boundaries',
-    title: 'Security & privacy',
-    description: 'External access remains opt-in and secrets remain write-only.'
-  },
-  diagnostics: {
-    eyebrow: 'Runtime',
-    title: 'Diagnostics',
-    description: 'A redacted view of this installation and its capability registry.'
-  }
+const descriptions: Record<SettingsSectionId, string> = {
+  paperless: 'The source of documents, permissions and filing vocabulary.',
+  providers: 'Sign in with ChatGPT or connect another provider, then choose the model.',
+  automation: 'Control when Tagvico processes documents and which execution mode it uses.',
+  tags: 'Control the vocabulary, clean up duplicates and define safe metadata boundaries.',
+  people: 'Household profiles, Paperless access, sign-in protection and outbound access.'
 };
+
+/** The recommended default for filing; shown as such wherever a provider offers it. */
+const isRecommendedModel = (modelId: string) => /(^|\/)gpt-6-luna$/i.test(modelId);
+
+type ProviderAuth = { loading: boolean; authenticated: boolean; label: string };
+const idleAuth: ProviderAuth = { loading: false, authenticated: false, label: '' };
 
 type HouseholdProps = {
   currentMemberId: string;
@@ -113,11 +86,8 @@ export function SettingsWorkspace({
   const [codexLoginOutput, setCodexLoginOutput] = useState('');
   const [copilotLogin, setCopilotLogin] = useState('');
   const [copilotChallenge, setCopilotChallenge] = useState<{ verificationUrl?: string; userCode?: string }>({});
-  const [providerAuth, setProviderAuth] = useState<{ loading: boolean; authenticated: boolean; label: string }>({
-    loading: false,
-    authenticated: false,
-    label: ''
-  });
+  const [authByProvider, setAuthByProvider] = useState<Record<string, ProviderAuth>>({});
+  const [manualModelOpen, setManualModelOpen] = useState(false);
   const [newTagGroupName, setNewTagGroupName] = useState('');
 
   useEffect(() => () => {
@@ -173,6 +143,10 @@ export function SettingsWorkspace({
   ) || activeProvider;
   const activeModels = modelsByProvider[settings.ai.activeProviderInstanceId] || [];
   const activeModel = activeModels.find((model) => model.id === settings.ai.activeModelId);
+  const recommendedModel = activeModels.find((model) => isRecommendedModel(model.id));
+  const providerAuth = authByProvider[configuredProviderId] || idleAuth;
+  const chatgptAuth = authByProvider.chatgpt || idleAuth;
+  const chatgptProvider = settings.ai.providers.find((provider) => provider.instanceId === 'chatgpt');
 
   const loadModels = async (instanceId = settingsRef.current.ai.activeProviderInstanceId) => {
     setModelsLoading(true);
@@ -296,17 +270,23 @@ export function SettingsWorkspace({
   };
 
   const loadProviderAuth = async (providerId = settingsRef.current.ai.activeProviderInstanceId) => {
+    const setAuth = (next: ProviderAuth | ((current: ProviderAuth) => ProviderAuth)) => {
+      setAuthByProvider((current) => ({
+        ...current,
+        [providerId]: typeof next === 'function' ? next(current[providerId] || idleAuth) : next
+      }));
+    };
     if (!['chatgpt', 'codex', 'copilot'].includes(providerId)) {
-      setProviderAuth({ loading: false, authenticated: false, label: '' });
+      setAuth(idleAuth);
       return;
     }
-    setProviderAuth((current) => ({ ...current, loading: true }));
+    setAuth((current) => ({ ...current, loading: true }));
     try {
       const response = await fetch(`/api/${providerId}/status`, { cache: 'no-store' });
       const body = await response.json().catch(() => ({}));
       const authenticated = providerId === 'chatgpt' ? body.planUsage === true : body.authenticated === true;
       const plan = providerId === 'codex' && body.account?.planType ? ` · ${body.account.planType}` : '';
-      setProviderAuth({
+      setAuth({
         loading: false,
         authenticated,
         label: providerId === 'chatgpt'
@@ -314,7 +294,7 @@ export function SettingsWorkspace({
           : authenticated ? `Connected${plan}` : 'Not connected'
       });
     } catch {
-      setProviderAuth({ loading: false, authenticated: false, label: 'Status unavailable' });
+      setAuth({ loading: false, authenticated: false, label: 'Status unavailable' });
     }
   };
 
@@ -416,30 +396,17 @@ export function SettingsWorkspace({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [configuredProviderId]);
 
+  useEffect(() => {
+    if (section !== 'providers') return;
+    // The ChatGPT hero shows its sign-in state whichever provider is open below it.
+    if (initialSettings.ai.activeProviderInstanceId !== 'chatgpt') void loadProviderAuth('chatgpt');
+    // The active model's options (thinking effort) come from the live catalog.
+    void loadModels(initialSettings.ai.activeProviderInstanceId);
+    // Runs once when the AI models section opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const content = (() => {
-    if (section === 'general') {
-      return <>
-        <SettingsSection title="Product preferences" description="Local interface state stays in this browser; operational settings stay on the server.">
-          <SettingsRow title="Anonymous telemetry" description="Send a minimal, non-document heartbeat to help improve Tagvico.">
-            <div className="settings-action-cluster">
-              <SettingSwitch
-                checked={settings.general.telemetryEnabled}
-                disabled={!settings.general.telemetryAvailable}
-                label="Anonymous telemetry"
-                onCheckedChange={(telemetryEnabled) => void applyPatch({ general: { telemetryEnabled } })}
-              />
-              {!settings.general.telemetryAvailable
-                ? <span className="settings-badge">Collector not configured</span>
-                : null}
-            </div>
-          </SettingsRow>
-          <SettingsRow title="Sidebar" description="Collapsed or expanded state is stored only in this browser.">
-            <span className="settings-badge">Local preference</span>
-          </SettingsRow>
-        </SettingsSection>
-        <HouseholdSettings {...household} onMessage={showMessage} />
-      </>;
-    }
     if (section === 'paperless') {
       return <>
         <SettingsSection title="Paperless connection" description="The token is write-only. Leaving the field empty retains the existing token.">
@@ -479,31 +446,76 @@ export function SettingsWorkspace({
             <PaperlessDiscovery baseUrl={settings.paperless.baseUrl} />
           </SettingsRow>
         </SettingsSection>
+        <SettingsSection title="System info" description="A redacted view of this installation. It contains no tokens, account IDs or private credential values.">
+          <dl className="settings-diagnostics">
+            <div><dt>Tagvico version</dt><dd>{settings.diagnostics.version}</dd></div>
+            <div><dt>Setup complete</dt><dd>{settings.diagnostics.configured ? 'Yes' : 'No'}</dd></div>
+            <div><dt>Provider definitions</dt><dd>{settings.diagnostics.providerRegistrySize}</dd></div>
+            <div><dt>Active provider</dt><dd>{settings.ai.activeProviderInstanceId}</dd></div>
+            <div><dt>Active model</dt><dd>{settings.ai.activeModelId || 'Not configured'}</dd></div>
+            <div><dt>Settings revision</dt><dd><code>{settings.revision}</code></dd></div>
+          </dl>
+        </SettingsSection>
       </>;
     }
     if (section === 'providers') {
+      const configuredIsHero = configuredProvider?.instanceId === 'chatgpt';
+      const probeCluster = (provider: { instanceId: string; name: string }, extra?: ReactNode) => <div className="settings-action-cluster">
+        <button
+          className="settings-button"
+          type="button"
+          onClick={() => {
+            setConfiguredProviderId(provider.instanceId);
+            void probeProvider(provider.instanceId);
+          }}
+        >
+          Test {provider.name}
+        </button>
+        {extra}
+        {probeStatus && configuredProvider?.instanceId === provider.instanceId
+          ? <InlineStatus kind={probeStatus.startsWith('Connected') ? 'success' : probeStatus.includes('…') ? 'loading' : 'error'}>{probeStatus}</InlineStatus>
+          : null}
+      </div>;
       return <>
         <SettingsSection
-          title="Provider connections"
-          description="Configure every runtime independently. Selecting a card here does not change the provider used for automation."
+          title="AI provider"
+          description="Tagvico uses one provider for filing and Ask Tagvico. Secrets are write-only and are never sent back to this browser."
         >
-          <SettingsRow title="Choose a provider to configure" description="Secrets are write-only and existing values are never sent back to this browser." stack>
-            <div className="settings-provider-grid">
-              {settings.ai.providers.map((provider) => <button
-                type="button"
-                key={provider.instanceId}
-                className={`settings-provider-card${provider.instanceId === configuredProvider?.instanceId ? ' is-active' : ''}`}
-                onClick={() => setConfiguredProviderId(provider.instanceId)}
-              >
-                <ProviderIcon icon={provider.icon} name={provider.name} size={26} />
-                <span>
-                  <strong>{provider.name}{provider.badge ? <em className="settings-provider-badge">{provider.badge}</em> : null}</strong>
-                  <small>{provider.instanceId === settings.ai.activeProviderInstanceId ? 'Used for automation' : provider.description}</small>
-                </span>
-              </button>)}
-            </div>
-          </SettingsRow>
-          {configuredProvider ? <SettingsRow
+          <div className="provider-panel">
+            <ProviderPicker
+              providers={settings.ai.providers}
+              selectedId={configuredProvider?.instanceId || ''}
+              activeId={settings.ai.activeProviderInstanceId}
+              onSelect={setConfiguredProviderId}
+              heroAction={<>
+                <ChatGPTPlanSignIn
+                  apiBase="/api/chatgpt"
+                  authenticated={chatgptAuth.authenticated}
+                  accountLabel={chatgptAuth.label}
+                  onConnected={async () => {
+                    const firstConnection = !chatgptAuth.authenticated;
+                    showMessage('success', 'ChatGPT plan connected.');
+                    setConfiguredProviderId('chatgpt');
+                    await loadProviderAuth('chatgpt');
+                    if (firstConnection && settingsRef.current.ai.activeProviderInstanceId !== 'chatgpt') {
+                      await selectProvider('chatgpt');
+                    } else {
+                      await loadModels('chatgpt');
+                    }
+                  }}
+                  onError={(message) => showMessage('error', message)}
+                  onLogout={() => logoutProvider('chatgpt')}
+                />
+                {chatgptAuth.authenticated && settings.ai.activeProviderInstanceId !== 'chatgpt' ? <div className="settings-action-cluster">
+                  <button className="settings-button" type="button" onClick={() => void selectProvider('chatgpt')}>
+                    Use ChatGPT plan for Tagvico
+                  </button>
+                </div> : null}
+                {chatgptProvider && chatgptAuth.authenticated ? probeCluster(chatgptProvider) : null}
+              </>}
+            />
+          </div>
+          {configuredProvider && !configuredIsHero ? <SettingsRow
             title={`${configuredProvider.name} configuration`}
             description={configuredProvider.description}
             stack
@@ -534,18 +546,6 @@ export function SettingsWorkspace({
                 />;
               })}
             </div> : <InlineStatus kind="neutral">This runtime uses account authentication instead of an API-key field.</InlineStatus>}
-            {configuredProvider.instanceId === 'chatgpt' ? <ChatGPTPlanSignIn
-              apiBase="/api/chatgpt"
-              authenticated={providerAuth.authenticated}
-              accountLabel={providerAuth.label}
-              onConnected={async () => {
-                showMessage('success', 'ChatGPT plan connected.');
-                await loadProviderAuth('chatgpt');
-                await loadModels('chatgpt');
-              }}
-              onError={(message) => showMessage('error', message)}
-              onLogout={() => logoutProvider('chatgpt')}
-            /> : null}
             {configuredProvider.instanceId === 'codex' ? <div className="settings-auth-panel">
               <div className="settings-action-cluster">
                 <InlineStatus kind={providerAuth.loading ? 'loading' : providerAuth.authenticated ? 'success' : 'neutral'}>
@@ -577,17 +577,21 @@ export function SettingsWorkspace({
                 <a href={copilotChallenge.verificationUrl} target="_blank" rel="noreferrer">Open GitHub device sign-in</a>
               </div> : null}
             </div> : null}
-            <div className="settings-action-cluster">
-              <button className="settings-button" type="button" onClick={() => void probeProvider(configuredProvider.instanceId)}>
-                Test {configuredProvider.name}
-              </button>
-              {probeStatus ? <InlineStatus kind={probeStatus.startsWith('Connected') ? 'success' : probeStatus.includes('…') ? 'loading' : 'error'}>{probeStatus}</InlineStatus> : null}
-            </div>
+            {probeCluster(configuredProvider, configuredProvider.instanceId !== settings.ai.activeProviderInstanceId ? <button
+              className="settings-button is-primary"
+              type="button"
+              onClick={() => void selectProvider(configuredProvider.instanceId)}
+            >
+              Use {configuredProvider.name}
+            </button> : null)}
           </SettingsRow> : null}
         </SettingsSection>
 
-        <SettingsSection title="Active runtime" description="Models and their thinking options are discovered from the runtime, not invented in Tagvico.">
-          <SettingsRow title="Provider and model" description="Search live models, favorite frequent choices and inspect capabilities." stack>
+        <SettingsSection
+          title="Model"
+          description={`Discovered from ${activeProvider?.name || 'the active provider'}. Applies to filing and Ask Tagvico.`}
+        >
+          <SettingsRow title="Model" description="Search live models, favorite frequent choices and inspect capabilities." stack>
             <ModelPicker
               providers={settings.ai.providers}
               activeProviderId={settings.ai.activeProviderInstanceId}
@@ -599,32 +603,74 @@ export function SettingsWorkspace({
               onRefresh={async () => { await loadModels(); }}
               onSelect={selectModel}
             />
-            {activeProvider?.manualModelInput ? <DraftField
-              label="Manual model ID"
-              description="Use this only when the provider has no catalog or a new model is not listed yet."
-              value={settings.ai.activeModelId}
-              placeholder="provider/model-id"
-              onCommit={(activeModelId) => applyPatch({ ai: { activeModelId } }, 'Model ID saved.')}
-            /> : null}
-            {activeModel?.options.map((option) => option.type === 'select' ? <label className="settings-field" key={option.id}>
-              <span className="settings-field-label">{option.label}<small>Runtime capability</small></span>
-              <select
-                className="settings-select"
-                value={String(settings.ai.modelOptions[option.id] ?? option.defaultValue ?? option.values[0]?.id ?? '')}
-                onChange={(event) => void applyPatch({
-                  ai: { modelOptions: { [option.id]: event.target.value } }
-                }, `${option.label} saved.`)}
+            {recommendedModel ? <div className="settings-action-cluster">
+              <span className="settings-field-help">
+                {recommendedModel.id === settings.ai.activeModelId
+                  ? `${recommendedModel.name} is the recommended default for filing invoices, letters and forms.`
+                  : `${recommendedModel.name} is the recommended default for filing.`}
+              </span>
+              {recommendedModel.id !== settings.ai.activeModelId ? <button
+                className="settings-button"
+                type="button"
+                onClick={() => void selectModel(recommendedModel)}
               >
-                {option.values.map((value) => <option value={value.id} key={value.id}>{value.label}</option>)}
-              </select>
-              {option.description ? <span className="settings-field-help">{option.description}</span> : null}
-            </label> : null)}
+                Use {recommendedModel.name}
+              </button> : null}
+            </div> : null}
+            {activeProvider?.manualModelInput ? <>
+              <button
+                className="settings-link-button"
+                type="button"
+                aria-expanded={manualModelOpen}
+                onClick={() => setManualModelOpen((open) => !open)}
+              >
+                {manualModelOpen ? 'Hide manual model ID' : 'Use another model ID'}
+              </button>
+              {manualModelOpen ? <DraftField
+                label="Manual model ID"
+                description="Use this only when the provider has no catalog or a new model is not listed yet."
+                value={settings.ai.activeModelId}
+                placeholder="provider/model-id"
+                onCommit={(activeModelId) => applyPatch({ ai: { activeModelId } }, 'Model ID saved.')}
+              /> : null}
+            </> : null}
+            {activeModel?.options.map((option) => {
+              if (option.type !== 'select') return null;
+              const current = String(settings.ai.modelOptions[option.id] ?? option.defaultValue ?? option.values[0]?.id ?? '');
+              const save = (value: string) => void applyPatch({
+                ai: { modelOptions: { [option.id]: value } }
+              }, `${option.label} saved.`);
+              if (option.values.length <= 4) {
+                return <fieldset className="settings-field settings-segmented" key={option.id}>
+                  <legend className="settings-field-label">{option.label}<small>Runtime capability</small></legend>
+                  <div className="settings-segmented-options">
+                    {option.values.map((value) => <label className={value.id === current ? 'is-active' : undefined} key={value.id}>
+                      <input
+                        type="radio"
+                        name={`model-option-${option.id}`}
+                        value={value.id}
+                        checked={value.id === current}
+                        onChange={() => save(value.id)}
+                      />
+                      <span>{value.label}</span>
+                    </label>)}
+                  </div>
+                  {option.description ? <span className="settings-field-help">{option.description}</span> : null}
+                </fieldset>;
+              }
+              return <label className="settings-field" key={option.id}>
+                <span className="settings-field-label">{option.label}<small>Runtime capability</small></span>
+                <select className="settings-select" value={current} onChange={(event) => save(event.target.value)}>
+                  {option.values.map((value) => <option value={value.id} key={value.id}>{value.label}</option>)}
+                </select>
+                {option.description ? <span className="settings-field-help">{option.description}</span> : null}
+              </label>;
+            })}
             {!activeModel && !modelsLoading ? <InlineStatus kind="neutral">
               Load the live catalog to reveal model-specific options such as thinking effort.
             </InlineStatus> : null}
           </SettingsRow>
         </SettingsSection>
-
       </>;
     }
     if (section === 'automation') {
@@ -694,7 +740,7 @@ export function SettingsWorkspace({
             onCheckedChange={(useExistingData) => void applyPatch({ automation: { useExistingData } })}
           />
         </SettingsRow>
-        <SettingsRow title="Custom fields" description="Let the model populate the explicit custom-field definitions configured under Security & privacy.">
+        <SettingsRow title="Custom fields" description="Let the model populate the explicit custom-field definitions listed under Paperless custom fields below.">
           <SettingSwitch
             checked={settings.automation.assignCustomFields}
             label="Populate custom fields"
@@ -716,6 +762,11 @@ export function SettingsWorkspace({
             placeholder={'alex: private invoices, health insurance\nfinance: vendor bills, receipts'}
             onCommit={(ownerProfiles) => applyPatch({ automation: { ownerProfiles } }, 'Owner profiles saved.')}
           />
+        </SettingsRow>
+      </SettingsSection>
+      <SettingsSection title="Paperless custom fields" description="Only fields listed here may be proposed by the model.">
+        <SettingsRow title="Allowed fields" description="Names and types must match your Paperless custom-field setup." stack>
+          <CustomFieldsEditor fields={settings.security.customFields} onChange={(customFields) => applyPatch({ security: { customFields } }, 'Custom fields saved.')} />
         </SettingsRow>
       </SettingsSection>
       <SettingsSection title="AI instructions" description="Tune filing behavior without replacing Tagvico's structured-output and safety contracts.">
@@ -866,8 +917,15 @@ export function SettingsWorkspace({
         </SettingsSection>
       </>;
     }
-    if (section === 'security') {
-      return <><SettingsSection title="Local API authentication" description="This write-only key protects authenticated Tagvico API requests; it is separate from outbound enrichment.">
+    return <>
+      <HouseholdSettings {...household} onMessage={showMessage} />
+      {household.currentRole === 'owner' ? <>
+      <SettingsSection title="Multi-factor authentication" description="Protect this Tagvico account with a TOTP authenticator.">
+        <SettingsRow title="Authenticator app" description="Setup secrets expire after ten minutes and are shown only during enrollment." stack>
+          <MfaSettings />
+        </SettingsRow>
+      </SettingsSection>
+      <SettingsSection title="Local API authentication" description="This write-only key protects authenticated Tagvico API requests; it is separate from outbound enrichment.">
         <SettingsRow title="Tagvico API key" description="Use at least 32 characters. Leaving this empty retains the configured key." stack>
           <DraftField
             label="Tagvico API key"
@@ -920,51 +978,49 @@ export function SettingsWorkspace({
           </div>
         </SettingsRow>
       </SettingsSection>
-      <SettingsSection title="Paperless custom fields" description="Only fields listed here may be proposed by the model.">
-        <SettingsRow title="Allowed fields" description="Names and types must match your Paperless custom-field setup." stack>
-          <CustomFieldsEditor fields={settings.security.customFields} onChange={(customFields) => applyPatch({ security: { customFields } }, 'Custom fields saved.')} />
+      </> : null}
+      <SettingsSection title="Privacy" description="Telemetry is a minimal heartbeat without document content.">
+        <SettingsRow title="Anonymous telemetry" description="Send a minimal, non-document heartbeat to help improve Tagvico.">
+          <div className="settings-action-cluster">
+            <SettingSwitch
+              checked={settings.general.telemetryEnabled}
+              disabled={!settings.general.telemetryAvailable}
+              label="Anonymous telemetry"
+              onCheckedChange={(telemetryEnabled) => void applyPatch({ general: { telemetryEnabled } })}
+            />
+            {!settings.general.telemetryAvailable
+              ? <span className="settings-badge">Collector not configured</span>
+              : null}
+          </div>
         </SettingsRow>
       </SettingsSection>
-      <SettingsSection title="Multi-factor authentication" description="Protect this Tagvico account with a TOTP authenticator.">
-        <SettingsRow title="Authenticator app" description="Setup secrets expire after ten minutes and are shown only during enrollment." stack>
-          <MfaSettings />
-        </SettingsRow>
-      </SettingsSection></>;
-    }
-    return <SettingsSection title="Installation snapshot" description="This view intentionally contains no tokens, account IDs or private credential values.">
-      <dl className="settings-diagnostics">
-        <div><dt>Tagvico version</dt><dd>{settings.diagnostics.version}</dd></div>
-        <div><dt>Setup complete</dt><dd>{settings.diagnostics.configured ? 'Yes' : 'No'}</dd></div>
-        <div><dt>Provider definitions</dt><dd>{settings.diagnostics.providerRegistrySize}</dd></div>
-        <div><dt>Active provider</dt><dd>{settings.ai.activeProviderInstanceId}</dd></div>
-        <div><dt>Active model</dt><dd>{settings.ai.activeModelId || 'Not configured'}</dd></div>
-        <div><dt>Settings revision</dt><dd><code>{settings.revision}</code></dd></div>
-      </dl>
-    </SettingsSection>;
+    </>;
   })();
 
-  const heading = headings[section];
   return <div className="settings-page">
     <header className="settings-page-head">
       <div>
-        <p className="eyebrow">{heading.eyebrow}</p>
-        <h1>{heading.title}</h1>
-        <p>{heading.description}</p>
+        <h1>{settingsSectionTitles[section]}</h1>
+        <p>{descriptions[section]}</p>
       </div>
-      <span className="settings-version">v{settings.diagnostics.version}</span>
     </header>
     <div className="settings-layout">
-      <nav className="settings-nav" aria-label="Settings sections">
-        {sections.map(({ id, label, Icon }) => <Link
-          key={id}
-          href={`/settings/${id}`}
-          className={section === id ? 'is-active' : undefined}
-          aria-current={section === id ? 'page' : undefined}
-        >
-          <Icon aria-hidden="true" />
-          <span>{label}</span>
-        </Link>)}
-      </nav>
+      <div className="settings-side">
+        <nav className="settings-nav" aria-label="Settings sections">
+          {sections
+            .filter(({ id }) => household.currentRole === 'owner' || id === 'people')
+            .map(({ id, Icon }) => <Link
+              key={id}
+              href={`/settings/${id}`}
+              className={section === id ? 'is-active' : undefined}
+              aria-current={section === id ? 'page' : undefined}
+            >
+              <Icon aria-hidden="true" />
+              <span>{settingsSectionTitles[id]}</span>
+            </Link>)}
+        </nav>
+        <p className="settings-version">Tagvico v{settings.diagnostics.version}</p>
+      </div>
       <div className="settings-content">{content}</div>
     </div>
     {toast ? <div className={`settings-toast is-${toast.kind}`} role={toast.kind === 'error' ? 'alert' : 'status'}>

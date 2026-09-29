@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   DefaultChatTransport,
@@ -15,18 +15,13 @@ import {
   ChevronRight,
   CircleAlert,
   Clipboard,
-  FileSearch,
-  ListTree,
+  History,
+  Inbox,
   LoaderCircle,
-  Menu,
   MessageSquarePlus,
-  Pencil,
   RotateCcw,
-  Search,
-  Send,
   ShieldCheck,
-  Square,
-  Trash2,
+  Sparkles,
   X
 } from 'lucide-react';
 import {
@@ -41,9 +36,26 @@ import {
   MessageContent,
   MessageResponse
 } from '@/components/ai-elements/message';
-import { CompanionModelPicker } from '@/components/companion-model-picker';
+import { ChatActivitySummary } from '@/components/chat/chat-activity-summary';
+import { ChatApprovalCard } from '@/components/chat/chat-approval-card';
+import { ChatComposer } from '@/components/chat/chat-composer';
+import { ChatEmptyState } from '@/components/chat/chat-empty-state';
+import { ChatHistoryPanel } from '@/components/chat/chat-history-panel';
+import {
+  SourceChips,
+  citationComponents,
+  citedDocumentIds,
+  citedDocuments,
+  linkCitations
+} from '@/components/chat/citations';
 
-type Approval = { id: string; action_type: string; payload: Record<string, unknown>; status: string };
+type Approval = {
+  id: string;
+  action_type: string;
+  payload: Record<string, unknown>;
+  status: string;
+  session_id?: string | null;
+};
 type SessionSummary = {
   id: string;
   title: string;
@@ -116,24 +128,6 @@ function approvalCopy(approval: Approval) {
   };
 }
 
-const suggestions = [
-  {
-    icon: FileSearch,
-    title: 'Find something',
-    prompt: 'Find my most recent insurance documents.'
-  },
-  {
-    icon: CircleAlert,
-    title: 'Check what matters',
-    prompt: 'Which open actions or deadlines need my attention?'
-  },
-  {
-    icon: ShieldCheck,
-    title: 'Understand a document',
-    prompt: 'Summarize document #42 and tell me what I need to do.'
-  }
-];
-
 function relativeDate(value: string, renderedAt: number) {
   const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value)
     ? `${value.replace(' ', 'T')}Z`
@@ -202,12 +196,6 @@ function ToolActivityCard({ activity }: { activity: CompanionToolActivityModel }
   </details>;
 }
 
-function ToolActivity({ part }: { part: UIMessage['parts'][number] }) {
-  const activity = activityFromPart(part);
-  if (!activity) return null;
-  return <ToolActivityCard activity={activity} />;
-}
-
 function activityFromPart(part: UIMessage['parts'][number]): CompanionToolActivityModel | null {
   if (!isToolUIPart(part)) return storedActivity(part);
   return companionToolActivity(
@@ -233,6 +221,7 @@ function storedActivity(part: UIMessage['parts'][number]): CompanionToolActivity
 
 export function Companion({
   sessionId,
+  displayName,
   initialMessages,
   initialApprovals,
   initialSessions,
@@ -241,6 +230,7 @@ export function Companion({
   showFirstRun = false
 }: {
   sessionId: string;
+  displayName: string;
   initialMessages: UIMessage[];
   initialApprovals: Approval[];
   initialSessions: SessionSummary[];
@@ -255,16 +245,11 @@ export function Companion({
   const [notice, setNotice] = useState('');
   const [decisionBusy, setDecisionBusy] = useState('');
   const [sessionBusy, setSessionBusy] = useState(false);
-  const [sessionSearch, setSessionSearch] = useState('');
-  const [editingSession, setEditingSession] = useState('');
-  const [titleDraft, setTitleDraft] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState('');
-  const [inspectorOpen, setInspectorOpen] = useState(true);
-  const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState('');
+  const [needsYou, setNeedsYou] = useState<number | null>(null);
   const [referenceTime, setReferenceTime] = useState(renderedAt);
   const endRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const {
     messages,
     sendMessage,
@@ -280,18 +265,18 @@ export function Companion({
   });
   const isWorking = status === 'streaming' || status === 'submitted';
   const currentSession = sessions.find((session) => session.id === sessionId);
-  const filteredSessions = useMemo(() => {
-    const query = sessionSearch.trim().toLowerCase();
-    return query
-      ? sessions.filter((session) => `${session.title} ${session.preview || ''}`.toLowerCase().includes(query))
-      : sessions;
-  }, [sessionSearch, sessions]);
-  const researchActivity = useMemo(
-    () => messages.flatMap((message) => message.parts.map(activityFromPart).filter(
-      (activity): activity is CompanionToolActivityModel => Boolean(activity)
-    )),
-    [messages]
+  const sessionApprovals = useMemo(
+    () => approvals.filter((approval) => approval.session_id === sessionId),
+    [approvals, sessionId]
   );
+  const needsCount = needsYou ?? approvals.length;
+  const historyItems = sessions.map((session) => ({
+    id: session.id,
+    title: session.title,
+    preview: session.preview,
+    message_count: session.message_count,
+    when: relativeDate(session.updated_at, referenceTime)
+  }));
 
   useEffect(() => setSessions(initialSessions), [initialSessions]);
   useEffect(() => {
@@ -313,6 +298,19 @@ export function Companion({
       setNotice(cause instanceof Error ? cause.message : 'Could not refresh approvals');
     }
   };
+  // The household summary is optional: without it the pending approvals
+  // this page already knows about are the count.
+  const refreshNeedsYou = async () => {
+    try {
+      const response = await fetch('/api/navigation/household', { cache: 'no-store' });
+      if (!response.ok) return;
+      const body = await response.json().catch(() => null) as { needsYouCount?: unknown } | null;
+      const count = Number(body?.needsYouCount);
+      setNeedsYou(Number.isSafeInteger(count) && count >= 0 ? count : null);
+    } catch {
+      setNeedsYou(null);
+    }
+  };
   const refreshSessions = async () => {
     try {
       const response = await fetch('/api/companion/sessions', { cache: 'no-store' });
@@ -327,6 +325,7 @@ export function Companion({
     if (status === 'ready') {
       void refreshApprovals();
       void refreshSessions();
+      void refreshNeedsYou();
     }
   }, [status]);
 
@@ -336,18 +335,11 @@ export function Companion({
     setInput('');
     setNotice('');
     clearError();
-    if (textareaRef.current) textareaRef.current.style.height = '';
     void sendMessage({ text: normalized });
   };
   const submit = (event: FormEvent) => {
     event.preventDefault();
     submitText(input);
-  };
-  const handleComposerKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      event.currentTarget.form?.requestSubmit();
-    }
   };
   const decide = async (id: string, decision: 'approved' | 'rejected') => {
     setNotice('');
@@ -361,6 +353,7 @@ export function Companion({
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not decide approval');
       await refreshApprovals();
+      void refreshNeedsYou();
     } catch (cause) {
       setNotice(cause instanceof Error ? cause.message : 'Could not decide approval');
     } finally {
@@ -374,6 +367,7 @@ export function Companion({
       const response = await fetch('/api/companion/sessions', { method: 'POST' });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not create a conversation');
+      setHistoryOpen(false);
       router.push(`/companion?chat=${encodeURIComponent(body.sessionId)}`);
       router.refresh();
     } catch (cause) {
@@ -382,9 +376,13 @@ export function Companion({
       setSessionBusy(false);
     }
   };
-  const renameChat = async (id: string) => {
-    const title = titleDraft.trim();
-    if (!title) return;
+  const openChat = (id: string) => {
+    setHistoryOpen(false);
+    if (id !== sessionId) router.push(`/companion?chat=${encodeURIComponent(id)}`);
+  };
+  const renameChat = async (id: string, draft: string) => {
+    const title = draft.trim();
+    if (!title) return false;
     setSessionBusy(true);
     setNotice('');
     try {
@@ -395,11 +393,12 @@ export function Companion({
       });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not rename the conversation');
-      setEditingSession('');
       await refreshSessions();
       router.refresh();
+      return true;
     } catch (cause) {
       setNotice(cause instanceof Error ? cause.message : 'Could not rename the conversation');
+      return false;
     } finally {
       setSessionBusy(false);
     }
@@ -411,9 +410,7 @@ export function Companion({
       const response = await fetch(`/api/companion/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(body.error || 'Could not delete the conversation');
-      setConfirmDelete('');
       if (id === sessionId) {
-        setSessionSearch('');
         const replacement = sessions.find((session) => session.id !== id);
         if (replacement) router.push(`/companion?chat=${encodeURIComponent(replacement.id)}`);
         else await newChat();
@@ -421,8 +418,10 @@ export function Companion({
         await refreshSessions();
       }
       router.refresh();
+      return true;
     } catch (cause) {
       setNotice(cause instanceof Error ? cause.message : 'Could not delete the conversation');
+      return false;
     } finally {
       setSessionBusy(false);
     }
@@ -441,191 +440,124 @@ export function Companion({
     }
   };
 
-  return <div className={`companion-studio${inspectorOpen ? ' has-inspector' : ''}`}>
-    <aside className={`companion-sidebar panel${sessionsOpen ? ' is-sessions-open' : ''}`} aria-label="Conversations">
-      <div className="companion-sidebar-head">
-        <div>
-          <button
-            type="button"
-            className="companion-product-mark"
-            onClick={() => setSessionsOpen((value) => !value)}
-            aria-label="Toggle conversations"
-            aria-expanded={sessionsOpen}
-          ><Menu aria-hidden="true" /></button>
-          <span><strong>Ask Tagvico</strong><small>Your Paperless copilot</small></span>
-        </div>
-        <button className="companion-icon-button is-accent" type="button" onClick={() => void newChat()} disabled={sessionBusy} aria-label="New chat">
-          <MessageSquarePlus aria-hidden="true" />
-        </button>
-      </div>
-      <label className="companion-session-search">
-        <Search aria-hidden="true" />
-        <input value={sessionSearch} onChange={(event) => setSessionSearch(event.target.value)} placeholder="Search chats" />
-      </label>
-      <nav>
-        {filteredSessions.map((session) => <div className={`companion-session${session.id === sessionId ? ' is-active' : ''}`} key={session.id}>
-          {editingSession === session.id ? <form className="companion-session-edit" onSubmit={(event) => { event.preventDefault(); void renameChat(session.id); }}>
-            <input autoFocus maxLength={72} value={titleDraft} onChange={(event) => setTitleDraft(event.target.value)} aria-label="Conversation title" />
-            <button type="submit" disabled={sessionBusy || !titleDraft.trim()} aria-label="Save title"><Check /></button>
-            <button type="button" onClick={() => setEditingSession('')} aria-label="Cancel rename"><X /></button>
-          </form> : <>
-            <button type="button" className="companion-session-open" onClick={() => router.push(`/companion?chat=${encodeURIComponent(session.id)}`)}>
-              <strong>{session.title || 'New conversation'}</strong>
-              <small>{session.preview || `${Number(session.message_count) || 0} messages`} · {relativeDate(session.updated_at, referenceTime)}</small>
-            </button>
-            <div className="companion-session-actions">
-              <button type="button" onClick={() => { setEditingSession(session.id); setTitleDraft(session.title || 'New conversation'); }} aria-label={`Rename ${session.title || 'conversation'}`}><Pencil /></button>
-              <button type="button" onClick={() => setConfirmDelete(session.id)} aria-label={`Delete ${session.title || 'conversation'}`}><Trash2 /></button>
-            </div>
-          </>}
-          {confirmDelete === session.id ? <div className="companion-delete-confirm">
-            <span>Delete this chat?</span>
-            <button type="button" onClick={() => void deleteChat(session.id)} disabled={sessionBusy}>Delete</button>
-            <button type="button" onClick={() => setConfirmDelete('')}>Cancel</button>
-          </div> : null}
-        </div>)}
-        {!filteredSessions.length ? <p className="companion-no-sessions">No chats match your search.</p> : null}
-      </nav>
-      <div className="companion-sidebar-foot">
-        <ShieldCheck aria-hidden="true" />
-        <span><strong>Approval-first</strong><small>Research is read-only. Changes always wait for you.</small></span>
-      </div>
-    </aside>
+  const renderMessage = (message: UIMessage, messageIndex: number) => {
+    const texts = message.parts.flatMap((part) => part.type === 'text' ? [part.text] : []);
+    if (message.role === 'user') {
+      return <div className="chat-turn is-user" key={message.id}>
+        <Message from="user">
+          <MessageContent>{texts.map((text, index) => <span key={index}>{text}</span>)}</MessageContent>
+        </Message>
+      </div>;
+    }
+    const activities = message.parts
+      .map(activityFromPart)
+      .filter((activity): activity is CompanionToolActivityModel => Boolean(activity));
+    const answers = texts.map((text) => sanitizeCompanionText(text));
+    if (!activities.length && !answers.some(Boolean)) return null;
+    const isLast = messageIndex === messages.length - 1;
+    const citations = citedDocumentIds(answers.join('\n\n'));
+    return <div className="chat-turn is-assistant" key={message.id}>
+      <span className="chat-avatar" aria-hidden="true"><Sparkles /></span>
+      <Message from="assistant">
+        <MessageContent>
+          <ChatActivitySummary activities={activities}>
+            {activities.map((activity, index) => <ToolActivityCard key={`${activity.toolName}-${index}`} activity={activity} />)}
+          </ChatActivitySummary>
+          {answers.map((answer, index) => answer
+            ? <MessageResponse
+              key={index}
+              components={citationComponents}
+              isAnimating={isWorking && isLast}
+            >{linkCitations(answer, citations)}</MessageResponse>
+            : null)}
+          <SourceChips documents={citedDocuments(citations, activities)} />
+        </MessageContent>
+        {answers.some(Boolean) ? <MessageActions className="companion-message-actions">
+          <MessageAction label="Copy answer" tooltip="Copy answer" onClick={() => void copyMessage(message)}>
+            {copiedMessage === message.id ? <Check /> : <Clipboard />}
+          </MessageAction>
+          {isLast && status === 'ready' ? <MessageAction label="Try again" tooltip="Try again" onClick={() => void regenerate()}>
+            <RotateCcw />
+          </MessageAction> : null}
+        </MessageActions> : null}
+      </Message>
+    </div>;
+  };
 
-    <section className="companion-chat panel">
-      <header className="companion-chat-head">
-        <button
-          type="button"
-          className="companion-sessions-mobile-toggle companion-icon-button"
-          onClick={() => setSessionsOpen(true)}
-          aria-label="Open conversations"
-          aria-expanded={sessionsOpen}
-        ><Menu aria-hidden="true" /></button>
-        <div>
-          <strong>{currentSession?.title || 'New conversation'}</strong>
-          <small>{isWorking ? 'Working with your selected model…' : 'Ready to research your Paperless library'}</small>
-        </div>
-        <button type="button" className="companion-approval-toggle" onClick={() => setInspectorOpen((value) => !value)} aria-expanded={inspectorOpen}>
-          <ListTree aria-hidden="true" />
-          {researchActivity.length
-            ? `${researchActivity.length} research step${researchActivity.length === 1 ? '' : 's'}`
-            : approvals.length
-              ? `${approvals.length} approval${approvals.length === 1 ? '' : 's'}`
-              : 'Research trail'}
-        </button>
-      </header>
-
-      <div className="companion-messages" aria-live="polite">
-        {!messages.length ? <div className={`companion-empty${showFirstRun ? ' is-first-run' : ''}`}>
-          <span className="companion-empty-mark"><FileSearch aria-hidden="true" /></span>
-          <p className="eyebrow">{showFirstRun ? 'Your first five minutes' : 'Grounded in your documents'}</p>
-          <h2>{showFirstRun ? 'Start with one real question.' : 'What do you want to know?'}</h2>
-          <p>{showFirstRun
-            ? 'Your connections are ready. Ask a read-only question, open the cited Paperless source, then request an action. Tagvico will wait for approval before changing anything.'
-            : 'Ask naturally. Tagvico will show every Paperless search and document read it uses, then cite the matching document IDs.'}</p>
-          {showFirstRun ? <ol className="companion-first-run-steps">
-            <li><span>1</span><strong>Ask</strong><small>Start with “Find my most recent documents.”</small></li>
-            <li><span>2</span><strong>Verify</strong><small>Open a cited source from the research trail.</small></li>
-            <li><span>3</span><strong>Act safely</strong><small>Request an action, review it, then approve or reject.</small></li>
-          </ol> : null}
-          <div className="companion-suggestions">
-            {suggestions.map(({ icon: Icon, title, prompt }) => <button type="button" key={title} onClick={() => submitText(prompt)}>
-              <Icon aria-hidden="true" />
-              <span><strong>{title}</strong><small>{prompt}</small></span>
-              <ChevronRight aria-hidden="true" />
-            </button>)}
-          </div>
-        </div> : messages.map((message, messageIndex) => <Message key={message.id} from={message.role}>
-          <MessageContent>
-            {message.parts.map((part, index) => {
-              if (part.type === 'text') return message.role === 'assistant'
-                ? <MessageResponse key={index} isAnimating={isWorking && messageIndex === messages.length - 1}>{sanitizeCompanionText(part.text)}</MessageResponse>
-                : <span key={index}>{part.text}</span>;
-              if (isToolUIPart(part)) return <ToolActivity key={index} part={part} />;
-              const activity = storedActivity(part);
-              return activity ? <ToolActivityCard key={index} activity={activity} /> : null;
-            })}
-          </MessageContent>
-          {message.role === 'assistant' && message.parts.some((part) => part.type === 'text') ? <MessageActions className="companion-message-actions">
-            <MessageAction label="Copy answer" tooltip="Copy answer" onClick={() => void copyMessage(message)}>
-              {copiedMessage === message.id ? <Check /> : <Clipboard />}
-            </MessageAction>
-            {messageIndex === messages.length - 1 && status === 'ready' ? <MessageAction label="Try again" tooltip="Try again" onClick={() => void regenerate()}>
-              <RotateCcw />
-            </MessageAction> : null}
-          </MessageActions> : null}
-        </Message>)}
-        {status === 'submitted' ? <div className="companion-thinking"><LoaderCircle className="is-spinning" /><span>Planning the right research steps…</span></div> : null}
-        <div ref={endRef} />
+  return <div className="chat-shell">
+    <header className="chat-head">
+      <button
+        type="button"
+        className="chat-icon-btn chat-history-toggle"
+        onClick={() => setHistoryOpen((value) => !value)}
+        aria-label="Chat history"
+        aria-expanded={historyOpen}
+      ><History aria-hidden="true" /><span>History</span></button>
+      <div className="chat-head-title">
+        <strong>{currentSession?.title || 'New chat'}</strong>
+        <small>{isWorking ? 'Working with your selected model…' : 'Answers come from your documents'}</small>
       </div>
+      {needsCount ? <a className="chat-head-needs" href="/inbox">
+        <Inbox aria-hidden="true" />{needsCount}<span> waiting</span>
+      </a> : null}
+      <button
+        className="chat-icon-btn is-accent"
+        type="button"
+        onClick={() => void newChat()}
+        disabled={sessionBusy}
+        aria-label="New chat"
+      ><MessageSquarePlus aria-hidden="true" /></button>
+      {historyOpen ? <ChatHistoryPanel
+        sessions={historyItems}
+        activeId={sessionId}
+        busy={sessionBusy}
+        onClose={() => setHistoryOpen(false)}
+        onOpen={openChat}
+        onNew={() => void newChat()}
+        onRename={renameChat}
+        onDelete={deleteChat}
+      /> : null}
+    </header>
 
-      {(error || notice) ? <div className="companion-notice" role="alert">
+    <div className="chat-thread" aria-live="polite">
+      <div className="chat-thread-inner">
+        {!messages.length ? <ChatEmptyState
+          displayName={displayName}
+          needsCount={needsCount}
+          onAsk={submitText}
+          firstRun={showFirstRun ? {
+            eyebrow: 'Your first five minutes',
+            title: 'Start with one real question.',
+            body: 'Your connections are ready. Ask a read-only question, open the cited Paperless source, then request an action. Tagvico will wait for approval before changing anything.'
+          } : null}
+        /> : messages.map(renderMessage)}
+        {status === 'submitted' ? <div className="chat-thinking"><LoaderCircle className="is-spinning" aria-hidden="true" /><span>Planning the right research steps…</span></div> : null}
+        {sessionApprovals.map((approval) => <ChatApprovalCard
+          key={approval.id}
+          copy={approvalCopy(approval)}
+          canApprove={canApprove}
+          busy={!!decisionBusy}
+          onDecide={(decision) => void decide(approval.id, decision)}
+        />)}
+        {messages.length ? <div ref={endRef} /> : null}
+      </div>
+    </div>
+
+    <div className="chat-dock">
+      {(error || notice) ? <div className="chat-notice" role="alert">
         <CircleAlert aria-hidden="true" />
         <span>{error?.message || notice}</span>
         <button type="button" onClick={() => { clearError(); setNotice(''); }} aria-label="Dismiss error"><X /></button>
       </div> : null}
-      <form className="companion-composer" onSubmit={submit}>
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(event) => {
-            setInput(event.target.value);
-            event.currentTarget.style.height = '0';
-            event.currentTarget.style.height = `${Math.min(event.currentTarget.scrollHeight, 180)}px`;
-          }}
-          onKeyDown={handleComposerKeyDown}
-          placeholder="Ask about a document, deadline, person, amount…"
-          aria-label="Message"
-          rows={1}
-        />
-        <div className="companion-composer-bar">
-          <CompanionModelPicker sessionId={sessionId} />
-          <span className="companion-composer-hint">Enter to send · Shift+Enter for a new line</span>
-          {isWorking ? <button className="companion-send is-stop" type="button" onClick={() => void stop()} aria-label="Stop response">
-            <Square aria-hidden="true" />
-          </button> : <button className="companion-send" type="submit" disabled={!input.trim()} aria-label="Send message">
-            <Send aria-hidden="true" />
-          </button>}
-        </div>
-      </form>
-    </section>
-
-    {inspectorOpen ? <aside className="companion-approvals companion-research panel" aria-label="Research trail and pending approvals">
-      <header>
-        <div><span className="eyebrow">Visible by default</span><h2>Research trail</h2></div>
-        <button className="companion-icon-button" type="button" onClick={() => setInspectorOpen(false)} aria-label="Close research trail"><X /></button>
-      </header>
-      <p className="muted">Every Paperless search and document read used for this answer appears here.</p>
-      <div className="companion-research-steps">
-        {researchActivity.length
-          ? researchActivity.map((activity, index) => <ToolActivityCard key={`${activity.toolName}-${index}`} activity={activity} />)
-          : <div className="companion-research-empty">
-            <FileSearch aria-hidden="true" />
-            <strong>No research yet</strong>
-            <span>Ask a question and the steps will appear here as they run.</span>
-          </div>}
-      </div>
-      {approvals.length ? <div className="companion-approval-section">
-        <div className="companion-approval-section-head">
-          <span className="eyebrow">Nothing changes silently</span>
-          <strong>{approvals.length} pending approval{approvals.length === 1 ? '' : 's'}</strong>
-        </div>
-        {approvals.map((approval) => {
-          const copy = approvalCopy(approval);
-          return <article className="approval companion-approval-card" key={approval.id}>
-          <span className="pill suggested">approval required</span>
-          <h3>{copy.title}</h3>
-          <p>{copy.meta}</p>
-          {copy.details.length ? <ul className="companion-approval-details">
-            {copy.details.map((detail) => <li key={detail}>{detail}</li>)}
-          </ul> : null}
-          {canApprove ? <div className="approval-actions">
-            <button type="button" className="button primary" disabled={!!decisionBusy} onClick={() => void decide(approval.id, 'approved')}>Approve</button>
-            <button type="button" className="button danger" disabled={!!decisionBusy} onClick={() => void decide(approval.id, 'rejected')}>Reject</button>
-          </div> : <p className="muted">Your role cannot decide this proposal.</p>}
-        </article>;
-        })}
-      </div> : null}
-    </aside> : null}
+      <ChatComposer
+        sessionId={sessionId}
+        value={input}
+        onChange={setInput}
+        onSubmit={submit}
+        onStop={() => void stop()}
+        isWorking={isWorking}
+      />
+      <p className="chat-footnote"><ShieldCheck aria-hidden="true" />Tagvico answers from your Paperless archive and never changes anything without an approval.</p>
+    </div>
   </div>;
 }

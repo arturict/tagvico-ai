@@ -332,11 +332,28 @@ async function getSettings() {
       customFields: customFields(effective.CUSTOM_FIELDS)
     },
     diagnostics: {
-      version: effective.TAGVICO_AI_VERSION || '3.2.0',
+      version: runningVersion() || effective.TAGVICO_AI_VERSION || 'unknown',
       configured: yes(effective.TAGVICO_AI_INITIAL_SETUP),
       providerRegistrySize: knownDefinitions.length
     }
   };
+}
+
+/**
+ * The version of the running build. A TAGVICO_AI_VERSION persisted in the data
+ * directory's .env by an older install would keep showing that old release, so
+ * package.json wins and the environment value is only a fallback.
+ */
+function runningVersion(): string {
+  try {
+    const metadata = JSON.parse(fs.readFileSync(
+      path.join(/* turbopackIgnore: true */ process.cwd(), 'package.json'),
+      'utf8'
+    ));
+    return String(metadata.version || '');
+  } catch {
+    return '';
+  }
 }
 
 export class RevisionConflictError extends Error {

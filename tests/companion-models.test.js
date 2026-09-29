@@ -316,10 +316,12 @@ test('Copilot runtime applies persisted model reasoning selections', () => {
 
 test('mobile Companion keeps chat and conversation controls reachable', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'companion.tsx'), 'utf8');
-  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'globals.css'), 'utf8');
-  assert.match(source, /className="companion-sessions-mobile-toggle companion-icon-button"/);
-  assert.match(css, /\.companion-studio\.has-inspector\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
-  assert.match(css, /\.companion-sidebar\.is-sessions-open\s*\{[\s\S]*?display:\s*grid/);
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'styles', 'chat.css'), 'utf8');
+  assert.match(source, /aria-label="Chat history"/);
+  assert.match(source, /aria-label="New chat"/);
+  assert.match(css, /\.chat-head \.chat-history-toggle\s*\{[\s\S]*?display:\s*inline-flex/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.chat-history\s*\{[\s\S]*?position:\s*fixed/);
+  assert.match(css, /\.chat-suggestions,\s*\.chat-first-run-steps\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
 });
 
 test('provider model lists have their own bounded scrolling surfaces', () => {

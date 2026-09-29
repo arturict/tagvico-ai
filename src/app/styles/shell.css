@@ -1,1 +1,465 @@
 /* v3.5 shell styles. Uses the Paper & Pine tokens from globals.css. */
+
+/* Member avatars (shared component) */
+.member-avatar {
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  color: #fffdf7;
+  font-weight: 750;
+  letter-spacing: .01em;
+  line-height: 1;
+  user-select: none;
+}
+
+.member-avatar-stack {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.member-avatar-stack .member-avatar {
+  box-shadow: 0 0 0 2px var(--tv-surface);
+}
+
+.member-avatar-stack .member-avatar + .member-avatar {
+  margin-left: -8px;
+}
+
+.member-avatar-more {
+  background: var(--tv-surface-3);
+  color: var(--tv-muted);
+}
+
+/* Household sidebar */
+.shell .sidebar {
+  display: flex;
+  flex-direction: column;
+}
+
+.shell .sidebar .household-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0 0;
+  border: 1px solid var(--tv-line);
+  border-radius: 10px;
+  padding: 9px 10px;
+  background: var(--tv-surface);
+  color: var(--tv-text);
+  transition: border-color 140ms ease;
+}
+
+.shell .sidebar .household-card:hover {
+  border-color: var(--tv-line-strong);
+}
+
+.household-card-copy {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.household-card-copy strong,
+.household-card-copy small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.household-card-copy strong {
+  font-size: 12px;
+}
+
+.household-card-copy small {
+  color: var(--tv-muted);
+  font-size: 10px;
+}
+
+.sidebar-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 14px -4px 0;
+  padding: 0 4px;
+  overflow: hidden auto;
+  scrollbar-width: thin;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.shell .sidebar .nav {
+  margin-top: 0;
+  gap: 4px;
+}
+
+.sidebar-section {
+  display: grid;
+  gap: 4px;
+}
+
+.sidebar-section-title {
+  margin: 0 0 2px;
+  padding: 0 10px;
+  color: var(--tv-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.sidebar-people,
+.sidebar-channels {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sidebar-people a,
+.sidebar-channels a,
+.sidebar-more-toggle {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 5px 10px;
+  color: var(--tv-muted);
+  font-size: 13px;
+  font-weight: 620;
+  white-space: nowrap;
+  transition: 140ms ease;
+}
+
+.sidebar-people a:hover,
+.sidebar-channels a:hover,
+.sidebar-more-toggle:hover {
+  border-color: color-mix(in srgb, var(--tv-line) 75%, transparent);
+  background: rgba(255, 253, 247, .65);
+  color: var(--tv-pine);
+}
+
+.sidebar-people a.is-active {
+  border-color: color-mix(in srgb, var(--tv-pine) 15%, var(--tv-line));
+  background: var(--tv-pine);
+  color: #fffdf7;
+  box-shadow: 0 8px 20px rgba(25, 60, 44, .13);
+}
+
+.sidebar-person-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-person-name em {
+  margin-left: 5px;
+  color: var(--tv-muted);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 700;
+  opacity: .8;
+}
+
+.sidebar-people a.is-active .sidebar-person-name em,
+.sidebar-people a.is-active .sidebar-person-count {
+  color: color-mix(in srgb, #fffdf7 75%, transparent);
+}
+
+.sidebar-person-count {
+  margin-left: auto;
+  color: var(--tv-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--tv-line-strong);
+  flex: 0 0 8px;
+}
+
+.status-dot.is-connected {
+  background: var(--tv-success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tv-success) 20%, transparent);
+}
+
+.status-dot.is-needs-setup {
+  background: var(--tv-warning);
+}
+
+.nav-badge-needs {
+  border-color: transparent;
+  background: var(--tv-accent);
+  color: var(--tv-pine);
+  font-size: 10px;
+}
+
+.sidebar-more {
+  display: grid;
+  gap: 4px;
+}
+
+.sidebar-more-toggle {
+  width: 100%;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+  text-align: left;
+}
+
+.sidebar-more-toggle .nav-icon {
+  transition: transform 140ms ease;
+  transform: rotate(-90deg);
+}
+
+.sidebar-more.is-open .sidebar-more-toggle .nav-icon {
+  transform: none;
+}
+
+.sidebar-more [hidden] {
+  display: none;
+}
+
+.shell .sidebar .sidebar-foot {
+  position: static;
+  flex: 0 0 auto;
+  margin-top: 10px;
+  gap: 8px;
+}
+
+.sidebar-identity {
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+}
+
+.sidebar-signout {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--tv-muted);
+  transition: 140ms ease;
+}
+
+.sidebar-signout:hover {
+  background: var(--tv-pine-soft);
+  color: var(--tv-pine);
+}
+
+.sidebar-signout svg {
+  width: 15px;
+  height: 15px;
+}
+
+.sidebar-utility-links a.is-active {
+  background: var(--tv-pine);
+  color: #fffdf7;
+}
+
+/* Collapsed rail: icons and avatars only */
+.shell.is-collapsed .sidebar-people a,
+.shell.is-collapsed .sidebar-channels a,
+.shell.is-collapsed .sidebar-more-toggle {
+  position: relative;
+  justify-content: center;
+  padding-inline: 6px;
+}
+
+.shell.is-collapsed .status-dot {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  margin: 0;
+}
+
+.shell.is-collapsed .sidebar-scroll {
+  gap: 10px;
+}
+
+.shell.is-collapsed .sidebar-identity {
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 6px;
+  padding: 7px 0;
+}
+
+.shell.is-collapsed .nav-badge-needs {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+}
+
+@media (max-width: 900px) {
+  .shell .sidebar,
+  .shell.is-collapsed .sidebar {
+    display: block;
+  }
+
+  .shell .sidebar .household-card,
+  .shell.is-collapsed .sidebar .household-card {
+    display: flex;
+    margin-top: 0;
+    padding: 6px 9px;
+  }
+
+  .shell .sidebar .sidebar-scroll {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 10px 0 0;
+    padding: 0 0 4px;
+    overflow: auto hidden;
+    scrollbar-width: none;
+  }
+
+  .sidebar-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  .shell .sidebar .sidebar-scroll > .nav,
+  .sidebar-section,
+  .sidebar-people,
+  .sidebar-channels,
+  .sidebar-more,
+  .shell .sidebar .sidebar-more .nav {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .shell .sidebar .sidebar-section-title,
+  .sidebar-more-toggle,
+  .shell .sidebar .sidebar-person-count,
+  .shell .sidebar .sidebar-more .nav-sub-links {
+    display: none;
+  }
+
+  .shell .sidebar .sidebar-more .nav[hidden] {
+    display: flex;
+  }
+
+  .sidebar-people a,
+  .sidebar-channels a {
+    flex: 0 0 auto;
+    min-height: 38px;
+    padding: 5px 10px;
+  }
+
+  .shell .sidebar .sidebar-foot,
+  .shell.is-collapsed .sidebar .sidebar-foot {
+    display: block;
+    margin-top: 2px;
+  }
+
+  .shell .sidebar .sidebar-utility-links {
+    display: flex;
+    gap: 6px;
+    border-top: 0;
+    padding-top: 0;
+    overflow: auto hidden;
+    scrollbar-width: none;
+  }
+
+  .sidebar-utility-links a {
+    flex: 0 0 auto;
+    min-height: 36px;
+  }
+
+  .shell .sidebar .sidebar-identity {
+    display: none;
+  }
+
+  .shell.is-collapsed .sidebar-people a,
+  .shell.is-collapsed .sidebar-channels a {
+    justify-content: flex-start;
+  }
+
+  .shell.is-collapsed .status-dot {
+    position: static;
+    margin-left: 2px;
+  }
+
+  .status-dot {
+    margin-left: 2px;
+  }
+}
+
+/* People pages */
+.people-head {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 30px;
+}
+
+.people-head h1 {
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.people-head .lede {
+  margin-top: 8px;
+}
+
+.people-role {
+  text-transform: capitalize;
+}
+
+.people-group {
+  margin-bottom: 28px;
+}
+
+.people-group-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-size: 15px;
+}
+
+.people-group-title span {
+  border-radius: 999px;
+  background: var(--tv-surface-3);
+  padding: 2px 8px;
+  color: var(--tv-muted);
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.people-group-title.is-overdue span {
+  background: color-mix(in srgb, var(--tv-danger) 14%, transparent);
+  color: var(--tv-danger);
+}
+
+.people-due-late {
+  color: var(--tv-danger);
+  font-weight: 650;
+}
+
+.people-approvals {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.people-approvals li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border: 1px solid var(--tv-line);
+  border-radius: var(--tv-radius);
+  padding: 12px 16px;
+  background: var(--tv-surface);
+  font-size: 14px;
+}

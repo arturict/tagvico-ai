@@ -85,6 +85,16 @@ const totpService = require('../services/totpService');
 const pendingMfaSecrets = new Map();
 
 type UnknownRecord = Record<string, unknown>;
+// The running image's version; a TAGVICO_AI_VERSION left in an older data
+// volume's .env must not relabel a newer release.
+function packageVersion(): string {
+  try {
+    return String(JSON.parse(require('fs').readFileSync(require('path').join(process.cwd(), 'package.json'), 'utf8')).version || 'unknown');
+  } catch {
+    return 'unknown';
+  }
+}
+
 type SetupProviderStatus = { ok: boolean; models: string[]; error?: string };
 interface NamedItem { id: number; name: string; model?: string; size?: number; modified_at?: string }
 interface DocumentData { id: number; title: string; created?: string; owner?: number; tags?: number[]; correspondent?: number; document_type?: number; custom_fields?: UnknownRecord[]; language?: string }
@@ -3218,7 +3228,7 @@ router.get('/api/dashboard', async (_req: Req, res: Res) => {
     res.json({
       summary,
       processing,
-      version: configFile.TAGVICO_AI_VERSION || '3.2.0'
+      version: packageVersion()
     });
   } catch (error) {
     console.error('[ERROR] loading dashboard data:', error);
@@ -3275,7 +3285,7 @@ router.get('/dashboard', async (_req: Req, res: Res) => {
  *               $ref: '#/components/schemas/Error'
  */
 router.get('/settings', async (req: Req, res: Res) => {
-  res.status(308).redirect('/settings/general');
+  res.status(308).redirect('/settings');
 });
 
 router.get('/api/telemetry/preview', async (_req: Req, res: Res) => {
@@ -4896,7 +4906,7 @@ router.get('/api/operations/status', async (_req: Req, res: Res) => {
   res.json({
     ocrEnabled: ocrService.isEnabled(),
     ocrProvider: config.ocr?.provider || 'mistral',
-    version: configFile.TAGVICO_AI_VERSION || '3.2.0'
+    version: packageVersion()
   });
 });
 

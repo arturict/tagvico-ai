@@ -6,5 +6,5 @@ export const metadata = { title: 'Settings' };
 
 export default async function SettingsIndexPage() {
   const user = await requireUser();
-  redirect(workspaceFor(user).role === 'owner' ? '/settings/paperless' : '/settings/general');
+  redirect(workspaceFor(user).role === 'owner' ? '/settings/paperless' : '/settings/people');
 }

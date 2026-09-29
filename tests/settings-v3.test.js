@@ -56,6 +56,11 @@ test('GET settings redacts every secret while retaining configured metadata', as
   assert.equal(settings.ai.providers.find((provider) => provider.instanceId === 'compatible').configuration.apiKey.configured, true);
 });
 
+test('GET settings reports the running version, not a stale one persisted in the data directory', async () => {
+  const settings = await service.getSettings();
+  assert.equal(settings.diagnostics.version, require('../package.json').version);
+});
+
 test('GET settings follows injected-environment precedence and preserves flex mode', async () => {
   const settings = await service.getSettings();
   assert.equal(settings.automation.scanInterval, '5 * * * *');

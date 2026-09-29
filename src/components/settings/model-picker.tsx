@@ -141,6 +141,7 @@ export function ModelPicker({
                         <strong>{model.name}</strong>
                         <small>{model.id}</small>
                         <span className="settings-capabilities">
+                          {/(^|\/)gpt-6-luna$/i.test(model.id) ? <span>Recommended</span> : null}
                           {model.isDefault ? <span>Runtime default</span> : null}
                           {model.capabilities.includes('tools') ? <span>Tools</span> : null}
                           {model.capabilities.includes('vision') ? <span>Vision</span> : null}

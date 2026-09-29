@@ -10,7 +10,7 @@ export function LoginForm({ firstRun = false }: { firstRun?: boolean }) {
   </div> : null}<form onSubmit={async (event) => {
     event.preventDefault(); setBusy(true); setError('');
     const data = new FormData(event.currentTarget);
-    try { const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(data)) }); const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body.error || 'Login failed'); window.location.assign(firstRun ? '/companion?welcome=1' : '/actions'); }
+    try { const response = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(data)) }); const body = await response.json().catch(() => ({})); if (!response.ok) throw new Error(body.error || 'Login failed'); window.location.assign(firstRun ? '/companion?welcome=1' : '/companion'); }
     catch (cause) { setError(cause instanceof Error ? cause.message : 'Login failed'); setBusy(false); }
   }}>
     <label>Username<input className="field" name="username" autoComplete="username" required /></label>

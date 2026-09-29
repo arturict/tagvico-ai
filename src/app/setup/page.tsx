@@ -16,8 +16,10 @@ export default async function SetupPage() {
     id: string;
     name: string;
     description: string;
+    icon: ProviderDescriptor['icon'];
     runtimeAdapter: string;
     recommended?: boolean;
+    badge?: string;
     discovery: string;
     manualModelInput: boolean;
     fields: ProviderDescriptor['fields'];
@@ -27,8 +29,10 @@ export default async function SetupPage() {
     driverId: definition.id,
     name: definition.name,
     description: definition.description,
+    icon: definition.icon,
     runtimeAdapter: definition.runtimeAdapter,
     recommended: Boolean(definition.recommended),
+    badge: definition.badge || null,
     available: true,
     discovery: definition.discovery,
     manualModelInput: definition.manualModelInput,
@@ -49,7 +53,6 @@ export default async function SetupPage() {
     <header className="setup-head">
       <Image className="brand-mark" src="/tagvico-icon.png" alt="" width={44} height={44} />
       <div>
-        <p className="eyebrow">Tagvico v3</p>
         <h1>One calm setup flow.</h1>
         <p>Connect Paperless, choose a runtime and create the owner account. The same components continue in Settings after sign-in.</p>
       </div>

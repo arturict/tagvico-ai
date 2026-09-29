@@ -148,10 +148,8 @@ export type SettingsResponse = {
 };
 
 export type SettingsSectionId =
-  | 'general'
   | 'paperless'
   | 'providers'
   | 'automation'
   | 'tags'
-  | 'security'
-  | 'diagnostics';
+  | 'people';

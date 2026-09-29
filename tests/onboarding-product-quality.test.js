@@ -230,7 +230,7 @@ test('first success opens Ask Tagvico and research sources link to document view
   const login = read('src/components/login-form.tsx');
   const companion = read('src/components/companion.tsx');
   const documentSource = read('src/app/(app)/documents/[id]/page.tsx');
-  assert.match(login, /firstRun \? '\/companion\?welcome=1' : '\/actions'/);
+  assert.match(login, /firstRun \? '\/companion\?welcome=1' : '\/companion'/);
   assert.match(companion, /href=\{`\/documents\/\$\{document\.id\}`\}/);
   assert.match(companion, /Your connections are ready\. Ask a read-only question/);
   assert.match(companion, /Tagvico will wait for approval before changing anything/);
