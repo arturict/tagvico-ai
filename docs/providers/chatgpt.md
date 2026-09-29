@@ -27,7 +27,11 @@ open-source apps, released on 2026-09-29.
    the same computer, and Tagvico usually runs somewhere else.
 4. Copy the full address from that tab, paste it into Tagvico and select
    **Finish sign-in**.
-5. Choose a model from the list your plan offers.
+5. Choose a model from the list your plan offers. Tagvico preselects the
+   lightest tier (Luna), because filing is frequent and Plus shares its usage
+   limit across apps. On 2026-09-29 a Plus plan listed `gpt-6-astra`,
+   `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna` and `gpt-5.5`; GPT-6 Luna
+   and Sol were not offered.
 
 Only Tagvico, which holds the PKCE verifier for that sign-in attempt, can
 exchange the code in that address, and the code is single-use and short-lived.
@@ -68,7 +72,7 @@ effort is passed through when you choose one.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `AI_PROVIDER` | | `chatgpt` to make it the filing provider |
-| `CHATGPT_MODEL` | `gpt-6-luna` | Model slug; must be one your plan lists |
+| `CHATGPT_MODEL` | empty | Model slug from your plan's list; empty picks the lightest listed tier (Luna, for example `gpt-5.6-luna`) |
 | `CHATGPT_TIMEOUT_MS` | `120000` | Per-request timeout |
 
 Sign-in itself cannot be configured through environment variables; use

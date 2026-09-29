@@ -100,7 +100,7 @@ const DEFAULT_MODELS = {
   copilot: 'gpt-5.4-mini',
   compatible: '',
   openai: 'gpt-5.4-mini',
-  chatgpt: 'gpt-6-luna',
+  chatgpt: '',
   codex: 'gpt-5.4-mini',
   typesafe: 'jev-latest'
 };

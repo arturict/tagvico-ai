@@ -276,3 +276,9 @@ test('the registry offers the ChatGPT plan for filing, the Companion and TypeSaf
   const { textProviderIds } = require('../dist/services/textGenerationService');
   assert.ok(textProviderIds().includes('chatgpt'));
 });
+
+test('the plan default is its lightest listed tier, not the first entry', () => {
+  assert.equal(planModule.defaultModelIndex(['gpt-6-astra', 'gpt-5.6-sol', 'gpt-5.6-terra', 'gpt-5.6-luna', 'gpt-5.5']), 3);
+  assert.equal(planModule.defaultModelIndex(['gpt-6-astra', 'gpt-5.4-mini']), 1);
+  assert.equal(planModule.defaultModelIndex(['gpt-6-astra', 'gpt-5.5']), 0);
+});

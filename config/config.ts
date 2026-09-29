@@ -108,7 +108,8 @@ module.exports = {
     model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5'
   },
   chatgpt: {
-    model: process.env.CHATGPT_MODEL || 'gpt-6-luna',
+    // Empty: the plan's lightest listed model (see chatgptPlanService).
+    model: process.env.CHATGPT_MODEL || '',
     timeoutMs: Math.max(10000, parseInt(process.env.CHATGPT_TIMEOUT_MS || '120000', 10))
   },
   codex: {

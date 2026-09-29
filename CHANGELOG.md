@@ -24,7 +24,8 @@
 - Usage-limit, eligibility and unsupported-request errors from OpenAI stop the
   request with a specific message; Tagvico never falls back to another
   provider. The model picker shows only the models the plan lists;
-  `CHATGPT_MODEL` defaults to `gpt-6-luna`.
+  Tagvico preselects the plan's lightest tier (Luna); `CHATGPT_MODEL`
+  overrides it.
 - The Codex-based provider is renamed **ChatGPT via Codex (legacy)** and stays
   in maintenance mode for existing installations.
 

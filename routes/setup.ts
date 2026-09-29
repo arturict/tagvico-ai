@@ -2083,7 +2083,7 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
     OPENAI_MODEL: providerPayload.provider === 'openai' ? providerPayload.selectedModel : currentConfig.OPENAI_MODEL || 'gpt-5.4-mini',
     ANTHROPIC_API_KEY: providerPayload.provider === 'anthropic' ? providerPayload.anthropicApiKey : currentConfig.ANTHROPIC_API_KEY || '',
     ANTHROPIC_MODEL: providerPayload.provider === 'anthropic' ? providerPayload.selectedModel : currentConfig.ANTHROPIC_MODEL || 'claude-haiku-4-5',
-    CHATGPT_MODEL: providerPayload.provider === 'chatgpt' ? providerPayload.selectedModel : currentConfig.CHATGPT_MODEL || 'gpt-6-luna',
+    CHATGPT_MODEL: providerPayload.provider === 'chatgpt' ? providerPayload.selectedModel : currentConfig.CHATGPT_MODEL || '',
     CODEX_MODEL: providerPayload.provider === 'codex' ? providerPayload.selectedModel : currentConfig.CODEX_MODEL || 'gpt-5.4-mini',
     AI_PROCESSING_MODE: ['standard', 'flex', 'batch'].includes(String(payload.aiProcessingMode)) ? String(payload.aiProcessingMode) : (currentConfig.AI_PROCESSING_MODE || 'standard'),
     OLLAMA_API_URL: providerPayload.ollamaUrl || currentConfig.OLLAMA_API_URL || 'http://localhost:11434',

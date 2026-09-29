@@ -36,7 +36,7 @@ model is good enough for Automatic mode.
 | GitHub Copilot | **GPT-5.4 Mini** when the signed-in plan exposes it | It offers a strong quality/cost balance without a separate per-token key inside Tagvico. Prefer a model with the lowest billing multiplier that still passes your test set, because plan entitlements differ. |
 | CLI Proxy / OpenAI-compatible | A subscription-backed model returned by CLIProxyAPI, or a **mini**, **flash**, or roughly **8B–20B instruct** model supported by your gateway | Compatible endpoints vary too much for one universal slug. Load the live catalog, start small, require reliable JSON, and increase model size only when the error rate justifies it. |
 | TypeSafe Jev | **jev-latest** | By far the cheapest hosted option in our synthetic test (about USD 0.08 per 1,000 documents, about 300 ms each), because only input tokens are billed and the text is billed once for all questions. Only worth it when your Paperless vocabulary is settled. |
-| ChatGPT plan | **GPT-6 Luna** when the plan lists it | No per-token bill. Plus shares a five-hour usage limit across all connected apps, so a large backlog can pause filing until the limit resets. |
+| ChatGPT plan | The **Luna** tier your plan lists (preselected; `gpt-5.6-luna` on a Plus plan in September 2026) | No per-token bill. Plus shares a five-hour usage limit across all connected apps, so a large backlog can pause filing until the limit resets. |
 | ChatGPT via Codex (legacy) | The configured Codex model supported by the signed-in account | Suitable for one trusted, low-volume installation when subscription-backed inference is preferable. Model availability remains account-controlled and is not an API service guarantee. |
 
 ## ChatGPT plan
