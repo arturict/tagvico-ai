@@ -1,6 +1,12 @@
 # Changelog
 
-## 3.5.0 - Unreleased
+## 3.5.0 - 2026-09-29
+
+### Security
+
+- Dependency overrides move `fast-uri` to 3.1.8 (GHSA-qw65-cvwx-89v3,
+  GHSA-58mr-gqgx-xq4g, high) and `undici` to 6.28.1 (GHSA-3wwx-pv8p-q78v,
+  moderate). `npm audit --omit=dev --audit-level=high` reports zero findings.
 
 ### Sign in with ChatGPT
 

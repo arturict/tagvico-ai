@@ -10,10 +10,10 @@ export type ChangelogEntry = {
 export const changelogEntries: ChangelogEntry[] = [
   {
     version: '3.5.0',
-    date: 'Unreleased',
+    date: '29 September 2026',
     title: 'Sign in with ChatGPT and the TypeSafe Jev provider',
     summary: 'Use your ChatGPT Plus or Pro plan instead of an API key, and file with a decision model that only picks from your existing vocabulary.',
-    status: 'unreleased',
+    status: 'released',
     groups: [
       {
         title: 'Sign in with ChatGPT',
@@ -31,6 +31,19 @@ export const changelogEntries: ChangelogEntry[] = [
           'The probability of each chosen option is the field confidence, so the review threshold works unchanged. TYPESAFE_TAG_THRESHOLD (default 0.6) sets when a tag is suggested.',
           'Pair it with any configured text provider (TYPESAFE_TEXT_PROVIDER, including subscription adapters and local Ollama): one small extra call writes the title and names senders that are not in the archive yet. In a 60-document synthetic test good titles rose from 32% to 98%.',
           'By design no new tags or document types, custom fields, owner suggestions, custom prompt or Companion with this provider; keep a text-generating provider configured for the Companion.'
+        ]
+      },
+      {
+        title: 'GPT-6',
+        items: [
+          'Luna recommendations move to gpt-6-luna (openai/gpt-6-luna on OpenRouter), and the offline cost estimate knows GPT-6 Luna and Sol.',
+          'GPT-6 models are treated as reasoning models on every OpenAI path, so they no longer receive temperature, and AI_REASONING_EFFORT is mapped to values GPT-6 accepts.'
+        ]
+      },
+      {
+        title: 'Security',
+        items: [
+          'fast-uri updated to 3.1.8 and undici to 6.28.1 for new high and moderate advisories; npm audit --omit=dev --audit-level=high reports zero findings.'
         ]
       }
     ]

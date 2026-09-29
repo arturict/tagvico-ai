@@ -1,5 +1,25 @@
 # Release notes
 
+## v3.5.0
+
+Released 29 September 2026.
+
+Tagvico 3.5.0 lets an eligible ChatGPT Plus or Pro plan pay for filing and the
+Companion through OpenAI's new Sign in with ChatGPT, with no API key. Choose
+**ChatGPT plan** in **Settings → AI models**, select **Continue with ChatGPT**,
+allow Tagvico to use your plan, and paste the address of the `127.0.0.1` page
+ChatGPT opens. Usage counts toward your plan and can be limited under ChatGPT
+Settings → Usage. See [ChatGPT plan](./providers#chatgpt-plan).
+
+The release also adds TypeSafe's Jev decision model for closed-list filing,
+moves Luna recommendations to GPT-6 Luna, stops sending `temperature` to GPT-6
+models, and updates `fast-uri` and `undici` for new advisories. The Codex-based
+provider is now called ChatGPT via Codex (legacy).
+
+Upgrade by backing up `tagvico_ai_data`, pinning
+`ghcr.io/arturict/tagvico-ai:3.5.0`, and recreating only the Tagvico
+container. This release does not change the data schema.
+
 ## v3.4.1
 
 Released 15 September 2026.
