@@ -12,6 +12,7 @@ export interface HouseholdNavigation {
   currentMemberId: string;
   members: Array<{ id: string; displayName: string; role: string; openCount: number }>;
   needsYouCount: number;
+  overdueCount: number;
   channels: { telegram: ChannelState; discord: ChannelState };
   paperlessUrl: string | null;
 }
@@ -59,11 +60,15 @@ export async function getHouseholdNavigation(user: SessionUser): Promise<Househo
     ? Number((db.prepare(`SELECT COUNT(*) AS total FROM agent_approvals WHERE household_id = ? AND status = 'pending'`)
       .get(workspace.householdId) as { total: number }).total)
     : 0;
-  const dueSoon = Number((db.prepare(
-    `SELECT COUNT(*) AS total FROM action_cases
-     WHERE household_id = ? AND assignee_member_id = ? AND ${ACTIVE_CASE}
+  // Household-wide, so it matches the urgent groups of the Needs you page:
+  // any assignee (or none) counts, not only the current member's cases.
+  const due = db.prepare(
+    `SELECT COUNT(*) AS total,
+       COALESCE(SUM(CASE WHEN date(due_at) < date('now') THEN 1 ELSE 0 END), 0) AS late
+     FROM action_cases
+     WHERE household_id = ? AND ${ACTIVE_CASE}
        AND due_at IS NOT NULL AND date(due_at) <= date('now', '+7 days')`
-  ).get(workspace.householdId, workspace.memberId) as { total: number }).total);
+  ).get(workspace.householdId) as { total: number; late: number };
 
   let pendingReview = 0;
   if (canDecide) {
@@ -78,7 +83,8 @@ export async function getHouseholdNavigation(user: SessionUser): Promise<Househo
     household: { name: workspace.name, kind: workspace.kind },
     currentMemberId: workspace.memberId,
     members,
-    needsYouCount: pendingApprovals + dueSoon + pendingReview,
+    needsYouCount: pendingApprovals + Number(due.total) + pendingReview,
+    overdueCount: Number(due.late),
     channels: {
       telegram: channelState('TELEGRAM_BOT_ENABLED', 'TELEGRAM_BOT_TOKEN'),
       discord: channelState('DISCORD_BOT_ENABLED', 'DISCORD_BOT_TOKEN')

@@ -58,9 +58,9 @@ export default async function PersonPage({ params }: { params: Promise<{ memberI
       <div>
         <p className="eyebrow">{workspace.name}</p>
         <h1>{name}</h1>
-        <p className="lede people-role">{String(member.role)} · {cases.length} open</p>
+        <p className="lede">{String(member.role)} · {cases.length} open</p>
       </div>
     </header>
-    <MemberWorkload cases={cases} approvals={approvals} firstName={name.split(/\s+/)[0]} />
+    <MemberWorkload cases={cases} approvals={approvals} name={name} />
   </div>;
 }

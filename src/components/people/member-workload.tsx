@@ -45,7 +45,7 @@ export function groupCases(cases: WorkloadCase[], now = new Date()) {
   return { groups, today };
 }
 
-export function MemberWorkload({ cases, approvals, firstName }: { cases: WorkloadCase[]; approvals: WorkloadApproval[]; firstName: string }) {
+export function MemberWorkload({ cases, approvals, name }: { cases: WorkloadCase[]; approvals: WorkloadApproval[]; name: string }) {
   const { groups, today } = groupCases(cases);
   const sections = [
     { key: 'overdue', title: 'Overdue', items: groups.overdue },
@@ -54,7 +54,7 @@ export function MemberWorkload({ cases, approvals, firstName }: { cases: Workloa
   ] as const;
   return <>
     {cases.length === 0
-      ? <div className="empty"><h2>Nothing open</h2><p>{firstName} has no open action cases.</p></div>
+      ? <section className="people-group"><div className="empty"><h2>Nothing open</h2><p>{name} has no open action cases.</p></div></section>
       : sections.filter((section) => section.items.length > 0).map((section) => <section className="people-group" key={section.key} aria-labelledby={`people-${section.key}`}>
         <h2 id={`people-${section.key}`} className={`people-group-title is-${section.key}`}>{section.title}<span>{section.items.length}</span></h2>
         <div className="case-list">
@@ -73,7 +73,7 @@ export function MemberWorkload({ cases, approvals, firstName }: { cases: Workloa
     <section className="people-group" aria-labelledby="people-approvals">
       <h2 id="people-approvals" className="people-group-title">Requested approvals<span>{approvals.length}</span></h2>
       {approvals.length === 0
-        ? <p className="muted">{firstName} has not requested any changes yet.</p>
+        ? <div className="people-card"><p>{name} has not requested any changes yet.</p></div>
         : <ul className="people-approvals">
           {approvals.map((approval) => <li key={approval.id}>
             <span>{approval.title}</span>

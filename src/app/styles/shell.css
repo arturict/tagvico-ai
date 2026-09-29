@@ -32,20 +32,54 @@
   color: var(--tv-muted);
 }
 
-/* Household sidebar */
+/* Household sidebar: a sticky, viewport-tall column. The ::before strip paints
+   the sidebar background down the whole page, however long the content is. */
+.shell {
+  display: grid;
+  grid-template-columns: var(--shell-sidebar) minmax(0, 1fr);
+  align-items: start;
+  transition: grid-template-columns 160ms ease;
+}
+
+.shell::before {
+  content: "";
+  grid-column: 1;
+  grid-row: 1;
+  align-self: stretch;
+  border-right: 1px solid var(--tv-line);
+  background: rgba(238, 235, 222, .96);
+  box-shadow: 8px 0 30px rgba(46, 57, 40, .045);
+}
+
 .shell .sidebar {
+  position: sticky;
+  inset: 0 auto auto 0;
+  grid-column: 1;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
+  width: auto;
+  height: 100dvh;
+  border-right: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.shell .main {
+  grid-column: 2;
+  grid-row: 1;
+  margin-left: 0;
 }
 
 .shell .sidebar .household-card {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 14px 0 0;
+  margin: 10px 0 0;
   border: 1px solid var(--tv-line);
   border-radius: 10px;
-  padding: 9px 10px;
+  padding: 7px 10px;
   background: var(--tv-surface);
   color: var(--tv-text);
   transition: border-color 140ms ease;
@@ -80,18 +114,32 @@
 .sidebar-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  margin: 14px -4px 0;
+  margin: 10px -4px 0;
   padding: 0 4px;
   overflow: hidden auto;
   scrollbar-width: thin;
   display: grid;
   align-content: start;
-  gap: 16px;
+  gap: 10px;
 }
 
 .shell .sidebar .nav {
   margin-top: 0;
-  gap: 4px;
+  gap: 2px;
+}
+
+.shell .sidebar .nav-entry > a {
+  min-height: 38px;
+}
+
+.shell .sidebar .sidebar-utility-links {
+  gap: 0;
+  padding-top: 6px;
+}
+
+.shell .sidebar .sidebar-utility-links a {
+  min-height: 32px;
+  padding: 5px 9px;
 }
 
 .sidebar-section {
@@ -122,7 +170,7 @@
 .sidebar-channels a,
 .sidebar-more-toggle {
   display: flex;
-  min-height: 36px;
+  min-height: 32px;
   align-items: center;
   gap: 10px;
   border: 1px solid transparent;
@@ -202,6 +250,11 @@
   font-size: 10px;
 }
 
+.nav-badge-needs.is-urgent {
+  background: var(--tv-danger);
+  color: #fffdf7;
+}
+
 .sidebar-more {
   display: grid;
   gap: 4px;
@@ -231,12 +284,14 @@
 .shell .sidebar .sidebar-foot {
   position: static;
   flex: 0 0 auto;
-  margin-top: 10px;
-  gap: 8px;
+  margin-top: 8px;
+  gap: 6px;
 }
 
-.sidebar-identity {
+.shell .sidebar .sidebar-identity {
   grid-template-columns: 30px minmax(0, 1fr) auto;
+  margin-top: 4px;
+  padding: 7px 9px;
 }
 
 .sidebar-signout {
@@ -265,131 +320,240 @@
 }
 
 /* Collapsed rail: icons and avatars only */
-.shell.is-collapsed .sidebar-people a,
-.shell.is-collapsed .sidebar-channels a,
-.shell.is-collapsed .sidebar-more-toggle {
+.shell.is-collapsed .sidebar .sidebar-people a,
+.shell.is-collapsed .sidebar .sidebar-channels a,
+.shell.is-collapsed .sidebar .sidebar-more-toggle {
   position: relative;
   justify-content: center;
   padding-inline: 6px;
 }
 
-.shell.is-collapsed .status-dot {
+.shell.is-collapsed .sidebar .status-dot {
   position: absolute;
   top: 6px;
   right: 8px;
   margin: 0;
 }
 
-.shell.is-collapsed .sidebar-scroll {
+.shell.is-collapsed .sidebar .sidebar-scroll {
   gap: 10px;
 }
 
-.shell.is-collapsed .sidebar-identity {
+.shell.is-collapsed .sidebar .sidebar-identity {
   grid-template-columns: 1fr;
   justify-items: center;
   gap: 6px;
   padding: 7px 0;
 }
 
-.shell.is-collapsed .nav-badge-needs {
+.shell.is-collapsed .sidebar .nav-badge-needs {
   position: absolute;
   top: 3px;
   right: 2px;
 }
 
+/* Mobile chrome is hidden on desktop */
+.mobile-bar,
+.mobile-tabs,
+.mobile-sheet,
+.mobile-sheet-backdrop {
+  display: none;
+}
+
+/* Below 900px the sidebar gives way to a compact top bar (52px), a fixed bottom
+   tab bar (60px plus the safe-area inset) and a menu sheet between them. The
+   two heights are published for pages that size themselves to the viewport. */
 @media (max-width: 900px) {
+  :root {
+    --shell-top-bar: 52px;
+    --shell-bottom-bar: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shell,
+  .shell.is-collapsed {
+    display: block;
+  }
+
+  .shell::before {
+    display: none;
+  }
+
   .shell .sidebar,
   .shell.is-collapsed .sidebar {
-    display: block;
+    display: none;
   }
 
-  .shell .sidebar .household-card,
-  .shell.is-collapsed .sidebar .household-card {
+  .shell .main {
+    padding-bottom: calc(var(--shell-bottom-bar) + 24px);
+  }
+
+  .mobile-bar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
     display: flex;
-    margin-top: 0;
-    padding: 6px 9px;
+    height: var(--shell-top-bar);
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid var(--tv-line);
+    padding: 0 12px 0 16px;
+    background: rgba(238, 235, 222, .97);
+    backdrop-filter: blur(14px);
   }
 
-  .shell .sidebar .sidebar-scroll {
+  .mobile-bar-brand {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin: 10px 0 0;
-    padding: 0 0 4px;
-    overflow: auto hidden;
-    scrollbar-width: none;
+    gap: 9px;
+    margin-right: auto;
+    color: var(--tv-pine);
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 19px;
+    font-weight: 700;
+    letter-spacing: -.03em;
   }
 
-  .sidebar-scroll::-webkit-scrollbar {
-    display: none;
+  .mobile-bar-brand img {
+    border-radius: 7px;
   }
 
-  .shell .sidebar .sidebar-scroll > .nav,
-  .sidebar-section,
-  .sidebar-people,
-  .sidebar-channels,
-  .sidebar-more,
-  .shell .sidebar .sidebar-more .nav {
-    display: flex;
-    flex: 0 0 auto;
-    align-items: center;
-    gap: 6px;
+  .mobile-bar-menu {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    place-items: center;
+    border: 1px solid var(--tv-line);
+    border-radius: 9px;
+    background: var(--tv-surface);
+    color: var(--tv-pine);
+    cursor: pointer;
   }
 
-  .shell .sidebar .sidebar-section-title,
-  .sidebar-more-toggle,
-  .shell .sidebar .sidebar-person-count,
-  .shell .sidebar .sidebar-more .nav-sub-links {
-    display: none;
+  .mobile-bar-menu svg {
+    width: 18px;
+    height: 18px;
   }
 
-  .shell .sidebar .sidebar-more .nav[hidden] {
-    display: flex;
-  }
-
-  .sidebar-people a,
-  .sidebar-channels a {
-    flex: 0 0 auto;
-    min-height: 38px;
-    padding: 5px 10px;
-  }
-
-  .shell .sidebar .sidebar-foot,
-  .shell.is-collapsed .sidebar .sidebar-foot {
+  .mobile-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 30;
     display: block;
-    margin-top: 2px;
+    border: 0;
+    background: rgba(23, 34, 24, .38);
   }
 
-  .shell .sidebar .sidebar-utility-links {
-    display: flex;
-    gap: 6px;
-    border-top: 0;
-    padding-top: 0;
-    overflow: auto hidden;
-    scrollbar-width: none;
+  .mobile-sheet {
+    position: fixed;
+    top: var(--shell-top-bar);
+    right: 0;
+    bottom: var(--shell-bottom-bar);
+    left: 0;
+    z-index: 35;
+    display: grid;
+    align-content: start;
+    gap: 14px;
+    overflow-y: auto;
+    border-bottom: 1px solid var(--tv-line);
+    padding: 14px 14px 18px;
+    background: var(--tv-bg);
+    box-shadow: 0 18px 40px rgba(42, 54, 37, .18);
+    overscroll-behavior: contain;
   }
 
-  .sidebar-utility-links a {
-    flex: 0 0 auto;
-    min-height: 36px;
-  }
-
-  .shell .sidebar .sidebar-identity {
+  .mobile-sheet[hidden] {
     display: none;
   }
 
-  .shell.is-collapsed .sidebar-people a,
-  .shell.is-collapsed .sidebar-channels a {
-    justify-content: flex-start;
+  .mobile-sheet section {
+    display: grid;
+    gap: 2px;
   }
 
-  .shell.is-collapsed .status-dot {
-    position: static;
-    margin-left: 2px;
+  .mobile-sheet .sidebar-people a,
+  .mobile-sheet .sidebar-channels a {
+    min-height: 42px;
   }
 
-  .status-dot {
-    margin-left: 2px;
+  .mobile-sheet .sidebar-person-name,
+  .mobile-sheet .sidebar-person-count,
+  .mobile-sheet .sidebar-section-title {
+    display: initial;
+  }
+
+  .mobile-sheet .sidebar-person-count {
+    margin-left: auto;
+  }
+
+  .mobile-sheet-household {
+    display: grid;
+    gap: 2px;
+    margin: 0;
+    padding: 0 10px;
+  }
+
+  .mobile-sheet-household strong {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 17px;
+  }
+
+  .mobile-sheet-household small {
+    color: var(--tv-muted);
+    font-size: 12px;
+  }
+
+  .mobile-tabs {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 40;
+    display: grid;
+    height: var(--shell-bottom-bar);
+    grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--tv-line);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: rgba(238, 235, 222, .97);
+    backdrop-filter: blur(14px);
+  }
+
+  .mobile-tabs a {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    color: var(--tv-muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .mobile-tabs a svg {
+    width: 21px;
+    height: 21px;
+    stroke-width: 1.8;
+  }
+
+  .mobile-tabs a.is-active {
+    color: var(--tv-pine);
+  }
+
+  .mobile-tabs a.is-active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    width: 28px;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--tv-pine);
+  }
+
+  .mobile-tabs .nav-badge {
+    position: absolute;
+    top: 6px;
+    left: calc(50% + 6px);
+    margin: 0;
   }
 }
 
@@ -409,16 +573,13 @@
   margin-top: 8px;
 }
 
-.people-role {
-  text-transform: capitalize;
-}
-
 .people-group {
   margin-bottom: 28px;
 }
 
 .people-group-title {
   display: flex;
+  font-family: inherit;
   align-items: center;
   gap: 10px;
   margin-bottom: 12px;
@@ -442,6 +603,19 @@
 .people-due-late {
   color: var(--tv-danger);
   font-weight: 650;
+}
+
+.people-card {
+  border: 1px dashed var(--tv-line);
+  border-radius: var(--tv-radius);
+  padding: 18px 20px;
+  background: color-mix(in srgb, var(--tv-surface) 70%, transparent);
+  color: var(--tv-muted);
+  font-size: 14px;
+}
+
+.people-card p {
+  margin: 0;
 }
 
 .people-approvals {

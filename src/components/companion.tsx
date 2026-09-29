@@ -269,7 +269,9 @@ export function Companion({
     () => approvals.filter((approval) => approval.session_id === sessionId),
     [approvals, sessionId]
   );
-  const needsCount = needsYou ?? approvals.length;
+  // Pending approvals are always part of what waits for the member, so the
+  // household-wide count can never hide them.
+  const needsCount = Math.max(needsYou ?? 0, approvals.length);
   const historyItems = sessions.map((session) => ({
     id: session.id,
     title: session.title,

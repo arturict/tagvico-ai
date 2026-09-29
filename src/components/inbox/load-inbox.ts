@@ -3,7 +3,8 @@ import documentModel from '../../../models/document';
 import { actionCenter, workspaceFor } from '@/lib/server/workspace';
 import type { InboxApproval, InboxCase, InboxCaseStatus, InboxData, InboxMember, InboxPriority } from './types';
 
-type Row = Record<string, any>;
+type Row = Record<string, unknown>;
+const asRow = (value: unknown): Row => (value && typeof value === 'object' && !Array.isArray(value) ? value as Row : {});
 type Workspace = ReturnType<typeof workspaceFor>;
 
 const ACTIVE = new Set<string>(['suggested', 'open', 'waiting']);
@@ -15,8 +16,8 @@ function text(value: unknown, max = 240) {
 }
 
 function approvalSummary(row: Row): Pick<InboxApproval, 'title' | 'meta' | 'detail'> {
-  const payload: Row = row.payload && typeof row.payload === 'object' ? row.payload : {};
-  const patch: Row = payload.patch && typeof payload.patch === 'object' ? payload.patch : {};
+  const payload = asRow(row.payload);
+  const patch = asRow(payload.patch);
   const fields = Object.keys(patch);
   const reason = text(payload.reason);
   switch (row.action_type) {
