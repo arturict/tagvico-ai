@@ -32,6 +32,7 @@ export type ProviderDescriptor = {
   icon: { path: string; source?: string } | null;
   runtimeAdapter: string;
   recommended: boolean;
+  badge: string | null;
   available: boolean;
   discovery: string;
   manualModelInput: boolean;

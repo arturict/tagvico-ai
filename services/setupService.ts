@@ -384,7 +384,7 @@ class SetupService {
     if (aiProvider === 'openrouter') {
       const openRouterValid = await this.validateOpenRouterConfig(
         config.OPENROUTER_API_KEY || config.OPENAI_API_KEY,
-        config.OPENROUTER_MODEL || config.AI_MODEL || 'openai/gpt-5.4-mini',
+        config.OPENROUTER_MODEL || config.AI_MODEL || 'openai/gpt-6-luna',
         config.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1'
       );
       if (!openRouterValid) {

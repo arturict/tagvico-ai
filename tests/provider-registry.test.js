@@ -10,6 +10,7 @@ const copilot = require('../dist/services/copilotService');
 test('provider definitions are unique and own their schemas and runtime adapters', () => {
   const definitions = registry.getProviderDefinitions();
   assert.deepEqual(definitions.map((definition) => definition.id), [
+    'chatgpt',
     'openrouter',
     'ollama',
     'ollama-cloud',
@@ -17,7 +18,6 @@ test('provider definitions are unique and own their schemas and runtime adapters
     'copilot',
     'compatible',
     'openai',
-    'chatgpt',
     'codex',
     'typesafe'
   ]);

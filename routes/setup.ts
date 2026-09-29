@@ -2080,7 +2080,7 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
     OPENROUTER_BASE_URL: injectedEnvironmentValue('OPENROUTER_BASE_URL') || providerPayload.openrouterBaseUrl || currentConfig.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
     OPENROUTER_MODEL: providerPayload.provider === 'openrouter' ? providerPayload.selectedModel : currentConfig.OPENROUTER_MODEL || providerPayload.selectedModel,
     OPENAI_API_KEY: providerPayload.provider === 'openai' ? providerPayload.openaiApiKey : currentConfig.OPENAI_API_KEY || '',
-    OPENAI_MODEL: providerPayload.provider === 'openai' ? providerPayload.selectedModel : currentConfig.OPENAI_MODEL || 'gpt-5.4-mini',
+    OPENAI_MODEL: providerPayload.provider === 'openai' ? providerPayload.selectedModel : currentConfig.OPENAI_MODEL || 'gpt-6-luna',
     ANTHROPIC_API_KEY: providerPayload.provider === 'anthropic' ? providerPayload.anthropicApiKey : currentConfig.ANTHROPIC_API_KEY || '',
     ANTHROPIC_MODEL: providerPayload.provider === 'anthropic' ? providerPayload.selectedModel : currentConfig.ANTHROPIC_MODEL || 'claude-haiku-4-5',
     CHATGPT_MODEL: providerPayload.provider === 'chatgpt' ? providerPayload.selectedModel : currentConfig.CHATGPT_MODEL || '',

@@ -213,6 +213,7 @@ async function getSettings() {
     icon: { path: string; source?: string } | null;
     runtimeAdapter: string;
     recommended?: boolean;
+    badge?: string;
     discovery: string;
     modelEnvironmentKey: string;
     legacyModelEnvironmentKeys?: string[];
@@ -231,6 +232,7 @@ async function getSettings() {
     icon: definition.icon,
     runtimeAdapter: definition.runtimeAdapter,
     recommended: Boolean(definition.recommended),
+    badge: definition.badge || null,
     available: true,
     discovery: definition.discovery,
     manualModelInput: definition.manualModelInput,
@@ -252,6 +254,7 @@ async function getSettings() {
       icon: null,
       runtimeAdapter: 'unknown',
       recommended: false,
+      badge: null,
       available: false,
       discovery: 'manual',
       manualModelInput: true,

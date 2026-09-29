@@ -484,7 +484,7 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
           onChange={(event) => changeProvider(event.target.value)}
         >
           {visibleProviders.map((candidate) => <option key={candidate.instanceId} value={candidate.instanceId}>
-            {candidate.name}{candidate.recommended ? ' (recommended)' : ''}
+            {candidate.name}{candidate.badge ? ` (${candidate.badge.toLowerCase()})` : candidate.recommended ? ' (recommended)' : ''}
           </option>)}
         </select>
       </SettingsRow>

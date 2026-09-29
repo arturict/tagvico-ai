@@ -497,7 +497,7 @@ export function SettingsWorkspace({
               >
                 <ProviderIcon icon={provider.icon} name={provider.name} size={26} />
                 <span>
-                  <strong>{provider.name}</strong>
+                  <strong>{provider.name}{provider.badge ? <em className="settings-provider-badge">{provider.badge}</em> : null}</strong>
                   <small>{provider.instanceId === settings.ai.activeProviderInstanceId ? 'Used for automation' : provider.description}</small>
                 </span>
               </button>)}

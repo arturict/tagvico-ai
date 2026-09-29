@@ -198,10 +198,11 @@ const DOCUMENT_SCHEMA = {
  * Plans list their largest model first (observed on a Plus plan on 2026-09-29:
  * gpt-6-astra, gpt-5.6-sol, gpt-5.6-terra, gpt-5.6-luna, gpt-5.5). Filing is a
  * small, frequent task that should spend as little of the shared plan limit as
- * possible, so the default is the plan's lightest listed tier.
+ * possible, so the default is GPT-6 Luna when listed, else the plan's
+ * lightest listed tier.
  */
 export function defaultModelIndex(slugs: string[]) {
-  for (const tier of [/luna/i, /nano/i, /mini/i, /terra/i]) {
+  for (const tier of [/^gpt-6-luna$/i, /luna/i, /nano/i, /mini/i, /terra/i]) {
     const index = slugs.findIndex((slug) => tier.test(slug));
     if (index >= 0) return index;
   }
