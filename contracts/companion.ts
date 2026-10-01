@@ -17,6 +17,8 @@ export interface CompanionModelProvider {
   instanceId: string;
   name: string;
   icon: { path: string; source?: string } | null;
+  /** Short provider label from the registry, for example "New" on the ChatGPT plan. */
+  badge?: string;
   models: ModelDescriptor[];
 }
 

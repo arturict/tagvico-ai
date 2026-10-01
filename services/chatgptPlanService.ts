@@ -4,7 +4,10 @@
 // public Responses API only, `store: false` and `stream: true` on every
 // request, no temperature or output-token limit, system guidance through
 // `instructions`, and success only after `response.completed`.
+import fs from 'node:fs';
+import path from 'node:path';
 import chatgptPlanAuthService, { ChatGPTPlanError, RESOURCE } from './chatgptPlanAuthService';
+import { resolveDataDirectory } from './dataDirectory';
 import { openAIReasoningEffort } from './openaiModelParameters';
 
 const config = require('../config/config');
@@ -209,6 +212,34 @@ export function defaultModelIndex(slugs: string[]) {
   return 0;
 }
 
+/**
+ * GPT-6 Luna is the model Tagvico prefers for filing and chat, but on 2026-10-01 a Plus plan's
+ * catalog did not list it although a request to it succeeded. When the catalog lacks it, Tagvico
+ * sends one tiny request (about 16 tokens) to check, remembers the answer per account for a week
+ * in data/chatgpt/models.json, and offers the model as the default only if it worked.
+ */
+const PREFERRED_MODEL = { id: 'gpt-6-luna', name: 'GPT-6 Luna' };
+const PROBE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+type ProbeCache = Record<string, { ok: boolean; checkedAt: number }>;
+
+function probeCacheFile() {
+  return path.join(resolveDataDirectory(), 'chatgpt', 'models.json');
+}
+
+function readProbeCache(): ProbeCache {
+  try {
+    const value = JSON.parse(fs.readFileSync(probeCacheFile(), 'utf8')) as unknown;
+    return value && typeof value === 'object' ? value as ProbeCache : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeProbeCache(cache: ProbeCache) {
+  fs.mkdirSync(path.dirname(probeCacheFile()), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(probeCacheFile(), JSON.stringify(cache), { mode: 0o600 });
+}
+
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
 
 class ChatGPTPlanService {
@@ -227,7 +258,7 @@ class ChatGPTPlanService {
     const body = await response.json().catch(() => null) as { models?: unknown } | null;
     if (!response.ok) throw planError(body, response.status);
     if (!Array.isArray(body?.models)) throw new ChatGPTPlanError('invalid_model_catalog', 'ChatGPT returned an unexpected model catalog.');
-    return body.models
+    const listed = body.models
       .filter((model): model is Record<string, unknown> => Boolean(model) && typeof model === 'object')
       .filter((model) => model.visibility === 'list' && typeof model.slug === 'string' && model.slug.trim())
       .slice(0, 200)
@@ -235,8 +266,34 @@ class ChatGPTPlanService {
         id: String(model.slug),
         name: String(model.display_name || model.slug),
         isDefault: false
-      }))
-      .map((model, index, models) => ({ ...model, isDefault: index === defaultModelIndex(models.map((entry) => entry.id)) }));
+      }));
+    const models = !listed.some((model) => model.id === PREFERRED_MODEL.id) && await this.preferredModelWorks()
+      ? [{ ...PREFERRED_MODEL, isDefault: false }, ...listed]
+      : listed;
+    return models.map((model, index) => ({ ...model, isDefault: index === defaultModelIndex(models.map((entry) => entry.id)) }));
+  }
+
+  /** Whether the unlisted preferred model answers for this account; checked once a week. */
+  private async preferredModelWorks() {
+    const account = chatgptPlanAuthService.status().account?.email || 'default';
+    const cache = readProbeCache();
+    const cached = cache[account];
+    if (cached && Date.now() - cached.checkedAt < PROBE_TTL_MS) return cached.ok;
+    let ok = false;
+    try {
+      const result = await respond({ model: PREFERRED_MODEL.id, input: 'Reply with exactly: OK' });
+      ok = /\bOK\b/i.test(result.text);
+    } catch (error) {
+      // A usage limit or outage says nothing about the model; ask again next time.
+      if (error instanceof ChatGPTPlanError && /usage_limit|stream_interrupted/.test(error.code)) return false;
+      ok = false;
+    }
+    try {
+      writeProbeCache({ ...cache, [account]: { ok, checkedAt: Date.now() } });
+    } catch {
+      // A read-only data directory only means the check repeats.
+    }
+    return ok;
   }
 
   /** The configured model, or the plan's default when none is configured. */

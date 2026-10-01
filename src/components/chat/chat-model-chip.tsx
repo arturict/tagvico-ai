@@ -1,15 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Check, ChevronDown, ChevronRight, RefreshCw, Search, X } from 'lucide-react';
-import { Dialog } from 'radix-ui';
-import { ProviderIcon } from '@/components/provider-icon';
+import { ModelPicker } from '@/components/model-picker/model-picker';
+import type { PickerModel, PickerProvider } from '@/components/model-picker/types';
 import type {
-  CompanionModelCatalog,
+  CompanionModelProvider,
   CompanionModelSelection
 } from '@root/contracts/companion';
 
-type CatalogResponse = CompanionModelCatalog & {
+/** The provider registry's badge ("New") travels with the catalog when the server sends it. */
+type CatalogProvider = CompanionModelProvider & { badge?: string | null };
+
+type Catalog = { providers: CatalogProvider[]; defaultSelection: CompanionModelSelection | null };
+
+type CatalogResponse = Catalog & {
   selection: CompanionModelSelection | null;
 };
 
@@ -27,13 +31,11 @@ export function ChatModelChip({
   sessionId: string;
   onState?: (state: ModelChipState) => void;
 }) {
-  const [catalog, setCatalog] = useState<CompanionModelCatalog>({ providers: [], defaultSelection: null });
+  const [catalog, setCatalog] = useState<Catalog>({ providers: [], defaultSelection: null });
   const [selection, setSelection] = useState<CompanionModelSelection | null>(null);
-  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [expandedProviders, setExpandedProviders] = useState<string[]>([]);
 
   const load = useCallback(async (refresh = false) => {
     setLoading(true);
@@ -50,7 +52,6 @@ export function ChatModelChip({
       const selected = body.selection || body.defaultSelection || null;
       setCatalog({ providers, defaultSelection: body.defaultSelection || null });
       setSelection(selected);
-      if (selected?.providerInstanceId) setExpandedProviders([selected.providerInstanceId]);
       onState?.(selected ? 'ready' : 'none');
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load the models');
@@ -70,14 +71,18 @@ export function ChatModelChip({
   const selectedModel = selectedProvider?.models.find(
     (model) => model.id === selection?.modelId
   );
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  const visibleProviders = useMemo(() => catalog.providers
-    .map((provider) => ({
-      ...provider,
-      models: provider.models.filter((model) => !normalizedQuery
-        || `${provider.name} ${model.name} ${model.id}`.toLocaleLowerCase().includes(normalizedQuery))
-    }))
-    .filter((provider) => provider.models.length), [catalog.providers, normalizedQuery]);
+  const pickerProviders = useMemo<PickerProvider[]>(() => catalog.providers.map((provider) => ({
+    id: provider.instanceId,
+    name: provider.name,
+    icon: provider.icon,
+    badge: provider.badge
+  })), [catalog.providers]);
+  const pickerModels = useMemo<PickerModel[]>(() => catalog.providers.flatMap((provider) => provider.models.map((model) => ({
+    providerId: provider.instanceId,
+    id: model.id,
+    name: model.name,
+    ...(model.isDefault ? { badges: ['Default'] } : {})
+  }))), [catalog.providers]);
   const reasoningOption = selectedModel?.options.find(
     (option): option is Extract<typeof option, { type: 'select' }> =>
       option.id === 'reasoningEffort' && option.type === 'select'
@@ -107,10 +112,19 @@ export function ChatModelChip({
     }
   };
 
-  const toggleProvider = (instanceId: string) => {
-    setExpandedProviders((current) => current.includes(instanceId)
-      ? current.filter((candidate) => candidate !== instanceId)
-      : [...current, instanceId]);
+  const chooseModel = (picked: PickerModel) => {
+    const model = catalog.providers
+      .find((provider) => provider.instanceId === picked.providerId)
+      ?.models.find((candidate) => candidate.id === picked.id);
+    const reasoning = model?.options.find((option) => option.id === 'reasoningEffort' && option.type === 'select');
+    const defaultReasoning = reasoning?.type === 'select'
+      ? reasoning.defaultValue || reasoning.values[0]?.id
+      : undefined;
+    return choose({
+      providerInstanceId: picked.providerId,
+      modelId: picked.id,
+      ...(defaultReasoning ? { reasoningEffort: defaultReasoning } : {})
+    });
   };
 
   if (!loading && !catalog.providers.length) {
@@ -122,120 +136,17 @@ export function ChatModelChip({
   }
 
   return <div className="chat-model-control">
-    <Dialog.Root onOpenChange={(open) => {
-      if (!open) setQuery('');
-      if (open && selection?.providerInstanceId) {
-        setExpandedProviders((current) => current.includes(selection.providerInstanceId)
-          ? current
-          : [...current, selection.providerInstanceId]);
-      }
-    }}>
-      <Dialog.Trigger asChild>
-        <button
-          className="btn btn-ghost chat-model-trigger"
-          type="button"
-          disabled={loading || saving}
-          aria-label="Choose model"
-          title={selectedProvider ? `${selectedProvider.name} · ${selectedModel?.name || selection?.modelId || ''}` : undefined}
-        >
-          <span>{selectedModel?.name || selection?.modelId || (loading ? 'Loading models' : 'Choose a model')}</span>
-          <ChevronDown aria-hidden="true" />
-        </button>
-      </Dialog.Trigger>
-      <Dialog.Portal>
-        <Dialog.Overlay className="dialog-backdrop" />
-        <Dialog.Content className="dialog chat-model-dialog" aria-describedby="chat-model-description">
-          <header className="chat-model-dialog-head">
-            <div>
-              <Dialog.Title className="type-section">Model</Dialog.Title>
-              <Dialog.Description id="chat-model-description" className="meta">
-                Used for the next message in this chat.
-              </Dialog.Description>
-            </div>
-            <Dialog.Close className="btn btn-ghost btn-icon btn-32" aria-label="Close model picker">
-              <X aria-hidden="true" />
-            </Dialog.Close>
-          </header>
-          <div className="chat-model-toolbar">
-            <label className="chat-model-search">
-              <Search aria-hidden="true" />
-              <span className="sr-only">Search models</span>
-              <input
-                className="input"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search models"
-                autoFocus
-              />
-            </label>
-            <button
-              className="btn btn-ghost btn-icon"
-              type="button"
-              onClick={() => void load(true)}
-              disabled={loading}
-              aria-label="Refresh models"
-            >
-              <RefreshCw className={loading ? 'chat-spin' : undefined} aria-hidden="true" />
-            </button>
-          </div>
-          <div className="chat-model-list">
-            {loading ? <p className="chat-model-empty shimmer">Loading models</p> : null}
-            {!loading && visibleProviders.map((provider) => {
-              const expanded = Boolean(normalizedQuery) || expandedProviders.includes(provider.instanceId);
-              return <section className="chat-model-group" key={provider.instanceId}>
-                <button
-                  type="button"
-                  className="chat-model-provider"
-                  onClick={() => toggleProvider(provider.instanceId)}
-                  aria-expanded={expanded}
-                >
-                  <ProviderIcon icon={provider.icon} name={provider.name} />
-                  <span><strong>{provider.name}</strong><small>{provider.models.length} model{provider.models.length === 1 ? '' : 's'}</small></span>
-                  {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-                </button>
-                {expanded ? <div className="chat-model-options">{provider.models.map((model) => {
-                  const selected = selection?.providerInstanceId === provider.instanceId
-                    && selection.modelId === model.id;
-                  const modelReasoning = model.options.find(
-                    (option) => option.id === 'reasoningEffort' && option.type === 'select'
-                  );
-                  const defaultReasoning = modelReasoning?.type === 'select'
-                    ? modelReasoning.defaultValue || modelReasoning.values[0]?.id
-                    : undefined;
-                  const traits = [
-                    model.isDefault ? 'Default' : '',
-                    model.capabilities.includes('tools') ? 'Tools' : '',
-                    model.capabilities.includes('vision') ? 'Vision' : '',
-                    model.capabilities.includes('thinking') ? 'Thinking' : ''
-                  ].filter(Boolean);
-                  return <Dialog.Close asChild key={model.id}>
-                    <button
-                      type="button"
-                      className={`chat-model-option${selected ? ' is-selected' : ''}`}
-                      onClick={() => void choose({
-                        providerInstanceId: provider.instanceId,
-                        modelId: model.id,
-                        ...(defaultReasoning ? { reasoningEffort: defaultReasoning } : {})
-                      })}
-                    >
-                      <span>
-                        <strong>{model.name}</strong>
-                        <small>{model.id}</small>
-                        {traits.length ? <em>{traits.join(' · ')}</em> : null}
-                      </span>
-                      {selected ? <Check aria-label="Selected" /> : null}
-                    </button>
-                  </Dialog.Close>;
-                })}</div> : null}
-              </section>;
-            })}
-            {!loading && !visibleProviders.length ? <p className="chat-model-empty">
-              {normalizedQuery ? 'No model matches your search.' : 'No connected provider listed a model.'}
-            </p> : null}
-          </div>
-        </Dialog.Content>
-      </Dialog.Portal>
-    </Dialog.Root>
+    <ModelPicker
+      providers={pickerProviders}
+      models={pickerModels}
+      selection={selection ? { providerId: selection.providerInstanceId, modelId: selection.modelId } : null}
+      onSelect={chooseModel}
+      fallbackLabel={loading ? 'Loading models' : 'Choose a model'}
+      disabled={loading || saving}
+      loading={loading}
+      onRefresh={() => load(true)}
+      globalShortcuts
+    />
     {reasoningOption ? <label className="chat-model-reasoning">
       <span className="sr-only">Thinking effort</span>
       <select

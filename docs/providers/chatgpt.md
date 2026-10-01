@@ -27,11 +27,14 @@ open-source apps, released on 2026-09-29.
    the same computer, and Tagvico usually runs somewhere else.
 4. Copy the full address from that tab, paste it into Tagvico and select
    **Finish sign-in**.
-5. Choose a model from the list your plan offers. Tagvico preselects the
-   lightest tier (Luna), because filing is frequent and Plus shares its usage
-   limit across apps. On 2026-09-29 a Plus plan listed `gpt-6-astra`,
-   `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna` and `gpt-5.5`; GPT-6 Luna
-   and Sol were not offered.
+5. Choose a model from the list your plan offers. Tagvico preselects GPT-6
+   Luna, the lightest current tier, because filing is frequent and Plus shares
+   its usage limit across apps. On 2026-10-01 a Plus plan listed `gpt-6-astra`,
+   `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna` and `gpt-5.5`, but answered
+   requests to the unlisted `gpt-6-luna`. When the list lacks it, Tagvico sends
+   one tiny request (about 16 tokens) to check, remembers the result for a week,
+   and offers GPT-6 Luna only if it worked; otherwise it preselects the
+   lightest listed tier.
 
 Only Tagvico, which holds the PKCE verifier for that sign-in attempt, can
 exchange the code in that address, and the code is single-use and short-lived.
@@ -51,7 +54,8 @@ backlog is better processed with an API provider or locally.
 
 Tagvico stores the issued client ID, the account's email and name, and the
 OAuth tokens in `data/chatgpt/auth.json` (owner-only permissions), plus a
-random installation ID in `data/chatgpt/host.json`. Tokens never reach the
+random installation ID in `data/chatgpt/host.json`, and the result of the
+GPT-6 Luna check in `data/chatgpt/models.json`. Tokens never reach the
 browser. Access tokens last an hour and are renewed automatically; the renewal
 token stays valid for 30 days after each renewal. **Sign out** revokes the
 session at OpenAI and deletes the tokens; the registration is kept so the next
@@ -72,7 +76,7 @@ effort is passed through when you choose one.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `AI_PROVIDER` | | `chatgpt` to make it the filing provider |
-| `CHATGPT_MODEL` | empty | Model slug from your plan's list; empty picks the lightest listed tier (Luna, for example `gpt-5.6-luna`) |
+| `CHATGPT_MODEL` | empty | Model slug from your plan's list; empty picks GPT-6 Luna when the plan answers to it, else the lightest listed tier |
 | `CHATGPT_TIMEOUT_MS` | `120000` | Per-request timeout |
 
 Sign-in itself cannot be configured through environment variables; use

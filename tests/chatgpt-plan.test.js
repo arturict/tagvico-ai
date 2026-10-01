@@ -177,6 +177,41 @@ test('model discovery lists only models the plan marks for display', async () =>
   assert.deepEqual(await planModule.default.listModels(), [{ id: 'gpt-6-luna', name: 'GPT-6 Luna', isDefault: true }]);
 });
 
+test('an unlisted GPT-6 Luna is checked once and offered as the default only when it answers', async () => {
+  const cacheFile = path.join(resolveDataDirectory(), 'chatgpt', 'models.json');
+  fs.rmSync(cacheFile, { force: true });
+  const previousFetch = global.fetch;
+  const previousReply = responsesReply;
+  const catalog = [
+    { slug: 'gpt-6-astra', display_name: 'GPT-6-Astra', visibility: 'list' },
+    { slug: 'gpt-5.6-luna', display_name: 'GPT-5.6-Luna', visibility: 'list' }
+  ];
+  global.fetch = async (input, init) => String(input).endsWith('/v1/models')
+    ? Response.json({ models: catalog })
+    : previousFetch(input, init);
+  const probes = () => calls.filter((call) => call.url.endsWith('/v1/responses') && call.body?.model === 'gpt-6-luna').length;
+  try {
+    const before = probes();
+    responsesReply = () => sse([
+      { type: 'response.output_text.delta', delta: 'OK' },
+      { type: 'response.completed', response: { usage: { input_tokens: 11, output_tokens: 5, total_tokens: 16 } } }
+    ]);
+    const models = await planModule.default.listModels();
+    assert.deepEqual(models.map((model) => [model.id, model.isDefault]), [['gpt-6-luna', true], ['gpt-6-astra', false], ['gpt-5.6-luna', false]]);
+    await planModule.default.listModels();
+    assert.equal(probes() - before, 1, 'the check is cached instead of repeated');
+
+    fs.rmSync(cacheFile, { force: true });
+    responsesReply = () => new Response(JSON.stringify({ error: { code: 'model_not_found', message: 'unknown model' } }), { status: 404, headers: { 'Content-Type': 'application/json' } });
+    const fallback = await planModule.default.listModels();
+    assert.deepEqual(fallback.map((model) => [model.id, model.isDefault]), [['gpt-6-astra', false], ['gpt-5.6-luna', true]]);
+  } finally {
+    global.fetch = previousFetch;
+    responsesReply = previousReply;
+    fs.rmSync(cacheFile, { force: true });
+  }
+});
+
 test('an expiring access token is refreshed once and the rotated refresh token is kept', async () => {
   const file = path.join(resolveDataDirectory(), 'chatgpt', 'auth.json');
   const stored = JSON.parse(fs.readFileSync(file, 'utf8'));

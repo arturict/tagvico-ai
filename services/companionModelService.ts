@@ -129,6 +129,7 @@ async function discoverVerifiedProvider(
       instanceId: definition.id,
       name: definition.name,
       icon: definition.icon,
+      ...(definition.badge ? { badge: definition.badge } : {}),
       models
     };
   } catch {

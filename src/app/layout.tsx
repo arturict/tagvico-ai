@@ -5,6 +5,7 @@ import './styles/shell.css';
 import './styles/chat.css';
 import './styles/inbox.css';
 import './styles/settings.css';
+import './styles/model-picker.css';
 import './styles/pages.css';
 import { TooltipProvider } from '@/components/ui/tooltip';
 

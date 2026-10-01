@@ -340,7 +340,7 @@ test('provider model lists have their own bounded scrolling surfaces', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'globals.css'), 'utf8');
   assert.match(css, /\.settings-model-list\s*\{[\s\S]*?overflow-y:\s*auto/);
   assert.match(css, /scrollbar-gutter:\s*stable/);
-  const chat = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'styles', 'chat.css'), 'utf8');
-  assert.match(chat, /\.chat-model-list\s*\{[\s\S]*?overflow-y:\s*auto/);
-  assert.match(chat, /\.chat-model-dialog\s*\{[\s\S]*?max-height:[\s\S]*?overflow:\s*hidden/);
+  const picker = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'styles', 'model-picker.css'), 'utf8');
+  assert.match(picker, /\.mp-scroll\s*\{[\s\S]*?overflow-y:\s*auto/);
+  assert.match(picker, /\.mp-popover\s*\{[\s\S]*?max-height:[\s\S]*?overflow:\s*hidden/);
 });
