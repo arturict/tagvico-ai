@@ -746,6 +746,8 @@
 .chat-starters {
   order: 3;
   display: grid;
+  /* minmax(0, 1fr) keeps long prompts inside the column so they truncate instead of overflowing on phones. */
+  grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   gap: 16px;
   width: 100%;
@@ -759,6 +761,7 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
+  min-width: 0;
   max-width: 100%;
 }
 
@@ -790,6 +793,8 @@
 }
 
 .chat-needs {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   color: var(--color-text-secondary);
   font-size: var(--font-text-sm-size);
   line-height: var(--font-text-sm-line-height);

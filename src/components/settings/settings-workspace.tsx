@@ -168,10 +168,16 @@ function OwnerSettingsWorkspace({
   const router = useRouter();
 
   // Channel cards used to live in Automation; an old #telegram or #discord link goes to the Channels tab.
+  // Also on hashchange: following such a link from Automation itself only changes the hash.
   useEffect(() => {
     if (section !== 'automation') return;
-    const anchor = window.location.hash.replace(/^#/, '').toLowerCase();
-    if (legacyChannelAnchors.includes(anchor)) router.replace('/settings/channels');
+    const redirectLegacyAnchor = () => {
+      const anchor = window.location.hash.replace(/^#/, '').toLowerCase();
+      if (legacyChannelAnchors.includes(anchor)) router.replace('/settings/channels');
+    };
+    redirectLegacyAnchor();
+    window.addEventListener('hashchange', redirectLegacyAnchor);
+    return () => window.removeEventListener('hashchange', redirectLegacyAnchor);
   }, [section, router]);
 
   useEffect(() => () => {

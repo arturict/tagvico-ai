@@ -46,7 +46,7 @@ export function HouseholdPeople({ household, pathname, open, onToggle, max, avat
         return <li key={member.id}>
           <Link href={href} className={`people-chip${isCurrent(pathname, href) ? ' is-active' : ''}${member.id === currentMemberId ? ' is-you' : ''}`}
             aria-label={personLabel(member, currentMemberId)} aria-current={pathname === href ? 'page' : undefined} title={personLabel(member, currentMemberId)}>
-            <MemberAvatar name={member.displayName} size={avatarSize} />
+            <MemberAvatar name={member.displayName} memberId={member.id} size={avatarSize} />
             {member.openCount > 0 ? <span className="people-badge" aria-hidden="true">{member.openCount > 99 ? '99+' : member.openCount}</span> : null}
           </Link>
         </li>;
@@ -65,7 +65,7 @@ export function HouseholdPeople({ household, pathname, open, onToggle, max, avat
         const href = `/people/${member.id}`;
         return <li key={member.id}>
           <Link href={href} className={`sidebar-row${isCurrent(pathname, href) ? ' is-active' : ''}`} aria-current={pathname === href ? 'page' : undefined} title={personLabel(member, currentMemberId)}>
-            <MemberAvatar name={member.displayName} size={24} />
+            <MemberAvatar name={member.displayName} memberId={member.id} size={24} />
             <span className="sidebar-row-label">{member.displayName}{member.id === currentMemberId ? <span className="meta"> you</span> : null}</span>
             <span className="meta sidebar-row-count">{member.openCount} open</span>
           </Link>

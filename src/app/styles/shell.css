@@ -11,9 +11,19 @@
 
 /* Member avatars (shared component): grey initials on the .avatar circle, with a hairline so they read on grey and white. */
 .member-avatar {
-  border: 1px solid var(--color-border);
+  border: 0;
+  background: var(--avatar-fill, var(--color-surface-tertiary));
+  color: var(--avatar-ink, var(--color-text-secondary));
+  font-weight: var(--font-weight-semibold);
   user-select: none;
 }
+
+.member-avatar[data-tone="blue"] { --avatar-fill: var(--blue-50); --avatar-ink: var(--blue-700); }
+.member-avatar[data-tone="green"] { --avatar-fill: var(--green-50); --avatar-ink: var(--green-700); }
+.member-avatar[data-tone="purple"] { --avatar-fill: var(--purple-50); --avatar-ink: var(--purple-700); }
+.member-avatar[data-tone="orange"] { --avatar-fill: var(--orange-50); --avatar-ink: var(--orange-700); }
+.member-avatar[data-tone="pink"] { --avatar-fill: var(--pink-50); --avatar-ink: var(--pink-700); }
+.member-avatar[data-tone="yellow"] { --avatar-fill: var(--yellow-50); --avatar-ink: var(--yellow-700); }
 
 /* ------------------------------------------------------------------- Layout */
 
@@ -152,10 +162,13 @@
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
+  /* minmax(0, 1fr): without it the column grows to the longest chat title and nothing truncates. */
+  grid-template-columns: minmax(0, 1fr);
   align-content: start;
   gap: 16px;
   margin: 8px -8px 0;
   padding: 0 8px;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
