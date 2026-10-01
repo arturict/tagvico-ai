@@ -143,7 +143,9 @@ export function ChatModelChip({
       selection={selection ? { providerId: selection.providerInstanceId, modelId: selection.modelId } : null}
       onSelect={chooseModel}
       fallbackLabel={loading ? 'Loading models' : 'Choose a model'}
-      disabled={loading || saving}
+      // Not disabled while saving: the popover returns focus to this button on close, and a disabled
+      // button cannot take it. A second choice during a save simply wins.
+      disabled={loading}
       loading={loading}
       onRefresh={() => load(true)}
       globalShortcuts
