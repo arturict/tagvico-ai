@@ -1,3 +1,7 @@
+'use client';
+
+import { useMemberTone } from '@/components/member-tones';
+
 export function memberInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   if (!parts.length) return '?';
@@ -8,22 +12,10 @@ export function memberInitials(name: string) {
 
 // Every avatar sits next to the member's name or inside a control that carries an accessible
 // label, so the initials are decorative; announcing them would read the name twice.
-// Each person keeps one soft colour from OpenAI's palette (pastel fill, darker initials), so the
-// household is recognisable at a glance in the avatar row; the name is always shown or labelled too.
-const AVATAR_TONES = ['blue', 'green', 'purple', 'orange', 'pink', 'yellow'] as const;
-
-function hashString(value: string) {
-  let hash = 5381;
-  for (let index = 0; index < value.length; index += 1) hash = ((hash << 5) + hash + value.charCodeAt(index)) >>> 0;
-  return hash;
-}
-
-export function memberTone(memberId: string) {
-  return AVATAR_TONES[hashString(memberId) % AVATAR_TONES.length];
-}
-
+// Each person keeps one soft colour from OpenAI's palette (pastel fill, darker initials); the tone comes
+// from their order in the household (see member-tones.tsx). The name is always shown or labelled too.
 export function MemberAvatar({ name, memberId, size = 28 }: { name: string; memberId?: string; size?: number }) {
-  const tone = memberTone(memberId || name);
+  const tone = useMemberTone(memberId || name);
   return <span
     className="avatar member-avatar"
     data-tone={tone}
