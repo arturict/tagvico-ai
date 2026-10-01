@@ -618,7 +618,7 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
 
     {step === 2 ? <SettingsSection
       title="3. Create the owner account"
-      description="The safe starting point is review-first with scheduled automation paused. Ask Tagvico stays read-only until you approve a proposed change."
+      description="The safe starting point is review-first with scheduled automation paused. The chat stays read-only until you approve a proposed change."
     >
       <SettingsRow title="Verified setup" description="Review the non-secret summary before creating the local account." stack>
         <dl className="setup-review">

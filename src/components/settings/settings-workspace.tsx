@@ -493,7 +493,7 @@ export function SettingsWorkspace({
       return <>
         <SettingsSection
           title="AI provider"
-          description="Tagvico uses one provider for filing and Ask Tagvico. Secrets are write-only and are never sent back to this browser."
+          description="Tagvico uses one provider for filing and the chat. Secrets are write-only and are never sent back to this browser."
         >
           <div className="provider-panel">
             <ProviderPicker
@@ -604,7 +604,7 @@ export function SettingsWorkspace({
 
         <SettingsSection
           title="Model"
-          description={`Discovered from ${activeProvider?.name || 'the active provider'}. Applies to filing and Ask Tagvico.`}
+          description={`Discovered from ${activeProvider?.name || 'the active provider'}. Applies to filing and the chat.`}
         >
           <SettingsRow title="Model" description="Search live models, favorite frequent choices and inspect capabilities." stack>
             <ModelPicker

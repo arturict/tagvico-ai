@@ -70,7 +70,7 @@ function HouseholdPeople({ household, pathname, open, onToggle, max, variant }: 
   return <section className="sidebar-section people-section" aria-label="People">
     <div className="people-head-row">
       <p className="sidebar-section-title nav-copy">People</p>
-      <button ref={toggleRef} type="button" className="people-toggle nav-copy" aria-expanded={open} aria-controls={listId} onClick={() => onToggle(!open)}>
+      <button ref={toggleRef} type="button" className="people-toggle nav-copy" aria-expanded={open} aria-controls={listId} aria-label={open ? 'Show fewer people' : 'Show all people'} onClick={() => onToggle(!open)}>
         <span>{open ? 'Show fewer' : 'Show all'}</span><ChevronDown aria-hidden="true" />
       </button>
     </div>

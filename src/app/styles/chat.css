@@ -1258,6 +1258,12 @@
   font-size: 13px;
 }
 
+.chat-activity-note {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
 .chat-avatar img {
   width: 20px;
   height: 20px;

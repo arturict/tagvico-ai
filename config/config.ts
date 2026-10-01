@@ -18,7 +18,14 @@ try {
   // The built-in version remains available in minimal runtime bundles.
 }
 const envPath = path.join(dataDir, '.env');
-const injectedEnvironment = new Set(Object.keys(process.env));
+// Keys set by Docker or the host, captured once per process before the first copy of this
+// module loads data/.env into process.env. Next bundles this module into several chunks, and a
+// later copy would otherwise see every persisted setting as injected, so Settings saves would be
+// written to .env but shadowed by the stale startup values.
+const injectedEnvironmentSymbol = Symbol.for('tagvico.injectedEnvironment');
+const processGlobals = globalThis as typeof globalThis & { [injectedEnvironmentSymbol]?: Set<string> };
+const injectedEnvironment: Set<string> = processGlobals[injectedEnvironmentSymbol]
+  ?? (processGlobals[injectedEnvironmentSymbol] = new Set(Object.keys(process.env)));
 let persistedEnvironment = {};
 try {
   persistedEnvironment = require('dotenv').parse(fs.readFileSync(envPath));

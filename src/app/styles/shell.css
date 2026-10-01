@@ -884,3 +884,16 @@
   background: var(--tv-surface);
   font-size: 14px;
 }
+
+/* Documents list on phones: the title links to the detail page, so the modified date and the
+   action buttons give way instead of pushing the table past the screen edge. */
+.documents-table .documents-col-date {
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .documents-table .documents-col-modified,
+  .documents-table .documents-col-actions {
+    display: none;
+  }
+}

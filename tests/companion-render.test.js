@@ -214,3 +214,20 @@ test('failed tool steps explain themselves and provider problems link to the rig
   assert.match(retry, /Try again/);
   globalThis.__chat = undefined;
 });
+
+test('a proposal the backend declined is not counted as prepared and says why', () => {
+  globalThis.__chat = undefined;
+  const declined = activity({
+    toolName: 'propose_action',
+    label: 'Preparing an action',
+    detail: 'Document #10 already has the action “Review renewal”. No proposal was created.',
+    result: {}
+  });
+  const html = render({ ...baseProps, initialMessages: conversation([declined], 'Done.') });
+  assert.doesNotMatch(html, /Prepared 1 proposal/);
+  assert.match(html, /1 proposal not created/);
+  assert.match(html, /chat-activity-note[^>]*>Document #10 already has the action/);
+
+  const created = activity({ toolName: 'propose_action', label: 'Preparing an action', detail: 'An approval card was prepared.', result: { approvalId: 'ap-1' } });
+  assert.match(render({ ...baseProps, initialMessages: conversation([created], 'Ready.'), initialApprovals: [approval()] }), /Prepared 1 proposal/);
+});

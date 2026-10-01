@@ -110,7 +110,7 @@ export function InboxFeed({ data }: { data: InboxData }) {
       </div>
       <div className="inbox-head-links">
         <Link className="inbox-link" href="/actions">All actions</Link>
-        <Link className="inbox-btn is-primary" href="/companion"><MessageSquare size={15} aria-hidden="true" />Ask Tagvico</Link>
+        <Link className="inbox-btn is-primary" href="/companion"><MessageSquare size={15} aria-hidden="true" />Open chat</Link>
       </div>
     </header>
 
@@ -170,11 +170,11 @@ export function InboxFeed({ data }: { data: InboxData }) {
       {filter === 'all' ? <>
         <h2>Nothing needs you right now</h2>
         <p>New letters that need a decision or a date will show up here. You can also ask Tagvico what is coming up.</p>
-        <Link className="inbox-btn is-primary" href="/companion"><MessageSquare size={15} aria-hidden="true" />Ask Tagvico</Link>
+        <Link className="inbox-btn is-primary" href="/companion"><MessageSquare size={15} aria-hidden="true" />Open chat</Link>
       </> : <>
         <h2>{filter === 'done' ? 'Nothing finished this week yet' : filter === 'mine' ? 'Nothing is assigned to you' : `Nothing for ${filterMember?.name || 'this member'}`}</h2>
         <p>{filter === 'done' ? 'Finished actions from the last seven days appear here.' : 'Switch to All to see the rest of the household.'}</p>
-        <button type="button" className="inbox-btn" onClick={() => setFilter('all')}>Show all</button>
+        <button type="button" className="inbox-btn" onClick={() => setFilter('all')}>Show the whole household</button>
       </>}
     </div> : null}
   </div>;

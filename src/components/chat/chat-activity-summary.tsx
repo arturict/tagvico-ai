@@ -22,7 +22,11 @@ export function summarizeActivities(activities: CompanionToolActivity[]) {
   const counted = done.some((activity) => activity.toolName === 'count_documents');
   const tags = done.filter((activity) => ['list_tags', 'get_tag'].includes(activity.toolName)).length;
   const actions = done.filter((activity) => activity.toolName === 'list_actions').length;
-  const proposals = done.filter((activity) => activity.toolName.startsWith('propose_')).length;
+  // A propose_* step only counts as a proposal when it created an approval; a declined one
+  // (for example a document that already has an action) returns no approval ID.
+  const proposalSteps = done.filter((activity) => activity.toolName.startsWith('propose_'));
+  const proposals = proposalSteps.filter((activity) => activity.result?.approvalId).length;
+  const declined = proposalSteps.filter((activity) => !activity.result?.approvalId);
 
   const parts: string[] = [];
   if (searches.length) parts.push(`Searched ${plural(searched, 'document')}`);
@@ -31,12 +35,14 @@ export function summarizeActivities(activities: CompanionToolActivity[]) {
   if (tags) parts.push(`${parts.length ? 'read' : 'Read'} tags`);
   if (actions) parts.push(`${parts.length ? 'reviewed' : 'Reviewed'} actions`);
   if (proposals) parts.push(`${parts.length ? 'prepared' : 'Prepared'} ${plural(proposals, 'proposal')}`);
+  if (declined.length) parts.push(`${plural(declined.length, 'proposal')} not created`);
   if (failed) parts.push(`${plural(failed, 'step')} failed`);
   return {
     running: Boolean(running),
     failed: failed > 0,
     text: running ? running.label : parts.join(' · '),
-    failure: activities.find((activity) => activity.status === 'failed')?.detail || ''
+    failure: activities.find((activity) => activity.status === 'failed')?.detail || '',
+    notice: declined[0]?.detail || ''
   };
 }
 
@@ -62,5 +68,6 @@ export function ChatActivitySummary({
       <div className="chat-activity-steps">{children}</div>
     </details>
     {summary.failure ? <p className="chat-activity-error" role="status">{summary.failure}</p> : null}
+    {!summary.failure && summary.notice ? <p className="chat-activity-note" role="status">{summary.notice}</p> : null}
   </>;
 }

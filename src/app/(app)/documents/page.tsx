@@ -71,13 +71,13 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
         <p>{error}</p>
         <div className="workspace-actions"><Link className="button" href="/settings/paperless">Paperless settings</Link></div>
       </div> : documents.length ? <div className="workspace-table-wrap">
-        <table className="workspace-table">
-          <thead><tr><th>Document</th><th>Created</th><th>Modified</th><th><span className="sr-only">Actions</span></th></tr></thead>
+        <table className="workspace-table documents-table">
+          <thead><tr><th>Document</th><th className="documents-col-date">Created</th><th className="documents-col-modified">Modified</th><th className="documents-col-actions"><span className="sr-only">Actions</span></th></tr></thead>
           <tbody>{documents.map((document) => <tr key={document.id}>
             <td><strong><Link href={`/documents/${document.id}`}>{document.title || `Document #${document.id}`}</Link></strong><small>#{document.id}</small></td>
-            <td>{shortDay(document.created)}</td>
-            <td>{shortDay(document.modified)}</td>
-            <td><div className="table-actions">
+            <td className="documents-col-date">{shortDay(document.created)}</td>
+            <td className="documents-col-modified">{shortDay(document.modified)}</td>
+            <td className="documents-col-actions"><div className="table-actions">
               <Link className="button" href={`/documents/${document.id}`}>Open</Link>
               {paperlessUrl ? <a className="icon-button" href={`${paperlessUrl}/documents/${document.id}/details`} target="_blank" rel="noopener noreferrer" aria-label={`Open document ${document.id} in Paperless (new tab)`}><ExternalLink aria-hidden="true" /></a> : null}
             </div></td>

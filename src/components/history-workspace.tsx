@@ -263,10 +263,10 @@ export function HistoryWorkspace({ view = 'activity' }: { view?: 'activity' | 'd
         <p>{search || tag || correspondent
           ? 'Try another title, tag or correspondent.'
           : view === 'documents'
-            ? 'Ask Tagvico can search your live Paperless archive immediately. Documents appear here after a review-first or manual analysis.'
+            ? 'The chat can search your live Paperless archive immediately. Documents appear here after a review-first or manual analysis.'
             : 'Paperless remains unchanged until you run an analysis and approve its suggestion.'}</p>
         {!search && !tag && !correspondent ? <div className="workspace-actions">
-          <Link className="button primary" href="/companion">Ask Tagvico</Link>
+          <Link className="button primary" href="/companion">Open chat</Link>
           <Link className="button" href="/automation/manual">Analyze one document</Link>
         </div> : null}
       </div> : null}
