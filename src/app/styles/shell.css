@@ -176,6 +176,7 @@
 
 .sidebar-section {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
 }
 
@@ -257,6 +258,7 @@
 
 .sidebar-people {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 2px;
 }
 
@@ -310,6 +312,8 @@
 
 .chat-list {
   display: grid;
+  /* Implicit grid tracks size to the longest nowrap title; pin them to the column so titles truncate. */
+  grid-template-columns: minmax(0, 1fr);
   gap: 1px;
 }
 
@@ -346,6 +350,8 @@
 }
 
 .chat-row-title {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
