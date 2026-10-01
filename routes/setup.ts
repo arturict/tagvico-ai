@@ -43,6 +43,8 @@ const azureService = require('../services/azureService.js');
 const anthropicService = require('../services/anthropicService.js');
 const codexService = require('../services/codexService.js');
 const codexAuthService = require('../services/codexAuthService.js');
+const chatgptPlanAuthService = require('../services/chatgptPlanAuthService.js').default;
+const chatgptPlanService = require('../services/chatgptPlanService.js').default;
 const copilotService = require('../services/copilotService.js');
 const copilotAuthService = require('../services/copilotAuthService.js');
 const documentModel = require('../models/document.js');
@@ -78,10 +80,21 @@ const { createRateLimiter } = require('../services/rateLimiter');
 const loginLimiter = createRateLimiter({ windowMs: 15 * 60 * 1000, max: 10, keyPrefix: 'login' });
 const setupLimiter = createRateLimiter({ windowMs: 60_000, max: 10, keyPrefix: 'setup' });
 const codexLoginLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 5, keyPrefix: 'codex-login' });
+const chatgptLoginLimiter = createRateLimiter({ windowMs: 10 * 60 * 1000, max: 10, keyPrefix: 'chatgpt-login' });
 const totpService = require('../services/totpService');
 const pendingMfaSecrets = new Map();
 
 type UnknownRecord = Record<string, unknown>;
+// The running image's version; a TAGVICO_AI_VERSION left in an older data
+// volume's .env must not relabel a newer release.
+function packageVersion(): string {
+  try {
+    return String(JSON.parse(require('fs').readFileSync(require('path').join(process.cwd(), 'package.json'), 'utf8')).version || 'unknown');
+  } catch {
+    return 'unknown';
+  }
+}
+
 type SetupProviderStatus = { ok: boolean; models: string[]; error?: string };
 interface NamedItem { id: number; name: string; model?: string; size?: number; modified_at?: string }
 interface DocumentData { id: number; title: string; created?: string; owner?: number; tags?: number[]; correspondent?: number; document_type?: number; custom_fields?: UnknownRecord[]; language?: string }
@@ -240,6 +253,7 @@ let PUBLIC_ROUTES = [
   '/api/paperless/discover',
   '/api/paperless/probe',
   '/api/ollama/models',
+  '/api/chatgpt',
   '/api/codex',
   '/api/copilot'
 ];
@@ -2076,9 +2090,10 @@ function buildConfigForSave(payload: Record<string, RequestValue>, options: Save
     OPENROUTER_BASE_URL: injectedEnvironmentValue('OPENROUTER_BASE_URL') || providerPayload.openrouterBaseUrl || currentConfig.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1',
     OPENROUTER_MODEL: providerPayload.provider === 'openrouter' ? providerPayload.selectedModel : currentConfig.OPENROUTER_MODEL || providerPayload.selectedModel,
     OPENAI_API_KEY: providerPayload.provider === 'openai' ? providerPayload.openaiApiKey : currentConfig.OPENAI_API_KEY || '',
-    OPENAI_MODEL: providerPayload.provider === 'openai' ? providerPayload.selectedModel : currentConfig.OPENAI_MODEL || 'gpt-5.4-mini',
+    OPENAI_MODEL: providerPayload.provider === 'openai' ? providerPayload.selectedModel : currentConfig.OPENAI_MODEL || 'gpt-6-luna',
     ANTHROPIC_API_KEY: providerPayload.provider === 'anthropic' ? providerPayload.anthropicApiKey : currentConfig.ANTHROPIC_API_KEY || '',
     ANTHROPIC_MODEL: providerPayload.provider === 'anthropic' ? providerPayload.selectedModel : currentConfig.ANTHROPIC_MODEL || 'claude-haiku-4-5',
+    CHATGPT_MODEL: providerPayload.provider === 'chatgpt' ? providerPayload.selectedModel : currentConfig.CHATGPT_MODEL || '',
     CODEX_MODEL: providerPayload.provider === 'codex' ? providerPayload.selectedModel : currentConfig.CODEX_MODEL || 'gpt-5.4-mini',
     AI_PROCESSING_MODE: ['standard', 'flex', 'batch'].includes(String(payload.aiProcessingMode)) ? String(payload.aiProcessingMode) : (currentConfig.AI_PROCESSING_MODE || 'standard'),
     OLLAMA_API_URL: providerPayload.ollamaUrl || currentConfig.OLLAMA_API_URL || 'http://localhost:11434',
@@ -3213,7 +3228,7 @@ router.get('/api/dashboard', async (_req: Req, res: Res) => {
     res.json({
       summary,
       processing,
-      version: configFile.TAGVICO_AI_VERSION || '3.2.0'
+      version: packageVersion()
     });
   } catch (error) {
     console.error('[ERROR] loading dashboard data:', error);
@@ -3270,7 +3285,7 @@ router.get('/dashboard', async (_req: Req, res: Res) => {
  *               $ref: '#/components/schemas/Error'
  */
 router.get('/settings', async (req: Req, res: Res) => {
-  res.status(308).redirect('/settings/general');
+  res.status(308).redirect('/settings');
 });
 
 router.get('/api/telemetry/preview', async (_req: Req, res: Res) => {
@@ -4298,6 +4313,14 @@ router.post('/setup', setupLimiter, express.json(), async (req: Req, res: Res) =
           error: `GitHub Copilot connection failed: ${status.error || 'the selected model is unavailable to this account.'}`
         });
       }
+    } else if (effectiveProvider === 'chatgpt') {
+      const status = await withSetupProviderTimeout<SetupProviderStatus>(chatgptPlanService.healthcheck())
+        .catch((error): SetupProviderStatus => ({ ok: false, models: [], error: errorMessage(error) }));
+      if (!status.ok || !status.models.includes(effectiveSetupConfig.CHATGPT_MODEL || effectiveSetupConfig.AI_MODEL)) {
+        return res.status(400).json({
+          error: `ChatGPT plan connection failed: ${status.error || 'sign in with ChatGPT and choose a model your plan offers.'}`
+        });
+      }
     } else if (effectiveProvider === 'codex') {
       try {
         const models = await codexAuthService.models();
@@ -4713,6 +4736,14 @@ router.post('/settings', express.json(), async (req: Req, res: Res) => {
           error: `GitHub Copilot connection failed: ${status.error || 'the selected model is unavailable to this account.'}`
         });
       }
+    } else if (providerConfig.provider === 'chatgpt') {
+      const status = await chatgptPlanService.healthcheck();
+      const selectedModel = providerConfig.selectedModel || currentConfig.CHATGPT_MODEL;
+      if (!status.ok || !status.models.includes(selectedModel)) {
+        return res.status(400).json({
+          error: `ChatGPT plan connection failed: ${status.error || 'sign in with ChatGPT and choose a model your plan offers.'}`
+        });
+      }
     } else if (providerConfig.provider === 'codex') {
       const selectedModel = providerConfig.selectedModel || currentConfig.CODEX_MODEL;
       try {
@@ -4875,7 +4906,7 @@ router.get('/api/operations/status', async (_req: Req, res: Res) => {
   res.json({
     ocrEnabled: ocrService.isEnabled(),
     ocrProvider: config.ocr?.provider || 'mistral',
-    version: configFile.TAGVICO_AI_VERSION || '3.2.0'
+    version: packageVersion()
   });
 });
 
@@ -5043,6 +5074,61 @@ router.post('/api/history/:id/restore', async (req: Req, res: Res) => {
     }
   );
   res.json({ success: true });
+});
+
+router.get('/api/chatgpt/status', allowDuringSetup, (req: Req, res: Res) => {
+  res.json({ ...chatgptPlanAuthService.status(), model: chatgptPlanService.model() });
+});
+
+router.get('/api/chatgpt/models', allowDuringSetup, async (req: Req, res: Res) => {
+  try {
+    const models = await chatgptPlanService.listModels();
+    if (!models.length) return res.status(404).json({ success: false, error: 'ChatGPT returned no models for this plan.' });
+    res.json({ success: true, models, defaultModel: models[0].id });
+  } catch (error) {
+    res.status(502).json({ success: false, error: errorMessage(error) || 'Could not load ChatGPT plan models' });
+  }
+});
+
+router.post('/api/chatgpt/login', allowDuringSetup, chatgptLoginLimiter, (req: Req, res: Res) => {
+  try { res.json(chatgptPlanAuthService.startLogin()); }
+  catch (error) { res.status(502).json({ error: errorMessage(error) }); }
+});
+
+/**
+ * The sign-in service reports any address without the right state as "a
+ * different sign-in attempt". Text that is not an address at all deserves its
+ * own message, so it is told apart before the service sees it.
+ */
+function chatgptCallbackProblem(input: string): string | null {
+  const value = input.trim();
+  if (/^https?:/i.test(value)) {
+    try { new URL(value); } catch { return 'Paste the full address from the browser tab ChatGPT sent you to.'; }
+    return null;
+  }
+  return value.includes('=') ? null : 'Paste the full address from the browser tab ChatGPT sent you to.';
+}
+
+router.post('/api/chatgpt/login/:loginId/complete', allowDuringSetup, chatgptLoginLimiter, express.json({ limit: '16kb' }), async (req: Req, res: Res) => {
+  const callbackUrl = String(req.body?.callbackUrl || '');
+  const malformed = chatgptCallbackProblem(callbackUrl);
+  if (malformed) return res.status(400).json({ success: false, error: malformed });
+  try {
+    const status = await chatgptPlanAuthService.completeLogin(req.params.loginId, callbackUrl);
+    resetRuntimeServices();
+    res.json({ success: true, ...status });
+  } catch (error) {
+    res.status(400).json({ success: false, error: errorMessage(error) });
+  }
+});
+
+router.post('/api/chatgpt/login/:loginId/cancel', allowDuringSetup, (req: Req, res: Res) => {
+  res.json(chatgptPlanAuthService.cancelLogin(req.params.loginId));
+});
+
+router.post('/api/chatgpt/logout', allowDuringSetup, async (req: Req, res: Res) => {
+  try { res.json(await chatgptPlanAuthService.logout()); }
+  catch (error) { res.status(502).json({ error: errorMessage(error) }); }
 });
 
 router.get('/api/codex/status', allowDuringSetup, async (req: Req, res: Res) => {

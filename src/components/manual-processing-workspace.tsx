@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, ExternalLink, FileSearch, Save } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 
 type DocumentSummary = { id: number; title?: string; original_filename?: string };
 type NamedOption = { id?: number; name?: string };
@@ -161,52 +161,59 @@ export function ManualProcessingWorkspace() {
     }
   };
 
-  return <div className="page operations-page manual-processing-page">
-    <header className="page-head operations-page-head">
-      <div>
-        <p className="eyebrow">Automation · Manual processing</p>
-        <h1>Review before filing</h1>
-        <p className="lede">Inspect OCR, ask the configured model for suggestions, then decide exactly what reaches Paperless.</p>
+  return <div className="page-column is-wide man-page">
+    <Link className="btn btn-ghost btn-28 pg-back" href="/automation"><ArrowLeft aria-hidden="true" /> Overview</Link>
+    <header className="page-header pg-header">
+      <div className="page-header-text">
+        <h1 className="page-title">Manual processing</h1>
+        <p className="page-description">Nothing reaches Paperless until you save.</p>
       </div>
-      <Link className="button" href="/automation"><FileSearch aria-hidden="true" /> Automation overview</Link>
     </header>
 
-    {options.canMutate === false ? <div className="workspace-notice" role="note">
-      Your workspace role is read-only. You can inspect documents, but cannot run AI or save changes.
-    </div> : null}
-    {status ? <div className="workspace-notice" role="status">{status}</div> : null}
+    {options.canMutate === false ? <p className="pg-status" role="note">
+      Your role is read-only. You can look at documents but cannot run AI or save changes.
+    </p> : null}
+    {status ? <p className="pg-status" role="status">{status}</p> : null}
 
-    <section className="manual-processing-grid">
-      <article className="workspace-card manual-fields">
-        <div className="workspace-card-head">
-          <div><p className="eyebrow">Document</p><h2>Reviewed metadata</h2></div>
-          {documentId ? <a className="icon-button" href={`/api/manual/preview/${documentId}`} target="_blank" rel="noreferrer" aria-label="Open raw document data"><ExternalLink /></a> : null}
-        </div>
-
-        <label><span>Paperless document</span><select value={documentId} disabled={Boolean(busy)} onChange={(event) => void loadDocument(event.target.value)}>
-          <option value="">Choose a document…</option>
-          {documents.map((document) => <option key={document.id} value={document.id}>{document.title || document.original_filename || `Document ${document.id}`}</option>)}
-        </select></label>
-        <label><span>Title</span><input className="field" value={title} onChange={(event) => setTitle(event.target.value)} /></label>
-        <label><span>Correspondent</span><input className="field" list="manual-correspondents" value={correspondent} onChange={(event) => setCorrespondent(event.target.value)} /></label>
-        <label><span>Document type</span><input className="field" list="manual-document-types" value={documentType} onChange={(event) => setDocumentType(event.target.value)} /></label>
-        <label><span>Owner</span><select value={ownerId} onChange={(event) => setOwnerId(event.target.value)}>
+    <div className="man-layout">
+      <section className="man-fields" aria-label="Metadata">
+        <label className="man-field">
+          <span className="field-label">Document</span>
+          <select className="select" value={documentId} disabled={Boolean(busy)} onChange={(event) => void loadDocument(event.target.value)}>
+            <option value="">Choose a document…</option>
+            {documents.map((document) => <option key={document.id} value={document.id}>{document.title || document.original_filename || `Document ${document.id}`}</option>)}
+          </select>
+        </label>
+        <label className="man-field"><span className="field-label">Title</span><input className="input" value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+        <label className="man-field"><span className="field-label">Correspondent</span><input className="input" list="manual-correspondents" value={correspondent} onChange={(event) => setCorrespondent(event.target.value)} /></label>
+        <label className="man-field"><span className="field-label">Document type</span><input className="input" list="manual-document-types" value={documentType} onChange={(event) => setDocumentType(event.target.value)} /></label>
+        <label className="man-field"><span className="field-label">Owner</span><select className="select" value={ownerId} onChange={(event) => setOwnerId(event.target.value)}>
           <option value="">No owner</option>
           {options.users.map((user) => user.id ? <option key={user.id} value={user.id}>{user.username || `User ${user.id}`}</option> : null)}
         </select></label>
-        <label><span>Tags</span><textarea className="field" rows={4} value={tags} onChange={(event) => setTags(event.target.value)} placeholder="invoice, utilities, personal" /><small>Comma-separated. Nothing is written until you save.</small></label>
+        <label className="man-field">
+          <span className="field-label">Tags</span>
+          <textarea className="textarea" rows={3} value={tags} onChange={(event) => setTags(event.target.value)} placeholder="invoice, utilities, personal" />
+          <span className="field-help">Separate tags with commas.</span>
+        </label>
 
-        <div className="workspace-actions">
-          <button className="button" type="button" disabled={options.canMutate !== true || !previewReady || !content.trim() || Boolean(busy)} onClick={() => void analyze()}><Bot aria-hidden="true" /> {busy === 'analyzing' ? 'Analyzing…' : 'Suggest with AI'}</button>
-          <button className="button primary" type="button" disabled={options.canMutate !== true || !previewReady || Boolean(busy)} onClick={() => void save()}><Save aria-hidden="true" /> {busy === 'saving' ? 'Saving…' : 'Save to Paperless'}</button>
+        <div className="man-actions">
+          <button className="btn btn-secondary" type="button" disabled={options.canMutate !== true || !previewReady || !content.trim() || Boolean(busy)} onClick={() => void analyze()}>{busy === 'analyzing' ? 'Analyzing…' : 'Suggest with AI'}</button>
+          <button className="btn btn-primary" type="button" disabled={options.canMutate !== true || !previewReady || Boolean(busy)} onClick={() => void save()}>{busy === 'saving' ? 'Saving…' : 'Save to Paperless'}</button>
         </div>
-      </article>
+      </section>
 
-      <article className="workspace-card manual-preview">
-        <div className="workspace-card-head"><div><p className="eyebrow">Source</p><h2>OCR preview</h2></div><span className="workspace-muted">{content.length.toLocaleString()} characters</span></div>
-        <pre>{content || (documentId ? 'No OCR text is available.' : 'Choose a document to begin.')}</pre>
-      </article>
-    </section>
+      <section className="section man-preview" aria-labelledby="man-text-title">
+        <div className="man-preview-head">
+          <h2 className="section-title" id="man-text-title">Text</h2>
+          <span className="meta">{content ? `${content.length.toLocaleString()} characters` : ''}</span>
+          {documentId ? <a className="btn btn-ghost btn-28 btn-icon" href={`/api/manual/preview/${documentId}`} target="_blank" rel="noreferrer" aria-label="Open raw document data" title="Raw document data"><ExternalLink aria-hidden="true" /></a> : null}
+        </div>
+        {content
+          ? <pre className="pg-ocr">{content}</pre>
+          : <p className="pg-muted">{documentId ? 'No OCR text is available.' : 'Choose a document to see its text.'}</p>}
+      </section>
+    </div>
 
     <datalist id="manual-correspondents">{options.correspondents.map((item) => item.name ? <option key={`${item.id}-${item.name}`} value={item.name} /> : null)}</datalist>
     <datalist id="manual-document-types">{options.documentTypes.map((item) => item.name ? <option key={`${item.id}-${item.name}`} value={item.name} /> : null)}</datalist>

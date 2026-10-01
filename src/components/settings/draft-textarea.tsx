@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 export function DraftTextarea({
   label,
@@ -10,6 +10,7 @@ export function DraftTextarea({
   placeholder,
   configured = false,
   sensitive = false,
+  error,
   onCommit
 }: {
   label: string;
@@ -19,15 +20,24 @@ export function DraftTextarea({
   placeholder?: string;
   configured?: boolean;
   sensitive?: boolean;
+  /** Validation message from the last failed save of this field. */
+  error?: string;
+  /** Resolve to `null` to signal a failed save; anything else counts as saved. */
   onCommit: (value: string) => Promise<unknown> | void;
 }) {
   const id = useId();
   const [draft, setDraft] = useState(sensitive ? '' : value);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const savedTimer = useRef<number | null>(null);
 
   useEffect(() => {
     setDraft(sensitive ? '' : value);
   }, [sensitive, value]);
+
+  useEffect(() => () => {
+    if (savedTimer.current !== null) window.clearTimeout(savedTimer.current);
+  }, []);
 
   const commit = async () => {
     if (saving || (!sensitive && draft === value) || (sensitive && !draft.trim())) return;
@@ -35,34 +45,52 @@ export function DraftTextarea({
     try {
       const result = await onCommit(draft);
       if (sensitive && result !== null) setDraft('');
+      if (result !== null) {
+        setSaved(true);
+        if (savedTimer.current !== null) window.clearTimeout(savedTimer.current);
+        savedTimer.current = window.setTimeout(() => setSaved(false), 2500);
+      } else {
+        setSaved(false);
+      }
     }
     finally { setSaving(false); }
   };
 
-  return <label className="settings-field" htmlFor={id}>
-    <span className="settings-field-label">
-      {label}
-      {saving ? <small>Saving…</small> : configured && sensitive ? <small>Configured</small> : null}
+  return <label className="set-field is-stacked" htmlFor={id}>
+    <span className="set-field-copy">
+      <span className="set-field-label">
+        {label}
+        {saving
+          ? <small>Saving…</small>
+          : saved
+            ? <small className="set-field-saved">Saved</small>
+            : configured && sensitive ? <small>Configured</small> : null}
+      </span>
+      {description ? <span className="set-field-help">{description}</span> : null}
     </span>
-    <textarea
-      id={id}
-      className="settings-input settings-textarea"
-      rows={rows}
-      value={draft}
-      placeholder={configured && sensitive ? 'Configured — type only to replace' : placeholder}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => void commit()}
-      onKeyDown={(event) => {
-        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-          event.preventDefault();
-          event.currentTarget.blur();
-        }
-        if (event.key === 'Escape') {
-          setDraft(sensitive ? '' : value);
-          event.currentTarget.blur();
-        }
-      }}
-    />
-    {description ? <span className="settings-field-help">{description}</span> : null}
+    <span className="set-field-control">
+      <textarea
+        id={id}
+        className="textarea"
+        rows={rows}
+        value={draft}
+        placeholder={configured && sensitive ? 'Configured, type only to replace' : placeholder}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => void commit()}
+        onKeyDown={(event) => {
+          if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+          if (event.key === 'Escape') {
+            setDraft(sensitive ? '' : value);
+            event.currentTarget.blur();
+          }
+        }}
+      />
+      {error ? <span className="set-field-error" id={`${id}-error`} role="alert">{error}</span> : null}
+    </span>
   </label>;
 }

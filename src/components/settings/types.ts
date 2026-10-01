@@ -32,6 +32,7 @@ export type ProviderDescriptor = {
   icon: { path: string; source?: string } | null;
   runtimeAdapter: string;
   recommended: boolean;
+  badge: string | null;
   available: boolean;
   discovery: string;
   manualModelInput: boolean;
@@ -86,6 +87,8 @@ export type SettingsResponse = {
   };
   paperless: {
     baseUrl: string;
+    /** Address people open in a browser; empty falls back to `baseUrl`. */
+    publicUrl: string;
     username: string;
     token: { configured: boolean };
   };
@@ -147,10 +150,35 @@ export type SettingsResponse = {
 };
 
 export type SettingsSectionId =
-  | 'general'
   | 'paperless'
   | 'providers'
   | 'automation'
+  | 'channels'
   | 'tags'
-  | 'security'
-  | 'diagnostics';
+  | 'people';
+
+export type ChannelId = 'telegram' | 'discord';
+
+export type ChannelState = 'off' | 'needs-setup' | 'configured' | 'connected' | 'error';
+
+export type ChannelStatusView = {
+  state: ChannelState;
+  label: string;
+  detail: string | null;
+  enabled: boolean;
+  tokenConfigured: boolean;
+  allowedCount: number;
+  checkedAt: string | null;
+};
+
+export type ChannelSettingsView = {
+  channel: ChannelId;
+  status: ChannelStatusView;
+  enabled: boolean;
+  tokenConfigured: boolean;
+  homeChannelId: string;
+  remindersEnabled: boolean;
+  allowed: Array<{ externalId: string; memberId: string; memberName: string }>;
+  members: Array<{ id: string; name: string; role: string; credential: 'profile' | 'installation' | 'missing' }>;
+  lockedByEnvironment: string[];
+};

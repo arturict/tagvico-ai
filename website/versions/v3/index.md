@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: "Tagvico v3.4"
+  name: "Tagvico v3.5"
   text: "The Action Center for Paperless-ngx"
   tagline: Paperless files it — Tagvico makes sure someone acts on it. Deadlines, households, approvals, and research with every sensitive change visible.
   image:
@@ -10,7 +10,7 @@ hero:
     alt: Tagvico AI
   actions:
     - theme: brand
-      text: Install v3.4.1
+      text: Install v3.5.0
       link: /installation
     - theme: alt
       text: Explore features
@@ -24,8 +24,8 @@ features:
     title: Documents to assigned work
     details: One Action Case per document with owner, due date, priority, and up to 100 checklist steps — tracked to done, not just filed.
   - icon: ✅
-    title: Ask Tagvico
-    details: Ask about documents and obligations while every Paperless search, document read and proposed write stays visible and approval-gated.
+    title: Chat with approvals
+    details: Ask about documents and obligations in a chat that cites its sources, while every proposed write waits as an approval card.
   - icon: 💬
     title: Optional Telegram access
     details: Give allowlisted family members cited search, uploads, action lists, and approve/reject controls through their own Paperless tokens.
@@ -34,7 +34,7 @@ features:
     details: Same capabilities as Telegram for allowlisted Discord users — DMs and one optional server channel — with no privileged Message Content intent required.
   - icon: 🔌
     title: Your model, your boundary
-    details: Tagvico owns the safe harness. Use Vercel AI SDK providers such as OpenCode Go or an optional read-only Codex SDK adapter.
+    details: Tagvico owns the safe harness. Sign in with a ChatGPT Plus or Pro plan, or use OpenAI, OpenRouter, Ollama and other providers with your own key.
   - icon: 📈
     title: Included filing utility
     details: Opt-in reviewable metadata filing with a review queue, processing history, OCR recovery, retry controls, and restoration tools — or use Paperless-ngx v3's native AI instead.
@@ -55,10 +55,10 @@ coexistence guidance.
 
 This page tracks the latest stable v3 patch release. The version menu keeps
 older major-version guides available, while [Release notes](./release-notes)
-shows exactly what changed in v3.4.
+shows exactly what changed in v3.5.
 
 ::: tip Production defaults
-Pin the immutable `3.4.1` image, back up the data volume before upgrades, and start new installations in
+Pin the immutable `3.5.0` image, back up the data volume before upgrades, and start new installations in
 **Review first** mode. Companion writes are always approval-gated regardless
 of the metadata processing mode.
 :::

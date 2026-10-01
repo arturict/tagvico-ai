@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import Image from 'next/image';
 import { getBackendConfigurationState } from '@/lib/server/system';
 import { SetupWizard } from '@/components/settings/setup-wizard';
+import { Mascot } from '@/components/mascot/mascot';
 import type { ProviderDescriptor } from '@/components/settings/types';
 
 const providerRegistryModule = require('@root/services/providerRegistry');
@@ -16,8 +17,10 @@ export default async function SetupPage() {
     id: string;
     name: string;
     description: string;
+    icon: ProviderDescriptor['icon'];
     runtimeAdapter: string;
     recommended?: boolean;
+    badge?: string;
     discovery: string;
     manualModelInput: boolean;
     fields: ProviderDescriptor['fields'];
@@ -27,8 +30,10 @@ export default async function SetupPage() {
     driverId: definition.id,
     name: definition.name,
     description: definition.description,
+    icon: definition.icon,
     runtimeAdapter: definition.runtimeAdapter,
     recommended: Boolean(definition.recommended),
+    badge: definition.badge || null,
     available: true,
     discovery: definition.discovery,
     manualModelInput: definition.manualModelInput,
@@ -45,15 +50,10 @@ export default async function SetupPage() {
     configuration: {},
     suggestedModels: definition.suggestedModels
   })) as ProviderDescriptor[];
-  return <main className="setup-page">
-    <header className="setup-head">
-      <Image className="brand-mark" src="/tagvico-icon.png" alt="" width={44} height={44} />
-      <div>
-        <p className="eyebrow">Tagvico v3</p>
-        <h1>One calm setup flow.</h1>
-        <p>Connect Paperless, choose a runtime and create the owner account. The same components continue in Settings after sign-in.</p>
-      </div>
-    </header>
+  return <main className="auth-page"><section className="auth-column is-wide" aria-labelledby="setup-title">
+    <Mascot pose="waving" size={64} className="auth-mascot" />
+    <div className="auth-logo"><Image src="/tagvico-icon.png" alt="" width={28} height={28} /><span>Tagvico</span></div>
+    <h1 className="auth-title is-compact" id="setup-title">Set up Tagvico</h1>
     <SetupWizard providers={providers} />
-  </main>;
+  </section></main>;
 }

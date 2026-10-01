@@ -55,36 +55,36 @@ export function PaperlessDiscovery({
     }
   };
 
-  return <div className="settings-discovery">
-    <div className="settings-action-cluster">
-      <button className="settings-button" type="button" disabled={scanning} onClick={() => void scan()}>
-        {scanning ? <RefreshCw className="is-spinning" aria-hidden="true" /> : <Radar aria-hidden="true" />}
-        {scanning ? 'Scanning local network…' : 'Scan for Paperless'}
-      </button>
-      {scanning ? <InlineStatus kind="loading">Read-only discovery is running.</InlineStatus> : null}
+  return <div className="set-discovery">
+    <div className="set-actions">
+      {scanning ? <InlineStatus kind="loading">Scanning, read-only.</InlineStatus> : null}
       {error ? <InlineStatus kind="error">{error}</InlineStatus> : null}
-      {!scanning && scanned !== null && !error ? <InlineStatus kind={instances.length ? 'success' : 'neutral'}>
+      {!scanning && scanned !== null && !error ? <InlineStatus kind="neutral">
         {instances.length
           ? `${instances.length} instance${instances.length === 1 ? '' : 's'} found.`
           : `No Paperless instance found across ${scanned} candidates.`}
       </InlineStatus> : null}
+      <button className="btn btn-secondary" type="button" disabled={scanning} onClick={() => void scan()}>
+        {scanning ? <RefreshCw className="is-spinning" aria-hidden="true" /> : <Radar aria-hidden="true" />}
+        {scanning ? 'Scanning…' : 'Scan for Paperless'}
+      </button>
     </div>
-    {instances.length ? <ul className="settings-discovery-results" aria-label="Discovered Paperless instances">
+    {instances.length ? <ul className="set-discovery-results" aria-label="Discovered Paperless instances">
       {instances.map((instance) => <li key={instance.url}>
         <span>
           <strong>{instance.url}</strong>
           <small>
             {instance.version ? `Paperless ${instance.version}` : 'Paperless-compatible response'}
-            {instance.requiresAuth ? ' · authentication required' : ''}
+            {instance.requiresAuth ? ', authentication required' : ''}
           </small>
         </span>
         {onSelect ? <button
-          className="settings-button"
+          className="btn btn-secondary btn-32"
           type="button"
           onClick={() => onSelect(instance.url)}
         >
           Use this URL
-        </button> : <span className="settings-badge">Read only</span>}
+        </button> : null}
       </li>)}
     </ul> : null}
   </div>;

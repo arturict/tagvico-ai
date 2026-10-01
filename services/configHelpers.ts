@@ -87,6 +87,7 @@ function buildUiConfig(env: Environment = process.env, version = '') {
     ANTHROPIC_API_KEY: '',
     ANTHROPIC_API_KEY_CONFIGURED: Boolean(env.ANTHROPIC_API_KEY),
     ANTHROPIC_MODEL: env.ANTHROPIC_MODEL || getDefaultModel('anthropic'),
+    CHATGPT_MODEL: env.CHATGPT_MODEL || getDefaultModel('chatgpt'),
     CODEX_MODEL: env.CODEX_MODEL || getDefaultModel('codex'),
     AI_PROCESSING_MODE: env.AI_PROCESSING_MODE || 'standard',
     OPENROUTER_API_KEY: '',
@@ -168,6 +169,7 @@ function normalizeProviderPayload(payload: ConfigLike = {}) {
     payload.compatibleModel ||
     payload.openaiModel ||
     payload.anthropicModel ||
+    payload.chatgptModel ||
     payload.codexModel ||
     payload.customModel ||
     payload.AI_MODEL ||
@@ -176,6 +178,7 @@ function normalizeProviderPayload(payload: ConfigLike = {}) {
     payload.OLLAMA_CLOUD_MODEL ||
     payload.OPENCODE_MODEL ||
     payload.COPILOT_MODEL ||
+    payload.CHATGPT_MODEL ||
     payload.CODEX_MODEL ||
     payload.COMPATIBLE_MODEL ||
     payload.OPENAI_MODEL ||

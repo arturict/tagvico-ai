@@ -5,6 +5,7 @@ export type RuntimeProvider =
   | 'openrouter'
   | 'openai'
   | 'compatible'
+  | 'chatgpt'
   | 'codex'
   | 'copilot'
   | 'ollama'

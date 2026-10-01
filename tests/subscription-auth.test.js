@@ -60,8 +60,9 @@ test('settings render account-scoped runtime models and model capabilities', () 
   const routes = fs.readFileSync(path.join(root, 'routes', 'setup.ts'), 'utf8');
 
   assert.doesNotMatch(fs.readFileSync(path.join(root, 'services', 'codexAuthService.ts'), 'utf8'), /gpt-(?:5\.6|6)-(?:luna|terra|sol)/);
-  assert.match(picker, /Availability and capabilities come from the selected runtime/);
-  assert.match(picker, /Curated suggestions/);
+  // The list comes from the signed-in runtime; curated names are labelled as suggestions, not availability.
+  assert.match(picker, /The runtime returned no selectable models/);
+  assert.match(picker, /Suggested: .*Not a statement about what your account can use/);
   assert.match(workspace, /activeModel\?\.options/);
   assert.match(workspace, /modelOptions/);
   assert.match(registry, /supported by the signed-in ChatGPT account|returned by the signed-in ChatGPT account|Official Codex runtime/);

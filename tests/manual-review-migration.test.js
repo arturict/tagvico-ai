@@ -20,10 +20,11 @@ test('review queue API authenticates reads and gates every decision by origin an
   const decision = source('src/app/api/review-queue/[id]/route.ts');
 
   assert.match(list, /requireApiUser\(\)/);
-  assert.match(list, /canMutate:\s*workspaceFor\(user\)\.role !== ['"]viewer['"]/);
+  assert.match(list, /canMutate:\s*\['owner', 'adult'\]\.includes\(workspaceFor\(user\)\.role\)/);
   assert.match(decision, /assertSameOrigin\(request\)/);
   assert.match(decision, /requireApiUser\(\)/);
   assert.match(decision, /assertCanMutateWorkspace\(workspaceFor\(user\)\.role\)/);
+  assert.match(decision, /\['owner', 'adult'\]\.includes\(workspaceFor\(user\)\.role\)/);
   assert.match(list, /backendBearerHeaders\(request\)/);
   assert.match(list, /\/api\/review-queue/);
   assert.match(decision, /backendBearerHeaders\(request\)/);

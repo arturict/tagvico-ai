@@ -5,6 +5,7 @@ import companionModelService from '@root/services/companionModelService';
 import type { CompanionModelSelection } from '@root/contracts/companion';
 import { safeValidateUIMessages, type UIMessage } from 'ai';
 import crypto from 'node:crypto';
+import { NO_PROVIDER_MESSAGE, describeCompanionModelError, encodeCompanionError } from '@root/contracts/companion';
 
 export const maxDuration = 120;
 export async function GET() {
@@ -29,8 +30,12 @@ export async function POST(request: Request) {
     const storedMessages: UIMessage[] = (session.messages || [])
       .filter((message) => ['user', 'assistant'].includes(message.role) && typeof message.content?.text === 'string')
       .map((message) => ({ id: message.id, role: message.role as 'user' | 'assistant', parts: [{ type: 'text', text: String(message.content?.text) }] }));
+    // "Try again" after a failed answer resends the same question: it is already stored, so it is not stored twice.
+    const lastStored = storedMessages.at(-1);
+    const isRetry = lastStored?.role === 'user'
+      && lastStored.parts.some((part) => part.type === 'text' && part.text === lastText);
     const userMessage: UIMessage = { id: crypto.randomUUID(), role: 'user', parts: [{ type: 'text', text: lastText }] };
-    const history = [...storedMessages, userMessage].slice(-30);
+    const history = (isRetry ? storedMessages : [...storedMessages, userMessage]).slice(-30);
     const catalog = await companionModelService.getCompanionModelCatalog();
     const storedSelection = actionCenter.getCompanionModelSelection(
       workspace.householdId,
@@ -40,14 +45,22 @@ export async function POST(request: Request) {
       ? storedSelection
       : catalog.defaultSelection;
     if (!selection) {
-      throw new ApiError(409, 'Configure and verify an AI provider model before using Companion');
+      return Response.json({
+        error: NO_PROVIDER_MESSAGE,
+        code: 'no-provider'
+      }, { status: 409 });
     }
-    actionCenter.addMessage(sessionId, 'user', { text: lastText });
+    if (!isRetry) actionCenter.addMessage(sessionId, 'user', { text: lastText });
     return await streamCompanion(
       { householdId: workspace.householdId, memberId: workspace.memberId, sessionId },
       history,
       request.signal,
       selection
     );
-  } catch (error) { return apiError(error); }
+  } catch (error) {
+    // Failures before the stream starts (for example a missing key) never reach the stream's own error handler.
+    if (error instanceof ApiError) return apiError(error);
+    const view = describeCompanionModelError(error);
+    return new Response(encodeCompanionError(view), { status: 502, headers: { 'content-type': 'application/json' } });
+  }
 }

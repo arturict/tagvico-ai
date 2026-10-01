@@ -2,12 +2,14 @@ const openaiService = require('./openaiService');
 const ollamaService = require('./ollamaService');
 const customService = require('./customService');
 const codexService = require('./codexService');
+const chatgptPlanService = require('./chatgptPlanService').default;
 const copilotService = require('./copilotService');
 const typesafeService = require('./typesafeService');
 
 const services: Record<string, unknown> = {
   'ai-sdk-openai': openaiService,
   'ai-sdk-compatible': customService,
+  'chatgpt-plan': chatgptPlanService,
   'codex-runtime': codexService,
   'copilot-sdk': copilotService,
   'native-ollama': ollamaService,

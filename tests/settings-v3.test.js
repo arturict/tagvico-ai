@@ -56,6 +56,11 @@ test('GET settings redacts every secret while retaining configured metadata', as
   assert.equal(settings.ai.providers.find((provider) => provider.instanceId === 'compatible').configuration.apiKey.configured, true);
 });
 
+test('GET settings reports the running version, not a stale one persisted in the data directory', async () => {
+  const settings = await service.getSettings();
+  assert.equal(settings.diagnostics.version, require('../package.json').version);
+});
+
 test('GET settings follows injected-environment precedence and preserves flex mode', async () => {
   const settings = await service.getSettings();
   assert.equal(settings.automation.scanInterval, '5 * * * *');
@@ -127,7 +132,7 @@ test('invalid tag limits are rejected by the typed patch schema', async () => {
   await assert.rejects(service.patchSettings({
     revision: current.revision,
     patch: { tags: { maximumPerDocument: 100 } }
-  }), /Number must be less than or equal to 10/);
+  }), /Use at most 10\./);
 });
 
 test('empty trigger tags mean scan all and prompts persist as explicit settings', async () => {
@@ -294,4 +299,73 @@ test('PATCH rechecks optimistic concurrency after slow model discovery', async (
     releaseDiscovery?.();
     providerDiscoveryService.discoverProviderModels = discoverProviderModels;
   }
+});
+
+test('PATCH saves the browser address for Open Paperless links and clears it again', async () => {
+  const before = await service.getSettings();
+  assert.equal(before.paperless.publicUrl, '');
+  const saved = await service.patchSettings({
+    revision: before.revision,
+    patch: { paperless: { publicUrl: 'https://paperless.example.org/' } }
+  });
+  assert.equal(saved.paperless.publicUrl, 'https://paperless.example.org');
+  assert.equal((await setupService.loadConfig()).PAPERLESS_PUBLIC_URL, 'https://paperless.example.org');
+  assert.equal(saved.paperless.baseUrl, before.paperless.baseUrl);
+  const cleared = await service.patchSettings({
+    revision: saved.revision,
+    patch: { paperless: { publicUrl: '' } }
+  });
+  assert.equal(cleared.paperless.publicUrl, '');
+  await assert.rejects(service.patchSettings({
+    revision: cleared.revision,
+    patch: { paperless: { publicUrl: 'not an address' } }
+  }), /http:\/\/ or https:\/\//);
+});
+
+test('PATCH rejects an invalid scan schedule with the field it belongs to', async () => {
+  const current = await service.getSettings();
+  await assert.rejects(
+    service.patchSettings({ revision: current.revision, patch: { automation: { scanInterval: 'every day' } } }),
+    (error) => error instanceof service.SettingsValidationError
+      && error.field === 'automation.scanInterval'
+      && error.status === 400
+      && /cron/.test(error.message)
+  );
+  assert.equal((await setupService.loadConfig()).SCAN_INTERVAL, '*/30 * * * *');
+  const valid = await service.patchSettings({
+    revision: current.revision,
+    patch: { automation: { scanInterval: '*/10 * * * *' } }
+  });
+  assert.equal((await setupService.loadConfig()).SCAN_INTERVAL, '*/10 * * * *');
+  assert.ok(valid.revision);
+});
+
+test('PATCH validation errors are readable messages, not raw issue lists', async () => {
+  const current = await service.getSettings();
+  const failure = await service.patchSettings({
+    revision: current.revision,
+    patch: { tags: { maximumPerDocument: 99 } }
+  }).catch((error) => error);
+  assert.equal(failure.issues[0].message, 'Use at most 10.');
+  assert.deepEqual(failure.issues[0].path, ['patch', 'tags', 'maximumPerDocument']);
+});
+
+test('PATCH refuses to switch to a provider whose required key is missing', async () => {
+  const current = await service.getSettings();
+  await assert.rejects(
+    service.patchSettings({ revision: current.revision, patch: { ai: { activeProviderInstanceId: 'openai' } } }),
+    (error) => error instanceof service.SettingsValidationError
+      && error.field === 'ai.activeProviderInstanceId'
+      && /needs its api key/i.test(error.message)
+  );
+  const after = await service.patchSettings({
+    revision: current.revision,
+    patch: {
+      provider: { instanceId: 'openai', values: { apiKey: 'sk-test-openai-key-1234567890' } },
+      ai: { activeProviderInstanceId: 'openai', activeModelId: 'gpt-6-luna' }
+    }
+  });
+  assert.equal(after.ai.activeProviderInstanceId, 'openai');
+  assert.equal(after.ai.activeModelId, 'gpt-6-luna');
+  assert.equal((await setupService.loadConfig()).COMPANION_PROVIDER, 'openai');
 });

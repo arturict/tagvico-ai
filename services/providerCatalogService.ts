@@ -6,23 +6,32 @@ type ProviderId =
   | 'copilot'
   | 'compatible'
   | 'openai'
+  | 'chatgpt'
   | 'codex'
   | 'typesafe';
 type EnvLike = Record<string, string | undefined>;
 const providerRegistryModule = require('./providerRegistry');
 const providerRegistry = providerRegistryModule.default || providerRegistryModule;
 const PROVIDER_IDS = [
-  'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'codex', 'typesafe'
+  'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'chatgpt', 'codex', 'typesafe'
 ] as const;
 
 const OPENROUTER_PRESETS = [
   {
+    slug: 'openai/gpt-6-luna',
+    name: 'GPT-6 Luna',
+    provider: 'OpenAI via OpenRouter',
+    summary: 'Recommended default: cheap, fast and accurate for document filing and the Companion.',
+    badges: ['Recommended', 'Cheap'],
+    recommended: true,
+    reasoning: 'low'
+  },
+  {
     slug: 'openai/gpt-5.4-mini',
     name: 'GPT-5.4 Mini',
     provider: 'OpenAI via OpenRouter',
-    summary: 'Recommended balance for accurate, low-touch document filing.',
-    badges: ['Recommended', 'Balanced'],
-    recommended: true,
+    summary: 'Proven balance for accurate, low-touch document filing.',
+    badges: ['Balanced'],
     reasoning: 'low'
   },
   {
@@ -92,13 +101,14 @@ const OPENROUTER_PRESETS = [
 ];
 
 const DEFAULT_MODELS = {
-  openrouter: 'openai/gpt-5.4-mini',
+  openrouter: 'openai/gpt-6-luna',
   ollama: 'llama3.2',
   'ollama-cloud': 'gpt-oss:20b-cloud',
   opencode: 'deepseek-v4-flash',
   copilot: 'gpt-5.4-mini',
   compatible: '',
-  openai: 'gpt-5.4-mini',
+  openai: 'gpt-6-luna',
+  chatgpt: '',
   codex: 'gpt-5.4-mini',
   typesafe: 'jev-latest'
 };
@@ -158,7 +168,7 @@ function buildCatalog(currentConfig: EnvLike = {}) {
 
   return {
     recommendedProvider: 'openrouter',
-    recommendedModel: 'openai/gpt-5.4-mini',
+    recommendedModel: 'openai/gpt-6-luna',
     providers: getProviderList().map((provider: { id: ProviderId }) => ({
       ...provider,
       selected: provider.id === selectedProvider,

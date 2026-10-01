@@ -43,7 +43,7 @@
         "name": "Tagvico",
         "applicationCategory": "DocumentManagementApplication",
         "operatingSystem": "Docker",
-        "softwareVersion": "3.2.6",
+        "softwareVersion": "3.5.0",
         "description": "Self-hosted document automation, archive research, action tracking, and controlled tag cleanup for Paperless-ngx.",
         "url": "https://tagvico.arturf.ch/",
         "downloadUrl": "https://github.com/arturict/tagvico-ai/releases",
@@ -2013,8 +2013,8 @@
 
     <div class="release-note" role="status">
       <div class="container">
-        <span class="release-pill">v3.2.6</span>
-        <span>Verified setup, source-linked answers, safer recovery, and privacy-first aggregate usage signals.</span>
+        <span class="release-pill">v3.5.0</span>
+        <span>Sign in with ChatGPT, a chat-first start page, and a redesigned interface.</span>
       </div>
     </div>
 
@@ -2410,7 +2410,7 @@
             <h2>Start beside Paperless.</h2>
             <p>
               Pin the stable image, keep the data volume, and complete the guided setup in your browser.
-              Version 3.2.6 checks Paperless permissions and the runtime's live model catalog before saving.
+              Version 3.5.0 checks Paperless permissions and the runtime's live model catalog before saving.
               It uses the same persistent v3 data volume. Pin the immutable tag so upgrades stay deliberate and rollback remains simple.
             </p>
             <div class="actions" style="justify-content:flex-start">
@@ -2426,7 +2426,7 @@
               </div>
               <pre><code>services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:3.2.6
+    image: ghcr.io/arturict/tagvico-ai:3.5.0
     restart: unless-stopped
     ports:
       - "${TAGVICO_AI_BIND_ADDRESS:-127.0.0.1}:8080:3000"
@@ -2464,7 +2464,7 @@ volumes:
     <script>
       const composeSnippet = `services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:3.2.6
+    image: ghcr.io/arturict/tagvico-ai:3.5.0
     restart: unless-stopped
     ports:
       - "\${TAGVICO_AI_BIND_ADDRESS:-127.0.0.1}:8080:3000"

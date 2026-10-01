@@ -147,13 +147,14 @@ test('retired and unsupported provider definitions are never exposed as verified
   ), true);
 });
 
-test('Companion exposes persistent conversation controls and owner-scoped session APIs', () => {
+test('Companion keeps the sidebar chat list current and the session APIs owner-scoped', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'companion.tsx'), 'utf8');
   const sessionsRoute = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'api', 'companion', 'sessions', 'route.ts'), 'utf8');
   const sessionRoute = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'api', 'companion', 'sessions', '[sessionId]', 'route.ts'), 'utf8');
-  assert.match(source, /New chat/);
-  assert.match(source, /api\/companion\/sessions/);
-  assert.match(source, /router\.push\(`\/companion\?chat=/);
+  // The sidebar lists, renames and deletes chats; the chat tells it when the list changed.
+  assert.match(source, /new Event\('tagvico:sessions-changed'\)/);
+  assert.match(source, /wasWorking\.current = false;[\s\S]*?announceSessionsChanged\(\);/, 'a finished answer refreshes the list');
+  assert.doesNotMatch(source, /ChatHistoryPanel|aria-label="Chat history"/);
   assert.match(sessionsRoute, /workspace\.memberId/);
   assert.match(sessionRoute, /renameSession\(workspace\.householdId,\s*workspace\.memberId/);
   assert.match(sessionRoute, /deleteSession\(workspace\.householdId,\s*workspace\.memberId/);
@@ -190,9 +191,10 @@ test('tool presentation exposes safe research metadata but strips OCR, proposal 
   assert.equal(failed.detail.includes('provider-secret'), false);
 });
 
-test('subscription adapters only research clear Paperless intents', () => {
+test('subscription adapters research everything except small talk', () => {
   assert.equal(research.shouldPlanAdapterResearch('Tell me what Tagvico can do'), false);
-  assert.equal(research.shouldPlanAdapterResearch('Is this actionable?'), false);
+  assert.equal(research.shouldPlanAdapterResearch('Thanks!'), false);
+  assert.equal(research.shouldPlanAdapterResearch('Who sent me the Swisscom letter?'), true);
   assert.equal(research.shouldPlanAdapterResearch('Show my Paperless tags'), true);
   assert.equal(research.shouldReadCompanionSearchResults('Read my document about Alpenstrom cancellation terms'), true);
   assert.deepEqual(research.planCompanionResearch('hey'), {
@@ -250,6 +252,43 @@ test('subscription adapters only research clear Paperless intents', () => {
   });
 });
 
+test('adapter planning lists the actions for deadline, to-do, payment and bill questions in English and German', () => {
+  const lists = (question) => research.planCompanionResearch(question).steps.some((step) => step.toolName === 'list_actions');
+  for (const question of [
+    'what do i have to do this week?',
+    'What is due this week?',
+    'Which payments are coming up?',
+    'Do I have any unpaid bills?',
+    'What tasks are open?',
+    'Any deadlines I should know about?',
+    'What are my todos?',
+    'Was muss ich diese Woche erledigen?',
+    'Was ist fällig?',
+    'Welche Zahlungen stehen an?',
+    'Welche Rechnungen muss ich noch bezahlen?',
+    'Gibt es überfällige Aufgaben?',
+    'Was steht heute an?'
+  ]) assert.equal(lists(question), true, question);
+  // Bills are also documents, so a search runs next to the action list.
+  const bills = research.planCompanionResearch('Which bills are due?');
+  assert.deepEqual(bills.steps.map((step) => step.toolName), ['list_actions', 'search_documents']);
+  assert.equal(research.planCompanionResearch('What documents are tagged Tax?').steps.some((step) => step.toolName === 'list_actions'), false);
+});
+
+test('adapter planning searches for any question that is not small talk', () => {
+  const swisscom = research.planCompanionResearch('Who sent me the letter from Swisscom about my mobile plan?');
+  assert.deepEqual(swisscom.steps, [{ toolName: 'search_documents', input: { query: 'sent letter Swisscom mobile plan' } }]);
+  assert.deepEqual(
+    research.planCompanionResearch('Wann läuft meine Autoversicherung ab?').steps.map((step) => step.toolName),
+    ['search_documents']
+  );
+  for (const smallTalk of ['hi', 'Hallo!', 'Thanks', 'ok', 'Danke', 'what can you do?', 'Wie geht\'s?', 'Tell me what Tagvico can do']) {
+    assert.deepEqual(research.planCompanionResearch(smallTalk).steps, [], smallTalk);
+    assert.equal(research.shouldPlanAdapterResearch(smallTalk), false, smallTalk);
+  }
+  assert.equal(research.shouldPlanAdapterResearch(''), false);
+});
+
 test('Companion model API authenticates session ownership and validates every persisted selection', () => {
   const route = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'app', 'api', 'companion', 'models', 'route.ts'),
@@ -278,13 +317,23 @@ test('Companion UI renders safe tool traces without dumping raw model objects', 
   assert.match(source, /companionToolActivity\(/);
   assert.doesNotMatch(source, /JSON\.stringify\(part\.(input|output)/);
   assert.doesNotMatch(source, /<pre[^>]*>\s*\{part\.(input|output)/);
-  assert.match(source, /Object\.entries\(patch\)\.map\(\(\[key, value\]\) => `\$\{key\}: \$\{approvalValue\(value\)\}`\)/);
+  // Proposal cards render patch values through the shared contract, never as raw JSON dumps of the payload.
+  assert.deepEqual(companion.describeCompanionApproval('paperless.patch', {
+    documentId: 7,
+    documentTitle: 'Tax question',
+    patch: { title: 'Tax 2025', tags: [1, 2], correspondent: null },
+    reason: 'Clearer title'
+  }), {
+    title: 'Update Tax question',
+    meta: 'Document #7',
+    details: ['title: Tax 2025', 'tags: [1,2]', 'correspondent: None', 'Clearer title']
+  });
 });
 
 test('Companion message scrolling never returns a value as an effect cleanup', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'companion.tsx'), 'utf8');
-  assert.match(source, /useEffect\(\(\) => \{\s*endRef\.current\?\.scrollIntoView/);
-  assert.doesNotMatch(source, /useEffect\(\(\) => endRef\.current\?\.scrollIntoView/);
+  assert.match(source, /useEffect\(\(\) => \{\s*if \(followEnd\.current\) scrollToEnd\(\);\s*\}, \[/);
+  assert.doesNotMatch(source, /useEffect\(\(\) => scrollToEnd\(\)/);
 });
 
 test('navigation hides Review immediately in automatic write mode', () => {
@@ -303,7 +352,7 @@ test('owner-only workspaces stay out of navigation for other household roles', (
 });
 
 test('model picker keeps the reasoning effort returned by the server', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'companion-model-picker.tsx'), 'utf8');
+  const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'chat', 'chat-model-chip.tsx'), 'utf8');
   assert.match(source, /persisted\.reasoningEffort \? \{ reasoningEffort: persisted\.reasoningEffort \}/);
 });
 
@@ -314,17 +363,22 @@ test('Copilot runtime applies persisted model reasoning selections', () => {
   assert.match(service, /reasoningEffort: options\.reasoningEffort as CopilotReasoningEffort/);
 });
 
-test('mobile Companion keeps chat and conversation controls reachable', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'companion.tsx'), 'utf8');
-  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'globals.css'), 'utf8');
-  assert.match(source, /className="companion-sessions-mobile-toggle companion-icon-button"/);
-  assert.match(css, /\.companion-studio\.has-inspector\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
-  assert.match(css, /\.companion-sidebar\.is-sessions-open\s*\{[\s\S]*?display:\s*grid/);
+test('mobile Companion fills the space between the top bar and the screen edge with the composer at the bottom', () => {
+  const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'styles', 'chat.css'), 'utf8');
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.chat-page\s*\{[\s\S]*?position:\s*fixed[\s\S]*?top:\s*var\(--shell-top-bar[\s\S]*?bottom:\s*var\(--shell-bottom-bar/);
+  // Greeting and prompts stay in the middle, the composer follows them at the bottom.
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.chat-starters\s*\{[\s\S]*?order:\s*2/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.chat-dock\s*\{[\s\S]*?order:\s*3/);
+  assert.match(css, /safe-area-inset-bottom/);
+  // 16px text in the composer keeps iOS from zooming the page.
+  assert.match(css, /\.chat-composer textarea\s*\{[\s\S]*?font-size:\s*var\(--font-text-md-size\)/);
 });
 
 test('provider model lists have their own bounded scrolling surfaces', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'globals.css'), 'utf8');
   assert.match(css, /\.settings-model-list\s*\{[\s\S]*?overflow-y:\s*auto/);
-  assert.match(css, /\.companion-model-list\s*\{[\s\S]*?overflow-y:\s*auto/);
   assert.match(css, /scrollbar-gutter:\s*stable/);
+  const picker = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'styles', 'model-picker.css'), 'utf8');
+  assert.match(picker, /\.mp-scroll\s*\{[\s\S]*?overflow-y:\s*auto/);
+  assert.match(picker, /\.mp-popover\s*\{[\s\S]*?max-height:[\s\S]*?overflow:\s*hidden/);
 });

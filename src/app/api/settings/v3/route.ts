@@ -1,6 +1,7 @@
-import { assertSameOrigin, apiError, ApiError, readJsonBody, requireApiUser } from '@/lib/server/auth';
+import { assertSameOrigin, ApiError, readJsonBody, requireApiUser } from '@/lib/server/auth';
 import { workspaceFor } from '@/lib/server/workspace';
-import settingsV3Service, { RevisionConflictError } from '@root/services/settingsV3Service';
+import settingsV3Service from '@root/services/settingsV3Service';
+import { settingsErrorResponse } from '../error-response';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export async function GET() {
       headers: { 'Cache-Control': 'no-store' }
     });
   } catch (error) {
-    return apiError(error);
+    return settingsErrorResponse(error);
   }
 }
 
@@ -30,11 +31,6 @@ export async function PATCH(request: Request) {
       headers: { 'Cache-Control': 'no-store' }
     });
   } catch (error) {
-    if (error instanceof RevisionConflictError) {
-      return Response.json({
-        error: error instanceof Error ? error.message : 'Settings changed in another session.'
-      }, { status: 409 });
-    }
-    return apiError(error);
+    return settingsErrorResponse(error);
   }
 }

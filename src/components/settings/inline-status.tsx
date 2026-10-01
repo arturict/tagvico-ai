@@ -5,8 +5,7 @@ export function InlineStatus({
   kind: 'success' | 'error' | 'loading' | 'neutral';
   children: React.ReactNode;
 }) {
-  return <div className={`settings-status is-${kind}`} role={kind === 'error' ? 'alert' : 'status'}>
-    <span className="settings-status-dot" aria-hidden="true" />
-    <span>{children}</span>
+  return <div className={`set-status is-${kind}`} role={kind === 'error' ? 'alert' : 'status'}>
+    <span className={kind === 'loading' ? 'shimmer' : undefined}>{children}</span>
   </div>;
 }

@@ -18,14 +18,29 @@ try {
   // The built-in version remains available in minimal runtime bundles.
 }
 const envPath = path.join(dataDir, '.env');
-const injectedEnvironment = new Set(Object.keys(process.env));
+// Keys set by Docker or the host, captured once per process before the first copy of this
+// module loads data/.env into process.env. Next bundles this module into several chunks, and a
+// later copy would otherwise see every persisted setting as injected, so Settings saves would be
+// written to .env but shadowed by the stale startup values. Compose passes optional variables
+// as empty strings (`${TELEGRAM_BOT_ENABLED:-}`); those are placeholders, not host settings, so
+// only non-empty values count as injected and a value saved in Settings fills them.
+const injectedEnvironmentSymbol = Symbol.for('tagvico.injectedEnvironment');
+const processGlobals = globalThis as typeof globalThis & { [injectedEnvironmentSymbol]?: Set<string> };
+const injectedEnvironment: Set<string> = processGlobals[injectedEnvironmentSymbol]
+  ?? (processGlobals[injectedEnvironmentSymbol] = new Set(
+    Object.keys(process.env).filter((key) => String(process.env[key] ?? '').trim())
+  ));
 let persistedEnvironment = {};
 try {
   persistedEnvironment = require('dotenv').parse(fs.readFileSync(envPath));
 } catch {
   persistedEnvironment = {};
 }
-require('dotenv').config({ path: envPath, override: false });
+// dotenv's override:false would also keep an empty Compose placeholder, so apply persisted values
+// to every key that the host did not set to a real value.
+for (const [key, value] of Object.entries(persistedEnvironment as Record<string, string>)) {
+  if (!injectedEnvironment.has(key)) process.env[key] = value;
+}
 applyPersistedAiSelection(process.env, persistedEnvironment);
 
 // Helper function to parse boolean-like env vars
@@ -106,6 +121,11 @@ module.exports = {
   anthropic: {
     apiKey: process.env.ANTHROPIC_API_KEY || '',
     model: process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5'
+  },
+  chatgpt: {
+    // Empty: the plan's lightest listed model (see chatgptPlanService).
+    model: process.env.CHATGPT_MODEL || '',
+    timeoutMs: Math.max(10000, parseInt(process.env.CHATGPT_TIMEOUT_MS || '120000', 10))
   },
   codex: {
     model: process.env.CODEX_MODEL || 'gpt-5.4-mini',

@@ -32,11 +32,20 @@ export async function POST(request: Request) {
     await assertSameOrigin(request);
     const user = await requireApiUser();
     requireOwner(workspaceFor(user).role);
-    const result = await tagUnificationService.analyze(await readJsonBody(request, 16 * 1024));
-    return Response.json(result, {
-      status: 201,
-      headers: { 'Cache-Control': 'no-store' }
-    });
+    const input = await readJsonBody(request, 16 * 1024);
+    try {
+      const result = await tagUnificationService.analyze(input);
+      return Response.json(result, {
+        status: 201,
+        headers: { 'Cache-Control': 'no-store' }
+      });
+    } catch (error) {
+      // The AI SDK's wording for "the model answered, but not in the requested shape".
+      if (error instanceof Error && /no object generated/i.test(error.message)) {
+        throw new ApiError(502, 'The model did not return usable tag suggestions. Choose another model and try again.');
+      }
+      throw error;
+    }
   } catch (error) {
     return apiError(error);
   }

@@ -11,7 +11,7 @@ Create a new directory and save this as `docker-compose.yml`:
 ```yaml
 services:
   tagvico-ai:
-    image: ghcr.io/arturict/tagvico-ai:3.4.1
+    image: ghcr.io/arturict/tagvico-ai:3.5.0
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -75,15 +75,17 @@ the image you pinned even when the public website changes.
    to search the attached networks and fill the field from a found
    installation. Then paste a Paperless API token. Setup checks the connection
    and the read permissions Tagvico needs before continuing.
-2. Choose a [model provider](./providers). Built-in endpoints are prefilled.
-   Setup verifies the connection and loads its live model catalog.
+2. Choose a [model provider](./providers). **ChatGPT plan** is listed first and
+   lets a ChatGPT Plus or Pro plan pay for filing and chat with **Continue with
+   ChatGPT**, no API key needed. Built-in endpoints are prefilled for the other
+   providers. Setup verifies the connection and loads the live model catalog.
 3. Select one of the verified models and create the local Tagvico owner
    account. Non-secret progress can resume in the same browser tab after an
    interruption; tokens, passwords, and provider secrets are never stored in
    that browser draft.
 4. The safe first-run default is **Review first** with scheduled scans paused.
-   Ask Tagvico can read immediately, while every proposed write still needs an
-   explicit approval. Enable a schedule or Automatic metadata filing only
+   After sign-in you land in the chat, which can read immediately, while every
+   proposed write still needs an explicit approval. Enable a schedule or Automatic metadata filing only
    after validating representative documents.
 
 After saving the provider, inspect the detailed application health response.
@@ -111,8 +113,13 @@ with synthetic or non-sensitive documents before allowing automatic writes.
 ## Optional Telegram bot
 
 Create a bot with BotFather, obtain each person's Telegram numeric user ID, and
-create a separate Paperless API token for each person. Add the following
-environment values to the Tagvico service:
+create a separate Paperless API token for each person. Enter the token and the
+allowed people under **Settings → Channels → Telegram**; the same tab shows
+whether the bot is running and checks the token for you. The bundled Compose
+file passes the `TELEGRAM_*` variables through empty, so the tab can save them.
+A value you set in the Compose file or in `.env` takes precedence, and the tab
+then lists it as set by the container environment. To configure the bot that way
+instead, add the following environment values to the Tagvico service:
 
 ```yaml
 environment:
@@ -129,7 +136,8 @@ The remaining optional tuning variables are
 `TELEGRAM_UPLOAD_TIMEOUT_SECONDS` (default `180`),
 `TELEGRAM_MAX_DOCUMENTS` (default `8`), `TELEGRAM_HISTORY_TURNS`
 (default `6`), and `TELEGRAM_MAX_FILE_BYTES` (default `20971520`). The bundled
-Compose file passes every Telegram setting through to the application container.
+Compose file passes every Telegram setting through to the application container,
+empty unless you set it.
 
 `paperlessUrl` may be added to an individual allowlist entry; otherwise the
 normal `PAPERLESS_API_URL` is used. Restart Tagvico after changing this process
@@ -154,11 +162,16 @@ invite the bot with the generated URL.
 Attach Files, Use Slash Commands.
 
 Obtain each person's Discord user ID (numeric snowflake) and create a separate
-Paperless API token for each person. Add the following to the Tagvico service:
+Paperless API token for each person.
 
 Enable **User Settings → Advanced → Developer Mode** in Discord, right-click a
 user, and choose **Copy User ID**. Right-click the selected server channel and
-choose **Copy Channel ID** for `DISCORD_HOME_CHANNEL_ID`.
+choose **Copy Channel ID** for the home channel.
+
+Enter the token, the allowed people and the optional home channel under
+**Settings → Channels → Discord**. As with Telegram, a value set in the Compose
+file or `.env` takes precedence. To configure the bot through the environment,
+add the following to the Tagvico service:
 
 ```yaml
 environment:
@@ -181,7 +194,8 @@ response. Unauthorized slash commands receive a private unavailable response.
 Optional tuning variables: `DISCORD_UPLOAD_TIMEOUT_SECONDS` (default `180`),
 `DISCORD_MAX_DOCUMENTS` (default `8`), `DISCORD_HISTORY_TURNS` (default `6`),
 `DISCORD_MAX_FILE_BYTES` (default and hard maximum `10485760`, i.e. 10 MiB).
-The Compose file passes every Discord setting through to the application container.
+The Compose file passes every Discord setting through to the application container,
+empty unless you set it.
 
 `paperlessUrl` may be added per allowlist entry; otherwise `PAPERLESS_API_URL`
 is used. An entry linked to the Action Center must use the same Paperless
@@ -205,7 +219,7 @@ docker run -d \
   -e TAGVICO_AI_BIND_ADDRESS=127.0.0.1 \
   -e TAGVICO_TELEMETRY_ENDPOINT=https://telemetry.tagvico.arturf.ch/v1/heartbeat \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:3.4.1
+  ghcr.io/arturict/tagvico-ai:3.5.0
 ```
 
 For a remote browser, replace the published address with

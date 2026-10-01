@@ -4,12 +4,21 @@ import { createOpenAI } from '@ai-sdk/openai';
 import type { CompanionModelSelection } from '../../../../contracts/companion';
 import { runtimeConfiguration } from './credential-store';
 import type { RuntimeModel } from './types';
+import { RESOURCE } from '../../../../services/chatgptPlanAuthService';
+import { chatgptPlanFetch } from '../../../../services/chatgptPlanFetch';
 import codexService from '../../../../services/codexService';
 import copilotService from '../../../../services/copilotService';
 
 export function resolveRuntimeModel(selection?: CompanionModelSelection | null): RuntimeModel {
   const selected = runtimeConfiguration(selection);
   if (!selected.model) throw new Error(`No model configured for ${selected.provider}`);
+  if (selected.provider === 'chatgpt') {
+    // The plan speaks the public Responses API, so the chat runs the same tool
+    // loop as the OpenAI API; the fetch swaps the API key for the plan token
+    // and applies the plan's request contract.
+    const plan = createOpenAI({ apiKey: 'chatgpt-plan', baseURL: RESOURCE, fetch: chatgptPlanFetch });
+    return { kind: 'ai-sdk', provider: 'chatgpt', modelId: selected.model, model: plan.responses(selected.model) };
+  }
   if (selected.provider === 'codex') {
     return {
       kind: 'text-adapter',

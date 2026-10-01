@@ -1,0 +1,374 @@
+/*
+ * Small touches: the mascot's places, toasts, the offline pill, the scroll-to-bottom button, the
+ * first-run tip, the keyboard shortcuts list, friendly route states and a quick page entrance.
+ * Everything here uses the foundation tokens; motion is short and switched off under
+ * prefers-reduced-motion at the end of the file.
+ */
+
+/* ------------------------------------------------------------- Mascot places */
+
+.chat-mascot {
+  display: block;
+  margin: 0 auto 8px;
+}
+
+.auth-mascot {
+  justify-self: center;
+}
+
+.log-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.empty-state > .mascot {
+  margin-bottom: 4px;
+}
+
+/* ------------------------------------------------------------- Chat additions */
+
+/* The error notice's icon rule sizes plain SVGs to 16px; the mascot keeps its own 32px. */
+.chat-notice > .mascot {
+  width: 32px;
+  height: 32px;
+  margin: -6px 0;
+}
+
+.chat-working {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+
+.chat-copied {
+  padding-left: 2px;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+}
+
+.chat-dock {
+  position: relative;
+}
+
+.chat-scroll-down {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow);
+  color: var(--color-text);
+  cursor: pointer;
+  transform: translateX(-50%);
+  animation: touch-fade-in 150ms ease-out;
+  transition: background-color 150ms ease;
+}
+
+.chat-scroll-down:hover {
+  background: var(--color-surface-secondary);
+}
+
+.chat-scroll-down svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* The one-time tip after setup: a bordered box under the greeting. */
+.chat-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 56ch;
+  margin: 16px auto 0;
+  padding: 12px 8px 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  text-align: left;
+}
+
+.chat-tip-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.chat-tip-title {
+  margin: 0 0 2px;
+  font-size: var(--font-text-md-size);
+  line-height: var(--font-text-md-line-height);
+  font-weight: var(--font-weight-semibold);
+}
+
+.chat-tip-text p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+
+.chat-tip-dismiss {
+  flex: none;
+}
+
+/* A new message or the working row settles in; the others stay where they are. */
+.chat-thread-inner > :last-child {
+  animation: touch-rise 180ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.chat-composer-skeleton {
+  min-height: 52px;
+  background: var(--alpha-04);
+  box-shadow: none;
+}
+
+/* ------------------------------------------------------------------- Toasts */
+
+.toast-region {
+  position: fixed;
+  z-index: 95;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(440px, calc(100vw - 32px));
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 6px 6px 6px 16px;
+  border-radius: var(--radius-full);
+  background: var(--color-background-primary-solid);
+  box-shadow: var(--shadow);
+  color: var(--color-text-primary-solid);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  pointer-events: auto;
+  animation: touch-toast-in 200ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.toast-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.toast-action,
+.toast-dismiss {
+  flex: none;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.toast-action {
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.toast-dismiss {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: var(--radius-full);
+  opacity: 0.7;
+}
+
+.toast-dismiss svg {
+  width: 14px;
+  height: 14px;
+}
+
+.toast-action:hover,
+.toast-dismiss:hover {
+  background: rgb(255 255 255 / 16%);
+  opacity: 1;
+}
+
+.toast :where(button):focus-visible {
+  outline-color: var(--color-text-primary-solid);
+  outline-offset: -2px;
+}
+
+/* --------------------------------------------------------------- Offline pill */
+
+.offline-banner {
+  position: fixed;
+  z-index: 70;
+  top: 12px;
+  left: 50%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 4px 16px 4px 8px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow);
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  transform: translateX(-50%);
+  animation: touch-fade-in 200ms ease-out;
+}
+
+@media (max-width: 900px) {
+  .offline-banner {
+    top: calc(var(--shell-top-bar, 0px) + 8px);
+  }
+}
+
+/* ------------------------------------------------------- Keyboard shortcuts */
+
+.shortcuts-dialog {
+  --dialog-max-width: 420px;
+}
+
+.shortcuts-list {
+  display: grid;
+  margin: 0;
+}
+
+.shortcuts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 40px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+
+.shortcuts-row:last-child {
+  border-bottom: 0;
+}
+
+.shortcuts-row dt {
+  color: var(--color-text);
+}
+
+.shortcuts-row dd {
+  margin: 0;
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+}
+
+.shortcuts-key {
+  padding: 1px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--alpha-04);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-text-xs-size);
+}
+
+.shortcuts-plus {
+  color: var(--color-text-tertiary);
+}
+
+/* ------------------------------------------------ Whole-page states: 404, error */
+
+.state-page {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: 24px 16px;
+  background: var(--color-surface);
+}
+
+.state-card {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 440px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-md-size);
+  line-height: var(--font-text-md-line-height);
+  text-align: center;
+}
+
+.state-card p {
+  margin: 0;
+}
+
+.state-title {
+  margin: 4px 0 0;
+  color: var(--color-text);
+  font-size: var(--font-heading-lg-size);
+  line-height: var(--font-heading-lg-line-height);
+  font-weight: var(--font-weight-semibold);
+}
+
+.state-note {
+  font-size: var(--font-text-sm-size);
+}
+
+/* ------------------------------------------------------------ Entrance motion */
+
+/* A page settles in when it opens; short enough not to be noticed as an animation. */
+.main > .page-column {
+  animation: touch-rise 180ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+@keyframes touch-rise {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@keyframes touch-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes touch-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .main > .page-column,
+  .chat-thread-inner > :last-child,
+  .chat-scroll-down,
+  .toast,
+  .offline-banner {
+    animation: none;
+  }
+
+  .toast-action,
+  .toast-dismiss,
+  .chat-scroll-down {
+    transition: none;
+  }
+}

@@ -11,11 +11,12 @@ type Environment = Record<string, string | undefined>;
 type RuntimeAdapter =
   | 'ai-sdk-openai'
   | 'ai-sdk-compatible'
+  | 'chatgpt-plan'
   | 'codex-runtime'
   | 'copilot-sdk'
   | 'native-ollama'
   | 'typesafe-systemone';
-type DiscoveryKind = 'openai' | 'ollama' | 'codex' | 'copilot' | 'static';
+type DiscoveryKind = 'openai' | 'ollama' | 'chatgpt' | 'codex' | 'copilot' | 'static';
 const MAX_DISCOVERY_RESPONSE_BYTES = 1024 * 1024;
 const MAX_DISCOVERY_MODELS = 500;
 
@@ -27,6 +28,8 @@ interface ProviderDefinition {
   runtimeAdapter: RuntimeAdapter;
   serviceModule: string;
   recommended?: boolean;
+  // Short label on the provider card, for example 'New'.
+  badge?: string;
   discovery: DiscoveryKind;
   modelEnvironmentKey: string;
   legacyModelEnvironmentKeys?: string[];
@@ -72,6 +75,26 @@ function url(
 
 const definitions = [
   {
+    id: 'chatgpt',
+    name: 'ChatGPT plan',
+    description: 'Sign in with ChatGPT: an eligible Plus or Pro plan pays for filing and the Companion, with no API key. The models are the ones returned by the signed-in ChatGPT account.',
+    icon: {
+      path: '/provider-icons/openai.svg',
+      source: 'https://svgl.app/library/openai_dark.svg'
+    },
+    runtimeAdapter: 'chatgpt-plan',
+    recommended: true,
+    badge: 'New',
+    serviceModule: './chatgptPlanService',
+    discovery: 'chatgpt',
+    modelEnvironmentKey: 'CHATGPT_MODEL',
+    legacyModelEnvironmentKeys: ['AI_MODEL'],
+    configurationSchema: z.object({}).strict(),
+    fields: [],
+    suggestedModels: [],
+    manualModelInput: false
+  },
+  {
     id: 'openrouter',
     name: 'OpenRouter',
     description: 'Cloud model routing with a live account catalog and optional curated suggestions.',
@@ -97,6 +120,7 @@ const definitions = [
       }
     ],
     suggestedModels: [
+      { id: 'openai/gpt-6-luna', name: 'GPT-6 Luna', description: 'Recommended default; availability is verified against your live catalog.' },
       { id: 'openai/gpt-5.4-mini', name: 'GPT-5.4 Mini', description: 'Curated balanced suggestion; availability is verified against your live catalog.' },
       { id: 'openrouter/free', name: 'OpenRouter Free router', description: 'Curated trial suggestion with variable availability.' }
     ],
@@ -245,14 +269,15 @@ const definitions = [
     configurationSchema: z.object({ apiKey: optionalString }).strict(),
     fields: [secret('apiKey', 'API key', 'OPENAI_API_KEY', true)],
     suggestedModels: [
+      { id: 'gpt-6-luna', name: 'GPT-6 Luna', description: 'Recommended default, not proof of account availability.' },
       { id: 'gpt-5.4-mini', name: 'GPT-5.4 Mini', description: 'Curated fallback preference, not proof of account availability.' }
     ],
     manualModelInput: true
   },
   {
     id: 'codex',
-    name: 'ChatGPT subscription',
-    description: 'Official Codex runtime with models and reasoning efforts returned by the signed-in ChatGPT account.',
+    name: 'ChatGPT via Codex (legacy)',
+    description: 'Maintenance mode: the Codex runtime with its device sign-in. Prefer the ChatGPT plan provider, which uses the official Sign in with ChatGPT flow.',
     icon: {
       path: '/provider-icons/openai.svg',
       source: 'https://svgl.app/library/openai_dark.svg'
@@ -279,7 +304,7 @@ const definitions = [
     configurationSchema: z.object({
       apiKey: optionalString,
       baseUrl: optionalUrl,
-      textProvider: z.enum(['', 'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'codex']).optional(),
+      textProvider: z.enum(['', 'openrouter', 'ollama', 'ollama-cloud', 'opencode', 'copilot', 'compatible', 'openai', 'chatgpt', 'codex']).optional(),
       textModel: z.string().trim().max(200).optional()
     }).strict(),
     fields: [
@@ -296,7 +321,7 @@ const definitions = [
         required: false,
         secret: false,
         placeholder: 'openrouter',
-        description: 'Jev cannot write text. Name a configured provider (openrouter, openai, ollama, ollama-cloud, opencode, compatible, codex, copilot) to have it write the title and name senders that are not in the archive yet. Empty: the title is a line of the document.'
+        description: 'Jev cannot write text. Name a configured provider (openrouter, openai, ollama, ollama-cloud, opencode, compatible, chatgpt, codex, copilot) to have it write the title and name senders that are not in the archive yet. Empty: the title is a line of the document.'
       },
       {
         key: 'textModel',

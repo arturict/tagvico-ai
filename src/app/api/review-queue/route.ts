@@ -20,7 +20,7 @@ export async function GET(request: Request) {
     return Response.json({
       suggestions: queue.suggestions || [],
       reviewMode: Boolean(queue.reviewMode),
-      canMutate: workspaceFor(user).role !== 'viewer'
+      canMutate: ['owner', 'adult'].includes(workspaceFor(user).role)
     });
   } catch (error) {
     console.error('[review-queue] Could not list pending suggestions:', error);

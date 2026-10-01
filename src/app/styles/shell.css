@@ -1,0 +1,667 @@
+/*
+ * App shell: a 260px sidebar on desktop, a 48px top bar with a drawer on phones.
+ * Built on the OpenAI tokens and the shared classes in foundation.css (.btn, .menu, .list-group-heading,
+ * .avatar, .meta). This file only adds what is specific to the shell. Class names avoid the
+ * legacy `.nav`, `.brand`, `.sidebar-foot` and `.sidebar-identity` families that globals.css still styles.
+ */
+
+:root {
+  --sidebar-rail-width: 60px;
+}
+
+/* Member avatars (shared component): grey initials on the .avatar circle, with a hairline so they read on grey and white. */
+.member-avatar {
+  border: 0;
+  background: var(--avatar-fill, var(--color-surface-tertiary));
+  color: var(--avatar-ink, var(--color-text-secondary));
+  font-weight: var(--font-weight-semibold);
+  user-select: none;
+}
+
+.member-avatar[data-tone="blue"] { --avatar-fill: var(--blue-50); --avatar-ink: var(--blue-700); }
+.member-avatar[data-tone="green"] { --avatar-fill: var(--green-50); --avatar-ink: var(--green-700); }
+.member-avatar[data-tone="purple"] { --avatar-fill: var(--purple-50); --avatar-ink: var(--purple-700); }
+.member-avatar[data-tone="orange"] { --avatar-fill: var(--orange-50); --avatar-ink: var(--orange-700); }
+.member-avatar[data-tone="pink"] { --avatar-fill: var(--pink-50); --avatar-ink: var(--pink-700); }
+.member-avatar[data-tone="yellow"] { --avatar-fill: var(--yellow-50); --avatar-ink: var(--yellow-700); }
+
+/* ------------------------------------------------------------------- Layout */
+
+.shell {
+  --shell-sidebar: var(--sidebar-width);
+  display: grid;
+  grid-template-columns: var(--shell-sidebar) minmax(0, 1fr);
+  min-height: 100dvh;
+  background: var(--color-surface);
+  transition: grid-template-columns 160ms ease;
+}
+
+.shell.is-collapsed {
+  --shell-sidebar: var(--sidebar-rail-width);
+}
+
+/* The aside fills the grid column; the inner box sticks to the viewport so the sidebar stays put while the page scrolls. */
+.shell .sidebar {
+  position: static;
+  inset: auto;
+  z-index: auto;
+  grid-column: 1;
+  width: auto;
+  height: auto;
+  padding: 0;
+  overflow: visible;
+  border-right: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-secondary);
+  transition: none;
+}
+
+.sidebar-inner {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  padding: 0 8px 8px;
+  overflow: hidden;
+}
+
+.shell .main {
+  grid-column: 2;
+  min-width: 0;
+  margin-left: 0;
+  padding: 0;
+  transition: none;
+}
+
+/* ------------------------------------------------- Sidebar head, rows, sections */
+
+.sidebar-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 52px;
+  padding-left: 8px;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
+}
+
+.sidebar-brand img {
+  flex: none;
+  border-radius: 6px;
+}
+
+.sidebar-primary {
+  flex: none;
+  display: grid;
+  gap: 2px;
+}
+
+/* Ghost row: New chat, Needs you, Documents and the people list. No fill until hover; the open page gets the selected fill. */
+.sidebar-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.sidebar-row:hover {
+  background: var(--color-background-primary-ghost-hover);
+}
+
+.sidebar-row.is-active {
+  background: var(--color-background-primary-ghost-active);
+  font-weight: var(--font-weight-medium);
+}
+
+.sidebar-row > svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.sidebar-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Right-aligned count in secondary text (the .nav-badge .meta classes carry the colour; .is-danger-text turns it red for overdue). */
+.sidebar-row-count {
+  flex: none;
+  min-width: 0;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  /* minmax(0, 1fr): without it the column grows to the longest chat title and nothing truncates. */
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 16px;
+  margin: 8px -8px 0;
+  padding: 0 8px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.sidebar-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.sidebar-section-title {
+  margin: 0;
+  padding: 0 8px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+  font-weight: var(--font-weight-medium);
+}
+
+.sidebar-note {
+  margin: 0;
+  padding: 4px 8px;
+}
+
+/* Recency headings inside the sidebar are quieter than the section title above them. */
+.sidebar-section .list-group-heading,
+.mobile-sheet .list-group-heading {
+  padding: 12px 8px 4px;
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-normal);
+}
+
+/* ------------------------------------------------------------------- People */
+
+.people-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.people-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-text-xs-size);
+  cursor: pointer;
+}
+
+.people-toggle:hover {
+  background: var(--color-background-primary-ghost-hover);
+  color: var(--color-text);
+}
+
+.people-toggle svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 150ms ease;
+}
+
+.people-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+/* One line of avatars; the gap leaves room for each count badge, which overhangs its avatar's top-right corner. */
+.people-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+  padding: 8px 8px 4px;
+  list-style: none;
+}
+
+.people-row[hidden],
+.sidebar-people[hidden] {
+  display: none;
+}
+
+.sidebar-people {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 2px;
+}
+
+.people-chip {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+}
+
+.people-chip.is-active .avatar {
+  border-color: var(--color-text);
+}
+
+.people-badge {
+  position: absolute;
+  top: -6px;
+  right: -8px;
+  display: grid;
+  min-width: 16px;
+  height: 16px;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 0 4px;
+  background: var(--color-surface);
+  box-sizing: border-box;
+  color: var(--color-text);
+  font-size: var(--font-text-xs-size);
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+}
+
+.people-more {
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  font: inherit;
+  font-size: var(--font-text-xs-size);
+  font-weight: var(--font-weight-medium);
+}
+
+.people-more:hover {
+  border-color: var(--color-border-strong);
+  background: var(--color-background-primary-ghost-hover);
+  color: var(--color-text);
+}
+
+/* -------------------------------------------------------------- Chat history */
+
+.chat-list {
+  display: grid;
+  /* Implicit grid tracks size to the longest nowrap title; pin them to the column so titles truncate. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+}
+
+.chat-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-radius: var(--radius-md);
+}
+
+.chat-row:hover {
+  background: var(--color-background-primary-ghost-hover);
+}
+
+.chat-row.is-active {
+  background: var(--color-background-primary-ghost-active);
+}
+
+.chat-row-link {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: inherit;
+  color: var(--color-text);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+
+.chat-row.is-active .chat-row-title {
+  font-weight: var(--font-weight-medium);
+}
+
+.chat-row-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The "..." button replaces the end of the title on hover or keyboard focus, and stays visible while its menu is open. */
+.chat-row-menu {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.chat-row:hover .chat-row-menu,
+.chat-row:focus-within .chat-row-menu,
+.chat-row-menu[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.chat-row:hover .chat-row-link,
+.chat-row:focus-within .chat-row-link {
+  padding-right: 36px;
+}
+
+.chat-row.is-editing {
+  display: grid;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.chat-row.is-editing:hover {
+  background: transparent;
+}
+
+.chat-row-edit {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.chat-row-edit .input {
+  flex: 1 1 auto;
+}
+
+.chat-row-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 8px;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+
+.chat-row-confirm-text {
+  margin-right: auto;
+}
+
+.chat-row-error {
+  margin: 0;
+  padding: 0 8px;
+}
+
+@media (hover: none) {
+  .chat-row-menu {
+    opacity: 1;
+  }
+
+  .chat-row-link {
+    padding-right: 36px;
+  }
+}
+
+/* -------------------------------------------------------------- Account menu */
+
+.sidebar-account {
+  flex: none;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.account-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.account-trigger:hover,
+.account-trigger[aria-expanded="true"] {
+  background: var(--color-background-primary-ghost-hover);
+}
+
+.account-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+}
+
+.account-text strong,
+.account-text .meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-text strong {
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  font-weight: var(--font-weight-medium);
+}
+
+.account-chevron {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--color-text-tertiary);
+}
+
+/* Menus open above the page, the drawer and the account row. */
+.shell-menu {
+  z-index: 90;
+  min-width: 232px;
+  max-height: var(--radix-dropdown-menu-content-available-height);
+  overflow-y: auto;
+  animation: shell-menu-in 120ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.shell-menu .nav-badge {
+  margin-left: auto;
+}
+
+@keyframes shell-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* ------------------------------------------------------------ Collapsed rail */
+
+.shell.is-collapsed .sidebar .shell-copy,
+.shell.is-collapsed .sidebar .people-head-row,
+.shell.is-collapsed .sidebar .people-more,
+.shell.is-collapsed .sidebar .sidebar-people,
+.shell.is-collapsed .sidebar .chat-history-section {
+  display: none;
+}
+
+.shell.is-collapsed .sidebar-head {
+  justify-content: center;
+  padding-left: 0;
+}
+
+.shell.is-collapsed .sidebar .sidebar-row,
+.shell.is-collapsed .sidebar .account-trigger {
+  justify-content: center;
+  padding: 0;
+}
+
+.shell.is-collapsed .sidebar .sidebar-row-count {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  margin: 0;
+  font-size: var(--font-text-xs-size);
+  line-height: 1;
+}
+
+.shell.is-collapsed .sidebar .people-row,
+.shell.is-collapsed .sidebar .people-row[hidden] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0 4px;
+}
+
+/* ------------------------------------------------------------ Phone chrome */
+
+.mobile-bar,
+.mobile-sheet,
+.mobile-sheet-backdrop {
+  display: none;
+}
+
+/*
+ * Below 900px the sidebar becomes a 48px top bar (menu, title, new chat) and a left drawer with the
+ * same content. There is no bottom bar: --shell-bottom-bar stays published, as 0, for pages that size
+ * themselves between the bars (the chat page positions itself with both variables).
+ */
+@media (max-width: 900px) {
+  :root {
+    --shell-top-bar: 48px;
+    --shell-bottom-bar: 0px;
+  }
+
+  .shell,
+  .shell.is-collapsed {
+    display: block;
+  }
+
+  .shell .sidebar,
+  .shell.is-collapsed .sidebar {
+    display: none;
+  }
+
+  .mobile-bar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: center;
+    height: var(--shell-top-bar);
+    padding: 0 4px;
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: var(--color-surface);
+  }
+
+  .mobile-bar .btn {
+    justify-self: center;
+  }
+
+  .mobile-bar-title {
+    margin: 0;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mobile-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: block;
+    background: var(--modal-backdrop-background);
+  }
+
+  .mobile-sheet {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 61;
+    display: flex;
+    flex-direction: column;
+    width: min(85vw, 320px);
+    padding: env(safe-area-inset-top, 0px) 8px env(safe-area-inset-bottom, 0px);
+    background: var(--color-surface-secondary);
+    box-shadow: var(--shadow);
+    overscroll-behavior: contain;
+    animation: shell-drawer-in 180ms cubic-bezier(0.19, 1, 0.22, 1);
+  }
+
+  .mobile-sheet[hidden] {
+    display: none;
+  }
+
+  .mobile-sheet:focus {
+    outline: none;
+  }
+
+  .mobile-sheet .sidebar-head {
+    height: 56px;
+  }
+
+  .mobile-sheet .sidebar-row,
+  .mobile-sheet .chat-row-link {
+    min-height: var(--touch-target);
+  }
+
+  .mobile-sheet .chat-row-menu {
+    top: 0;
+    right: 0;
+  }
+
+  .mobile-sheet .chat-row-link {
+    padding-right: var(--touch-target);
+  }
+}
+
+@keyframes shell-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell,
+  .sidebar-row,
+  .account-trigger,
+  .chat-row-menu,
+  .people-toggle svg {
+    transition: none;
+  }
+
+  .shell-menu,
+  .mobile-sheet {
+    animation: none;
+  }
+}

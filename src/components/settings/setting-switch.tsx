@@ -14,12 +14,10 @@ export function SettingSwitch({
   onCheckedChange: (checked: boolean) => void;
 }) {
   return <Switch.Root
-    className="settings-switch"
+    className="switch"
     checked={checked}
     disabled={disabled}
     onCheckedChange={onCheckedChange}
     aria-label={label}
-  >
-    <Switch.Thumb className="settings-switch-thumb" />
-  </Switch.Root>;
+  />;
 }

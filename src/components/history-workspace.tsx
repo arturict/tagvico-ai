@@ -6,13 +6,8 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  FileClock,
-  Info,
   RefreshCcw,
-  RotateCcw,
   Search,
-  ShieldCheck,
-  Trash2,
   Undo2,
   X
 } from 'lucide-react';
@@ -195,85 +190,87 @@ export function HistoryWorkspace({ view = 'activity' }: { view?: 'activity' | 'd
   };
 
   const pageCount = Math.max(1, Math.ceil(total / pageSize));
+  const filtered = Boolean(search || tag || correspondent);
 
-  return <div className="page operations-page">
-    <header className="page-head operations-page-head">
-      <div>
-        <p className="eyebrow">{view === 'documents' ? 'Paperless archive' : 'Audit trail'}</p>
-        <h1>{view === 'documents' ? 'Documents' : 'Activity'}</h1>
-        <p className="lede">{view === 'documents'
-          ? 'Find every document Tagvico has handled, inspect its filing and open the original in Paperless.'
-          : 'Inspect every automated decision, token count and original value. Rescan safely or restore the first saved state.'}</p>
+  return <div className="page-column act-page">
+    <header className="page-header pg-header">
+      <div className="page-header-text">
+        <h1 className="page-title">{view === 'documents' ? 'Documents' : 'Activity'}</h1>
       </div>
-      <div className="workspace-actions">
-        <button className="button" type="button" onClick={() => void validateHistory()}><ShieldCheck /> Validate history</button>
-        {orphanCount ? <button className="button danger" type="button" onClick={() => setConfirm({ kind: 'cleanup', count: orphanCount })}><Trash2 /> Clean up {orphanCount}</button> : null}
-        {total > 0 ? <button className="button" type="button" onClick={() => void rescanSelected()}><RefreshCcw /> Rescan selected</button> : null}
-        {archiveTotal > 0 ? <button className="button danger" type="button" onClick={() => setConfirm({ kind: 'rescanAll' })}><RotateCcw /> Rescan all</button> : null}
+      <div className="page-actions pg-actions">
+        <button className="btn btn-ghost btn-32" type="button" onClick={() => void validateHistory()}>Validate history</button>
+        {orphanCount ? <button className="btn btn-danger btn-32" type="button" onClick={() => setConfirm({ kind: 'cleanup', count: orphanCount })}>Clean up {orphanCount}</button> : null}
+        {archiveTotal > 0 ? <button className="btn btn-secondary btn-32" type="button" onClick={() => setConfirm({ kind: 'rescanAll' })}>Rescan all</button> : null}
       </div>
     </header>
 
-    {status ? <div className="workspace-notice" role="status">{status}</div> : null}
+    {status ? <p className="pg-status" role="status">{status}</p> : null}
 
-    <section className="workspace-card history-filters" aria-label="History filters">
-      <label className="workspace-search"><Search aria-hidden="true" /><input value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} placeholder="Search titles, correspondents or tags…" /></label>
-      <label><span>Tag</span><select value={tag} onChange={(event) => { setTag(event.target.value); setPage(0); }}><option value="">All tags</option>{filters.tags.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
-      <label><span>Correspondent</span><select value={correspondent} onChange={(event) => { setCorrespondent(event.target.value); setPage(0); }}><option value="">All correspondents</option>{filters.correspondents.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
+    <section className="act-filters" aria-label="History filters">
+      <label className="act-search">
+        <span className="sr-only">Search activity</span>
+        <Search aria-hidden="true" />
+        <input className="input input-32" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(0); }} placeholder="Search titles, correspondents or tags" />
+      </label>
+      <label className="act-filter">
+        <span className="sr-only">Tag</span>
+        <select className="select select-32" value={tag} onChange={(event) => { setTag(event.target.value); setPage(0); }}><option value="">All tags</option>{filters.tags.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>
+      </label>
+      <label className="act-filter">
+        <span className="sr-only">Correspondent</span>
+        <select className="select select-32" value={correspondent} onChange={(event) => { setCorrespondent(event.target.value); setPage(0); }}><option value="">All correspondents</option>{filters.correspondents.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+      </label>
     </section>
 
-    <section className="workspace-card history-card">
-      <div className="workspace-card-head">
-        <div><p className="eyebrow">Documents</p><h2>{total} history records</h2></div>
-        <span className="workspace-muted">Page {page + 1} of {pageCount}</span>
-      </div>
+    {selected.size ? <div className="act-selection" role="toolbar" aria-label="Selected documents">
+      <span className="meta">{selected.size} selected</span>
+      <button className="btn btn-secondary btn-28" type="button" onClick={() => void rescanSelected()}><RefreshCcw aria-hidden="true" /> Rescan selected</button>
+      <button className="btn btn-ghost btn-28" type="button" onClick={() => setSelected(new Set())}>Clear selection</button>
+    </div> : null}
+
+    <section className="act-results" aria-label="History records">
       {loadState === 'error' ? <WorkspaceLoadError
         title="History is unavailable"
         message={loadError}
+        mascot
         onRetry={() => void load()}
-      /> : loadState === 'loading' && !rows.length ? <div className="workspace-table-skeleton" aria-label="Loading history">
-        {Array.from({ length: 7 }, (_, index) => <span key={index}>
-          <i /><b /><small /><em />
-        </span>)}
-      </div> : rows.length ? <div className="workspace-table-wrap">
-        <table className="workspace-table">
-          <thead><tr><th className="check-column"><span className="sr-only">Select</span></th><th>Document</th><th>Tags</th><th>Correspondent</th><th>Actions</th></tr></thead>
-          <tbody>{rows.map((row) => <tr key={`${row.history_id}-${row.document_id}`}>
-            <td><input aria-label={`Select document ${row.document_id}`} type="checkbox" checked={selected.has(row.document_id)} onChange={(event) => setSelected((current) => {
-              const next = new Set(current);
-              if (event.target.checked) next.add(row.document_id); else next.delete(row.document_id);
-              return next;
-            })} /></td>
-            <td><strong>{row.title}</strong><small>#{row.document_id} · {new Date(row.created_at).toLocaleString()}</small></td>
-            <td><div className="tag-list">{row.tags.map((item) => <span key={item.id}>{item.name}</span>)}</div></td>
-            <td>{row.correspondent}</td>
-            <td><div className="table-actions">
-              <button className="button history-details-button" type="button" onClick={() => void openDetails(row)}><Info /> Details</button>
-              <a className="icon-button" href={row.link} target="_blank" rel="noreferrer" aria-label={`Open document ${row.document_id}`}><ExternalLink /></a>
-              <button className="icon-button" type="button" aria-label={`Rescan document ${row.document_id}`} onClick={() => void mutate(`/api/history/${row.document_id}/rescan`, { method: 'POST' }, `Document ${row.document_id} was queued for a filter-bypassing rescan.`)}><RefreshCcw /></button>
-              <button className="icon-button is-danger" type="button" aria-label={`Restore document ${row.document_id}`} onClick={() => setConfirm({ kind: 'restore', id: row.document_id })}><Undo2 /></button>
-            </div></td>
-          </tr>)}</tbody>
-        </table>
-      </div> : loadState === 'ready' ? <div className="empty">
-        <h2>{search || tag || correspondent
-          ? 'No matching records'
+      /> : loadState === 'loading' && !rows.length ? <div className="pg-skeleton-rows" aria-label="Loading history">
+        {Array.from({ length: 7 }, (_, index) => <div className="pg-skeleton-row" key={index}>
+          <span className="pg-skeleton-stack"><span className="pg-skeleton-bar is-title" /><span className="pg-skeleton-bar is-meta" /></span>
+          <span className="pg-skeleton-bar is-value" />
+        </div>)}
+      </div> : rows.length ? <ul className="list act-list">
+        {rows.map((row) => <li className={`list-row is-interactive act-row${selected.has(row.document_id) ? ' is-selected' : ''}`} key={`${row.history_id}-${row.document_id}`}>
+          <input className="act-check" aria-label={`Select document ${row.document_id}`} type="checkbox" checked={selected.has(row.document_id)} onChange={(event) => setSelected((current) => {
+            const next = new Set(current);
+            if (event.target.checked) next.add(row.document_id); else next.delete(row.document_id);
+            return next;
+          })} />
+          <div className="list-row-main">
+            <button className="list-row-title act-row-title" type="button" onClick={() => void openDetails(row)}>{row.title || `Document #${row.document_id}`}</button>
+            <span className="list-row-meta">{[`#${row.document_id}`, row.correspondent, row.tags.map((item) => item.name).join(', ')].filter(Boolean).join(' · ')}</span>
+          </div>
+          <span className="list-row-trailing"><time dateTime={row.created_at}>{shortDateTime(row.created_at)}</time></span>
+          <div className="list-row-actions act-row-actions">
+            <a className="btn btn-ghost btn-28 btn-icon" href={row.link} target="_blank" rel="noreferrer" aria-label={`Open document ${row.document_id}`} title="Open in Paperless"><ExternalLink aria-hidden="true" /></a>
+            <button className="btn btn-ghost btn-28 btn-icon" type="button" aria-label={`Rescan document ${row.document_id}`} title="Rescan" onClick={() => void mutate(`/api/history/${row.document_id}/rescan`, { method: 'POST' }, `Document ${row.document_id} was queued for a filter-bypassing rescan.`)}><RefreshCcw aria-hidden="true" /></button>
+            <button className="btn btn-ghost btn-28 btn-icon" type="button" aria-label={`Restore document ${row.document_id}`} title="Restore original" onClick={() => setConfirm({ kind: 'restore', id: row.document_id })}><Undo2 aria-hidden="true" /></button>
+          </div>
+        </li>)}
+      </ul> : loadState === 'ready' ? <div className="empty-state act-empty">
+        <p>{filtered
+          ? 'No records match these filters.'
           : view === 'documents'
-            ? 'No processed documents yet'
-            : 'No activity yet'}</h2>
-        <p>{search || tag || correspondent
-          ? 'Try another title, tag or correspondent.'
-          : view === 'documents'
-            ? 'Ask Tagvico can search your live Paperless archive immediately. Documents appear here after a review-first or manual analysis.'
-            : 'Paperless remains unchanged until you run an analysis and approve its suggestion.'}</p>
-        {!search && !tag && !correspondent ? <div className="workspace-actions">
-          <Link className="button primary" href="/companion">Ask Tagvico</Link>
-          <Link className="button" href="/automation/manual">Analyze one document</Link>
-        </div> : null}
+            ? 'Documents appear here after their first review-first or manual analysis.'
+            : 'No activity yet. Paperless stays unchanged until an analysis runs.'}</p>
+        {!filtered ? <Link className="btn btn-secondary btn-32" href="/automation/manual">Analyze one document</Link> : null}
       </div> : null}
-      {loadState === 'ready' ? <footer className="workspace-pagination">
-        <button className="button" type="button" disabled={page === 0} onClick={() => setPage((current) => Math.max(0, current - 1))}><ChevronLeft /> Previous</button>
-        <span>{page * pageSize + (rows.length ? 1 : 0)}–{Math.min(total, (page + 1) * pageSize)} of {total}</span>
-        <button className="button" type="button" disabled={page + 1 >= pageCount} onClick={() => setPage((current) => current + 1)}>Next <ChevronRight /></button>
+      {loadState === 'ready' && total > 0 ? <footer className="act-pagination">
+        <span className="meta">{page * pageSize + (rows.length ? 1 : 0)}–{Math.min(total, (page + 1) * pageSize)} of {total}</span>
+        <div className="act-pagination-buttons">
+          <button className="btn btn-ghost btn-32 btn-icon" type="button" aria-label="Previous page" disabled={page === 0} onClick={() => setPage((current) => Math.max(0, current - 1))}><ChevronLeft aria-hidden="true" /></button>
+          <button className="btn btn-ghost btn-32 btn-icon" type="button" aria-label="Next page" disabled={page + 1 >= pageCount} onClick={() => setPage((current) => current + 1)}><ChevronRight aria-hidden="true" /></button>
+        </div>
       </footer> : null}
     </section>
 
@@ -288,16 +285,17 @@ export function HistoryWorkspace({ view = 'activity' }: { view?: 'activity' | 'd
       onRestore={() => setConfirm({ kind: 'restore', id: details.documentId })}
     /> : null}
 
-    {confirm ? <div className="workspace-dialog-overlay" role="presentation">
-      <section className="workspace-dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
-        <header>
-          <div><p className="eyebrow">Confirm change</p><h2 id="confirm-title">{confirmationTitle(confirm)}</h2></div>
-          <button className="icon-button" type="button" aria-label="Cancel" onClick={() => setConfirm(null)}><X /></button>
-        </header>
-        <p>{confirmationCopy(confirm)}</p>
-        <div className="workspace-actions"><button className="button" type="button" onClick={() => setConfirm(null)}>Cancel</button><button className="button danger" type="button" onClick={() => void confirmMutation()}>Confirm</button></div>
+    {confirm ? <>
+      <div className="dialog-backdrop" role="presentation" />
+      <section className="dialog pg-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-copy">
+        <h2 className="pg-dialog-title" id="confirm-title">{confirmationTitle(confirm)}</h2>
+        <p className="pg-dialog-copy" id="confirm-copy">{confirmationCopy(confirm)}</p>
+        <div className="pg-dialog-actions">
+          <button className="btn btn-secondary btn-32" type="button" onClick={() => setConfirm(null)}>Cancel</button>
+          <button className="btn btn-danger btn-32" type="button" onClick={() => void confirmMutation()}>Confirm</button>
+        </div>
       </section>
-    </div> : null}
+    </> : null}
   </div>;
 }
 
@@ -310,68 +308,70 @@ function HistoryDetailsDialog({ state, onClose, onRetry, onRescan, onRestore }: 
 }) {
   const details = state.data;
   const diff = details?.latest.diff || [];
-  return <div className="workspace-dialog-overlay" role="presentation" onMouseDown={(event) => {
-    if (event.currentTarget === event.target) onClose();
-  }}>
-    <section className="workspace-dialog history-details-dialog" role="dialog" aria-modal="true" aria-labelledby="history-details-title">
-      <header>
-        <div><p className="eyebrow">Document #{state.documentId}</p><h2 id="history-details-title">{state.title}</h2></div>
-        <button className="icon-button" type="button" aria-label="Close details" onClick={onClose}><X /></button>
+  return <>
+    <div className="dialog-backdrop" role="presentation" onMouseDown={onClose} />
+    <section className="dialog is-wide pg-dialog act-details" role="dialog" aria-modal="true" aria-labelledby="history-details-title">
+      <header className="pg-dialog-head">
+        <div className="pg-dialog-head-text">
+          <h2 className="pg-dialog-title" id="history-details-title">{state.title || `Document #${state.documentId}`}</h2>
+          <p className="meta">#{state.documentId}{details ? ` · ${details.latest.event_type || 'processed'}` : ''}</p>
+        </div>
+        <button className="btn btn-ghost btn-32 btn-icon" type="button" aria-label="Close details" onClick={onClose}><X aria-hidden="true" /></button>
       </header>
-      {state.loading ? <div className="workspace-skeleton" aria-label="Loading document history">{Array.from({ length: 3 }, (_, index) => <span key={index} />)}</div>
+      {state.loading ? <div className="pg-skeleton-rows" aria-label="Loading document history">{Array.from({ length: 3 }, (_, index) => <div className="pg-skeleton-row is-pair" key={index}>
+        <span className="pg-skeleton-bar is-label" /><span className="pg-skeleton-bar is-value" />
+      </div>)}</div>
         : state.error ? <WorkspaceLoadError title="Details are unavailable" message={state.error} onRetry={onRetry} />
-          : details ? <>
-            <section className="history-detail-section">
-              <div className="workspace-card-head"><div><p className="eyebrow">Latest result</p><h3>Assigned metadata</h3></div><span className="status-pill">{details.latest.event_type || 'processed'}</span></div>
+          : details ? <div className="act-details-body">
+            <section className="act-details-section">
+              <h3 className="act-details-title">Assigned metadata</h3>
               <MetadataGrid metadata={details.metadata} />
             </section>
 
-            <section className="history-detail-section">
-              <div className="workspace-card-head"><div><p className="eyebrow">Change set</p><h3>Before and after</h3></div><FileClock /></div>
-              {diff.length ? <ul className="history-diff-list">{diff.map((entry, index) => <li key={`${entry.field}-${index}`}>
-                <strong>{humanize(entry.field)}</strong>
-                <div className="history-diff-before"><span>Before</span><code>{formatValue(entry.before)}</code></div>
-                <div className="history-diff-after"><span>After</span><code>{formatValue(entry.after)}</code></div>
-                {entry.error ? <small className="error">{entry.error}</small> : null}
-              </li>)}</ul> : <p className="workspace-muted">No field-level changes were recorded for this event.</p>}
+            <section className="act-details-section">
+              <h3 className="act-details-title">Before and after</h3>
+              {diff.length ? <ul className="list act-diff">{diff.map((entry, index) => <li className="act-diff-row" key={`${entry.field}-${index}`}>
+                <span className="act-diff-field">{humanize(entry.field)}</span>
+                <span className="act-diff-values">
+                  <span><span className="act-diff-label">Before</span> <code>{formatValue(entry.before)}</code></span>
+                  <span><span className="act-diff-label">After</span> <code>{formatValue(entry.after)}</code></span>
+                  {entry.error ? <span className="is-danger-text">{entry.error}</span> : null}
+                </span>
+              </li>)}</ul> : <p className="pg-muted">No field-level changes were recorded for this event.</p>}
             </section>
 
-            <section className="history-detail-grid">
-              <article className="history-detail-section">
-                <p className="eyebrow">Token usage</p>
-                <h3>{numericMetric(details.metrics, 'totalTokens', 'total_tokens').toLocaleString()} total</h3>
-                <dl className="workspace-definition">
-                  <div><dt>Prompt</dt><dd>{numericMetric(details.metrics, 'promptTokens', 'prompt_tokens').toLocaleString()}</dd></div>
-                  <div><dt>Completion</dt><dd>{numericMetric(details.metrics, 'completionTokens', 'completion_tokens').toLocaleString()}</dd></div>
-                </dl>
-              </article>
-              <article className="history-detail-section">
-                <p className="eyebrow">Original state</p>
-                <h3>First saved snapshot</h3>
-                <MetadataGrid metadata={details.original} compact />
-              </article>
+            <section className="act-details-section">
+              <h3 className="act-details-title">Token usage</h3>
+              <dl className="pg-rows">
+                <div className="pg-row"><dt>Total</dt><dd>{numericMetric(details.metrics, 'totalTokens', 'total_tokens').toLocaleString()}</dd></div>
+                <div className="pg-row"><dt>Prompt</dt><dd>{numericMetric(details.metrics, 'promptTokens', 'prompt_tokens').toLocaleString()}</dd></div>
+                <div className="pg-row"><dt>Completion</dt><dd>{numericMetric(details.metrics, 'completionTokens', 'completion_tokens').toLocaleString()}</dd></div>
+              </dl>
             </section>
 
-            <section className="history-detail-section">
-              <p className="eyebrow">Event history</p>
-              <h3>{details.events.length} recorded event{details.events.length === 1 ? '' : 's'}</h3>
-              <ol className="history-event-list">{details.events.map((event, index) => <li key={event.id || `${event.created_at}-${index}`}>
-                <span className="status-pill">{event.event_type || 'processed'}</span>
-                <strong>{event.source || 'automatic'}</strong>
-                <time>{event.created_at ? new Date(event.created_at).toLocaleString() : 'Time unavailable'}</time>
-              </li>)}</ol>
+            <section className="act-details-section">
+              <h3 className="act-details-title">Original state</h3>
+              <MetadataGrid metadata={details.original} />
             </section>
-          </> : null}
-      <footer className="workspace-actions history-details-actions">
-        <button className="button" type="button" onClick={onClose}>Close</button>
-        <button className="button" type="button" onClick={onRescan}><RefreshCcw /> Rescan</button>
-        <button className="button danger" type="button" onClick={onRestore}><Undo2 /> Restore original</button>
+
+            <section className="act-details-section">
+              <h3 className="act-details-title">Events</h3>
+              {details.events.length ? <ol className="list act-events">{details.events.map((event, index) => <li className="act-event" key={event.id || `${event.created_at}-${index}`}>
+                <span>{humanize(event.event_type || 'processed')} · {event.source || 'automatic'}</span>
+                <time className="meta" dateTime={event.created_at}>{event.created_at ? new Date(event.created_at).toLocaleString() : 'Time unavailable'}</time>
+              </li>)}</ol> : <p className="pg-muted">No events were recorded.</p>}
+            </section>
+          </div> : null}
+      <footer className="pg-dialog-actions">
+        <button className="btn btn-ghost btn-32" type="button" onClick={onClose}>Close</button>
+        <button className="btn btn-secondary btn-32" type="button" onClick={onRescan}>Rescan</button>
+        <button className="btn btn-danger btn-32" type="button" onClick={onRestore}>Restore original</button>
       </footer>
     </section>
-  </div>;
+  </>;
 }
 
-function MetadataGrid({ metadata, compact = false }: { metadata: Record<string, unknown>; compact?: boolean }) {
+function MetadataGrid({ metadata }: { metadata: Record<string, unknown> }) {
   const fields = [
     ['title', metadata.title],
     ['tags', metadata.tags],
@@ -381,8 +381,14 @@ function MetadataGrid({ metadata, compact = false }: { metadata: Record<string, 
     ['date', metadata.created ?? metadata.document_date],
     ['custom fields', metadata.custom_fields ?? metadata.customFields]
   ].filter(([, value]) => value !== undefined && value !== null && value !== '');
-  if (!fields.length) return <p className="workspace-muted">No metadata snapshot is available for this older event.</p>;
-  return <dl className={`history-metadata-grid${compact ? ' is-compact' : ''}`}>{fields.map(([label, value]) => <div key={String(label)}><dt>{humanize(String(label))}</dt><dd>{formatValue(value)}</dd></div>)}</dl>;
+  if (!fields.length) return <p className="pg-muted">No metadata snapshot is available for this older event.</p>;
+  return <dl className="pg-rows">{fields.map(([label, value]) => <div className="pg-row" key={String(label)}><dt>{humanize(String(label))}</dt><dd>{formatValue(value)}</dd></div>)}</dl>;
+}
+
+function shortDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 function confirmationTitle(confirm: ConfirmState) {

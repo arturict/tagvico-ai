@@ -1,0 +1,740 @@
+/*
+ * Page styles for Documents, Activity, Organize tags, Overview, Recovery, Manual
+ * processing and What's new. Built on the shared classes in foundation.css
+ * (page-column, page-header, list-row, btn, input, select, badge, empty-state).
+ * New class names only: the legacy `.page`, `.page-head`, `.workspace-*`,
+ * `.button`, `.empty` and `.eyebrow` rules in globals.css are not used here.
+ *
+ * Prefixes: `pg-` shared by these pages, then `doc-`, `act-`, `ov-`, `rec-`,
+ * `man-`, `log-` and `tagorg-` per page. Foundation classes carry no margins,
+ * so all spacing between blocks is set here.
+ */
+
+/* ------------------------------------------------------------- Shared (pg-) */
+
+/* Header that lets its actions wrap below the title on narrow screens. */
+.pg-header {
+  flex-wrap: wrap;
+  row-gap: 12px;
+}
+.pg-header .page-header-text {
+  flex: 1 1 240px;
+}
+.pg-actions {
+  flex-wrap: wrap;
+}
+
+/* Back link above a page title; the negative margin lines its icon up with the title text. */
+.pg-back {
+  margin: 0 0 8px -8px;
+  color: var(--color-text-secondary);
+}
+.pg-back:hover {
+  color: var(--color-text);
+}
+
+/* One line of status text under the header (role="status"). */
+.pg-status {
+  margin: 0 0 16px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+
+/* Refresh failure while older data stays on screen: danger text, one retry button. */
+.pg-inline-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 16px;
+  padding: 8px 8px 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  color: var(--tv-danger);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+
+.pg-muted {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.pg-secondary {
+  color: var(--color-text-secondary);
+}
+
+/* Title line inside an `.empty-state` (empty lists, not-found, load errors). */
+.pg-empty-title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-heading-xs-size);
+  line-height: var(--font-heading-xs-line-height);
+  font-weight: var(--font-weight-semibold);
+}
+.pg-empty-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+/* Load errors sit inside sections, so they take less vertical room than a page-level empty state. */
+.pg-load-error {
+  padding: 24px 16px;
+}
+
+/* Label/value rows with hairlines: metadata, metrics, token counts. Optional third column for a row action. */
+.pg-rows {
+  margin: 0;
+  padding: 0;
+}
+.pg-row {
+  display: grid;
+  grid-template-columns: minmax(112px, 200px) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  min-height: 44px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.pg-row:last-child {
+  border-bottom: 0;
+}
+.pg-row dt {
+  color: var(--color-text-secondary);
+}
+.pg-row dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--color-text);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.pg-row-action {
+  justify-self: end;
+}
+
+/* OCR text: readable monospace block that scrolls with the page, never sideways. */
+.pg-ocr {
+  margin: 0;
+  max-width: 72ch;
+  padding: 16px;
+  border-radius: var(--radius-xl);
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  font-size: var(--font-text-sm-size);
+  line-height: 22px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Dialog content layout on top of the foundation `.dialog` surface. */
+.pg-dialog {
+  display: grid;
+  gap: 16px;
+}
+.pg-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.pg-dialog-head-text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.pg-dialog-head .btn-icon {
+  margin: -4px -8px 0 0;
+}
+.pg-dialog-title {
+  margin: 0;
+  font-size: var(--font-heading-sm-size);
+  line-height: var(--font-heading-sm-line-height);
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+.pg-dialog-copy {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.pg-dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Loading placeholders: grey bars in rows of the real row height. */
+.pg-skeleton-head {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  padding-bottom: 16px;
+}
+.pg-skeleton-rows {
+  display: grid;
+}
+.pg-skeleton-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: var(--row-height);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.pg-skeleton-row:last-child {
+  border-bottom: 0;
+}
+.pg-skeleton-row.is-pair {
+  justify-content: flex-start;
+  min-height: 44px;
+}
+.pg-skeleton-stack {
+  flex: 1 1 auto;
+  display: grid;
+  gap: 6px;
+}
+.pg-skeleton-bar {
+  display: block;
+  height: 12px;
+  border-radius: var(--radius-md);
+  background: var(--alpha-06);
+  animation: pg-pulse 1.4s ease-in-out infinite alternate;
+}
+.pg-skeleton-bar.is-page-title {
+  width: 180px;
+  height: 24px;
+}
+.pg-skeleton-bar.is-title {
+  width: 45%;
+  height: 14px;
+}
+.pg-skeleton-bar.is-meta {
+  width: 25%;
+  height: 10px;
+}
+.pg-skeleton-bar.is-label {
+  flex: 0 0 auto;
+  width: 112px;
+}
+.pg-skeleton-bar.is-value {
+  flex: 0 0 auto;
+  width: 72px;
+}
+@keyframes pg-pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.45;
+  }
+}
+
+/* ---------------------------------------------------------------- Documents */
+
+.doc-search {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.doc-search-field {
+  position: relative;
+  display: block;
+  flex: 1 1 200px;
+  min-width: 0;
+  color: var(--color-text);
+}
+.doc-search-field svg {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-secondary);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.doc-search-input {
+  padding-left: 36px;
+}
+.doc-summary {
+  margin: 0 0 4px;
+}
+/* Rows bleed into the gutter so their text lines up with the title while the hover fill stays wide. */
+.doc-list,
+.act-list,
+.rec-list {
+  margin-inline: -12px;
+}
+.doc-row-link {
+  display: block;
+  text-decoration: none;
+}
+/* Stretched link: the title's ::after covers the row (the row is position: relative). */
+.doc-row-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.doc-row-actions {
+  position: relative;
+  z-index: 1;
+}
+
+.doc-meta {
+  margin: 0 0 32px;
+}
+.doc-note {
+  margin: 24px 0 0;
+}
+
+/* ----------------------------------------------------------------- Activity */
+
+.act-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+.act-search {
+  position: relative;
+  display: block;
+  flex: 1 1 240px;
+  min-width: 0;
+  color: var(--color-text);
+}
+.act-search svg {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  color: var(--color-text-secondary);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.act-search .input {
+  padding-left: 32px;
+}
+.act-filter {
+  display: block;
+  flex: 0 1 180px;
+  min-width: 140px;
+  color: var(--color-text);
+}
+.act-selection {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+}
+.act-check {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--color-background-primary-solid);
+  cursor: pointer;
+}
+/* The title is a button that opens the details dialog; its ::after makes the whole row clickable. */
+.act-row-title {
+  display: block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.act-row-title::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.act-row-actions {
+  position: relative;
+  z-index: 1;
+}
+.act-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+.act-pagination-buttons {
+  display: flex;
+  gap: 4px;
+}
+
+.act-details-body {
+  display: grid;
+  gap: 24px;
+}
+.act-details-section {
+  display: grid;
+  gap: 4px;
+}
+.act-details-title {
+  margin: 0;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  font-weight: var(--font-weight-semibold);
+}
+.act-diff-row {
+  display: grid;
+  grid-template-columns: minmax(112px, 200px) minmax(0, 1fr);
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.act-diff-row:last-child {
+  border-bottom: 0;
+}
+.act-diff-field {
+  color: var(--color-text-secondary);
+}
+.act-diff-values {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.act-diff-label {
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+}
+.act-diff-values code {
+  font-family: var(--font-mono);
+  font-size: var(--font-text-xs-size);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.act-event {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px 12px;
+  min-height: 44px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.act-event:last-child {
+  border-bottom: 0;
+}
+
+/* ----------------------------------------------------------------- Overview */
+
+/* Sections stack with the foundation `.section + .section` spacing. */
+.ov-sections {
+  display: block;
+}
+
+/* ----------------------------------------------------------------- Recovery */
+
+.rec-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rec-section-text {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.rec-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0;
+}
+.rec-field {
+  display: block;
+  flex: 1 1 200px;
+  min-width: 0;
+  color: var(--color-text);
+}
+.rec-field.is-id {
+  flex: 0 1 160px;
+  min-width: 120px;
+}
+.rec-empty {
+  padding: 8px 0;
+}
+
+/* ------------------------------------------------------- Manual processing */
+
+.man-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+@media (min-width: 960px) {
+  .man-layout {
+    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+  }
+}
+.man-fields {
+  min-width: 0;
+  display: grid;
+  gap: 16px;
+}
+.man-field {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text);
+  font-size: var(--font-text-sm-size);
+}
+.man-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 4px;
+}
+.man-preview {
+  min-width: 0;
+}
+.man-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+.man-preview-head .meta {
+  margin-left: auto;
+}
+
+/* --------------------------------------------------------------- What's new */
+
+.log-entry {
+  display: grid;
+  gap: 12px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.log-entry:first-child {
+  padding-top: 8px;
+}
+.log-entry:last-child {
+  border-bottom: 0;
+}
+.log-entry-head {
+  display: grid;
+  gap: 2px;
+}
+.log-entry-title {
+  margin: 0;
+  font-size: var(--font-heading-sm-size);
+  line-height: var(--font-heading-sm-line-height);
+  font-weight: var(--font-weight-semibold);
+}
+.log-summary {
+  margin: 0;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.log-group {
+  display: grid;
+  gap: 4px;
+}
+.log-group-title {
+  margin: 0;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  font-weight: var(--font-weight-semibold);
+}
+.log-items {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+  list-style: disc;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+
+/* ------------------------------------------------------------ Organize tags */
+
+/* Two classes so this wins over the legacy `.tag-unification` grid in globals.css. */
+.tag-unification.tagorg {
+  display: block;
+}
+.tagorg-controls {
+  border-top: 1px solid var(--color-border-subtle);
+}
+.tagorg-control {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: var(--row-height);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: var(--color-text);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.tagorg-control-label {
+  font-weight: var(--font-weight-medium);
+}
+.tagorg-select {
+  flex: 0 1 280px;
+  width: auto;
+  min-width: 0;
+}
+.tagorg-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.tagorg-status {
+  margin: 12px 0 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.tagorg-status.is-danger-text {
+  color: var(--tv-danger);
+}
+.tagorg-note {
+  margin: 12px 0 0;
+}
+.tagorg-list {
+  margin-top: 24px;
+}
+.tagorg-group + .tagorg-group {
+  margin-top: 16px;
+}
+.tagorg-group-heading {
+  padding-inline: 0;
+}
+.tagorg-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.tagorg-item:last-child {
+  border-bottom: 0;
+}
+.tagorg-item-main {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.tagorg-pair [aria-hidden="true"] {
+  color: var(--color-text-secondary);
+}
+.tagorg-item.is-rejected .tagorg-pair {
+  color: var(--color-text-secondary);
+}
+.tagorg-reason {
+  margin-top: 4px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.tagorg-reason p {
+  margin: 0;
+}
+.tagorg-error {
+  margin: 4px 0 0;
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+}
+.tagorg-item-side {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 6px;
+}
+.tagorg-state {
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+  white-space: nowrap;
+}
+.tagorg-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+.tagorg-audit {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-secondary);
+  list-style: none;
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+}
+.tagorg-audit li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+}
+
+/* ------------------------------------------------------------- Responsive */
+
+@media (max-width: 599px) {
+  .pg-row,
+  .act-diff-row {
+    grid-template-columns: minmax(96px, 120px) minmax(0, 1fr) auto;
+    gap: 12px;
+  }
+  .act-diff-row {
+    grid-template-columns: minmax(96px, 120px) minmax(0, 1fr);
+  }
+  .tagorg-item {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .tagorg-item-side {
+    justify-items: start;
+  }
+  .tagorg-actions {
+    justify-content: flex-start;
+  }
+}
+
+@media (pointer: coarse) {
+  .act-check {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pg-skeleton-bar {
+    animation: none;
+  }
+}

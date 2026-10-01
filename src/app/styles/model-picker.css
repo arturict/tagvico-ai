@@ -1,0 +1,558 @@
+/*
+ * Model picker: a compact popover under the model button, used by the chat
+ * header and the Settings model row. Built on the OpenAI tokens only; the one
+ * shadow is the popover's own (.popover in foundation.css).
+ */
+
+/* ------------------------------------------------------------------ triggers */
+
+.mp-trigger {
+  max-width: min(100%, 320px);
+  gap: 6px;
+  font-size: var(--font-heading-xs-size);
+  line-height: var(--font-heading-xs-line-height);
+  font-weight: var(--font-weight-medium);
+}
+
+.mp-trigger > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--color-text-secondary);
+}
+
+.mp-trigger-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The Settings row: the look of a select, holding the logo, the model and its provider. */
+.mp-trigger-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 320px;
+  max-width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mp-trigger-field .mp-trigger-text {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.mp-trigger-field strong {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-trigger-field small {
+  flex: 0 100 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-trigger-field > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--color-text-secondary);
+}
+
+/* A lone ghost chip in a settings row lines up with the labels instead of its padding. */
+.set-row > .mp-trigger:only-child {
+  margin-left: -12px;
+}
+
+/* --------------------------------------------------------------- provider logo */
+
+/* Fixed square: the size comes from the inline style and the glyph is fitted into it, never stretched. */
+.mp-logo {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  line-height: 0;
+  color: inherit;
+}
+
+.mp-logo svg {
+  display: block;
+  flex: none;
+}
+
+/* The bundled glyphs are white for dark backgrounds; as a mask they take the text colour instead. */
+.mp-logo-mask {
+  background-color: currentColor;
+  -webkit-mask: var(--mp-logo-url) center / contain no-repeat;
+  mask: var(--mp-logo-url) center / contain no-repeat;
+  mask-mode: alpha;
+}
+
+.mp-logo-mask[data-mask="luminance"] {
+  mask-mode: luminance;
+}
+
+/* --------------------------------------------------------------------- popover */
+
+.mp-popover {
+  z-index: 90;
+  width: min(380px, calc(100vw - 16px));
+  max-height: min(420px, var(--radix-popover-content-available-height, 420px));
+  padding: 0;
+  overflow: hidden;
+  animation: mp-in 150ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+@keyframes mp-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.mp-panel {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 176px;
+  max-height: min(420px, var(--radix-popover-content-available-height, 420px));
+}
+
+/* ------------------------------------------------------------------------ rail */
+
+.mp-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+  border-right: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-secondary);
+}
+
+.mp-rail-item {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.mp-rail-item > svg {
+  width: 18px;
+  height: 18px;
+}
+
+.mp-rail-item:hover:not(:disabled) {
+  background: var(--color-background-primary-ghost-hover);
+  color: var(--color-text);
+}
+
+.mp-rail-item[aria-pressed="true"] {
+  background: var(--alpha-08);
+  color: var(--color-text);
+}
+
+/* The thin accent bar on the rail's edge marks the active filter. */
+.mp-rail-item[aria-pressed="true"]::before {
+  content: "";
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: -4px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--color-ring);
+}
+
+.mp-rail-item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------------- main side */
+
+.mp-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.mp-search {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.mp-search:focus-within {
+  border-bottom-color: var(--color-ring);
+}
+
+.mp-search > svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--color-text-tertiary);
+}
+
+.mp-search input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-text-sm-size);
+}
+
+.mp-search input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.mp-icon-button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.mp-icon-button > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.mp-icon-button:hover:not(:disabled) {
+  background: var(--color-background-primary-ghost-hover);
+  color: var(--color-text);
+}
+
+.mp-icon-button:disabled {
+  cursor: default;
+}
+
+.mp-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 4px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+/* ------------------------------------------------------------------------ rows */
+
+.mp-list[hidden] {
+  display: none;
+}
+
+.mp-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  border-radius: var(--radius-md);
+}
+
+.mp-row[data-active] {
+  background: var(--menu-item-background-color);
+}
+
+.mp-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 6px 4px 6px 8px;
+  cursor: pointer;
+}
+
+.mp-copy {
+  display: grid;
+  flex: 1 1 auto;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mp-name-line,
+.mp-provider-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.mp-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: var(--radius-xs);
+  background: var(--alpha-08);
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  line-height: 1;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+.mp-provider-line {
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+}
+
+.mp-provider-name {
+  flex: none;
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-model-id {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--color-text-tertiary);
+  font-family: var(--font-mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mp-trail {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.mp-check {
+  width: 16px;
+  height: 16px;
+  color: var(--color-text);
+}
+
+.mp-kbd {
+  padding: 1px 6px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--alpha-04);
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+  white-space: nowrap;
+}
+
+.mp-star {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-tertiary);
+  cursor: pointer;
+}
+
+.mp-star > svg {
+  width: 16px;
+  height: 16px;
+  fill: transparent;
+}
+
+.mp-star:hover {
+  color: var(--color-text);
+}
+
+.mp-star.is-active {
+  color: var(--color-text);
+}
+
+.mp-star.is-active > svg {
+  fill: currentColor;
+}
+
+/* ------------------------------------------------------- empty, error, loading */
+
+.mp-empty,
+.mp-note {
+  margin: 0;
+  padding: 24px 12px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  text-align: center;
+}
+
+.mp-empty.is-error {
+  color: var(--tv-danger);
+}
+
+.mp-note {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 16px 12px;
+  font-size: var(--font-text-xs-size);
+}
+
+.mp-note p {
+  margin: 0;
+}
+
+.mp-skeleton {
+  display: grid;
+  gap: 4px;
+}
+
+.mp-skeleton span {
+  height: 44px;
+  border-radius: var(--radius-md);
+  background: var(--alpha-04);
+  animation: mp-pulse 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes mp-pulse {
+  to {
+    opacity: 0.4;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mp-popover,
+  .mp-skeleton span {
+    animation: none;
+  }
+}
+
+/* Touch screens: 44px targets. */
+@media (pointer: coarse) {
+  .mp-option {
+    min-height: 48px;
+  }
+
+  .mp-star,
+  .mp-icon-button {
+    width: 44px;
+    height: 44px;
+  }
+
+  .mp-row {
+    grid-template-columns: minmax(0, 1fr) 44px;
+  }
+
+  .mp-rail-item {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+/* The provider's registry badge ("New") as a small dot on its rail icon; the label carries the text. */
+.mp-rail-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-ring);
+}
+
+/* The Settings trigger draws its own border now that it no longer borrows .select (which added a second arrow). */
+.mp-trigger-field {
+  min-height: var(--control-size-md, 36px);
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.mp-trigger-field:hover {
+  border-color: var(--color-border-strong);
+}
+
+/* Thinking effort next to the model button: a ghost chip like the model trigger, native select for access. */
+.chat-model-reasoning {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.chat-model-effort {
+  appearance: none;
+  height: 32px;
+  padding: 0 28px 0 10px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-text-sm-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.chat-model-effort:hover,
+.chat-model-effort:focus-visible {
+  background: var(--color-background-primary-ghost-hover, var(--alpha-04));
+  color: var(--color-text);
+}
+
+.chat-model-reasoning > svg {
+  position: absolute;
+  right: 8px;
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
+}

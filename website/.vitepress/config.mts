@@ -9,7 +9,7 @@ const availableVersions = readdirSync(versionsRoot, { withFileTypes: true })
   .map((entry) => entry.name)
   .sort((a, b) => Number(b.slice(1)) - Number(a.slice(1)));
 const latestVersion = availableVersions[0];
-const currentRelease = 'v3.2.6';
+const currentRelease = 'v3.5.0';
 const displayVersion = (targetVersion: string) =>
   targetVersion === latestVersion ? currentRelease.toUpperCase() : targetVersion.toUpperCase();
 const base = process.env.TAGVICO_DOCS_BASE || '/docs/';

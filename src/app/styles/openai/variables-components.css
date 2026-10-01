@@ -1,0 +1,245 @@
+/*
+ * Source: @openai/apps-sdk-ui 0.2.2 (dist/es/styles/variables-components.css), MIT license, see ./LICENSE.
+ * Vendored unchanged; Tagvico-specific overrides live in globals.css and foundation.css.
+ */
+@layer theme {
+  :root,
+  :where([data-theme]) {
+    /* =============================================
+      Alert
+    ============================================= */
+    --alert-border-radius: var(--radius-xl);
+    --alert-gap: calc(var(--spacing) * 3);
+    --alert-gutter: calc(var(--spacing) * 4);
+    --alert-font-size: var(--font-text-sm-size);
+    --alert-line-height: var(--font-text-sm-line-height);
+    --alert-title-font-weight: var(--font-weight-semibold);
+
+    /* =============================================
+      Avatar
+    ============================================= */
+    --avatar-radius: var(--radius-full);
+    --avatar-size: 28px;
+    --avatar-font-size-scaling: 0.5;
+    --avatar-overflow-font-size-scaling-one: 0.45;
+    --avatar-overflow-font-size-scaling-two: 0.37;
+    --avatar-overflow-font-size-scaling-three: 0.3;
+
+    /* =============================================
+      AvatarGroup
+    ============================================= */
+    --avatar-group-cutout-width: 3px;
+    --avatar-group-cutout-color: var(--color-surface);
+    --avatar-group-spacing: -8px;
+
+    /* =============================================
+      Badge
+    ============================================= */
+    --badge-gutter-sm: calc(var(--control-gutter-2xs) - 1px);
+    --badge-gutter-md: var(--control-gutter-2xs);
+    --badge-gutter-lg: var(--control-gutter-xs);
+    --badge-size-sm: calc(var(--control-size-3xs) - 2px);
+    --badge-size-md: var(--control-size-3xs);
+    --badge-size-lg: var(--control-size-2xs);
+    --badge-radius-sm: var(--radius-xs);
+    --badge-radius-md: var(--radius-xs);
+    --badge-radius-lg: var(--radius-sm);
+    --badge-font-size-sm: var(--font-text-xs-size);
+    --badge-font-size-md: var(--font-text-sm-size);
+    --badge-font-size-lg: var(--font-text-sm-size);
+    --badge-tracking-sm: var(--tracking-wide);
+    --badge-tracking-md: var(--tracking-normal);
+    --badge-tracking-lg: var(--tracking-normal);
+    --badge-font-weight-sm: var(--font-weight-semibold);
+    --badge-font-weight-md: var(--font-weight-semibold);
+    --badge-font-weight-lg: var(--font-weight-semibold);
+    --badge-icon-font-size-sm: var(--font-text-xs-size);
+    --badge-icon-font-size-md: var(--font-text-md-size);
+    --badge-icon-font-size-lg: var(--font-text-md-size);
+    --badge-indicator-size-sm: var(--font-text-xs-size);
+    --badge-indicator-size-md: var(--font-text-xs-size);
+    --badge-indicator-size-lg: var(--font-text-sm-size);
+
+    /* =============================================
+      Button
+    ============================================= */
+    --button-gap-sm: 3px;
+    --button-gap-md: 4px;
+    --button-gap-lg: 6px;
+    --button-font-weight: var(--font-weight-medium);
+
+    /* =============================================
+      Input
+    ============================================= */
+    --input-gap-xs: 4px;
+    --input-gap-sm: 6px;
+    --input-gap-md: 8px;
+    --input-gap-lg: 10px;
+    --input-text-color: var(--color-text);
+    --input-placeholder-text-color: var(--color-text-tertiary);
+    --input-outline-border-color: var(--color-border-primary-outline);
+    --input-outline-border-color-focus: var(--alpha-50);
+    --input-soft-background-color: var(--color-background-primary-soft-alpha);
+    --input-soft-border-color-focus: var(--alpha-20);
+
+    /* =============================================
+      Link
+    ============================================= */
+    --link-font-weight: inherit;
+    --link-gap: calc(var(--spacing) * 0.5);
+    --link-radius: var(--radius-sm);
+    --link-underline-decoration-offset: 0.1em;
+
+    /* =============================================
+      Chat
+    ============================================= */
+    --chat-max-width: 800px;
+    --chat-gutter: calc(var(--spacing) * 5);
+    --chat-background-color: var(--color-surface);
+    --thread-gutter: calc(var(--spacing) * 4); /* 12px (composer gutter) + 4px (input inset) */
+    --composer-gutter: calc(var(--spacing) * 3);
+    --composer-compact-gutter: calc(var(--spacing) * 2);
+    --composer-radius: var(--radius-4xl);
+    --composer-background-color: var(--color-surface-elevated);
+    --smoothing-background-color: var(--color-surface);
+    --user-message-text-color: var(--color-text);
+    --source-list-gutter: var(--thread-gutter);
+
+    /* =============================================
+      CodeBlock
+    ============================================= */
+    --codeblock-background-color: var(--gray-25);
+    --codeblock-syntax-4: var(--pink-500);
+
+    /* =============================================
+      Dialog
+    ============================================= */
+    --dialog-min-width: 250px;
+    --dialog-max-width: 450px;
+    --dialog-container-inner-padding: calc(var(--spacing) * 5);
+    --dialog-backdrop-fade-background: color-mix(in oklab, var(--color-surface-elevated) 60%, transparent);
+
+    /* =============================================
+      Menu
+    ============================================= */
+    --menu-gutter: calc(var(--spacing) * 1.5);
+    --menu-radius: var(--radius-xl);
+    --menu-font-size: var(--font-text-sm-size);
+    /* Important that this line-height is ~an even number for centering with icons */
+    --menu-line-height: var(--font-text-sm-line-height);
+    --menu-item-padding: calc(var(--spacing) * 1.5) calc(var(--spacing) * 2);
+    --menu-item-gap: calc(var(--spacing) * 1.5);
+    --menu-separator-gutter: var(--menu-gutter) calc(-1 * var(--menu-gutter));
+    --menu-separator-background-color: var(--color-border);
+    --menu-radio-indicator-size: var(--font-text-lg-size);
+    --menu-radio-indicator-hole-size: var(--font-text-3xs-size);
+    --menu-checkbox-indicator-size: var(--font-text-lg-size);
+
+    /* =============================================
+      Modal
+    ============================================= */
+    --modal-container-inner-padding: calc(var(--spacing) * 5);
+
+    /* =============================================
+      Popover
+    ============================================= */
+    --popover-radius: var(--radius-xl);
+
+    /* =============================================
+      RadioGroup
+    ============================================= */
+    --radio-group-col-gap: calc(var(--spacing) * 2.5);
+    --radio-group-row-gap: calc(var(--spacing) * 5);
+    --radio-group-item-gap: calc(var(--spacing) * 1.5);
+    --radio-group-item-font-size: var(--font-text-sm-size);
+    --radio-group-item-line-height: var(--font-text-sm-line-height);
+    --radio-group-indicator-size: var(--font-text-md-size);
+    --radio-group-indicator-border-color: var(--color-border-primary-outline);
+    --radio-group-indicator-border-color-hover: var(--alpha-25);
+    --radio-group-indicator-background-color: var(--color-background-primary-solid);
+    --radio-group-indicator-hole-size: 0.375rem;
+    --radio-group-indicator-hole-background-color: var(--color-text-primary-solid);
+
+    /* =============================================
+      Segmented Control
+    ============================================= */
+    --segmented-control-gap: 2px;
+    --segmented-control-gutter: 2px;
+    --segmented-control-font-weight: var(--font-weight-semibold);
+    --segmented-control-thumb-shadow: 0 1px 4px -1px rgb(0 0 0 / 20%);
+    --segmented-control-option-highlight-gutter: 1px;
+
+    /* =============================================
+      SelectControl
+    ============================================= */
+    --select-control-font-weight: var(--font-weight-medium);
+
+    /* =============================================
+      Slider
+    ============================================= */
+
+    /* =============================================
+      Switch
+    ============================================= */
+    --switch-track-width: 32px;
+    --switch-track-height: 19px;
+    --switch-thumb-offset: 3px;
+    --switch-thumb-size: calc(var(--switch-track-height) - 2 * var(--switch-thumb-offset));
+    --switch-thumb-shadow: 0 1px 2px rgb(0 0 0 / 20%);
+    --switch-label-gap: calc(var(--spacing) * 2);
+  }
+  :where(:root), :where([data-theme="light"]) {
+    --avatar-image-border-color: var(--alpha-04);
+    --input-outline-border-color-hover: var(--alpha-25);
+    --input-border-color-invalid: var(--red-500);
+    --link-primary-text-color: var(--blue-500);
+    --link-primary-text-color-hover: var(--blue-800);
+    --user-message-background-color: var(--alpha-05);
+    --codeblock-syntax-1: #c0660d;
+    --codeblock-syntax-2: var(--blue-500);
+    --codeblock-syntax-3: var(--green-600);
+    --codeblock-syntax-5: var(--purple-500);
+    --dialog-backdrop-dim-background: rgb(0 0 0 / 30%);
+    --menu-item-background-color: var(--alpha-08);
+    --modal-backdrop-background: rgb(0 0 0 / 30%);
+    --segmented-control-background: var(--gray-100);
+    --segmented-control-thumb-background: var(--gray-0);
+    --segmented-control-option-highlight-background-color: var(--gray-200);
+    --slider-track-color: var(--gray-150);
+    --slider-range-color: var(--gray-450);
+    --switch-track-color: var(--gray-150);
+    --switch-track-color-hover: var(--gray-200);
+    --switch-track-color-checked: var(--gray-900);
+    --switch-track-color-checked-disabled: var(--gray-300);
+    --switch-track-color-disabled: var(--gray-100);
+    --switch-thumb-color: var(--gray-0);
+    --switch-thumb-color-disabled: var(--gray-0);
+  }
+  :where([data-theme="dark"]) {
+    --avatar-image-border-color: var(--alpha-15);
+    --input-outline-border-color-hover: var(--alpha-30);
+    --input-border-color-invalid: var(--red-600);
+    --link-primary-text-color: var(--blue-300);
+    --link-primary-text-color-hover: var(--blue-400);
+    --user-message-background-color: var(--alpha-08);
+    --codeblock-syntax-1: var(--yellow-100);
+    --codeblock-syntax-2: var(--blue-200);
+    --codeblock-syntax-3: var(--green-300);
+    --codeblock-syntax-5: var(--purple-300);
+    --dialog-backdrop-dim-background: rgb(0 0 0 / 50%);
+    --menu-item-background-color: var(--alpha-10);
+    --modal-backdrop-background: rgb(0 0 0 / 50%);
+    --segmented-control-background: var(--gray-0);
+    --segmented-control-thumb-background: var(--gray-300);
+    --segmented-control-option-highlight-background-color: var(--gray-300);
+    --slider-track-color: var(--gray-400);
+    --slider-range-color: var(--gray-600);
+    --switch-track-color: var(--gray-400);
+    --switch-track-color-hover: var(--gray-450);
+    --switch-track-color-checked: var(--blue-400);
+    --switch-track-color-checked-disabled: var(--blue-700);
+    --switch-track-color-disabled: var(--gray-300);
+    --switch-thumb-color: var(--gray-1000);
+    --switch-thumb-color-disabled: var(--gray-800);
+  }
+}

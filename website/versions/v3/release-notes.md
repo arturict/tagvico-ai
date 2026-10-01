@@ -1,5 +1,60 @@
 # Release notes
 
+## v3.5.0
+
+Released 1 October 2026.
+
+Tagvico 3.5.0 adds Sign in with ChatGPT, turns the start page into a chat, and
+redesigns the interface in OpenAI's design language.
+
+**Sign in with ChatGPT.** An eligible ChatGPT Plus or Pro plan can pay for
+document filing, the Companion, tag unification and TypeSafe titles, with no
+API key. **ChatGPT plan** is the first provider in Settings and setup, marked
+New. Because Tagvico usually runs on another machine than your browser, the
+sign-in ends on a `127.0.0.1` page that does not load; you paste its address
+into Tagvico to finish. GPT-6 Luna is preselected when your plan answers to it,
+otherwise the lightest model the plan lists. Requests count toward the plan and
+never fall back to another provider. See the [ChatGPT plan
+guide](./providers#chatgpt-plan). The Codex-based provider is now **ChatGPT via
+Codex (legacy)**.
+
+**Chat first.** Signing in opens a chat with suggestions built from your real
+documents and actions. Answers cite the Paperless documents the tools returned
+as source pills, and proposed changes appear as approval cards with Approve and
+Reject. A new model picker with a provider rail, search, favourites and
+keyboard shortcuts is used in the chat and in Settings.
+
+**Needs you, people and cases.** One page lists overdue and upcoming actions,
+approvals and review items for the whole household, with a filter per person.
+The sidebar shows members as a row of avatars with open counts; each person has
+a page and each case a detail page.
+
+**Settings that work end to end.** Settings you save take effect on the running
+server. Telegram and Discord have their own **Channels** tab with a token
+check and live status. Settings also gained a Paperless connection test, a
+public URL for Open Paperless links, member management and roles.
+
+**New design.** Vendored Apps SDK UI design tokens (MIT), system fonts and
+neutral colours replace the Paper & Pine theme. Phones get a top bar and a menu
+drawer instead of horizontal navigation.
+
+**TypeSafe Jev** is a new provider for closed-list filing, and GPT-6 Luna is
+the default model for OpenAI direct and OpenRouter.
+
+Fixes and security: non-owners no longer receive installation settings, empty
+Compose placeholders no longer lock the Telegram and Discord settings, done
+dates and owner-token rotation were corrected, and `fast-uri` 3.1.8 and
+`undici` 6.28.1 clear new advisories (`npm audit --omit=dev --audit-level=high`
+reports zero findings).
+
+Upgrade by backing up `tagvico_ai_data`, pinning
+`ghcr.io/arturict/tagvico-ai:3.5.0`, and recreating only the Tagvico
+container. This release does not change the data schema. The bundled
+`docker-compose.yml` now passes the `TELEGRAM_*` and `DISCORD_*` variables
+through empty so the Channels tab can save them; values you set yourself still
+win. See [Upgrading to 3.5](./upgrading#upgrading-to-3-5).
+
+
 ## v3.4.1
 
 Released 15 September 2026.

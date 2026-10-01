@@ -12,7 +12,8 @@ setup wizard or by setting `AI_PROVIDER` in `data/.env`.
 | OpenCode Go  | `opencode`          | [opencode.md](opencode.md)           |
 | GitHub Copilot | `copilot`          | [copilot.md](copilot.md)             |
 | LM Studio    | `custom`            | [lmstudio.md](lmstudio.md)           |
-| ChatGPT subscription | `codex`       | [codex.md](codex.md)                 |
+| ChatGPT plan | `chatgpt`           | [chatgpt.md](chatgpt.md)             |
+| ChatGPT via Codex (legacy) | `codex` | [codex.md](codex.md)             |
 | Compatible   | `compatible`        | [openai-compatible.md](openai-compatible.md) |
 | TypeSafe Jev | `typesafe`          | [typesafe.md](typesafe.md)           |
 
@@ -42,7 +43,8 @@ set of your own documents before enabling automatic writes.
 | Ollama local | Your tested local instruct model | Privacy and predictable local operation | Quality depends on your hardware/model; validate structured JSON before enabling writes. |
 | Ollama Cloud | `gpt-oss:20b-cloud` | Lightest published cloud usage level; no local GPU | Free is light use; Pro is currently $20/month and 50× Free usage. Cloud use sends document text to Ollama. |
 | OpenCode Go | `deepseek-v4-flash` | Lowest-cost, highest-throughput Go starting point | `kimi-k2.7-code` or `glm-5.2` are better candidates for harder documents. Go is currently $5 first month, then $10/month. |
-| ChatGPT subscription | Account dropdown | Experimental, private low-volume use | The Codex app-server's visible `model/list` result is authoritative for the signed-in plan; this is not a general ChatGPT inference API or API SLA. |
+| ChatGPT plan | Account dropdown (preselects the Luna tier) | A Plus or Pro plan you already pay for, no API key | Counts toward the plan's usage limits, which Plus shares across all connected apps; a large backlog is better done with an API provider. |
+| ChatGPT via Codex (legacy) | Account dropdown | Experimental, private low-volume use | The Codex app-server's visible `model/list` result is authoritative for the signed-in plan; this is not a general ChatGPT inference API or API SLA. |
 
 OpenAI direct accepts any model ID the account can call, so `gpt-6-luna` (or,
 through OpenRouter, `openai/gpt-6-luna`) needs no flag. It replaces GPT-5.6 Luna

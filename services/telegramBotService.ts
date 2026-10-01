@@ -1,4 +1,5 @@
 import axios from 'axios';
+import crypto from 'node:crypto';
 import { TelegramPaperlessClient, TelegramPaperlessDocument } from './telegramPaperlessClient';
 import { encryptSecret } from './secretBox';
 import {
@@ -25,6 +26,8 @@ import {
 
 const config = require('../config/config');
 const AIServiceFactory = require('./aiServiceFactory');
+const channelStatusService = require('./channelStatusService');
+const settingsRuntimeSync = require('./settingsRuntimeSync');
 
 interface TelegramUserConfig {
   telegramId: string;
@@ -114,6 +117,10 @@ class TelegramBotService {
   private users = new Map<string, TelegramUserConfig>();
   private running = false;
   private offset = 0;
+  // Update ids belong to one bot. The offset is kept across stop()/start() for
+  // the same bot and dropped when the token changes, so a new bot's first
+  // updates (whose ids may be lower) are not skipped.
+  private offsetTokenHash = '';
   private pollingController: AbortController | null = null;
   private loopPromise: Promise<void> | null = null;
   private botToken = '';
@@ -125,6 +132,13 @@ class TelegramBotService {
   private readonly downloadLimiter = createUserRateLimiter({ windowMs: 60_000, max: 12 });
   private readonly reminderTracker = createDailyReminderTracker();
   private reminderTimer: ReturnType<typeof setInterval> | null = null;
+  // Settings saved in the web app change the .env file; the bot follows them
+  // without a restart by comparing a fingerprint of the values it depends on.
+  private appliedFingerprint = '';
+  private stopWatchingSettings: (() => void) | null = null;
+  private botLabel = 'Connected';
+  private lastConnectedReport = 0;
+  private consecutiveFailures = 0;
 
   private safeError(error: unknown): string {
     return redactSecrets(errorMessage(error), [this.botToken]);
@@ -163,7 +177,64 @@ class TelegramBotService {
     }
   }
 
+  /**
+   * Re-reads the saved settings and restarts the bot only when something it
+   * depends on changed, so unrelated settings saves never interrupt polling.
+   */
+  async reconfigure(): Promise<void> {
+    const next = channelStatusService.readChannelConfiguration('telegram').fingerprint;
+    if (next === this.appliedFingerprint) return;
+    await this.stop();
+    this.start();
+  }
+
+  private reportConnected(): void {
+    const now = Date.now();
+    if (now - this.lastConnectedReport < 60_000) return;
+    this.lastConnectedReport = now;
+    channelStatusService.reportChannel('telegram', {
+      state: 'connected',
+      label: this.botLabel,
+      fingerprint: this.appliedFingerprint
+    });
+  }
+
+  private reportFailure(error: unknown): void {
+    this.consecutiveFailures += 1;
+    const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+    const rejected = status === 401 || status === 404;
+    // One dropped request is routine on a home network; report two in a row,
+    // or an explicit token rejection immediately.
+    if (!rejected && this.consecutiveFailures < 2) return;
+    this.lastConnectedReport = 0;
+    channelStatusService.reportChannel('telegram', {
+      state: 'error',
+      label: rejected
+        ? 'Telegram rejected the bot token'
+        : status === 409 ? 'Another process is using this bot' : 'Cannot reach Telegram',
+      detail: this.safeError(error),
+      fingerprint: this.appliedFingerprint
+    });
+  }
+
+  private async identifyBot(): Promise<void> {
+    try {
+      const me = await this.call<{ username?: string }>('getMe', {});
+      if (me.username) this.botLabel = `Connected as @${safeText(me.username)}`;
+      if (this.running) {
+        this.consecutiveFailures = 0;
+        this.reportConnected();
+      }
+    } catch (error) {
+      if (this.running) this.reportFailure(error);
+    }
+  }
+
   start(): void {
+    if (!this.stopWatchingSettings) {
+      this.stopWatchingSettings = settingsRuntimeSync.onSettingsChange(() => this.reconfigure());
+    }
+    this.appliedFingerprint = channelStatusService.readChannelConfiguration('telegram').fingerprint;
     if (config.telegram.enabled !== 'yes' || this.running) return;
     this.botToken = safeText(config.telegram.botToken);
     if (!this.botToken) {
@@ -192,8 +263,17 @@ class TelegramBotService {
       }
       actionCenter.setPaperlessToken(user.householdId, user.memberId, encryptSecret(user.paperlessToken));
     }
+    const tokenHash = crypto.createHash('sha256').update(this.botToken).digest('hex');
+    if (tokenHash !== this.offsetTokenHash) {
+      this.offset = 0;
+      this.offsetTokenHash = tokenHash;
+    }
     this.apiBase = `https://api.telegram.org/bot${this.botToken}`;
     this.running = true;
+    this.botLabel = 'Connected';
+    this.consecutiveFailures = 0;
+    this.lastConnectedReport = 0;
+    void this.identifyBot();
     this.loopPromise = this.pollLoop();
     void this.call('setMyCommands', {
       commands: [
@@ -263,6 +343,8 @@ class TelegramBotService {
           allowed_updates: ['message', 'callback_query']
         }, this.pollingController.signal);
         failureDelay = 1000;
+        this.consecutiveFailures = 0;
+        this.reportConnected();
         for (const update of updates) {
           this.offset = Math.max(this.offset, update.update_id + 1);
           await this.handleUpdate(update).catch(async (error) => {
@@ -275,6 +357,7 @@ class TelegramBotService {
       } catch (error) {
         if (!this.running) break;
         console.warn(`[Telegram] Polling failed; retrying: ${this.safeError(error)}`);
+        this.reportFailure(error);
         await sleep(failureDelay);
         failureDelay = Math.min(failureDelay * 2, 30_000);
       } finally {

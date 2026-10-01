@@ -644,17 +644,19 @@ test('upload links existing document on Paperless duplicate', async () => {
 
 test('Compose passes every Discord setting through with automatic metadata off by default', () => {
   const compose = fs.readFileSync(path.join(__dirname, '..', 'docker-compose.yml'), 'utf8');
+  // Settings-managed values pass through empty so Compose does not lock them in the UI;
+  // config/config.ts supplies the defaults (bot off, automatic metadata off, reminders on).
   const expected = {
-    DISCORD_BOT_ENABLED: 'no',
+    DISCORD_BOT_ENABLED: '',
     DISCORD_BOT_TOKEN: '',
-    DISCORD_USERS_JSON: '[]',
+    DISCORD_USERS_JSON: '',
     DISCORD_HOME_CHANNEL_ID: '',
     DISCORD_UPLOAD_TIMEOUT_SECONDS: '180',
     DISCORD_MAX_DOCUMENTS: '8',
     DISCORD_HISTORY_TURNS: '6',
     DISCORD_MAX_FILE_BYTES: '10485760',
-    DISCORD_UPLOAD_AUTOMATIC_METADATA: 'no',
-    DISCORD_ACTION_REMINDERS: 'yes',
+    DISCORD_UPLOAD_AUTOMATIC_METADATA: '',
+    DISCORD_ACTION_REMINDERS: '',
   };
   for (const [name, fallback] of Object.entries(expected)) {
     assert.match(

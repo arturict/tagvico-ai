@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, FileStack, KeyRound, Sparkles } from 'lucide-react';
+import { ChatGPTPlanSignIn } from './chatgpt-plan-sign-in';
 import { InlineStatus } from './inline-status';
 import { PaperlessDiscovery } from './paperless-discovery';
-import { SettingsRow, SettingsSection } from './settings-section';
+import { ProviderPicker } from './provider-picker';
 import type { ProviderDescriptor } from './types';
 
 type SetupState = {
@@ -33,6 +33,15 @@ type SetupModel = {
 };
 
 const DRAFT_KEY = 'tagvicoSetupDraftV3';
+
+/**
+ * The model to preselect after a runtime check: GPT-6 Luna wherever the
+ * catalog lists it, else the runtime's own default for the ChatGPT plan.
+ */
+function preferredModel(models: SetupModel[], providerId: string) {
+  return models.find((model) => /(^|\/)gpt-6-luna$/i.test(model.id))
+    || (providerId === 'chatgpt' ? models.find((model) => model.isDefault) : undefined);
+}
 
 function providerDefaults(provider: ProviderDescriptor | undefined) {
   return Object.fromEntries((provider?.fields || []).flatMap((field) => (
@@ -64,11 +73,11 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
   const [status, setStatus] = useState<SetupStatus>(null);
   const [hydrated, setHydrated] = useState(false);
   const [codexLoginId, setCodexLoginId] = useState('');
+  const [chatgptConnected, setChatgptConnected] = useState(false);
   const [codexLoginOutput, setCodexLoginOutput] = useState('');
   const codexPollTimer = useRef<number | null>(null);
   const providerProbeId = useRef(0);
   const provider = providers.find((candidate) => candidate.instanceId === state.providerId);
-  const visibleProviders = useMemo(() => providers.filter((candidate) => candidate.available), [providers]);
 
   useEffect(() => {
     try {
@@ -199,7 +208,7 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
     }
   };
 
-  const checkProvider = async () => {
+  const checkProvider = async (modelOverride?: string) => {
     if (!provider) {
       setStatus({ kind: 'error', message: 'Choose an available AI runtime.' });
       return;
@@ -209,11 +218,12 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
       setStatus({ kind: 'error', message: `Enter ${missing.label.toLowerCase()} before checking the runtime.` });
       return;
     }
+    const requestedModelId = (modelOverride ?? state.modelId).trim();
     const probeId = ++providerProbeId.current;
     setVerifiedModelId('');
     setStatus({
       kind: 'loading',
-      message: state.modelId.trim()
+      message: requestedModelId
         ? 'Checking the runtime and verifying the selected chat model…'
         : 'Checking the runtime and loading its model catalog…'
     });
@@ -224,7 +234,7 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
         body: JSON.stringify({
           instanceId: state.providerId,
           values: state.providerValues,
-          ...(state.modelId.trim() ? { modelId: state.modelId.trim() } : {})
+          ...(requestedModelId ? { modelId: requestedModelId } : {})
         })
       });
       const body = await response.json().catch(() => ({}));
@@ -244,6 +254,18 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
             ? 'Runtime and selected model verified with a safe test tool call. You can continue.'
             : 'Runtime account and selected model verified in its live catalog. You can continue.'
         });
+      } else if (!requestedModelId && preferredModel(discovered, state.providerId)) {
+        const preselected = preferredModel(discovered, state.providerId) as SetupModel;
+        setState((current) => ({ ...current, modelId: preselected.id }));
+        if (state.providerId === 'chatgpt') {
+          // One-click ChatGPT: verify the preselected model right away.
+          await checkProvider(preselected.id);
+        } else {
+          setStatus({
+            kind: 'neutral',
+            message: `Runtime connected. ${preselected.name} is preselected; check the runtime to verify it.`
+          });
+        }
       } else {
         setStatus({
           kind: 'neutral',
@@ -397,244 +419,207 @@ export function SetupWizard({ providers }: { providers: ProviderDescriptor[] }) 
     setStatus(null);
   };
 
+  const busy = status?.kind === 'loading';
+  const modelVerified = verifiedModelId === state.modelId.trim() && Boolean(state.modelId.trim());
+
   return <form className="setup-wizard" onSubmit={submit}>
-    <div className="setup-progress" aria-label="Setup steps">
-      {[
-        { label: 'Paperless', Icon: FileStack },
-        { label: 'AI runtime', Icon: Sparkles },
-        { label: 'Owner & safety', Icon: KeyRound }
-      ].map(({ label, Icon }, index) => <span
+    <ol className="setup-steps" aria-label="Setup steps">
+      {['Paperless', 'AI provider', 'Owner'].map((label, index) => <li
         key={label}
-        className={index === step ? 'is-active' : index < step ? 'is-complete' : undefined}
+        className={index === step ? 'is-active' : undefined}
         aria-current={index === step ? 'step' : undefined}
       >
-        {index < step ? <Check aria-hidden="true" /> : <Icon aria-hidden="true" />}
         {label}
-      </span>)}
-    </div>
+      </li>)}
+    </ol>
 
-    {step === 0 ? <SettingsSection
-      title="1. Connect Paperless-ngx"
-      description="Tagvico checks the URL, token and required read permissions now, before anything is saved."
-    >
-      <SettingsRow
-        title="Paperless connection"
-        description="Use the base URL without /api. The token stays in this request and is never echoed back."
-        stack
-      >
-        <div className="settings-fields-grid">
-          <label className="settings-field">
-            <span className="settings-field-label">Base URL</span>
-            <input
-              className="settings-input"
-              type="url"
-              required
-              value={state.paperlessUrl}
-              onChange={(event) => update('paperlessUrl', event.target.value)}
-              placeholder="http://paperless:8000"
-            />
-          </label>
-          <label className="settings-field">
-            <span className="settings-field-label">API token</span>
-            <input
-              className="settings-input"
-              type="password"
-              autoComplete="new-password"
-              required
-              value={state.paperlessToken}
-              onChange={(event) => update('paperlessToken', event.target.value)}
-            />
-            <span className="settings-field-help">Create this in Paperless under My Profile. Tagvico verifies document and metadata access.</span>
-          </label>
-          <label className="settings-field">
-            <span className="settings-field-label">Paperless username <small>(optional)</small></span>
-            <input
-              className="settings-input"
-              value={state.paperlessUsername}
-              onChange={(event) => update('paperlessUsername', event.target.value)}
-              placeholder="Only needed for owner assignment"
-            />
-          </label>
-        </div>
-      </SettingsRow>
-      <SettingsRow
-        title="Find Paperless-ngx"
-        description="Not sure about the address? Scan common Docker, host and local-network addresses. Discovery is read-only and only fills the Base URL when you pick a result."
-        stack
-      >
+    {step === 0 ? <section className="auth-step" aria-labelledby="setup-step-title">
+      <div className="auth-step-head">
+        <h2 id="setup-step-title" className="auth-subtitle">Connect Paperless-ngx</h2>
+        <p className="field-help">Tagvico checks the address and token before anything is saved.</p>
+      </div>
+      <label className="auth-field">
+        <span className="field-label">Base URL</span>
+        <input
+          className="input input-40"
+          type="url"
+          required
+          value={state.paperlessUrl}
+          onChange={(event) => update('paperlessUrl', event.target.value)}
+          placeholder="http://paperless:8000"
+        />
+        <span className="field-help">Without /api.</span>
+      </label>
+      <label className="auth-field">
+        <span className="field-label">API token</span>
+        <input
+          className="input input-40"
+          type="password"
+          autoComplete="new-password"
+          required
+          value={state.paperlessToken}
+          onChange={(event) => update('paperlessToken', event.target.value)}
+        />
+        <span className="field-help">Create it in Paperless under My Profile. It is never echoed back.</span>
+      </label>
+      <label className="auth-field">
+        <span className="field-label">Paperless username <small>(optional)</small></span>
+        <input
+          className="input input-40"
+          value={state.paperlessUsername}
+          onChange={(event) => update('paperlessUsername', event.target.value)}
+          placeholder="Only needed for owner assignment"
+        />
+      </label>
+      <div className="auth-field">
+        <span className="field-label">Not sure about the address?</span>
         <PaperlessDiscovery
           baseUrl={state.paperlessUrl}
           endpoint="/api/paperless/discover"
           onSelect={useDiscoveredPaperless}
         />
-      </SettingsRow>
-    </SettingsSection> : null}
+      </div>
+    </section> : null}
 
-    {step === 1 ? <SettingsSection
-      title="2. Choose an AI runtime"
-      description="Tagvico loads the live catalog when available, accepts an exact model ID when needed, and verifies the selected chat model."
-    >
-      <SettingsRow title="Provider" description={provider?.description}>
+    {step === 1 ? <section className="auth-step" aria-labelledby="setup-step-title">
+      <div className="auth-step-head">
+        <h2 id="setup-step-title" className="auth-subtitle">Choose an AI provider</h2>
+        <p className="field-help">You can change this later in Settings.</p>
+      </div>
+      <ProviderPicker
+        providers={providers}
+        selectedId={state.providerId}
+        onSelect={(providerId) => {
+          if (!busy) changeProvider(providerId);
+        }}
+      />
+      {provider?.instanceId === 'chatgpt' ? <ChatGPTPlanSignIn
+        apiBase="/api/setup/v3/chatgpt"
+        authenticated={chatgptConnected}
+        onConnected={() => {
+          providerProbeId.current += 1;
+          setChatgptConnected(true);
+          setModels([]);
+          setVerifiedModelId('');
+          setState((current) => ({ ...current, modelId: '' }));
+          setStatus({ kind: 'success', message: 'ChatGPT is connected. Loading the models your plan offers…' });
+          void checkProvider('');
+        }}
+        onError={(message) => setStatus({ kind: 'error', message })}
+      /> : null}
+      {provider?.fields.length ? provider.fields.map((field) => <label className="auth-field" key={field.key}>
+        <span className="field-label">{field.label}</span>
+        <input
+          className="input input-40"
+          type={field.type}
+          required={field.required}
+          autoComplete={field.secret ? 'new-password' : 'off'}
+          disabled={busy}
+          placeholder={field.placeholder}
+          value={state.providerValues[field.key] || ''}
+          onChange={(event) => updateProviderValue(field.key, event.target.value)}
+        />
+        {field.description ? <span className="field-help">{field.description}</span> : null}
+      </label>) : null}
+      {provider?.instanceId === 'codex' ? <div className="auth-field">
+        <span className="field-label">ChatGPT account</span>
+        <span className="field-help">A one-time device sign-in lets Tagvico verify the live model catalog.</span>
+        <div className="set-actions is-start">
+          <button
+            className="btn btn-secondary"
+            type="button"
+            disabled={Boolean(codexLoginId)}
+            onClick={() => void startCodexLogin()}
+          >
+            {codexLoginId ? 'Waiting for sign-in…' : 'Sign in with ChatGPT'}
+          </button>
+          {codexLoginId ? <button
+            className="btn btn-ghost"
+            type="button"
+            onClick={() => void cancelCodexLogin()}
+          >
+            Cancel
+          </button> : null}
+        </div>
+        {codexLoginOutput ? <pre className="set-auth-output">{codexLoginOutput}</pre> : null}
+      </div> : null}
+      {models.length ? <label className="auth-field">
+        <span className="field-label">Live model catalog</span>
         <select
-          className="settings-select"
-          value={state.providerId}
-          disabled={status?.kind === 'loading'}
-          onChange={(event) => changeProvider(event.target.value)}
+          className="select select-40"
+          value={models.some((model) => model.id === state.modelId) ? state.modelId : ''}
+          disabled={busy}
+          onChange={(event) => updateModelId(event.target.value)}
         >
-          {visibleProviders.map((candidate) => <option key={candidate.instanceId} value={candidate.instanceId}>
-            {candidate.name}{candidate.recommended ? ' (recommended)' : ''}
+          <option value="">Choose a model</option>
+          {models.map((model) => <option key={model.id} value={model.id}>
+            {model.name}{/(^|\/)gpt-6-luna$/i.test(model.id) ? ' (recommended)' : model.isDefault ? ' (runtime default)' : ''}
           </option>)}
         </select>
-      </SettingsRow>
-      {provider?.fields.length ? <SettingsRow
-        title="Connection"
-        description="Built-in endpoint defaults are prefilled. Secrets are stored only in Tagvico data."
-        stack
-      >
-        <div className="settings-fields-grid">
-          {provider.fields.map((field) => <label className="settings-field" key={field.key}>
-            <span className="settings-field-label">{field.label}</span>
-            <input
-              className="settings-input"
-              type={field.type}
-              required={field.required}
-              autoComplete={field.secret ? 'new-password' : 'off'}
-              disabled={status?.kind === 'loading'}
-              placeholder={field.placeholder}
-              value={state.providerValues[field.key] || ''}
-              onChange={(event) => updateProviderValue(field.key, event.target.value)}
-            />
-            {field.description ? <span className="settings-field-help">{field.description}</span> : null}
-          </label>)}
-        </div>
-      </SettingsRow> : null}
-      {provider?.instanceId === 'codex' ? <SettingsRow
-        title="ChatGPT account"
-        description="A subscription runtime needs a one-time device sign-in before Tagvico can verify its live model catalog."
-        stack
-      >
-        <div className="settings-auth-panel">
-          <div className="settings-inline-actions">
-            <button
-              className="settings-button"
-              type="button"
-              disabled={Boolean(codexLoginId)}
-              onClick={() => void startCodexLogin()}
-            >
-              {codexLoginId ? 'Waiting for sign-in…' : 'Sign in with ChatGPT'}
-            </button>
-            {codexLoginId ? <button
-              className="settings-button"
-              type="button"
-              onClick={() => void cancelCodexLogin()}
-            >
-              Cancel
-            </button> : null}
-          </div>
-          {codexLoginOutput ? <pre className="settings-auth-output">{codexLoginOutput}</pre> : null}
-        </div>
-      </SettingsRow> : null}
-      <SettingsRow
-        title="Model"
-        description="Catalog entries prove availability only. Tagvico verifies the exact selected model with a safe test tool call before continuing."
-        stack
-      >
-        <div className="settings-fields-grid">
-          {models.length ? <label className="settings-field">
-            <span className="settings-field-label">Live model catalog</span>
-            <select
-              className="settings-select"
-              value={models.some((model) => model.id === state.modelId) ? state.modelId : ''}
-              disabled={status?.kind === 'loading'}
-              onChange={(event) => updateModelId(event.target.value)}
-            >
-              <option value="">Choose a model</option>
-              {models.map((model) => <option key={model.id} value={model.id}>
-                {model.name}{model.isDefault ? ' (runtime default)' : ''}
-              </option>)}
-            </select>
-          </label> : null}
-          {provider?.manualModelInput ? <label className="settings-field">
-            <span className="settings-field-label">Model ID</span>
-            <input
-              className="settings-input"
-              value={state.modelId}
-              disabled={status?.kind === 'loading'}
-              onChange={(event) => updateModelId(event.target.value)}
-              placeholder="Enter the exact chat model ID"
-            />
-            <span className="settings-field-help">Use this when the runtime has no model catalog or when you need a custom ID.</span>
-          </label> : null}
-          {!models.length && !provider?.manualModelInput
-            ? <p className="settings-field-help">Check the runtime to load models it currently exposes.</p>
-            : null}
-        </div>
-      </SettingsRow>
-    </SettingsSection> : null}
+      </label> : null}
+      {provider?.manualModelInput ? <label className="auth-field">
+        <span className="field-label">Model ID</span>
+        <input
+          className="input input-40"
+          value={state.modelId}
+          disabled={busy}
+          onChange={(event) => updateModelId(event.target.value)}
+          placeholder="Enter the exact chat model ID"
+        />
+        <span className="field-help">For runtimes without a model catalog, or a custom ID.</span>
+      </label> : null}
+      {!models.length && !provider?.manualModelInput
+        ? <p className="field-help">Check the runtime to load the models it offers.</p>
+        : null}
+      <p className="field-help">Catalog entries prove availability only. Tagvico verifies the exact selected model with a safe test tool call before continuing.</p>
+    </section> : null}
 
-    {step === 2 ? <SettingsSection
-      title="3. Create the owner account"
-      description="The safe starting point is review-first with scheduled automation paused. Ask Tagvico stays read-only until you approve a proposed change."
-    >
-      <SettingsRow title="Verified setup" description="Review the non-secret summary before creating the local account." stack>
-        <dl className="setup-review">
-          <div><dt>Paperless</dt><dd>{state.paperlessUrl}</dd></div>
-          <div><dt>Runtime</dt><dd>{provider?.name || state.providerId}</dd></div>
-          <div><dt>Model</dt><dd>{models.find((model) => model.id === state.modelId)?.name || state.modelId}</dd></div>
-          <div><dt>Write safety</dt><dd>Review first, scheduled scans paused</dd></div>
-        </dl>
-      </SettingsRow>
-      <SettingsRow title="Owner credentials" stack>
-        <div className="settings-fields-grid">
-          <label className="settings-field">
-            <span className="settings-field-label">Username</span>
-            <input className="settings-input" required minLength={3} maxLength={80} pattern="[a-zA-Z0-9._-]+" autoComplete="username" value={state.username} onChange={(event) => update('username', event.target.value)} />
-          </label>
-          <label className="settings-field">
-            <span className="settings-field-label">Password</span>
-            <input className="settings-input" required minLength={12} type="password" autoComplete="new-password" value={state.password} onChange={(event) => update('password', event.target.value)} />
-          </label>
-          <label className="settings-field">
-            <span className="settings-field-label">Confirm password</span>
-            <input className="settings-input" required minLength={12} type="password" autoComplete="new-password" value={state.confirmPassword} onChange={(event) => update('confirmPassword', event.target.value)} />
-          </label>
-        </div>
-      </SettingsRow>
-    </SettingsSection> : null}
+    {step === 2 ? <section className="auth-step" aria-labelledby="setup-step-title">
+      <h2 id="setup-step-title" className="auth-subtitle">Create the owner account</h2>
+      <dl className="setup-review">
+        <div><dt>Paperless</dt><dd>{state.paperlessUrl}</dd></div>
+        <div><dt>Provider</dt><dd>{provider?.name || state.providerId}</dd></div>
+        <div><dt>Model</dt><dd>{models.find((model) => model.id === state.modelId)?.name || state.modelId}</dd></div>
+        <div><dt>Writes</dt><dd>Review first, scheduled scans paused</dd></div>
+      </dl>
+      <label className="auth-field">
+        <span className="field-label">Username</span>
+        <input className="input input-40" required minLength={3} maxLength={80} pattern="[a-zA-Z0-9._-]+" autoComplete="username" value={state.username} onChange={(event) => update('username', event.target.value)} />
+      </label>
+      <label className="auth-field">
+        <span className="field-label">Password</span>
+        <input className="input input-40" required minLength={12} type="password" autoComplete="new-password" value={state.password} onChange={(event) => update('password', event.target.value)} />
+      </label>
+      <label className="auth-field">
+        <span className="field-label">Confirm password</span>
+        <input className="input input-40" required minLength={12} type="password" autoComplete="new-password" value={state.confirmPassword} onChange={(event) => update('confirmPassword', event.target.value)} />
+      </label>
+    </section> : null}
 
-    <div className="setup-submit">
-      <div>
-        {status ? <InlineStatus kind={status.kind}>{status.message}</InlineStatus> : <p>
-          Secret fields are never saved in the browser. Non-secret progress is kept only in this tab.
-        </p>}
-      </div>
-      <div className="setup-submit-actions">
-        {step > 0 ? <button className="settings-button" type="button" disabled={status?.kind === 'loading'} onClick={() => {
-          if (step === 1 && codexLoginId) void cancelCodexLogin();
-          setStep((current) => Math.max(0, current - 1));
-          setStatus(null);
-        }}>Back</button> : null}
-        {step === 0 ? <button className="settings-button is-primary" type="button" disabled={status?.kind === 'loading'} onClick={() => void checkPaperless()}>
-          {status?.kind === 'loading' ? 'Checking…' : 'Check Paperless'}
-        </button> : null}
-        {step === 1 ? <button
-          className="settings-button is-primary"
-          type="button"
-          disabled={status?.kind === 'loading'}
-          onClick={() => verifiedModelId === state.modelId.trim() && state.modelId.trim()
-            ? (setStep(2), setStatus(null))
-            : void checkProvider()}
-        >
-          {status?.kind === 'loading'
-            ? 'Checking…'
-            : verifiedModelId === state.modelId.trim() && state.modelId.trim()
-              ? 'Continue'
-              : 'Check runtime'}
-        </button> : null}
-        {step === 2 ? <button className="settings-button is-primary" type="submit" disabled={status?.kind === 'loading'}>
-          {status?.kind === 'loading' ? 'Creating…' : 'Create owner account'}
-        </button> : null}
-      </div>
+    {status ? <InlineStatus kind={status.kind}>{status.message}</InlineStatus> : null}
+    <div className="auth-actions">
+      {step === 0 ? <button className="btn btn-primary btn-40 btn-block" type="button" disabled={busy} onClick={() => void checkPaperless()}>
+        {busy ? 'Checking…' : 'Check Paperless'}
+      </button> : null}
+      {step === 1 ? <button
+        className="btn btn-primary btn-40 btn-block"
+        type="button"
+        disabled={busy}
+        onClick={() => modelVerified ? (setStep(2), setStatus(null)) : void checkProvider()}
+      >
+        {busy ? 'Checking…' : modelVerified ? 'Continue' : 'Check runtime'}
+      </button> : null}
+      {step === 2 ? <button className="btn btn-primary btn-40 btn-block" type="submit" disabled={busy}>
+        {busy ? 'Creating…' : 'Create owner account'}
+      </button> : null}
+      {step > 0 ? <button className="btn btn-ghost btn-40 btn-block" type="button" disabled={busy} onClick={() => {
+        if (step === 1 && codexLoginId) void cancelCodexLogin();
+        setStep((current) => Math.max(0, current - 1));
+        setStatus(null);
+      }}>Back</button> : null}
     </div>
+    {!status ? <p className="field-help auth-footnote">
+      Secret fields are never saved in the browser. Non-secret progress is kept only in this tab.
+    </p> : null}
   </form>;
 }

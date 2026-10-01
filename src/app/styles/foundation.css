@@ -1,0 +1,854 @@
+/*
+ * Shared building blocks for every screen, built only on the OpenAI Apps SDK UI
+ * tokens in ./openai/. Area stylesheets (shell, chat, inbox, settings) load after
+ * this file and compose these classes instead of redefining them.
+ *
+ * Rules the classes follow:
+ *   - Type scale 12 / 14 / 16 / 18 / 24 / 32, weights 400 / 500 / 600, no tracking.
+ *   - Spacing on the 4px grid (--spacing); radii from the token scale
+ *     (--radius-md 8 for controls, --radius-xl 12 for cards and menus).
+ *   - Borders, not shadows. Only floating layers (menu, popover, dialog) use --shadow.
+ *   - One accent: the blue focus ring (--color-ring) and links.
+ *   - No margins on the classes, so spacing utilities and parents stay in control.
+ */
+
+:root {
+  --page-column: 768px;
+  --page-column-wide: 1040px;
+  --page-gutter: 16px;
+  --sidebar-width: 260px;
+  --row-height: 52px;
+  --touch-target: 44px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --page-gutter: 24px;
+  }
+}
+
+/* Keyboard focus: the OpenAI blue ring on anything interactive, zero specificity so components can refine it. */
+:where(
+    a,
+    button,
+    [role="button"],
+    [role="switch"],
+    [role="menuitem"],
+    input,
+    select,
+    textarea,
+    summary,
+    [tabindex]
+  ):focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* Typographic roles. Use these instead of ad-hoc font sizes. */
+.type-greeting {
+  font-size: var(--font-heading-xl-size);
+  line-height: var(--font-heading-xl-line-height);
+  font-weight: var(--font-weight-semibold);
+}
+.type-title {
+  font-size: var(--font-heading-lg-size);
+  line-height: var(--font-heading-lg-line-height);
+  font-weight: var(--font-weight-semibold);
+}
+.type-section {
+  font-size: var(--font-heading-xs-size);
+  line-height: var(--font-heading-xs-line-height);
+  font-weight: var(--font-weight-semibold);
+}
+.type-body {
+  font-size: var(--font-text-md-size);
+  line-height: var(--font-text-md-line-height);
+}
+.type-ui {
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.type-meta {
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+  color: var(--color-text-secondary);
+}
+
+/* Meta text: 12px secondary, for counts, dates and one-line context. */
+.meta {
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+}
+
+/* Danger text, used for overdue dates and errors. Never a filled pill. */
+.is-danger-text {
+  color: var(--tv-danger);
+}
+
+/* Plain link: the second use of the accent colour. */
+.link {
+  color: var(--link-primary-text-color);
+  text-decoration: none;
+  border-radius: var(--link-radius);
+}
+.link:hover {
+  color: var(--link-primary-text-color-hover);
+  text-decoration: underline;
+  text-underline-offset: var(--link-underline-decoration-offset);
+}
+
+/* ---------------------------------------------------------------- Page layout */
+
+/* Centred content column: 768px for reading and lists, `.is-wide` for tables and settings. */
+.page-column {
+  width: 100%;
+  max-width: var(--page-column);
+  margin-inline: auto;
+  padding: 24px var(--page-gutter) 48px;
+}
+.page-column.is-wide {
+  max-width: var(--page-column-wide);
+}
+
+/* Page header: one title (24/28, 600, sentence case) with optional actions at the right and an optional one-line description. */
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 40px;
+  padding-bottom: 16px;
+}
+.page-header-text {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.page-title {
+  margin: 0;
+  font-size: var(--font-heading-lg-size);
+  line-height: var(--font-heading-lg-line-height);
+  font-weight: var(--font-weight-semibold);
+  overflow-wrap: anywhere;
+}
+/* Description line: only where the page is not self-explanatory; one short sentence. */
+.page-description {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.page-actions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Section inside a page: a 16/600 title with the content below. */
+.section {
+  display: grid;
+  gap: 8px;
+}
+.section + .section {
+  margin-top: 32px;
+}
+.section-title {
+  margin: 0;
+  font-size: var(--font-heading-xs-size);
+  line-height: var(--font-heading-xs-line-height);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* One bordered level only: use for approvals and grouped settings, never inside another card. */
+.card {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  background: var(--color-surface);
+  padding: 16px;
+}
+
+/* Hairline divider between blocks. */
+.divider {
+  height: 0;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+/* -------------------------------------------------------------------- Buttons */
+
+/* Base button: 36px, 8px radius, 14/500, ghost until a variant says otherwise. Add exactly one variant and optionally one size. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: var(--control-size-lg);
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  font-weight: var(--button-font-weight);
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease;
+}
+.btn svg {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+.btn:disabled,
+.btn[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+/* Ghost: no fill until hover; sidebar rows, toolbar actions, tertiary actions. */
+.btn-ghost:hover,
+.btn-ghost[aria-expanded="true"] {
+  background: var(--color-background-primary-ghost-hover);
+}
+.btn-ghost:active {
+  background: var(--color-background-primary-ghost-active);
+}
+/* Primary: near-black fill with inverse text; one per surface. */
+.btn-primary {
+  background: var(--color-background-primary-solid);
+  color: var(--color-text-primary-solid);
+}
+.btn-primary:hover {
+  background: var(--color-background-primary-solid-hover);
+}
+.btn-primary:active {
+  background: var(--color-background-primary-solid-active);
+}
+/* Secondary: transparent with a hairline border. */
+.btn-secondary {
+  border-color: var(--color-border-primary-outline);
+}
+.btn-secondary:hover,
+.btn-secondary[aria-expanded="true"] {
+  border-color: var(--color-border-primary-outline-hover);
+  background: var(--color-background-primary-outline-hover);
+}
+.btn-secondary:active {
+  background: var(--color-background-primary-outline-active);
+}
+/* Danger: secondary look with danger text, for destructive confirmations. */
+.btn-danger {
+  border-color: var(--color-border-primary-outline);
+  color: var(--tv-danger);
+}
+.btn-danger:hover {
+  background: var(--color-background-danger-ghost-hover);
+}
+/* Icon button: square, same height as its size class. */
+.btn-icon {
+  width: var(--control-size-lg);
+  padding: 0;
+}
+/* Sizes: 28 / 32 / 36 (default) / 40. */
+.btn-28 {
+  height: var(--control-size-sm);
+  padding: 0 8px;
+}
+.btn-28.btn-icon {
+  width: var(--control-size-sm);
+  padding: 0;
+}
+.btn-32 {
+  height: var(--control-size-md);
+  padding: 0 10px;
+}
+.btn-32.btn-icon {
+  width: var(--control-size-md);
+  padding: 0;
+}
+.btn-36 {
+  height: var(--control-size-lg);
+}
+.btn-40 {
+  height: var(--control-size-xl);
+  padding: 0 16px;
+}
+.btn-40.btn-icon {
+  width: var(--control-size-xl);
+  padding: 0;
+}
+/* Full-width variant for forms and mobile sheets. */
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+
+/* --------------------------------------------------------------------- Inputs */
+
+/* Text input, select and textarea share one look: 36px, 8px radius, hairline border, blue ring on focus. */
+.input,
+.select,
+.textarea {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--input-outline-border-color);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--input-text-color);
+  font: inherit;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+.input,
+.select {
+  height: var(--control-size-lg);
+  padding: 0 12px;
+}
+.textarea {
+  min-height: 80px;
+  padding: 8px 12px;
+  resize: vertical;
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--input-placeholder-text-color);
+}
+.input:hover,
+.select:hover,
+.textarea:hover {
+  border-color: var(--input-outline-border-color-hover);
+}
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: 0;
+  border-color: var(--color-ring);
+  box-shadow: 0 0 0 1px var(--color-ring);
+}
+.input:disabled,
+.select:disabled,
+.textarea:disabled {
+  background: var(--color-background-disabled);
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+.input[aria-invalid="true"],
+.select[aria-invalid="true"],
+.textarea[aria-invalid="true"] {
+  border-color: var(--input-border-color-invalid);
+}
+/* Native select arrow: a chevron drawn with a mask-free background so it follows the text colour token. */
+.select {
+  appearance: none;
+  padding-right: 32px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--color-text-secondary) 50%),
+    linear-gradient(135deg, var(--color-text-secondary) 50%, transparent 50%);
+  background-position:
+    calc(100% - 17px) 15px,
+    calc(100% - 12px) 15px;
+  background-size:
+    5px 5px,
+    5px 5px;
+  background-repeat: no-repeat;
+}
+.input-32,
+.select-32 {
+  height: var(--control-size-md);
+}
+.input-40,
+.select-40 {
+  height: var(--control-size-xl);
+}
+/* Label, help and error text above and below a control. */
+.field-label {
+  display: block;
+  color: var(--color-text);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  font-weight: var(--font-weight-medium);
+}
+.field-help {
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+}
+.field-error {
+  color: var(--tv-danger);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+}
+
+/* Switch: a button with role="switch"; checked via aria-checked or Radix data-state. The thumb is the ::after pseudo-element. */
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  display: inline-block;
+  width: var(--switch-track-width);
+  height: var(--switch-track-height);
+  border: 0;
+  border-radius: var(--radius-full);
+  padding: 0;
+  background: var(--switch-track-color);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: var(--switch-thumb-offset);
+  left: var(--switch-thumb-offset);
+  width: var(--switch-thumb-size);
+  height: var(--switch-thumb-size);
+  border-radius: var(--radius-full);
+  background: var(--switch-thumb-color);
+  box-shadow: var(--switch-thumb-shadow);
+  transition: transform 150ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+.switch:hover {
+  background: var(--switch-track-color-hover);
+}
+.switch[aria-checked="true"],
+.switch[data-state="checked"] {
+  background: var(--switch-track-color-checked);
+}
+.switch[aria-checked="true"]::after,
+.switch[data-state="checked"]::after {
+  transform: translateX(
+    calc(
+      var(--switch-track-width) - var(--switch-thumb-size) - 2 *
+        var(--switch-thumb-offset)
+    )
+  );
+}
+.switch:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Segmented control: a short row of mutually exclusive options (filters, view modes). Children are `.segmented-item` buttons. */
+.segmented {
+  display: inline-flex;
+  gap: var(--segmented-control-gap);
+  padding: var(--segmented-control-gutter);
+  border-radius: var(--radius-md);
+  background: var(--segmented-control-background);
+}
+.segmented-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-text-sm-size);
+  font-weight: var(--segmented-control-font-weight);
+  cursor: pointer;
+}
+.segmented-item:hover {
+  color: var(--color-text);
+}
+.segmented-item[aria-pressed="true"],
+.segmented-item[aria-checked="true"],
+.segmented-item[aria-selected="true"],
+.segmented-item.is-active {
+  background: var(--segmented-control-thumb-background);
+  color: var(--color-text);
+  box-shadow: var(--segmented-control-thumb-shadow);
+}
+
+/* ------------------------------------------------------ Menus, popovers, dialogs */
+
+/* Floating surface shared by menus, popovers and listboxes: elevated, hairline border, the only shadow in the app. */
+.popover {
+  border: 1px solid var(--color-border);
+  border-radius: var(--popover-radius);
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow);
+  color: var(--color-text);
+}
+/* Menu: a popover holding `.menu-item` rows. */
+.menu {
+  min-width: 200px;
+  max-width: 320px;
+  padding: var(--menu-gutter);
+  border: 1px solid var(--color-border);
+  border-radius: var(--menu-radius);
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow);
+  color: var(--color-text);
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--menu-item-gap);
+  width: 100%;
+  min-height: 36px;
+  padding: var(--menu-item-padding);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--menu-font-size);
+  line-height: var(--menu-line-height);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.menu-item svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+}
+.menu-item:hover,
+.menu-item:focus-visible,
+.menu-item[data-highlighted] {
+  background: var(--menu-item-background-color);
+  outline: 0;
+}
+.menu-item[aria-checked="true"],
+.menu-item[aria-current="true"] {
+  font-weight: var(--font-weight-medium);
+}
+.menu-item.is-danger {
+  color: var(--tv-danger);
+}
+.menu-item.is-danger svg {
+  color: inherit;
+}
+.menu-item:disabled,
+.menu-item[aria-disabled="true"] {
+  opacity: 0.5;
+  pointer-events: none;
+}
+.menu-separator {
+  height: 1px;
+  margin: var(--menu-separator-gutter);
+  background: var(--menu-separator-background-color);
+  border: 0;
+}
+/* Menu group label: 12px, tertiary, sentence case. */
+.menu-label {
+  padding: 6px 8px 2px;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+}
+
+/* Dialog: centred elevated panel on a dimmed backdrop. */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: var(--modal-backdrop-background);
+}
+.dialog {
+  position: fixed;
+  z-index: 81;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(var(--dialog-max-width), calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: var(--dialog-container-inner-padding);
+  border-radius: var(--radius-2xl);
+  background: var(--color-surface-elevated);
+  box-shadow: var(--shadow);
+  color: var(--color-text);
+}
+.dialog.is-wide {
+  width: min(720px, calc(100vw - 32px));
+}
+
+/* ------------------------------------------------------------------ List rows */
+
+/* Lists are rows with hairline dividers, not cards. */
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Group heading above a run of rows: 12px, tertiary, sentence case (for example "Today", "Overdue"). */
+.list-group-heading {
+  margin: 0;
+  padding: 16px 12px 4px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+  font-weight: var(--font-weight-medium);
+}
+/* Row: leading slot, main text, trailing slot; 52px minimum, whole row may be an <a>. */
+.list-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--row-height);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  color: inherit;
+  text-decoration: none;
+}
+.list-row:last-child {
+  border-bottom: 0;
+}
+a.list-row:hover,
+button.list-row:hover,
+.list-row.is-interactive:hover {
+  background: var(--alpha-04);
+}
+.list-row.is-selected {
+  background: var(--alpha-08);
+}
+button.list-row {
+  width: 100%;
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+/* Leading slot for an avatar or 18px icon. */
+.list-row-leading {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  color: var(--color-text-secondary);
+}
+.list-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+  gap: 0;
+}
+.list-row-title {
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-text);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  font-weight: var(--font-weight-medium);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* One secondary line under the title. */
+.list-row-meta {
+  overflow: hidden;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Right-aligned date, status text or count; add `.is-danger-text` for overdue. */
+.list-row-trailing {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+  white-space: nowrap;
+}
+/* Row actions appear on hover or keyboard focus; always visible on touch screens. */
+.list-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.list-row:hover .list-row-actions,
+.list-row:focus-within .list-row-actions {
+  opacity: 1;
+}
+@media (hover: none) {
+  .list-row-actions {
+    opacity: 1;
+  }
+}
+@media (pointer: coarse) {
+  .btn,
+  .btn-28,
+  .btn-32,
+  .input,
+  .select,
+  .menu-item,
+  .segmented-item {
+    min-height: var(--touch-target);
+  }
+  .btn-icon {
+    min-width: var(--touch-target);
+  }
+  .list-row {
+    min-height: 56px;
+  }
+}
+
+/* ---------------------------------------------------- Badge, avatar, empty, alert */
+
+/* Small grey badge, sentence case: one per row at most, only for a state the section does not already imply. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: var(--badge-size-md);
+  padding: 0 var(--badge-gutter-lg);
+  border-radius: var(--badge-radius-lg);
+  background: var(--alpha-08);
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  line-height: 1;
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+}
+
+/* Avatar: grey circle with initials or an image; no per-person colours. Default 28px, sizes 20 / 24 / 32 / 40. */
+.avatar {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  overflow: hidden;
+  border-radius: var(--avatar-radius);
+  background: var(--color-surface-tertiary);
+  color: var(--color-text-secondary);
+  font-size: calc(var(--avatar-size) * var(--avatar-font-size-scaling));
+  line-height: 1;
+  font-weight: var(--font-weight-semibold);
+  text-transform: none;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.avatar-20 {
+  --avatar-size: 20px;
+}
+.avatar-24 {
+  --avatar-size: 24px;
+}
+.avatar-32 {
+  --avatar-size: 32px;
+}
+.avatar-40 {
+  --avatar-size: 40px;
+}
+/* Overlapping avatars on one line (for example the household row). */
+.avatar-group {
+  display: inline-flex;
+  align-items: center;
+}
+.avatar-group > .avatar + .avatar {
+  margin-left: var(--avatar-group-spacing);
+  box-shadow: 0 0 0 var(--avatar-group-cutout-width)
+    var(--avatar-group-cutout-color);
+}
+
+/* Empty state: one calm sentence and at most one button, centred in the area the list would fill. */
+.empty-state {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 48px 16px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  text-align: center;
+}
+.empty-state p {
+  margin: 0;
+  max-width: 40ch;
+}
+
+/* Inline alert: bordered 12px box with optional title; neutral by default, `.is-danger` and `.is-warning` tint the surface and the text. */
+.alert {
+  display: grid;
+  gap: 4px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--alert-border-radius);
+  background: var(--color-surface-secondary);
+  color: var(--color-text);
+  font-size: var(--alert-font-size);
+  line-height: var(--alert-line-height);
+}
+.alert-title {
+  margin: 0;
+  font-weight: var(--alert-title-font-weight);
+}
+.alert p {
+  margin: 0;
+}
+.alert.is-danger {
+  border-color: var(--color-border-danger-surface);
+  background: var(--color-background-danger-surface);
+  color: var(--color-text-danger-surface);
+}
+.alert.is-warning {
+  border-color: var(--color-border-warning-surface);
+  background: var(--color-background-warning-surface);
+  color: var(--color-text-warning-surface);
+}
+
+/* Loading text shimmer for "working" states; replaces spinners and pulsing dots. */
+.shimmer {
+  background: linear-gradient(
+      90deg,
+      var(--color-text-secondary) 40%,
+      var(--color-text-tertiary) 50%,
+      var(--color-text-secondary) 60%
+    )
+    0 0 / 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: foundation-shimmer 1.6s linear infinite;
+}
+@keyframes foundation-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer {
+    animation: none;
+    color: var(--color-text-secondary);
+    background: none;
+  }
+  .btn,
+  .switch,
+  .switch::after,
+  .input,
+  .select,
+  .textarea,
+  .list-row-actions {
+    transition: none;
+  }
+}

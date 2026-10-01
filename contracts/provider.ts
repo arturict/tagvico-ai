@@ -65,8 +65,7 @@ export type ProviderIconDescriptor = z.infer<typeof providerIconDescriptorSchema
 
 const httpUrlSchema = z.string()
   .trim()
-  .max(2048)
-  .url()
+  .max(2048, 'This address is too long.')
   .refine((value) => {
     try {
       const parsed = new URL(value);
@@ -74,10 +73,24 @@ const httpUrlSchema = z.string()
     } catch {
       return false;
     }
-  }, 'Must be an HTTP(S) URL without embedded credentials');
+  }, 'Enter a full http:// or https:// address without embedded credentials.');
+
+/** Same rule as `httpUrlSchema`, but an empty string is allowed and means "not set". */
+const optionalHttpUrlSchema = z.string()
+  .trim()
+  .max(2048, 'This address is too long.')
+  .refine((value) => {
+    if (!value) return true;
+    try {
+      const parsed = new URL(value);
+      return ['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password;
+    } catch {
+      return false;
+    }
+  }, 'Enter a full http:// or https:// address without embedded credentials.');
 
 const jsonSettingSchema = (maximum: number, objectOnly = false) => z.string()
-  .max(maximum)
+  .max(maximum, 'This value is too long.')
   .refine((value) => {
     if (!value.trim()) return true;
     try {
@@ -86,7 +99,7 @@ const jsonSettingSchema = (maximum: number, objectOnly = false) => z.string()
     } catch {
       return false;
     }
-  }, objectOnly ? 'Must be a valid JSON object' : 'Must be valid JSON');
+  }, objectOnly ? 'Enter a valid JSON object, for example {"Authorization": "Bearer ..."}.' : 'Enter valid JSON.');
 
 export const settingsV3PatchSchema = z.object({
   revision: z.string().min(8),
@@ -96,8 +109,10 @@ export const settingsV3PatchSchema = z.object({
     }).strict().optional(),
     paperless: z.object({
       baseUrl: httpUrlSchema.optional(),
-      username: z.string().trim().max(120).optional(),
-      token: z.string().max(4096).optional()
+      // The address people open in a browser. It may differ from the one Tagvico uses internally.
+      publicUrl: optionalHttpUrlSchema.optional(),
+      username: z.string().trim().max(120, 'Use at most 120 characters.').optional(),
+      token: z.string().max(4096, 'This token is too long.').optional()
     }).strict().optional(),
     ai: z.object({
       activeProviderInstanceId: providerInstanceIdSchema.optional(),
@@ -112,7 +127,7 @@ export const settingsV3PatchSchema = z.object({
       values: z.record(z.union([z.string().max(4096), z.boolean()]))
     }).strict().optional(),
     automation: z.object({
-      scanInterval: z.string().trim().min(1).max(120).optional(),
+      scanInterval: z.string().trim().min(1, 'Enter a cron expression, for example */30 * * * *.').max(120, 'Use at most 120 characters.').optional(),
       automaticProcessing: z.boolean().optional(),
       processPredefinedDocuments: z.boolean().optional(),
       processingMode: z.enum(['standard', 'flex', 'batch']).optional(),
@@ -126,7 +141,8 @@ export const settingsV3PatchSchema = z.object({
     }).strict().optional(),
     tags: z.object({
       controlled: z.boolean().optional(),
-      maximumPerDocument: z.number().int().min(1).max(10).optional(),
+      maximumPerDocument: z.number({ invalid_type_error: 'Enter a number from 1 to 10.' })
+        .int('Use a whole number.').min(1, 'Use at least 1.').max(10, 'Use at most 10.').optional(),
       groups: z.array(z.object({
         id: z.string().trim().min(1).max(100),
         name: z.string().trim().min(1).max(120),
@@ -136,7 +152,7 @@ export const settingsV3PatchSchema = z.object({
         tags: z.array(z.string().trim().min(1).max(100)).max(100)
       }).strict()).max(100).optional(),
       addProcessedTag: z.boolean().optional(),
-      processedTagName: z.string().trim().min(1).max(100).optional(),
+      processedTagName: z.string().trim().min(1, 'Enter a tag name.').max(100, 'Use at most 100 characters.').optional(),
       assignTags: z.boolean().optional(),
       assignCorrespondents: z.boolean().optional(),
       assignDocumentType: z.boolean().optional(),
@@ -148,10 +164,12 @@ export const settingsV3PatchSchema = z.object({
     }).strict().optional(),
     security: z.object({
       externalApiEnabled: z.boolean().optional(),
-      apiKey: z.union([z.string().trim().min(32).max(4096), z.literal('')]).optional(),
-      externalApiUrl: z.union([httpUrlSchema, z.literal('')]).optional(),
+      apiKey: z.string().trim().max(4096, 'This key is too long.')
+        .refine((value) => value === '' || value.length >= 32, 'Use at least 32 characters.').optional(),
+      externalApiUrl: optionalHttpUrlSchema.optional(),
       externalApiMethod: z.enum(['GET', 'POST', 'PUT']).optional(),
-      externalApiTimeout: z.number().int().min(1_000).max(10_000).optional(),
+      externalApiTimeout: z.number({ invalid_type_error: 'Enter a number of milliseconds.' })
+        .int('Use a whole number.').min(1_000, 'Use at least 1000 ms.').max(10_000, 'Use at most 10000 ms.').optional(),
       externalApiHeaders: jsonSettingSchema(32_000, true).optional(),
       externalApiBody: jsonSettingSchema(64_000).optional(),
       externalApiSelector: z.string().max(512).optional(),

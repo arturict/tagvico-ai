@@ -79,9 +79,10 @@ test('activity and recovery expose the complete operator workflows', () => {
   assert.match(recovery, /\/api\/failures\/\$\{row\.document_id\}\/ignore/);
 
   const navigation = source('src/components/app-navigation-shell.tsx');
+  const accountMenu = source('src/components/shell/user-menu.tsx');
   assert.match(navigation, /\/api\/navigation\/counts/);
-  assert.match(navigation, /nav-badge/);
-  assert.match(navigation, /\/changelog/);
+  assert.match(accountMenu, /nav-badge/);
+  assert.match(accountMenu, /\/changelog/);
 });
 
 test('AI and OCR processing use the same bounded retry discipline', () => {

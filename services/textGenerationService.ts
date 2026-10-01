@@ -7,7 +7,7 @@ import { runtimeEnvironmentValue } from './runtimeEnvironment';
 export type TextResult = { text: string; promptTokens: number; completionTokens: number };
 
 const REQUEST_TIMEOUT_MS = 60_000;
-const TEXT_ADAPTERS = new Set(['ai-sdk-openai', 'ai-sdk-compatible', 'native-ollama', 'codex-runtime', 'copilot-sdk']);
+const TEXT_ADAPTERS = new Set(['ai-sdk-openai', 'ai-sdk-compatible', 'native-ollama', 'chatgpt-plan', 'codex-runtime', 'copilot-sdk']);
 
 export function textProviderIds(): string[] {
   return providerRegistry.getProviderDefinitions()
@@ -29,6 +29,10 @@ export async function generateWith(providerId: string, prompt: string, options: 
   const model = options.model || environment[definition.modelEnvironmentKey] || '';
   if (!model) throw new Error(`No model configured for ${definition.name}`);
 
+  if (definition.runtimeAdapter === 'chatgpt-plan') {
+    const text = await require('./chatgptPlanService').default.generateText(prompt, undefined, { model });
+    return { text: String(text || ''), promptTokens: 0, completionTokens: 0 };
+  }
   if (definition.runtimeAdapter === 'codex-runtime') {
     const text = await require('./codexService').generateText(prompt, undefined, { model });
     return { text: String(text || ''), promptTokens: 0, completionTokens: 0 };

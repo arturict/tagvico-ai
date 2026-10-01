@@ -1,0 +1,414 @@
+/*
+ * Needs you, person page, action page, actions list and review queue.
+ * Everything here composes foundation.css (.list, .list-row, .btn, .select, .menu, .alert,
+ * .empty-state); this file only adds what those classes do not cover.
+ */
+
+.inbox-filter {
+  width: auto;
+  min-width: 168px;
+}
+
+/* Count after a group or section heading: plain tertiary text. */
+.group-count {
+  margin-left: 6px;
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-normal);
+}
+
+/* A link that has to be a button (for example "Show everyone"). */
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+/* ------------------------------------------------------------------- Status line */
+
+.inbox-status:empty,
+.inbox-status:not(:has(*)) {
+  display: none;
+}
+/* The last result stays in view while a long list scrolls. */
+.inbox-status {
+  position: sticky;
+  top: 8px;
+  z-index: 5;
+  margin: 0 0 8px;
+}
+.inbox-status p {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-elevated);
+}
+.inbox-notice,
+.inbox-error,
+.inbox-warn {
+  margin: 0;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.inbox-error {
+  color: var(--tv-danger);
+}
+.inbox-warn {
+  color: var(--tv-warning);
+}
+
+/* ------------------------------------------------------------------ Work rows */
+
+/* The title link covers the whole row; links and buttons inside sit above it. */
+.work-title {
+  color: var(--color-text);
+  text-decoration: none;
+}
+.work-title::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.work-actions {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.work-due {
+  min-width: 96px;
+  justify-content: flex-end;
+}
+
+/* One secondary line: parts separated by a middle dot, links stay clickable above the row link. */
+.meta-parts > span + span::before {
+  content: "·";
+  margin: 0 6px;
+  color: var(--color-text-tertiary);
+}
+.meta-parts a {
+  position: relative;
+  z-index: 1;
+  color: inherit;
+  text-decoration: none;
+}
+.meta-parts a:hover {
+  color: var(--color-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.work-person {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  vertical-align: middle;
+}
+.work-priority {
+  color: var(--color-text);
+  font-weight: var(--font-weight-medium);
+}
+/* Longer text (what an approval would change, why it cannot be decided) wraps up to three lines. */
+.list-row-meta.is-wrapping {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  white-space: normal;
+}
+.list-row-trailing.is-danger-text,
+.list-row-meta.is-danger-text {
+  color: var(--tv-danger);
+}
+.list-more {
+  min-height: 40px;
+  font-size: var(--font-text-sm-size);
+}
+
+/* "..." menu content sits above sticky bars and mobile sheets. */
+.work-menu {
+  z-index: 70;
+}
+.menu-check {
+  margin-left: auto;
+  display: inline-flex;
+}
+.menu-check svg {
+  width: 16px;
+  height: 16px;
+}
+
+@media (max-width: 640px) {
+  /* Title and meta wrap, the due text moves under them, the actions stay at the right. */
+  .work-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "main actions" "due actions";
+    column-gap: 8px;
+    align-items: center;
+  }
+  .work-row > .list-row-main {
+    grid-area: main;
+  }
+  .work-row > .work-due {
+    grid-area: due;
+    min-width: 0;
+    justify-content: flex-start;
+  }
+  .work-row > .work-actions {
+    grid-area: actions;
+  }
+  .work-row .list-row-title,
+  .work-row .list-row-meta {
+    white-space: normal;
+  }
+  .work-row .btn {
+    min-height: 40px;
+  }
+  .work-row .btn-icon {
+    min-width: 40px;
+  }
+}
+
+/* --------------------------------------------------------------------- Person */
+
+.person-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.person-you {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-normal);
+}
+.person-summary,
+.person-access {
+  margin: 0 0 8px;
+}
+
+/* ------------------------------------------------------------------ Action page */
+
+.case-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+  font-size: var(--font-text-sm-size);
+}
+.case-detail .page-header .meta-parts a {
+  color: inherit;
+}
+.case-suggestion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.case-suggestion-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* Properties: label at the left, control at the right. */
+.prop-row {
+  justify-content: space-between;
+  gap: 16px;
+}
+.prop-label {
+  display: grid;
+  min-width: 0;
+}
+.prop-control {
+  width: 240px;
+  max-width: 60%;
+}
+.prop-date {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Steps: each step is one pressable row. */
+.case-step-row {
+  padding: 0;
+}
+.case-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: var(--row-height);
+  padding: 8px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  text-align: left;
+  cursor: pointer;
+}
+.case-step:hover:not(:disabled) {
+  background: var(--alpha-04);
+}
+.case-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.case-step svg {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+}
+.case-step.is-done svg,
+.case-step.is-done .case-step-title {
+  color: var(--color-text-secondary);
+}
+.case-step.is-done .case-step-title {
+  text-decoration: line-through;
+}
+.case-step small {
+  margin-left: auto;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+}
+.case-add-step {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.case-add-step .input {
+  flex: 1 1 auto;
+}
+
+.case-sync {
+  margin: 0;
+}
+.case-sync-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* Activity: a muted timeline, newest first. */
+.case-activity {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.case-activity li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.case-activity small {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+  font-size: var(--font-text-xs-size);
+}
+
+@media (max-width: 640px) {
+  .prop-control {
+    width: 200px;
+  }
+  .case-activity li {
+    flex-direction: column;
+    gap: 0;
+  }
+}
+
+/* ----------------------------------------------------------------- New action */
+
+.new-action {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+.new-action-field {
+  display: grid;
+  gap: 4px;
+}
+.new-action-field.is-wide,
+.new-action-footer {
+  grid-column: 1 / -1;
+}
+.new-action-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.new-action-footer .field-error {
+  margin-right: auto;
+}
+@media (max-width: 640px) {
+  .new-action {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---------------------------------------------------------------- Review queue */
+
+.review-item {
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.review-item:last-child {
+  border-bottom: 0;
+}
+.review-row {
+  border-bottom: 0;
+}
+.review-row input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--color-background-primary-solid);
+}
+.review-fields {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0 12px 12px 44px;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+.review-fields > div {
+  display: grid;
+  grid-template-columns: 140px minmax(0, 1fr);
+  gap: 12px;
+}
+.review-fields dt {
+  color: var(--color-text-secondary);
+}
+.review-fields dt::first-letter {
+  text-transform: uppercase;
+}
+.review-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .review-row {
+    flex-wrap: wrap;
+  }
+  .review-actions {
+    flex: 1 0 100%;
+    justify-content: flex-end;
+  }
+  .review-fields {
+    padding-left: 12px;
+  }
+  .review-fields > div {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+}
