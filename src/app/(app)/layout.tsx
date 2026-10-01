@@ -3,7 +3,8 @@ import { actionCenter, workspaceFor } from '@/lib/server/workspace';
 import { getHouseholdNavigation } from '@/lib/server/household-navigation';
 import { AppNavigationShell } from '@/components/app-navigation-shell';
 import { parseSessions } from '@/components/shell/chat-sessions';
-import { MemberTonesProvider, householdTones } from '@/components/member-tones';
+import { MemberTonesProvider } from '@/components/member-tones';
+import { householdTones } from '@/components/member-tone-palette';
 import settingsV3Service from '@root/services/settingsV3Service';
 
 export const dynamic = 'force-dynamic';
