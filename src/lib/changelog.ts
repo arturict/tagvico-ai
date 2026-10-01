@@ -10,27 +10,49 @@ export type ChangelogEntry = {
 export const changelogEntries: ChangelogEntry[] = [
   {
     version: '3.5.0',
-    date: 'Unreleased',
-    title: 'Sign in with ChatGPT and the TypeSafe Jev provider',
-    summary: 'Use your ChatGPT Plus or Pro plan instead of an API key, and file with a decision model that only picks from your existing vocabulary.',
-    status: 'unreleased',
+    date: '1 October 2026',
+    title: 'Sign in with ChatGPT and a chat-first household',
+    summary: 'Use your ChatGPT Plus or Pro plan instead of an API key, start from a chat, and see what needs you in one place. The whole interface is redesigned.',
+    status: 'released',
     groups: [
       {
         title: 'Sign in with ChatGPT',
         items: [
-          'New provider ChatGPT plan: choose Continue with ChatGPT and an eligible Plus or Pro plan pays for filing, the Companion and TypeSafe titles, with no API key.',
+          'New provider ChatGPT plan, listed first: choose Continue with ChatGPT and an eligible Plus or Pro plan pays for filing, the Companion and TypeSafe titles, with no API key.',
           'Tagvico usually runs on another machine, so ChatGPT ends on a 127.0.0.1 page that does not load; paste its address into Tagvico to finish. Only this instance can redeem the one-time code.',
-          'Usage counts toward your plan. Manage usage opens ChatGPT Settings, where you can limit or disconnect Tagvico; Sign out revokes the session at OpenAI.',
+          'GPT-6 Luna is preselected when your plan answers to it, otherwise the lightest listed model. Usage counts toward your plan; Manage usage opens ChatGPT Settings, and Sign out revokes the session at OpenAI.',
           'The Codex-based provider is now called ChatGPT via Codex (legacy) and stays in maintenance mode.'
+        ]
+      },
+      {
+        title: 'Chat and household',
+        items: [
+          'Signing in opens a chat with suggestions built from your real documents and actions. Answers cite the Paperless documents they used as source pills.',
+          'Proposed changes appear as approval cards with Approve and Reject, and collapse to a one-line outcome after the decision.',
+          'Needs you lists overdue and upcoming actions, approvals and review items for the whole household, with a filter per person.',
+          'The sidebar shows household members as a row of avatars with open counts. Each person has a page, and each case has a detail page.',
+          'A new model picker with provider rail, search, favourites and keyboard shortcuts replaces the old dropdowns in chat and Settings.'
+        ]
+      },
+      {
+        title: 'Settings and design',
+        items: [
+          'Telegram and Discord moved to their own Channels tab with a token check, live status, allowed people and reminders. Settings also gained a Paperless connection test, a public URL and member management with roles.',
+          'Tagvico is redesigned in OpenAI\'s design language with system fonts and neutral colours. Phones get a top bar and a menu drawer instead of bottom tabs. The old Home dashboard is Overview in the account menu.',
+          'Settings saved in the UI now take effect, and empty Compose placeholders no longer lock the Telegram and Discord settings. Non-owners no longer receive installation settings.'
         ]
       },
       {
         title: 'Providers',
         items: [
-          'New provider TypeSafe Jev: one yes/no question per existing tag, a choice among existing correspondents and document types, the title chosen from the document lines and the date from the dates found in the text.',
-          'The probability of each chosen option is the field confidence, so the review threshold works unchanged. TYPESAFE_TAG_THRESHOLD (default 0.6) sets when a tag is suggested.',
-          'Pair it with any configured text provider (TYPESAFE_TEXT_PROVIDER, including subscription adapters and local Ollama): one small extra call writes the title and names senders that are not in the archive yet. In a 60-document synthetic test good titles rose from 32% to 98%.',
-          'By design no new tags or document types, custom fields, owner suggestions, custom prompt or Companion with this provider; keep a text-generating provider configured for the Companion.'
+          'New provider TypeSafe Jev: one yes/no question per existing tag and a choice among existing correspondents and document types, with a probability per field. Pair it with any text provider for titles and new senders.',
+          'GPT-6 Luna is the recommended model for OpenAI direct and OpenRouter. GPT-6 models no longer receive temperature, which OpenAI rejects.'
+        ]
+      },
+      {
+        title: 'Upgrade note',
+        items: [
+          'The bundled docker-compose.yml now passes the Telegram and Discord variables through empty. With the new file the Channels tab can save them; a value you set yourself still wins and is shown as set by the container environment.'
         ]
       }
     ]
@@ -310,4 +332,4 @@ export const changelogEntries: ChangelogEntry[] = [
   }
 ];
 
-export const currentChangelogAnnouncement = changelogEntries.find((entry) => entry.version === '3.4.1')!;
+export const currentChangelogAnnouncement = changelogEntries.find((entry) => entry.version === '3.5.0')!;

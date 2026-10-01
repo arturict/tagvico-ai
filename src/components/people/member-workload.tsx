@@ -35,7 +35,7 @@ export function MemberWorkload({ data }: { data: PersonData }) {
     canMutate={canMutate}
     busy={busy.has(item.id)}
     showAssignee={false}
-    onDone={() => board.patchCase(item, { status: 'done' }, 'Marked as done.')}
+    onDone={() => void board.markDone(item)}
     onAccept={() => board.patchCase(item, { status: 'open' }, 'Suggestion accepted.')}
     onDismiss={() => board.patchCase(item, { status: 'dismissed' }, 'Suggestion dismissed.')}
     onAssign={(memberId) => board.assign(item, memberId)}

@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, KeyboardEvent, useEffect, useRef } from 'react';
+import { FormEvent, KeyboardEvent, RefObject, useEffect, useRef } from 'react';
 import { ArrowUp, Square } from 'lucide-react';
 
 export function ChatComposer({
@@ -9,7 +9,8 @@ export function ChatComposer({
   onSubmit,
   onStop,
   isWorking,
-  canSend
+  canSend,
+  inputRef
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -18,8 +19,11 @@ export function ChatComposer({
   isWorking: boolean;
   /** False while no model is ready, so a message could not be answered. */
   canSend: boolean;
+  /** Lets the page focus the message box from a keyboard shortcut. */
+  inputRef?: RefObject<HTMLTextAreaElement | null>;
 }) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const ownRef = useRef<HTMLTextAreaElement>(null);
+  const textareaRef = inputRef ?? ownRef;
   useEffect(() => {
     const field = textareaRef.current;
     if (!field) return;

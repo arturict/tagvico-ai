@@ -131,6 +131,6 @@ export function ChatHistory({ sessions, failed, activeChatId, onRename, onDelete
         {group.sessions.map((session) => <ChatRow key={session.id} session={session} active={session.id === activeChatId} onRename={onRename} onDelete={onDelete} />)}
       </ul>
     </div>)}
-    {!groups.length ? <p className="meta sidebar-note">{failed ? 'Chats could not be loaded.' : 'No chats yet.'}</p> : null}
+    {!groups.length ? <p className="meta sidebar-note">{failed ? 'Chats could not be loaded. Reload the page to try again.' : 'No chats yet. Ask your first question.'}</p> : null}
   </section>;
 }

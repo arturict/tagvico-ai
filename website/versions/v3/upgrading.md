@@ -57,6 +57,39 @@ review flow. These are navigation and presentation changes; existing history,
 conversations, provider credentials, automation rules and recovery queues stay
 in the same v3 data volume.
 
+## Upgrading to 3.5
+
+Version 3.5 changes the interface and one Compose default. It does not change
+the data schema, so the usual image swap is enough.
+
+- **Compose channel variables are now empty by default.** The bundled
+  `docker-compose.yml` used to set `TELEGRAM_BOT_ENABLED=no`,
+  `TELEGRAM_USERS_JSON=[]`, `DISCORD_BOT_ENABLED=no` and similar values, which
+  made the container environment own those settings. 3.5.0 passes every
+  `TELEGRAM_*` and `DISCORD_*` variable through empty, so the new Channels tab
+  can save them. If you copy the new file, nothing else changes. If you keep
+  your old file, or set the variables in your own `.env`, those values still win
+  and the Channels tab lists them as set by the container environment. To
+  manage a bot in the UI, delete its lines from your Compose file and recreate
+  the container.
+- **Channels moved to their own settings tab.** Telegram and Discord left
+  **Settings → Automation** for **Settings → Channels**. Old
+  `/settings/automation#telegram` and `#discord` links redirect there, and
+  `/settings/telegram` and `/settings/discord` open the Channels tab. The
+  bots keep their existing configuration.
+- **Settings tabs.** Settings now have six tabs: Paperless, AI models,
+  Automation, Channels, Tags and People & security. Bookmarks to the former
+  sections (`/settings/ai`, `/settings/household`, `/settings/security`,
+  `/settings/tag-library` and similar) redirect to the matching tab.
+- **Navigation.** Signing in opens the chat. The former **Home** dashboard is
+  **Overview** in the account menu, and Ask Tagvico is now just the chat.
+  Channel status left the sidebar. On phones there is a top bar and a menu
+  drawer, with no bottom tab bar and no horizontal navigation row.
+- **Providers.** **ChatGPT plan** is the new first provider. The Codex-based
+  provider is called **ChatGPT via Codex (legacy)** and is unchanged. New
+  installations default to GPT-6 Luna on OpenAI direct and OpenRouter;
+  existing installations keep the model they have configured.
+
 ## Roll back
 
 Stop the new container, restore the backup volume if the upgrade changed its

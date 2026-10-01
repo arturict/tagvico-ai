@@ -41,7 +41,7 @@ const ERROR_MESSAGES: Record<string, string> = {
   subscription_sharing_user_unavailable: 'ChatGPT account information is temporarily unavailable. Tagvico will retry later.'
 };
 
-function planError(body: unknown, status: number): ChatGPTPlanError {
+export function planError(body: unknown, status: number): ChatGPTPlanError {
   const source = body && typeof body === 'object' ? body as Record<string, unknown> : {};
   const error = source.error && typeof source.error === 'object' ? source.error as Record<string, unknown> : source;
   const code = typeof error.code === 'string' ? error.code : '';
@@ -213,14 +213,22 @@ export function defaultModelIndex(slugs: string[]) {
 }
 
 /**
- * GPT-6 Luna is the model Tagvico prefers for filing and chat, but on 2026-10-01 a Plus plan's
- * catalog did not list it although a request to it succeeded. When the catalog lacks it, Tagvico
- * sends one tiny request (about 16 tokens) to check, remembers the answer per account for a week
- * in data/chatgpt/models.json, and offers the model as the default only if it worked.
+ * A plan can serve models its catalog does not list: on 2026-10-01 a Plus plan's catalog lacked
+ * GPT-6 Luna although a request to it succeeded. For each candidate missing from the catalog,
+ * Tagvico sends one tiny request (about 16 tokens) at most once a week per account, remembers the
+ * answer in data/chatgpt/models.json and offers only the models that answered. GPT-6 Luna stays
+ * the default.
  */
 const PREFERRED_MODEL = { id: 'gpt-6-luna', name: 'GPT-6 Luna' };
+const CANDIDATE_MODELS = [
+  PREFERRED_MODEL,
+  { id: 'gpt-6-sol', name: 'GPT-6 Sol' },
+  { id: 'gpt-6.1-sol', name: 'GPT-6.1 Sol' }
+];
 const PROBE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
-type ProbeCache = Record<string, { ok: boolean; checkedAt: number }>;
+type ProbeResult = { ok: boolean; checkedAt: number };
+// The top-level result is GPT-6 Luna's, as written before the candidate list existed.
+type ProbeCache = Record<string, ProbeResult & { models?: Record<string, ProbeResult> }>;
 
 function probeCacheFile() {
   return path.join(resolveDataDirectory(), 'chatgpt', 'models.json');
@@ -238,6 +246,11 @@ function readProbeCache(): ProbeCache {
 function writeProbeCache(cache: ProbeCache) {
   fs.mkdirSync(path.dirname(probeCacheFile()), { recursive: true, mode: 0o700 });
   fs.writeFileSync(probeCacheFile(), JSON.stringify(cache), { mode: 0o600 });
+}
+
+function cachedProbe(entry: ProbeCache[string] | undefined, slug: string): ProbeResult | undefined {
+  const result = entry?.models?.[slug] ?? (slug === PREFERRED_MODEL.id && entry && 'ok' in entry ? entry : undefined);
+  return result && typeof result.ok === 'boolean' && Date.now() - Number(result.checkedAt) < PROBE_TTL_MS ? result : undefined;
 }
 
 const errorMessage = (error: unknown) => error instanceof Error ? error.message : String(error);
@@ -267,33 +280,55 @@ class ChatGPTPlanService {
         name: String(model.display_name || model.slug),
         isDefault: false
       }));
-    const models = !listed.some((model) => model.id === PREFERRED_MODEL.id) && await this.preferredModelWorks()
-      ? [{ ...PREFERRED_MODEL, isDefault: false }, ...listed]
-      : listed;
-    return models.map((model, index) => ({ ...model, isDefault: index === defaultModelIndex(models.map((entry) => entry.id)) }));
+    const unlisted = CANDIDATE_MODELS.filter((candidate) => !listed.some((model) => model.id === candidate.id));
+    const working = unlisted.length ? await this.workingModels(unlisted.map((candidate) => candidate.id)) : new Set<string>();
+    const available = unlisted.filter((candidate) => working.has(candidate.id)).map((candidate) => ({ ...candidate, isDefault: false }));
+    // GPT-6 Luna leads, as before; the other unlisted tiers follow the catalog so they never become the default.
+    const models = [
+      ...available.filter((model) => model.id === PREFERRED_MODEL.id),
+      ...listed,
+      ...available.filter((model) => model.id !== PREFERRED_MODEL.id)
+    ];
+    const defaultIndex = defaultModelIndex(models.map((entry) => entry.id));
+    return models.map((model, index) => ({ ...model, isDefault: index === defaultIndex }));
   }
 
-  /** Whether the unlisted preferred model answers for this account; checked once a week. */
-  private async preferredModelWorks() {
+  /** Which of the unlisted candidates answer for this account; each is checked at most once a week, all in parallel. */
+  private async workingModels(slugs: string[]) {
     const account = chatgptPlanAuthService.status().account?.email || 'default';
     const cache = readProbeCache();
-    const cached = cache[account];
-    if (cached && Date.now() - cached.checkedAt < PROBE_TTL_MS) return cached.ok;
-    let ok = false;
-    try {
-      const result = await respond({ model: PREFERRED_MODEL.id, input: 'Reply with exactly: OK' });
-      ok = /\bOK\b/i.test(result.text);
-    } catch (error) {
-      // A usage limit or outage says nothing about the model; ask again next time.
-      if (error instanceof ChatGPTPlanError && /usage_limit|stream_interrupted/.test(error.code)) return false;
-      ok = false;
+    const entry = cache[account];
+    const results = new Map<string, boolean>();
+    const fresh: Record<string, ProbeResult> = {};
+    await Promise.all(slugs.map(async (slug) => {
+      const cached = cachedProbe(entry, slug);
+      if (cached) {
+        results.set(slug, cached.ok);
+        return;
+      }
+      try {
+        const result = await respond({ model: slug, input: 'Reply with exactly: OK' });
+        const ok = /\bOK\b/i.test(result.text);
+        results.set(slug, ok);
+        fresh[slug] = { ok, checkedAt: Date.now() };
+      } catch (error) {
+        // A usage limit or outage says nothing about the model; ask again next time.
+        results.set(slug, false);
+        if (!(error instanceof ChatGPTPlanError && /usage_limit|stream_interrupted/.test(error.code))) {
+          fresh[slug] = { ok: false, checkedAt: Date.now() };
+        }
+      }
+    }));
+    if (Object.keys(fresh).length) {
+      const models = { ...entry?.models, ...fresh };
+      const luna = fresh[PREFERRED_MODEL.id] ?? cachedProbe(entry, PREFERRED_MODEL.id);
+      try {
+        writeProbeCache({ ...cache, [account]: { ...(luna ?? { ok: false, checkedAt: 0 }), models } });
+      } catch {
+        // A read-only data directory only means the check repeats.
+      }
     }
-    try {
-      writeProbeCache({ ...cache, [account]: { ok, checkedAt: Date.now() } });
-    } catch {
-      // A read-only data directory only means the check repeats.
-    }
-    return ok;
+    return new Set([...results].filter(([, ok]) => ok).map(([slug]) => slug));
   }
 
   /** The configured model, or the plan's default when none is configured. */

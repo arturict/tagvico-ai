@@ -48,3 +48,20 @@ export function openAIReasoningEffort(model: unknown, effort: unknown): string |
 export function chatCompletionsToolReasoningEffort(model: unknown): 'none' | 'low' {
   return isGpt6Model(model) && !bareModelId(model).startsWith('gpt-6-astra') ? 'none' : 'low';
 }
+
+/**
+ * Provider options for the AI SDK's OpenAI Responses model, shared by the API
+ * key path and the ChatGPT plan. The pinned @ai-sdk/openai predates GPT-6 and
+ * would treat it as a non-reasoning model, dropping the effort and passing
+ * temperature on, so GPT-6 is forced to reasoning. The plan never stores
+ * responses; with `store: false` the SDK asks for encrypted reasoning items so
+ * a tool loop can carry them between steps.
+ */
+export function openAIResponsesProviderOptions(model: unknown, effort: unknown, plan = false) {
+  const reasoningEffort = openAIReasoningEffort(model, effort);
+  return {
+    ...(reasoningEffort ? { reasoningEffort } : {}),
+    ...(isGpt6Model(model) ? { forceReasoning: true } : {}),
+    ...(plan ? { store: false } : {})
+  };
+}

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ExternalLink, Search } from 'lucide-react';
+import { Mascot } from '@/components/mascot/mascot';
 import { requireUser } from '@/lib/server/auth';
 import { workspaceFor } from '@/lib/server/workspace';
 import { getPaperlessPublicUrl } from '@/lib/server/household-navigation';
@@ -67,6 +68,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
 
     <section className="doc-results" aria-label="Documents">
       {error ? <div className="empty-state" role="alert">
+        <Mascot pose="oops" size={64} />
         <h2 className="pg-empty-title">Documents are unavailable</h2>
         <p>{error}</p>
         <Link className="btn btn-secondary btn-32" href="/settings/paperless">Paperless settings</Link>
@@ -89,7 +91,15 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
           })}
         </ul>
       </> : <div className="empty-state">
-        <p>{query ? `No documents match “${query}”.` : 'Documents appear here once Paperless has consumed them.'}</p>
+        {query ? <>
+          <Mascot pose="searching" size={64} />
+          <p className="pg-empty-title">{`No documents match “${query}”.`}</p>
+          <p>Try fewer words or a different spelling.</p>
+        </> : <>
+          <Mascot pose="sleeping" size={64} />
+          <p className="pg-empty-title">No documents yet</p>
+          <p>Documents appear here once Paperless has consumed them.</p>
+        </>}
       </div>}
     </section>
   </div>;

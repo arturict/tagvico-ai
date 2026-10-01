@@ -108,8 +108,8 @@ credentials.
 ## Optional installation analytics
 
 Tagvico's anonymous installation analytics are disabled by default. You can
-explicitly opt in from **Settings → Privacy → Anonymous installation
-analytics**, preview the exact payload before sharing, send a test heartbeat,
+explicitly opt in from **Settings → People & security → Privacy → Anonymous
+telemetry**, preview the exact payload before sharing, send a test heartbeat,
 or disable sharing again at any time.
 
 When enabled, Tagvico sends one coarse heartbeat roughly every 24 hours. It

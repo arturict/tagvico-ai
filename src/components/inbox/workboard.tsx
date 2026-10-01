@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useRef, useState } from 'react';
+import { useToast } from '@/components/ui/toast';
 import { caseFromRow } from './case-mapper';
 import { zurichToday } from './dates';
 import type { InboxApproval, InboxCase, InboxMember, InboxReview } from './types';
@@ -56,6 +57,7 @@ function executedFlash(approval: InboxApproval, executed: Row): { flash: Flash; 
  * tells the sidebar to reload its counts.
  */
 export function useWorkboard(initial: { cases: InboxCase[]; approvals: InboxApproval[]; reviews: InboxReview[] }, memberById: Map<string, InboxMember>) {
+  const toast = useToast();
   const [cases, setCases] = useState(initial.cases);
   const [approvals, setApprovals] = useState(initial.approvals);
   const [reviews, setReviews] = useState(initial.reviews);
@@ -75,8 +77,9 @@ export function useWorkboard(initial: { cases: InboxCase[]; approvals: InboxAppr
     setBusy(new Set(inFlight.current));
   };
 
-  const patchCase = useCallback(async (item: InboxCase, patch: { status?: InboxCase['status']; assigneeMemberId?: string | null }, success: string) => {
-    if (!begin(item.id)) return;
+  /** Resolves to whether the change was saved. An empty `success` leaves the inline message to the caller. */
+  const patchCase = useCallback(async (item: InboxCase, patch: { status?: InboxCase['status']; assigneeMemberId?: string | null }, success: string): Promise<boolean> => {
+    if (!begin(item.id)) return false;
     const optimistic: InboxCase = {
       ...item,
       ...(patch.status ? { status: patch.status, doneAt: patch.status === 'done' ? zurichToday() : null } : {}),
@@ -89,16 +92,32 @@ export function useWorkboard(initial: { cases: InboxCase[]; approvals: InboxAppr
       setCases((current) => current.map((entry) => (entry.id === item.id ? next : entry)));
       const syncFailed = saved.syncStatus === 'error' && saved.syncError;
       setFlash(syncFailed
-        ? { tone: 'warn', text: `${success} Paperless sync failed: ${String(saved.syncError)}`, href: `/actions/${item.id}`, linkLabel: 'Open the action' }
-        : { tone: 'ok', text: success });
+        ? { tone: 'warn', text: `${success} Paperless sync failed: ${String(saved.syncError)}`.trim(), href: `/actions/${item.id}`, linkLabel: 'Open the action' }
+        : success ? { tone: 'ok', text: success } : null);
       notifyNavigation();
+      return true;
     } catch (cause) {
       setCases((current) => current.map((entry) => (entry.id === item.id ? item : entry)));
       setFlash({ tone: 'error', text: cause instanceof Error ? cause.message : 'The request failed' });
+      return false;
     } finally {
       end(item.id);
     }
   }, []);
+
+  /**
+   * Marks a case done. With a toast available the confirmation carries an Undo for a few seconds
+   * that puts the case back where it was; without one the inline message confirms it.
+   */
+  const markDone = useCallback(async (item: InboxCase) => {
+    const saved = await patchCase(item, { status: 'done' }, toast.available ? '' : 'Marked as done.');
+    if (!saved || !toast.available) return;
+    toast.show({
+      message: 'Marked as done.',
+      actionLabel: 'Undo',
+      onAction: () => void patchCase({ ...item, status: 'done' }, { status: item.status === 'waiting' ? 'waiting' : 'open' }, 'Moved back to your list.')
+    });
+  }, [patchCase, toast]);
 
   const assign = useCallback((item: InboxCase, memberId: string | null) => patchCase(
     item,
@@ -158,7 +177,7 @@ export function useWorkboard(initial: { cases: InboxCase[]; approvals: InboxAppr
     }
   }, []);
 
-  return { cases, approvals, reviews, busy, flash, setFlash, patchCase, assign, decide, decideReview };
+  return { cases, approvals, reviews, busy, flash, setFlash, patchCase, markDone, assign, decide, decideReview };
 }
 
 /** Result of the last action as one calm line: plain text, danger text only for errors. Stays in view while the list scrolls. */

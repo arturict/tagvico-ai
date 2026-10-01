@@ -4,6 +4,9 @@ import { CircleAlert } from 'lucide-react';
 import type { CompanionSuggestion, CompanionSuggestionIcon } from '@root/services/companionResearchService';
 import { COMPANION_TOOL_ERRORS } from '@root/contracts/companion';
 import { shortDate } from '@/components/inbox/dates';
+import { Mascot } from '@/components/mascot/mascot';
+import { FirstChatTip } from './chat-tip';
+import { greeting, type DayPart } from './greeting';
 
 /** The most urgent open item of the household: the earliest due date, if any open action has one. */
 export type ChatUrgentItem = { title: string; dueAt: string | null; overdue: boolean };
@@ -25,18 +28,22 @@ export function starterPills(suggestions: CompanionSuggestion[]) {
 /** Greeting and, when something blocks answers, one notice. The composer follows directly below. */
 export function ChatEmptyState({
   displayName,
+  dayPart,
   paperless,
   canManageSettings,
   firstRun
 }: {
   displayName: string;
+  /** Part of the day, decided on the server; without it the greeting is the plain question. */
+  dayPart?: DayPart;
   paperless: 'ok' | 'unreachable' | 'access';
   canManageSettings: boolean;
   firstRun?: { title: string; body: string } | null;
 }) {
   return <div className={`chat-empty${firstRun ? ' is-first-run' : ''}`}>
-    <h1 className="type-greeting chat-greeting">{firstRun ? firstRun.title : `What can I help with, ${displayName}?`}</h1>
-    {firstRun ? <p className="chat-first-run">{firstRun.body}</p> : null}
+    <Mascot pose={firstRun ? 'waving' : 'idle'} size={64} className="chat-mascot" />
+    <h1 className="type-greeting chat-greeting">{greeting(dayPart, displayName)}</h1>
+    {firstRun ? <FirstChatTip title={firstRun.title} body={firstRun.body} /> : null}
     {paperless !== 'ok' ? <p className="chat-paperless-note alert is-warning" role="status">
       <CircleAlert aria-hidden="true" />
       <span>

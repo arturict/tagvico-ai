@@ -163,6 +163,7 @@ export function AutomationDashboard() {
     {!summary && loadError ? <WorkspaceLoadError
       title="Document metrics are unavailable"
       message={loadError}
+      mascot
       retrying={loading}
       onRetry={() => void load()}
     /> : !summary ? <WorkspacePageSkeleton kind="dashboard" embedded /> : <div className="ov-sections">

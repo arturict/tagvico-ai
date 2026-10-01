@@ -1,4 +1,5 @@
-import { CircleAlert, RotateCcw, X } from 'lucide-react';
+import { RotateCcw, X } from 'lucide-react';
+import { Mascot } from '@/components/mascot/mascot';
 import type { CompanionErrorView } from '@root/contracts/companion';
 
 const SETTINGS_ACTIONS: Partial<Record<CompanionErrorView['code'], string>> = {
@@ -26,7 +27,7 @@ export function ChatErrorNotice({
   const settingsLabel = SETTINGS_ACTIONS[error.code];
   const calm = Boolean(settingsLabel) || error.code === 'provider-limit';
   return <div className={`chat-notice alert ${calm ? 'is-warning' : 'is-danger'}`} role="alert" data-error-code={error.code}>
-    <CircleAlert aria-hidden="true" />
+    <Mascot pose="oops" size={32} />
     <span>{error.message}</span>
     {settingsLabel ? (canManageSettings
       ? <a className="chat-notice-action" href="/settings/providers">{settingsLabel}</a>

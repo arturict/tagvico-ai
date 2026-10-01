@@ -33,7 +33,7 @@ container again.
 
 ## Provider health is degraded
 
-Open **Settings → AI provider**, confirm the selected provider, and run its
+Open **Settings → AI models**, confirm the selected provider, and run its
 connection test. Check the endpoint, model, credentials, account entitlement,
 and provider status. Model catalogs and quotas are controlled by the provider
 and may change independently of Tagvico.
@@ -44,14 +44,34 @@ the host loopback interface is not normally reachable from another container.
 
 ## Documents are not processing
 
-1. Check **Operations** for runner state, retries, terminal failures, or OCR
+1. Open **Overview** from the account menu and check it, and **Recovery**, for runner state, retries, terminal failures, or OCR
    rescue work.
 2. Confirm the Paperless token can see the expected documents.
 3. Use **Scan now** for an immediate pass.
-4. Inspect **History** for the specific failure instead of repeatedly rescanning.
+4. Inspect **Activity** for the specific failure instead of repeatedly rescanning.
 
 Keep **Review first** enabled while diagnosing write behavior. A suggestion that
 is already queued remains reviewable when the processing mode changes.
+
+## ChatGPT plan sign-in does not finish
+
+After you allow Tagvico in ChatGPT, the browser shows a `127.0.0.1` page that
+does not load. That is expected. Copy its full address into Tagvico and select
+**Finish sign-in**. If Tagvico says the address "belongs to a different sign-in
+attempt", it came from an older tab; start again and paste the address from the
+new tab. A message that the plan is not available means the plan or workspace
+is not eligible, for example a Free plan. Usage-limit messages mean the plan's
+or Tagvico's own limit is used up: check ChatGPT Settings → Usage. Tagvico never
+falls back to another provider. See the [ChatGPT plan guide](./providers#chatgpt-plan).
+
+## Telegram or Discord settings do not save
+
+Open **Settings → Channels**. A value that is set in your Compose file or `.env`
+takes precedence over the tab, which then lists it as set by the container
+environment and keeps that field read-only. The `docker-compose.yml` that ships
+with 3.5.0 passes these variables through empty; older copies set values such
+as `TELEGRAM_BOT_ENABLED=no`, which lock the setting. Remove those lines (or
+copy the current file) and recreate the container to manage the bots in the UI.
 
 ## Upgrade does not start cleanly
 

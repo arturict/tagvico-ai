@@ -3,6 +3,7 @@ import { requireUser } from '@/lib/server/auth';
 import { actionCenter, workspaceFor } from '@/lib/server/workspace';
 import { ActionsHeader } from '@/components/inbox/actions-header';
 import { shortDate } from '@/components/inbox/dates';
+import { Mascot } from '@/components/mascot/mascot';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Actions' };
@@ -36,6 +37,6 @@ export default async function ActionsPage() {
           </div>
         </li>;
       })}
-    </ul> : <div className="empty-state"><p>No actions yet. Create one or ask Tagvico to look at a document.</p></div>}
+    </ul> : <div className="empty-state"><Mascot pose="sleeping" size={64} /><p>No actions yet. Create one or ask Tagvico to look at a document.</p></div>}
   </div>;
 }

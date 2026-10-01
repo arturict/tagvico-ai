@@ -14,7 +14,7 @@ export type RuntimeModel =
   | { kind: 'ai-sdk'; provider: RuntimeProvider; modelId: string; model: LanguageModel }
   | {
       kind: 'text-adapter';
-      provider: Extract<RuntimeProvider, 'chatgpt' | 'codex' | 'copilot'>;
+      provider: Extract<RuntimeProvider, 'codex' | 'copilot'>;
       modelId: string;
       generateText: (prompt: string, signal?: AbortSignal) => Promise<string>;
     };

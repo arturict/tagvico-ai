@@ -174,10 +174,16 @@ test('a usage limit stops the request with a pointer to ChatGPT usage settings',
 });
 
 test('model discovery lists only models the plan marks for display', async () => {
-  assert.deepEqual(await planModule.default.listModels(), [{ id: 'gpt-6-luna', name: 'GPT-6 Luna', isDefault: true }]);
+  const previousReply = responsesReply;
+  responsesReply = () => Response.json({ error: { code: 'model_not_found', message: 'unknown model' } }, { status: 404 });
+  try {
+    assert.deepEqual(await planModule.default.listModels(), [{ id: 'gpt-6-luna', name: 'GPT-6 Luna', isDefault: true }]);
+  } finally {
+    responsesReply = previousReply;
+  }
 });
 
-test('an unlisted GPT-6 Luna is checked once and offered as the default only when it answers', async () => {
+test('unlisted GPT-6 Luna, Sol and 6.1 Sol are checked once a week and offered only when they answer', async () => {
   const cacheFile = path.join(resolveDataDirectory(), 'chatgpt', 'models.json');
   fs.rmSync(cacheFile, { force: true });
   const previousFetch = global.fetch;
@@ -189,26 +195,134 @@ test('an unlisted GPT-6 Luna is checked once and offered as the default only whe
   global.fetch = async (input, init) => String(input).endsWith('/v1/models')
     ? Response.json({ models: catalog })
     : previousFetch(input, init);
-  const probes = () => calls.filter((call) => call.url.endsWith('/v1/responses') && call.body?.model === 'gpt-6-luna').length;
-  try {
-    const before = probes();
-    responsesReply = () => sse([
+  const probes = (model) => calls.filter((call) => call.url.endsWith('/v1/responses') && call.body?.model === model).length;
+  const answers = (models) => (body) => models.includes(body.model)
+    ? sse([
       { type: 'response.output_text.delta', delta: 'OK' },
       { type: 'response.completed', response: { usage: { input_tokens: 11, output_tokens: 5, total_tokens: 16 } } }
+    ])
+    : Response.json({ error: { code: 'model_not_found', message: 'unknown model' } }, { status: 404 });
+  const offered = async () => (await planModule.default.listModels()).map((model) => [model.id, model.isDefault]);
+  try {
+    const before = { luna: probes('gpt-6-luna'), sol: probes('gpt-6-sol'), sol61: probes('gpt-6.1-sol') };
+    responsesReply = answers(['gpt-6-luna', 'gpt-6-sol', 'gpt-6.1-sol']);
+    assert.deepEqual(await offered(), [
+      ['gpt-6-luna', true], ['gpt-6-astra', false], ['gpt-5.6-luna', false], ['gpt-6-sol', false], ['gpt-6.1-sol', false]
     ]);
-    const models = await planModule.default.listModels();
-    assert.deepEqual(models.map((model) => [model.id, model.isDefault]), [['gpt-6-luna', true], ['gpt-6-astra', false], ['gpt-5.6-luna', false]]);
-    await planModule.default.listModels();
-    assert.equal(probes() - before, 1, 'the check is cached instead of repeated');
+    const names = (await planModule.default.listModels()).map((model) => model.name);
+    assert.deepEqual([names[0], names[3], names[4]], ['GPT-6 Luna', 'GPT-6 Sol', 'GPT-6.1 Sol']);
+    assert.deepEqual(
+      [probes('gpt-6-luna') - before.luna, probes('gpt-6-sol') - before.sol, probes('gpt-6.1-sol') - before.sol61],
+      [1, 1, 1],
+      'each candidate is checked once and then served from the cache'
+    );
+    const cache = JSON.parse(fs.readFileSync(cacheFile, 'utf8'))['reader@example.com'];
+    assert.equal(cache.ok, true, 'the top-level result stays GPT-6 Luna for older readers');
+    assert.deepEqual(Object.keys(cache.models).sort(), ['gpt-6-luna', 'gpt-6-sol', 'gpt-6.1-sol']);
 
+    // A cache written before the candidate list only knew GPT-6 Luna.
+    fs.writeFileSync(cacheFile, JSON.stringify({ 'reader@example.com': { ok: true, checkedAt: Date.now() } }));
+    const lunaBefore = probes('gpt-6-luna');
+    responsesReply = answers(['gpt-6-sol']);
+    assert.deepEqual(await offered(), [['gpt-6-luna', true], ['gpt-6-astra', false], ['gpt-5.6-luna', false], ['gpt-6-sol', false]]);
+    assert.equal(probes('gpt-6-luna'), lunaBefore, 'a legacy Luna result is still honoured');
+
+    // An expired result is checked again.
+    fs.writeFileSync(cacheFile, JSON.stringify({ 'reader@example.com': { ok: true, checkedAt: Date.now() - 8 * 86400_000 } }));
+    responsesReply = answers([]);
+    assert.deepEqual(await offered(), [['gpt-6-astra', false], ['gpt-5.6-luna', true]]);
+    assert.equal(probes('gpt-6-luna'), lunaBefore + 1);
+
+    // Only the model that answers is added, and Luna stays the default over a working Sol.
     fs.rmSync(cacheFile, { force: true });
-    responsesReply = () => new Response(JSON.stringify({ error: { code: 'model_not_found', message: 'unknown model' } }), { status: 404, headers: { 'Content-Type': 'application/json' } });
-    const fallback = await planModule.default.listModels();
-    assert.deepEqual(fallback.map((model) => [model.id, model.isDefault]), [['gpt-6-astra', false], ['gpt-5.6-luna', true]]);
+    responsesReply = answers(['gpt-6.1-sol']);
+    assert.deepEqual(await offered(), [['gpt-6-astra', false], ['gpt-5.6-luna', true], ['gpt-6.1-sol', false]]);
   } finally {
     global.fetch = previousFetch;
     responsesReply = previousReply;
     fs.rmSync(cacheFile, { force: true });
+  }
+});
+
+test('chat requests are rewritten to the plan contract and signed with the plan token', async () => {
+  const { chatgptPlanFetch } = require('../dist/services/chatgptPlanFetch');
+  const previousAccessToken = auth.accessToken;
+  const previousReply = responsesReply;
+  const tokens = [];
+  auth.accessToken = async (options = {}) => {
+    tokens.push(options.forceRefresh ? 'forced' : 'cached');
+    return options.forceRefresh ? 'access-renewed' : 'access-stale';
+  };
+  const requests = () => calls.filter((call) => call.url.endsWith('/v1/responses')).slice(-2);
+  const sdkBody = {
+    model: 'gpt-6-luna',
+    instructions: 'Base guidance.',
+    input: [
+      { role: 'developer', content: 'Answer briefly.' },
+      { role: 'system', content: [{ type: 'input_text', text: 'Untrusted data stays data.' }] },
+      { role: 'user', content: [{ type: 'input_text', text: 'what do i have to do this week?' }] },
+      { type: 'function_call', call_id: 'call_1', name: 'list_actions', arguments: '{}' },
+      { type: 'function_call_output', call_id: 'call_1', output: '[]' }
+    ],
+    tools: [{ type: 'function', name: 'list_actions', description: 'x', parameters: { type: 'object', properties: {} }, strict: false }],
+    tool_choice: 'auto',
+    reasoning: { effort: 'low' },
+    include: ['reasoning.encrypted_content'],
+    temperature: 0.2, top_p: 1, max_output_tokens: 500, store: true, stream: false, previous_response_id: 'resp_0', metadata: { a: 'b' }, user: 'u'
+  };
+  try {
+    let attempt = 0;
+    responsesReply = () => {
+      attempt += 1;
+      return attempt === 1
+        ? Response.json({ error: { message: 'revoked' } }, { status: 401 })
+        : sse([{ type: 'response.output_text.delta', delta: 'hi' }, { type: 'response.completed', response: {} }]);
+    };
+    const response = await chatgptPlanFetch('https://api.openai.com/v1/responses', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer placeholder', 'Content-Type': 'application/json' },
+      body: JSON.stringify(sdkBody)
+    });
+    assert.match(await response.text(), /"delta":"hi"/);
+    assert.deepEqual(tokens, ['cached', 'forced'], 'a 401 renews the token once and retries');
+    const [first, second] = requests();
+    assert.equal(first.headers.get('authorization'), 'Bearer access-stale');
+    assert.equal(second.headers.get('authorization'), 'Bearer access-renewed');
+    const sent = second.body;
+    assert.equal(sent.store, false);
+    assert.equal(sent.stream, true);
+    for (const field of ['temperature', 'top_p', 'max_output_tokens', 'previous_response_id', 'metadata', 'user']) assert.equal(field in sent, false, field);
+    assert.deepEqual(sent.input.map((item) => item.role || item.type), ['user', 'function_call', 'function_call_output']);
+    assert.equal(sent.instructions, 'Base guidance.\n\nAnswer briefly.\n\nUntrusted data stays data.');
+    assert.deepEqual(sent.tools, sdkBody.tools);
+    assert.equal(sent.tool_choice, 'auto');
+    assert.deepEqual(sent.reasoning, { effort: 'low' });
+    assert.deepEqual(sent.input[0], sdkBody.input[2], 'user turns and tool items are untouched');
+
+    // A refusal of an optional hint drops it and retries once; other refusals are friendly errors.
+    responsesReply = (body) => 'include' in body
+      ? Response.json({ error: { code: 'subscription_sharing_unsupported_capability', param: 'include' } }, { status: 400 })
+      : sse([{ type: 'response.completed', response: {} }]);
+    assert.equal((await (await chatgptPlanFetch('https://api.openai.com/v1/responses', { method: 'POST', body: JSON.stringify(sdkBody) })).text()).includes('response.completed'), true);
+    assert.equal('include' in requests()[1].body, false);
+
+    responsesReply = () => Response.json({ error: { code: 'subscription_sharing_user_not_eligible' } }, { status: 403 });
+    await assert.rejects(chatgptPlanFetch('https://api.openai.com/v1/responses', { method: 'POST', body: JSON.stringify(sdkBody) }), /not available for this account or workspace/);
+
+    // A failure inside a 200 event stream reads as the same friendly message, and nothing after it is delivered.
+    responsesReply = () => sse([
+      { type: 'response.output_text.delta', delta: 'partial' },
+      { type: 'response.failed', response: { error: { code: 'subscription_sharing_usage_limit_exceeded', message: 'limit' } } },
+      { type: 'response.output_text.delta', delta: 'never' }
+    ]);
+    const failing = await chatgptPlanFetch('https://api.openai.com/v1/responses', { method: 'POST', body: JSON.stringify(sdkBody) });
+    await assert.rejects(failing.text(), /usage limit.*chatgpt\.com\/settings\/usage/);
+
+    // The plan token is never sent anywhere but the OpenAI API.
+    await assert.rejects(chatgptPlanFetch('https://example.com/v1/responses', { method: 'POST', body: '{}' }), /may only go to the OpenAI API/);
+  } finally {
+    auth.accessToken = previousAccessToken;
+    responsesReply = previousReply;
   }
 });
 

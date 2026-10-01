@@ -337,3 +337,146 @@ test('the adapter planner only trusts a fully valid plan', () => {
   assert.match(agent.companionSystemPrompt(new Date('2026-10-01T10:00:00Z')), /Today is 2026-10-01/);
   assert.doesNotMatch(agent.companionSystemPrompt(), /Ask Tagvico/);
 });
+
+// A fake Responses API: each model step replies with the next scripted set of events.
+function responsesStream(events) {
+  return new Response(events.map((event) => `data: ${JSON.stringify(event)}\n\n`).join(''), {
+    headers: { 'Content-Type': 'text/event-stream' }
+  });
+}
+const created = { type: 'response.created', response: { id: 'resp_1', created_at: 1_790_000_000, model: 'gpt-6-luna' } };
+const completed = { type: 'response.completed', response: { incomplete_details: null, usage: { input_tokens: 10, output_tokens: 5, total_tokens: 15 } } };
+const functionCallEvents = (id, callId, name, args, reasoning) => [
+  created,
+  ...(reasoning ? [
+    { type: 'response.output_item.added', output_index: 0, item: { type: 'reasoning', id: reasoning.id, encrypted_content: null } },
+    { type: 'response.output_item.done', output_index: 0, item: { type: 'reasoning', id: reasoning.id, encrypted_content: reasoning.encrypted, summary: [] } }
+  ] : []),
+  { type: 'response.output_item.added', output_index: 1, item: { type: 'function_call', id, call_id: callId, name, arguments: '' } },
+  { type: 'response.function_call_arguments.delta', item_id: id, output_index: 1, delta: args },
+  { type: 'response.output_item.done', output_index: 1, item: { type: 'function_call', id, call_id: callId, name, arguments: args, status: 'completed' } },
+  completed
+];
+const messageEvents = (text) => [
+  created,
+  { type: 'response.output_item.added', output_index: 0, item: { type: 'message', id: 'msg_1', role: 'assistant', content: [] } },
+  { type: 'response.output_text.delta', item_id: 'msg_1', output_index: 0, content_index: 0, delta: text },
+  { type: 'response.output_item.done', output_index: 0, item: { type: 'message', id: 'msg_1', role: 'assistant', status: 'completed', content: [{ type: 'output_text', text, annotations: [] }] } },
+  completed
+];
+
+// Mirrors src/lib/server/agent/model-runtime.ts (the Next-only files cannot load here): the AI SDK
+// Responses model with the plan fetch, driven by the same tool set and provider options as the chat.
+async function planChat({ agent, context, prompt, steps, selectedEffort = 'high' }) {
+  const { streamText, stepCountIs, tool } = await import('ai');
+  const { createOpenAI } = await import('@ai-sdk/openai');
+  const { chatgptPlanFetch } = require('../dist/services/chatgptPlanFetch');
+  const { RESOURCE } = require('../dist/services/chatgptPlanAuthService');
+  const { openAIResponsesProviderOptions } = require('../dist/services/openaiModelParameters');
+  const auth = require('../dist/services/chatgptPlanAuthService').default;
+  const previousToken = auth.accessToken;
+  const previousFetch = global.fetch;
+  const requests = [];
+  const script = [...steps];
+  auth.accessToken = async () => 'plan-test-access';
+  global.fetch = async (input, init = {}) => {
+    if (!String(input).startsWith('https://api.openai.com/')) return previousFetch(input, init);
+    requests.push({ url: String(input), headers: new Headers(init.headers), body: JSON.parse(init.body) });
+    const next = script.shift();
+    return next ? responsesStream(next) : new Response('{}', { status: 500 });
+  };
+  try {
+    const executors = agent.companionToolExecutors(context);
+    const tools = Object.fromEntries(Object.keys(agent.companionToolSchemas).map((name) => [name, tool({
+      description: agent.companionToolDescriptions[name],
+      inputSchema: agent.companionToolSchemas[name],
+      execute: executors[name]
+    })]));
+    const plan = createOpenAI({ apiKey: 'chatgpt-plan', baseURL: RESOURCE, fetch: chatgptPlanFetch });
+    const result = streamText({
+      model: plan.responses('gpt-6-luna'),
+      system: agent.companionSystemPrompt(),
+      messages: [{ role: 'user', content: prompt }],
+      tools,
+      stopWhen: stepCountIs(6),
+      maxRetries: 0,
+      providerOptions: { openai: openAIResponsesProviderOptions('gpt-6-luna', selectedEffort, true) }
+    });
+    const parts = [];
+    for await (const part of result.fullStream) parts.push(part);
+    return { requests, parts, steps: parts.some((part) => part.type === 'error') ? [] : await result.steps };
+  } finally {
+    auth.accessToken = previousToken;
+    global.fetch = previousFetch;
+  }
+}
+
+test('a ChatGPT plan chat calls tools by itself, cites only returned documents and keeps its activities', async () => {
+  await withChatWorkspace(async ({ actions, agent, context, workspace }) => {
+    actions.createCase(workspace.id, workspace.member_id, { paperlessDocumentId: 12, title: 'Renew Hausrat insurance', dueAt: '2026-10-03', priority: 'high' });
+    // A question without any Paperless keyword: the keyword planner used to skip every tool for it.
+    const { requests, steps } = await planChat({
+      agent,
+      context,
+      prompt: 'what do i have to do this week?',
+      steps: [
+        functionCallEvents('fc_1', 'call_actions', 'list_actions', '{"status":"open"}', { id: 'rs_1', encrypted: 'encrypted-1' }),
+        functionCallEvents('fc_2', 'call_search', 'search_documents', '{"query":"hausrat"}'),
+        messageEvents('Renew the Hausrat insurance by 3 October [doc:6]. I also saw [doc:99], which does not exist.')
+      ]
+    });
+
+    assert.equal(requests.length, 3);
+    assert.deepEqual(steps.map((step) => step.toolCalls.map((call) => call.toolName)), [['list_actions'], ['search_documents'], []]);
+    assert.match(JSON.stringify(steps[0].toolResults[0].output), /Renew Hausrat insurance/);
+
+    for (const request of requests) {
+      assert.equal(request.url, 'https://api.openai.com/v1/responses');
+      assert.equal(request.headers.get('authorization'), 'Bearer plan-test-access');
+      assert.equal(request.body.store, false);
+      assert.equal(request.body.stream, true);
+      for (const field of ['temperature', 'top_p', 'max_output_tokens']) assert.equal(field in request.body, false, field);
+      assert.ok(request.body.input.every((item) => item.role !== 'system' && item.role !== 'developer'));
+      assert.match(request.body.instructions, /chat assistant of Tagvico/);
+      assert.equal(request.body.model, 'gpt-6-luna');
+      assert.equal(request.body.reasoning.effort, 'high', 'the selected reasoning effort applies');
+      assert.ok(request.body.tools.some((entry) => entry.type === 'function' && entry.name === 'list_actions'));
+      assert.ok(request.body.tools.some((entry) => entry.name === 'search_documents'));
+    }
+    const second = requests[1].body.input;
+    const output = second.find((item) => item.type === 'function_call_output' && item.call_id === 'call_actions');
+    assert.match(output.output, /Renew Hausrat insurance/, 'the tool result goes back to the model');
+    assert.ok(second.some((item) => item.type === 'reasoning' && item.encrypted_content === 'encrypted-1'), 'encrypted reasoning is carried between steps');
+
+    // What the chat stores: one activity per call, and citations limited to documents a tool returned.
+    const activities = steps.flatMap((step) => step.toolCalls.map((call) => {
+      const input = companion.safeCompanionToolInput(call.toolName, call.input);
+      const result = step.toolResults.find((entry) => entry.toolCallId === call.toolCallId);
+      return companion.companionToolActivity(call.toolName, 'output-available', input, companion.safeCompanionToolOutput(call.toolName, input, result.output));
+    }));
+    assert.deepEqual(activities.map((entry) => [entry.toolName, entry.status]), [['list_actions', 'succeeded'], ['search_documents', 'succeeded']]);
+    const text = companion.groundCompanionCitations(companion.sanitizeCompanionText(steps.map((step) => step.text).join('\n\n')), companion.companionDocumentIds(activities));
+    assert.match(text, /\[doc:6\]/);
+    assert.doesNotMatch(text, /\[doc:99\]/);
+  });
+});
+
+test('a ChatGPT plan usage limit reaches the chat as the friendly plan message', async () => {
+  await withChatWorkspace(async ({ agent, context }) => {
+    const { parts } = await planChat({
+      agent,
+      context,
+      prompt: 'hello there',
+      selectedEffort: 'auto',
+      steps: [[
+        created,
+        { type: 'response.failed', response: { error: { code: 'subscription_sharing_usage_limit_exceeded', message: 'limit' } } }
+      ]]
+    });
+    const failure = parts.find((part) => part.type === 'error');
+    assert.ok(failure, 'the stream reports the failure');
+    const described = companion.describeCompanionModelError(failure.error);
+    assert.equal(described.code, 'chatgpt');
+    assert.match(described.message, /usage limit.*chatgpt\.com\/settings\/usage/);
+  });
+});

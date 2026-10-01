@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { Mascot } from '@/components/mascot/mascot';
 import { groupCases } from './groups';
 import type { InboxApproval, InboxCase, InboxData } from './types';
 import { ApprovalRow, CaseRow, Group, ReviewRow } from './work-rows';
@@ -79,7 +80,7 @@ export function InboxFeed({ data }: { data: InboxData }) {
     memberById={memberById}
     canMutate={canMutate}
     busy={busy.has(item.id)}
-    onDone={() => board.patchCase(item, { status: 'done' }, 'Marked as done.')}
+    onDone={() => void board.markDone(item)}
     onAccept={() => board.patchCase(item, { status: 'open' }, 'Suggestion accepted.')}
     onDismiss={() => board.patchCase(item, { status: 'dismissed' }, 'Suggestion dismissed.')}
     onAssign={(memberId) => board.assign(item, memberId)}
@@ -122,7 +123,11 @@ export function InboxFeed({ data }: { data: InboxData }) {
     </>}
 
     {empty ? <div className="empty-state inbox-empty">
-      {filter === 'all' ? <p>Nothing needs you right now. <Link className="link" href="/companion">Ask in chat</Link> what is coming up.</p> : <>
+      {filter === 'all' ? <>
+        <Mascot pose="happy" size={64} />
+        <p className="pg-empty-title">All caught up</p>
+        <p>Nothing needs you right now. Enjoy the quiet, or <Link className="link" href="/companion">ask in chat</Link> what is coming up.</p>
+      </> : <>
         <p>{filter === 'done' ? 'Nothing finished this week yet.' : filter === 'mine' ? 'Nothing is assigned to you.' : `Nothing for ${filterMember?.name || 'this member'}.`}</p>
         <button type="button" className="link link-button" onClick={() => setFilter('all')}>Show everyone</button>
       </>}

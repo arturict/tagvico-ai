@@ -1,87 +1,135 @@
 # Changelog
 
-## 3.5.0 - Unreleased
+## 3.5.0 - 2026-10-01
 
-### Sign in with ChatGPT
+### Added
 
-- New provider `chatgpt` (**ChatGPT plan**): an eligible ChatGPT Plus or Pro
-  plan pays for document filing, the Companion, tag unification and TypeSafe
-  titles, without an API key. It uses OpenAI's Sign in with ChatGPT flow for
-  open-source apps (released 2026-09-29): OAuth with PKCE, dynamic client
-  registration, a stable per-installation host ID, and the public Responses
-  API with `store: false` and streaming, as the preview requires.
-- Because Tagvico usually runs on a different machine from the browser, the
-  sign-in ends on a `127.0.0.1` page that does not load; you paste its address
-  into Tagvico, which alone holds the PKCE verifier and exchanges the one-time
-  code. Settings and first-run setup both offer **Continue with ChatGPT**,
-  **Manage usage** (ChatGPT Settings → Usage) and **Sign out**, which revokes
-  the session at OpenAI.
-- The ID token is verified against OpenAI's signing keys (issuer, audience,
-  nonce, expiry). Tokens are stored owner-only in `data/chatgpt/auth.json` and
-  never reach the browser. Access tokens are renewed automatically; a lock file
-  keeps the backend and web processes from spending the same rotating refresh
-  token.
-- Usage-limit, eligibility and unsupported-request errors from OpenAI stop the
-  request with a specific message; Tagvico never falls back to another
-  provider. The model picker shows only the models the plan lists;
-  Tagvico preselects the plan's lightest tier (Luna); `CHATGPT_MODEL`
-  overrides it.
+- **Sign in with ChatGPT.** New provider `chatgpt` (**ChatGPT plan**): an
+  eligible ChatGPT Plus or Pro plan pays for document filing, the Companion,
+  tag unification and TypeSafe titles, without an API key. It uses OpenAI's
+  Sign in with ChatGPT flow for open-source apps (OAuth with PKCE, dynamic
+  client registration, a stable per-installation host ID) and the public
+  Responses API with `store: false` and streaming, as the preview requires.
+  Settings and first-run setup offer **Continue with ChatGPT**, **Manage
+  usage** and **Sign out**, which revokes the session at OpenAI. Because
+  Tagvico usually runs on another machine than the browser, the sign-in ends
+  on a `127.0.0.1` page that does not load; you paste its address into
+  Tagvico, which alone holds the PKCE verifier. ChatGPT plan is listed first
+  in the provider list with a **New** badge. See
+  [`docs/providers/chatgpt.md`](docs/providers/chatgpt.md).
+- **GPT-6 Luna as the default.** The plan preselects `gpt-6-luna`. Plans often
+  do not list it, so Tagvico sends one tiny request to check, caches the
+  answer per account for a week, and offers Luna only if it worked; otherwise
+  it preselects the lightest listed tier. `CHATGPT_MODEL` overrides it.
+  OpenAI direct and OpenRouter default to `gpt-6-luna` too.
+- **Chat start page.** Signing in lands on a chat with a greeting and the
+  composer. Up to three suggestion pills are built from your real documents
+  and actions, answers carry source pills for the Paperless documents the
+  tools returned, and a quiet line links to the most urgent open item.
+- **Approval cards in chat.** A proposed change appears as a compact card with
+  **Approve** and **Reject**, and collapses to a one-line outcome after the
+  decision. Declined proposals say why no approval was created.
+- **Needs you.** One page for the whole household: overdue and upcoming
+  actions, approvals waiting for a decision and review items, filterable by
+  person. The count matches the sidebar.
+- **People and case detail.** The sidebar shows household members as one row of
+  avatars with open counts. Each person has a page with their open work, and
+  each case opens a detail page with checklist, owner, due date and history.
+- **Channels settings tab.** Telegram and Discord are configured in Settings:
+  token, enabled switch, allowed people, reminders, the Discord home channel
+  and a token check, with live status for each bot.
+- **Settings.** Paperless connection test and public URL, member management
+  (add, rename, set role, remove, Paperless token per member), and inline
+  validation on every field.
+- **Model picker.** One compact picker for the chat header and Settings: a
+  provider rail with favourites, search, provider logos, favourite stars,
+  Ctrl+1..9 shortcuts and full keyboard control, plus a thinking-effort chip.
+- **TypeSafe Jev provider** (`typesafe`) for closed-list filing: one yes/no
+  question per existing tag and a choice among existing correspondents and
+  document types, with a probability per field as confidence. Pair it with
+  any text provider (`TYPESAFE_TEXT_PROVIDER`) for titles and new senders. It
+  never creates tags or document types. `TYPESAFE_TAG_THRESHOLD` (default
+  `0.6`) sets when a tag is suggested. See
+  [`docs/providers/typesafe.md`](docs/providers/typesafe.md).
+
+### Changed
+
+- **New design.** Tagvico is redesigned in OpenAI's design language: the
+  vendored Apps SDK UI design tokens (MIT, notice kept in
+  `src/app/styles/openai/LICENSE`), system fonts, neutral greys, a near-black
+  primary button and borders instead of shadows. Sidebar, chat, Needs you,
+  Settings, Documents, Activity, login and setup share one layout. Settings has
+  six tabs: Paperless, AI models, Automation, Channels, Tags and People &
+  security.
+- **Navigation.** The sidebar has New chat, Needs you, Documents, the people
+  row and chats grouped by day. Settings, Review queue, Organize tags,
+  Activity, What's new and Sign out are in the account menu; the former Home
+  dashboard is **Overview** there. Phones get a top bar and a menu drawer, with
+  no bottom tab bar.
 - The Codex-based provider is renamed **ChatGPT via Codex (legacy)** and stays
-  in maintenance mode for existing installations.
-
-### TypeSafe Jev provider
-
-- New provider `typesafe` for [TypeSafe's Jev](https://docs.typesafe.ai), a
-  decision model that answers typed questions with probabilities instead of
-  generating text. Tagvico uses it for closed-list filing: one yes/no question
-  per existing tag, a choice among the existing correspondents and document
-  types, the title chosen from the first lines of the document and the date
-  chosen from the dates found in the text. It never creates a new tag,
-  correspondent or document type.
-- The probability of each chosen option is the field confidence, so the
-  existing review threshold and "held for review" behaviour apply unchanged.
-  `TYPESAFE_TAG_THRESHOLD` (default `0.6`) sets the probability from which a
-  tag is suggested.
-- **Text provider pairing.** `TYPESAFE_TEXT_PROVIDER` names any configured
-  text provider (including the ChatGPT-subscription and GitHub Copilot
-  adapters and local Ollama); one small extra call per document writes the
-  title and, only when Jev finds no matching correspondent, names the sender.
-  `TYPESAFE_TEXT_MODEL` overrides the model. In a 60-document synthetic test
-  good titles rose from 32% to 98% and all 13 missing senders were named,
-  while Jev kept correspondent 98%, date 100% and document type 88%.
-- Not supported with this provider, by design: new tags and document types,
-  custom field values, owner suggestions, the custom and system prompt, external API
-  enrichment, thumbnails, and the Companion and family bots. Keep a
-  text-generating provider configured for the Companion.
-- `scripts/jev-eval.mjs` reproduces the synthetic test documented in
-  `docs/providers/typesafe.md` (14 documents: correspondent, title, date and
-  language 14/14, document type 12/14, tags precision 0.80 at recall 0.82,
-  about 300 ms and about USD 0.08 per 1,000 documents).
-
-### GPT-6 Luna
-
+  in maintenance mode.
 - Luna recommendations move from GPT-5.6 Luna to `gpt-6-luna`
-  (`openai/gpt-6-luna` on OpenRouter): the TypeSafe text-model placeholder,
-  `.env.example` and the provider docs. The offline cost estimate knows
-  GPT-6 Luna at USD 0.10/0.50 per 1M input/output tokens and still prices
-  `gpt-5.6-luna` for installations that keep it.
-- Removed the stale `OPENAI_ENABLE_GPT_5_6_PREVIEW` mentions from the README,
-  `.env.example` and provider docs. The flag has had no effect since 3.1.0,
-  when OpenAI direct started accepting any model ID; setting it still does
-  nothing.
-- GPT-6 models are recognised as reasoning models on every OpenAI path.
-  Before, only `gpt-5*` and o-series ids were, so `gpt-6-luna` was sent
-  `temperature`, which OpenAI rejects when reasoning is on. Document
-  analysis, the playground, status checks, manual analysis and the Companion
-  no longer send `temperature` to them. Setup validation now asks GPT-6 Luna
-  and Sol for a tool call at reasoning effort `none`, the only effort at which
-  Chat Completions accepts tools for them.
-- `AI_REASONING_EFFORT` is mapped to values GPT-6 accepts: `minimal` becomes
-  `low`, `ultra` becomes `max`, and `none` becomes `low` for GPT-6 Astra.
-  The Companion forces the pinned OpenAI SDK to treat GPT-6 as a reasoning
-  model, so a selected effort is no longer dropped.
-- The offline cost estimate prices `gpt-6-sol` at USD 2/10 per 1M
-  input/output tokens.
+  (`openai/gpt-6-luna` on OpenRouter). GPT-6 models are recognised as reasoning
+  models on every OpenAI path, so they no longer receive `temperature`.
+  `AI_REASONING_EFFORT` is mapped to values GPT-6 accepts (`minimal` becomes
+  `low`, `ultra` becomes `max`, `none` becomes `low` for GPT-6 Astra). The
+  offline cost estimate knows GPT-6 Luna (USD 0.10/0.50 per 1M tokens) and
+  GPT-6 Sol (USD 2/10).
+- `docker-compose.yml` passes the Telegram and Discord variables through empty
+  by default instead of `no`, `yes` and `[]` (see Upgrade notes).
+
+### Fixed
+
+- Settings saved in the UI now take effect. Docker-injected variables are
+  captured once per process, so later copies of the config module no longer
+  treat every saved setting as injected. Empty Compose placeholders no longer
+  lock Telegram and Discord settings.
+- Done dates come from the status event, and sync bookkeeping no longer moves
+  `updated_at`.
+- New household profiles default to member. Removing a member revokes their
+  channel access first.
+- Owner bot entries follow a rotated Paperless token, and Telegram resets its
+  update offset after a token change.
+- ChatGPT plan tokens stay consistent across the backend and web processes:
+  sign-out, sign-in and refresh share one owner-checked lock, and a refreshed
+  ID token is verified before its tokens are used.
+- The Paperless connection test reuses the saved token only for the saved
+  address.
+- Chat cites only documents the tools returned, and long chat titles and
+  prompts are truncated on phones instead of scrolling sideways.
+- The Documents list hides the modified date and actions on phones.
+
+### Security
+
+- Non-owners no longer receive installation settings from the settings API.
+- The Paperless connection test cannot send the saved token to a different
+  address.
+- Dependency overrides move `fast-uri` to `3.1.8` (GHSA-qw65-cvwx-89v3,
+  GHSA-58mr-gqgx-xq4g, high) and `undici` to `6.28.1` (GHSA-3wwx-pv8p-q78v).
+  `npm audit --omit=dev --audit-level=high` reports zero findings.
+- ChatGPT plan tokens are stored owner-only in `data/chatgpt/auth.json`, never
+  reach the browser, and the ID token is verified against OpenAI's signing
+  keys.
+
+### Upgrade notes
+
+- Back up `tagvico_ai_data`, pin `ghcr.io/arturict/tagvico-ai:3.5.0` and
+  recreate only the Tagvico container. This release does not change the data
+  schema.
+- **Compose channel variables.** The bundled `docker-compose.yml` now passes
+  `TELEGRAM_*` and `DISCORD_*` through empty. Before, values such as
+  `TELEGRAM_BOT_ENABLED=no` and `TELEGRAM_USERS_JSON=[]` were always set, so
+  the container environment locked those settings. If you copy the new file,
+  the Channels tab can save them. If you keep your old file, or set a value in
+  your own `.env`, that value still wins and the Channels tab lists it as set
+  by the container environment.
+- **Channels moved.** Telegram and Discord left the Automation tab for
+  Settings -> Channels. Old `/settings/automation#telegram` and `#discord`
+  links redirect there, and `/settings/telegram` and `/settings/discord` open
+  the Channels tab.
+- **Navigation.** Sign-in now opens the chat. The former Home dashboard is
+  **Overview** in the account menu, and Ask Tagvico is now called Chat. Phones
+  use a top bar and drawer instead of horizontal navigation.
 
 ## 3.4.1 - 2026-09-15
 

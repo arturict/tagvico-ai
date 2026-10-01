@@ -2,9 +2,11 @@
 
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
-import { BookOpen, ChevronsUpDown, ExternalLink, LogOut, Megaphone, Settings } from 'lucide-react';
+import { useState } from 'react';
+import { BookOpen, ChevronsUpDown, ExternalLink, Keyboard, LogOut, Megaphone, Settings } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
 import { MemberAvatar } from '@/components/member-avatar';
+import { ShortcutsDialog } from './shortcuts-dialog';
 
 export interface AccountMenuLink {
   href: string;
@@ -25,7 +27,8 @@ export function UserMenu({ name, memberId, role, links, recoveryTotal, paperless
   recoveryTotal: number;
   paperlessUrl: string | null;
 }) {
-  return <DropdownMenu.Root>
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  return <><DropdownMenu.Root>
     <DropdownMenu.Trigger asChild>
       <button type="button" className="account-trigger" aria-label={`${name}, account menu`} title={name}>
         <MemberAvatar name={name} memberId={memberId} size={28} />
@@ -57,11 +60,14 @@ export function UserMenu({ name, memberId, role, links, recoveryTotal, paperless
         <DropdownMenu.Item asChild>
           <a href="/docs" className="menu-item"><BookOpen aria-hidden="true" />Docs</a>
         </DropdownMenu.Item>
+        <DropdownMenu.Item className="menu-item" onSelect={() => setShortcutsOpen(true)}>
+          <Keyboard aria-hidden="true" />Keyboard shortcuts
+        </DropdownMenu.Item>
         <DropdownMenu.Separator className="menu-separator" />
         <DropdownMenu.Item asChild>
           <a href="/logout" className="menu-item"><LogOut aria-hidden="true" />Sign out</a>
         </DropdownMenu.Item>
       </DropdownMenu.Content>
     </DropdownMenu.Portal>
-  </DropdownMenu.Root>;
+  </DropdownMenu.Root><ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} /></>;
 }

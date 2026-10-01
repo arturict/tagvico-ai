@@ -1,9 +1,11 @@
 import { changelogEntries } from '@/lib/changelog';
+import { Mascot } from '@/components/mascot/mascot';
 
 export function ChangelogWorkspace() {
   return <div className="page-column log-page">
     <header className="page-header">
-      <div className="page-header-text">
+      <div className="page-header-text log-head">
+        <Mascot pose="waving" size={48} />
         <h1 className="page-title">What&apos;s new</h1>
       </div>
     </header>

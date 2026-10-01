@@ -183,12 +183,6 @@
   height: 16px;
 }
 
-.chat-thinking {
-  margin: 0;
-  font-size: var(--font-text-sm-size);
-  line-height: var(--font-text-sm-line-height);
-}
-
 /* Tool activity: one muted line that opens to its steps. */
 
 .chat-activity {
@@ -545,14 +539,6 @@
 
 .chat-greeting {
   margin: 0;
-}
-
-.chat-first-run {
-  max-width: 56ch;
-  margin: 12px auto 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-text-md-size);
-  line-height: var(--font-text-md-line-height);
 }
 
 .chat-paperless-note {

@@ -1,6 +1,7 @@
 // Shared brain of the chat: the system prompt, the tool schemas and executors
 // used by every provider, and the guarded text-adapter turn for providers that
-// cannot call tools natively (ChatGPT plan, Codex, Copilot). The Next route
+// cannot call tools natively (Codex, Copilot). The ChatGPT plan calls tools
+// itself through the AI SDK like the OpenAI API. The Next route
 // only wires these to a model and a response stream.
 import crypto from 'node:crypto';
 import { z } from 'zod';

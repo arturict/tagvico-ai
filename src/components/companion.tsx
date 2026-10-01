@@ -8,7 +8,7 @@ import {
   type UIMessage
 } from 'ai';
 import { useChat } from '@ai-sdk/react';
-import { Check, Clipboard } from 'lucide-react';
+import { ArrowDown, Check, Clipboard } from 'lucide-react';
 import {
   NO_PROVIDER_MESSAGE,
   companionDocumentIds,
@@ -33,6 +33,11 @@ import { ChatComposer } from '@/components/chat/chat-composer';
 import { ChatEmptyState, ChatStarters, type ChatUrgentItem } from '@/components/chat/chat-empty-state';
 import { ChatErrorNotice } from '@/components/chat/chat-error-notice';
 import { ChatModelChip, type ModelChipState } from '@/components/chat/chat-model-chip';
+import { ChatWorking } from '@/components/chat/chat-working';
+import type { DayPart } from '@/components/chat/greeting';
+import { useDraft } from '@/components/chat/use-draft';
+import { OVERLAY_SELECTOR, shortcutAction } from '@/components/shell/shortcuts';
+import { useOnline } from '@/components/shell/use-online';
 import {
   CitationTitles,
   SourceChips,
@@ -115,6 +120,7 @@ export function Companion({
   approverNames,
   needsCount: initialNeedsCount,
   start,
+  dayPart,
   showFirstRun = false
 }: {
   sessionId: string;
@@ -130,17 +136,25 @@ export function Companion({
     suggestions: CompanionSuggestion[];
     urgent?: ChatUrgentItem | null;
   } | null;
+  /** Part of the day for the greeting, decided once on the server. */
+  dayPart?: DayPart;
   showFirstRun?: boolean;
 }) {
   const [approvals, setApprovals] = useState(initialApprovals);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useDraft(sessionId);
   const [notice, setNotice] = useState('');
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [decisionBusy, setDecisionBusy] = useState('');
   const [copiedMessage, setCopiedMessage] = useState('');
   const [needsCount, setNeedsCount] = useState(initialNeedsCount);
   const [modelState, setModelState] = useState<ModelChipState>('loading');
-  const endRef = useRef<HTMLDivElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const copiedTimer = useRef<number | undefined>(undefined);
+  // Whether new content keeps the view at the bottom. Scrolling up during a long answer turns it off.
+  const followEnd = useRef(true);
+  const [atBottom, setAtBottom] = useState(true);
+  const online = useOnline();
   const transport = useMemo(
     () => new DefaultChatTransport({ api: '/api/companion', body: { sessionId } }),
     [sessionId]
@@ -159,9 +173,43 @@ export function Companion({
   const lastIsQuestion = messages.at(-1)?.role === 'user';
   const isEmpty = !messages.length;
 
+  const scrollToEnd = useCallback(() => {
+    const thread = threadRef.current;
+    if (thread) thread.scrollTop = thread.scrollHeight;
+  }, []);
   useEffect(() => {
-    endRef.current?.scrollIntoView({ behavior: isWorking ? 'smooth' : 'instant', block: 'end' });
-  }, [isWorking, messages, approvals]);
+    if (followEnd.current) scrollToEnd();
+  }, [isWorking, messages, approvals, scrollToEnd]);
+  const onThreadScroll = () => {
+    const thread = threadRef.current;
+    if (!thread) return;
+    const nearEnd = thread.scrollHeight - thread.scrollTop - thread.clientHeight < 80;
+    followEnd.current = nearEnd;
+    setAtBottom(nearEnd);
+  };
+
+  // On a start page with a keyboard and mouse the message box is ready to type into; on phones the keyboard stays closed.
+  useEffect(() => {
+    if (initialMessages.length === 0 && window.matchMedia('(pointer: fine)').matches) composerRef.current?.focus({ preventScroll: true });
+  }, [initialMessages.length]);
+
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      const action = shortcutAction(event, event.target as Element | null, {
+        streaming: isWorking,
+        overlayOpen: Boolean(document.querySelector(OVERLAY_SELECTOR))
+      });
+      if (action === 'focus-composer') {
+        event.preventDefault();
+        composerRef.current?.focus();
+      } else if (action === 'stop-response') {
+        event.preventDefault();
+        void stop();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isWorking, stop]);
 
   const refreshApprovals = useCallback(async () => {
     try {
@@ -223,6 +271,8 @@ export function Companion({
     setInput('');
     setNotice('');
     clearError();
+    followEnd.current = true;
+    setAtBottom(true);
     void sendMessage({ text: normalized });
   };
   const submit = (event: FormEvent) => {
@@ -261,9 +311,10 @@ export function Companion({
     try {
       await navigator.clipboard.writeText(text);
       setCopiedMessage(message.id);
-      window.setTimeout(() => setCopiedMessage(''), 1_500);
+      window.clearTimeout(copiedTimer.current);
+      copiedTimer.current = window.setTimeout(() => setCopiedMessage(''), 1_500);
     } catch {
-      setNotice('Could not copy this answer.');
+      setNotice('Could not copy this answer. Select the text and copy it by hand instead.');
     }
   };
 
@@ -321,9 +372,14 @@ export function Companion({
           <SourceChips documents={sources} />
         </MessageContent>
         {answers.some(Boolean) ? <MessageActions className="chat-message-actions">
-          <MessageAction label="Copy answer" tooltip="Copy answer" onClick={() => void copyMessage(message)}>
+          <MessageAction
+            label={copiedMessage === message.id ? 'Copied' : 'Copy answer'}
+            tooltip={copiedMessage === message.id ? 'Copied' : 'Copy answer'}
+            onClick={() => void copyMessage(message)}
+          >
             {copiedMessage === message.id ? <Check /> : <Clipboard />}
           </MessageAction>
+          {copiedMessage === message.id ? <span className="chat-copied" role="status">Copied</span> : null}
         </MessageActions> : null}
         {proposals.length ? <div className="chat-proposals">{proposals.map(renderApproval)}</div> : null}
       </Message>
@@ -332,7 +388,13 @@ export function Companion({
 
   // Proposals created before cards were tied to messages still need a place.
   const looseApprovals = approvals.filter((approval) => approval.status === 'pending' && !proposalIds.includes(approval.id));
-  const visibleError = chatError
+  const lastMessage = messages.at(-1);
+  const answerStarted = lastMessage?.role === 'assistant'
+    && lastMessage.parts.some((part) => part.type === 'text' && part.text.trim());
+  const failure = chatError && !online && chatError.code === 'generic'
+    ? { ...chatError, message: 'You are offline, so Tagvico could not reach the AI. Try again when your connection is back.' }
+    : chatError;
+  const visibleError = failure
     || (notice ? { code: 'generic' as const, message: notice } : null)
     || (modelState === 'none' ? { code: 'no-provider' as const, message: NO_PROVIDER_MESSAGE } : null);
 
@@ -345,9 +407,10 @@ export function Companion({
         <ChatModelChip sessionId={sessionId} onState={setModelState} />
       </header>
 
-      <div className="chat-thread" aria-live="polite">
+      <div className="chat-thread" aria-live="polite" ref={threadRef} onScroll={onThreadScroll}>
         {isEmpty ? <ChatEmptyState
           displayName={displayName}
+          dayPart={dayPart}
           paperless={start?.paperless ?? 'ok'}
           canManageSettings={isOwner}
           firstRun={showFirstRun ? {
@@ -357,13 +420,22 @@ export function Companion({
         /> : <div className="chat-thread-inner">
           <h1 className="sr-only">Chat</h1>
           {messages.map(renderMessage)}
-          {status === 'submitted' ? <p className="chat-thinking shimmer">Thinking…</p> : null}
+          {isWorking && !answerStarted ? <ChatWorking label={status === 'submitted' ? 'Thinking…' : 'Working on it…'} /> : null}
           {looseApprovals.map(renderApproval)}
-          <div ref={endRef} />
         </div>}
       </div>
 
       <div className="chat-dock">
+        {!isEmpty && !atBottom ? <button
+          type="button"
+          className="chat-scroll-down"
+          aria-label="Scroll to the latest message"
+          onClick={() => {
+            followEnd.current = true;
+            setAtBottom(true);
+            scrollToEnd();
+          }}
+        ><ArrowDown aria-hidden="true" /></button> : null}
         {visibleError ? <ChatErrorNotice
           error={visibleError}
           canManageSettings={isOwner}
@@ -377,6 +449,7 @@ export function Companion({
           onStop={() => void stop()}
           isWorking={isWorking}
           canSend={modelState !== 'none'}
+          inputRef={composerRef}
         />
       </div>
 

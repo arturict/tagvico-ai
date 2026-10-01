@@ -191,9 +191,10 @@ test('tool presentation exposes safe research metadata but strips OCR, proposal 
   assert.equal(failed.detail.includes('provider-secret'), false);
 });
 
-test('subscription adapters only research clear Paperless intents', () => {
+test('subscription adapters research everything except small talk', () => {
   assert.equal(research.shouldPlanAdapterResearch('Tell me what Tagvico can do'), false);
-  assert.equal(research.shouldPlanAdapterResearch('Is this actionable?'), false);
+  assert.equal(research.shouldPlanAdapterResearch('Thanks!'), false);
+  assert.equal(research.shouldPlanAdapterResearch('Who sent me the Swisscom letter?'), true);
   assert.equal(research.shouldPlanAdapterResearch('Show my Paperless tags'), true);
   assert.equal(research.shouldReadCompanionSearchResults('Read my document about Alpenstrom cancellation terms'), true);
   assert.deepEqual(research.planCompanionResearch('hey'), {
@@ -251,6 +252,43 @@ test('subscription adapters only research clear Paperless intents', () => {
   });
 });
 
+test('adapter planning lists the actions for deadline, to-do, payment and bill questions in English and German', () => {
+  const lists = (question) => research.planCompanionResearch(question).steps.some((step) => step.toolName === 'list_actions');
+  for (const question of [
+    'what do i have to do this week?',
+    'What is due this week?',
+    'Which payments are coming up?',
+    'Do I have any unpaid bills?',
+    'What tasks are open?',
+    'Any deadlines I should know about?',
+    'What are my todos?',
+    'Was muss ich diese Woche erledigen?',
+    'Was ist fällig?',
+    'Welche Zahlungen stehen an?',
+    'Welche Rechnungen muss ich noch bezahlen?',
+    'Gibt es überfällige Aufgaben?',
+    'Was steht heute an?'
+  ]) assert.equal(lists(question), true, question);
+  // Bills are also documents, so a search runs next to the action list.
+  const bills = research.planCompanionResearch('Which bills are due?');
+  assert.deepEqual(bills.steps.map((step) => step.toolName), ['list_actions', 'search_documents']);
+  assert.equal(research.planCompanionResearch('What documents are tagged Tax?').steps.some((step) => step.toolName === 'list_actions'), false);
+});
+
+test('adapter planning searches for any question that is not small talk', () => {
+  const swisscom = research.planCompanionResearch('Who sent me the letter from Swisscom about my mobile plan?');
+  assert.deepEqual(swisscom.steps, [{ toolName: 'search_documents', input: { query: 'sent letter Swisscom mobile plan' } }]);
+  assert.deepEqual(
+    research.planCompanionResearch('Wann läuft meine Autoversicherung ab?').steps.map((step) => step.toolName),
+    ['search_documents']
+  );
+  for (const smallTalk of ['hi', 'Hallo!', 'Thanks', 'ok', 'Danke', 'what can you do?', 'Wie geht\'s?', 'Tell me what Tagvico can do']) {
+    assert.deepEqual(research.planCompanionResearch(smallTalk).steps, [], smallTalk);
+    assert.equal(research.shouldPlanAdapterResearch(smallTalk), false, smallTalk);
+  }
+  assert.equal(research.shouldPlanAdapterResearch(''), false);
+});
+
 test('Companion model API authenticates session ownership and validates every persisted selection', () => {
   const route = fs.readFileSync(
     path.join(__dirname, '..', 'src', 'app', 'api', 'companion', 'models', 'route.ts'),
@@ -294,8 +332,8 @@ test('Companion UI renders safe tool traces without dumping raw model objects', 
 
 test('Companion message scrolling never returns a value as an effect cleanup', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'companion.tsx'), 'utf8');
-  assert.match(source, /useEffect\(\(\) => \{\s*endRef\.current\?\.scrollIntoView/);
-  assert.doesNotMatch(source, /useEffect\(\(\) => endRef\.current\?\.scrollIntoView/);
+  assert.match(source, /useEffect\(\(\) => \{\s*if \(followEnd\.current\) scrollToEnd\(\);\s*\}, \[/);
+  assert.doesNotMatch(source, /useEffect\(\(\) => scrollToEnd\(\)/);
 });
 
 test('navigation hides Review immediately in automatic write mode', () => {

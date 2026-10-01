@@ -22,15 +22,17 @@ and focuses on the action layer. See
 [![Latest release](https://img.shields.io/github/v/release/arturict/tagvico-ai)](https://github.com/arturict/tagvico-ai/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/arturict/tagvico-ai/ci.yml?branch=main&label=CI)](https://github.com/arturict/tagvico-ai/actions/workflows/ci.yml)
 
-![Tagvico v3.2 Home workspace](website/versions/v3/public/screenshots/home-paper-pine-v3.png)
+![Tagvico 3.5 chat start page with suggestions built from real documents and the household people row](website/versions/v3/public/screenshots/chat-v35.png)
 
 ## Why Tagvico
 
+- **Chat first** — Tagvico opens on a chat with suggestions built from your real documents. Answers cite the Paperless documents they used, and proposed changes wait as approval cards.
+- **One page for what needs you** — overdue and upcoming actions, pending approvals and review items for the whole household, with a page per person and per case.
 - **Action Cases, not loose reminders** — one case per Paperless document, with priority, owner, due date, audit trail, and up to 100 checklist steps.
 - **A household, not a single user** — assign work to family members, with roles that decide who may approve what.
 - **AI with approval boundaries** — the Companion can read permitted documents and prepare changes; only an owner or adult can execute a write.
-- **Your choice of model** — the Companion uses Vercel AI SDK v6 for OpenCode Go, OpenRouter, OpenAI, and compatible gateways, or your ChatGPT Plus or Pro plan through the official Sign in with ChatGPT flow.
-- **Optional Telegram and Discord access** — allowlisted family members can search, upload, list actions, and approve or reject proposals using their own Paperless tokens.
+- **Your choice of model** — the Companion uses Vercel AI SDK v6 for OpenCode Go, OpenRouter, OpenAI, and compatible gateways, or your ChatGPT Plus or Pro plan through the official Sign in with ChatGPT flow, with no API key.
+- **Optional Telegram and Discord access** — allowlisted family members can search, upload, list actions, and approve or reject proposals using their own Paperless tokens. Configure both under Settings → Channels.
 - **Designed for homelabs** — one container, one persistent volume, and SQLite for processing history and retries.
 - **Built to recover** — durable OCR and terminal-failure queues, safe rescans, original-metadata restore, and interrupted-job recovery.
 - **Operationally hardened** — optional MFA, rate limits, same-origin mutation checks, protected setup, and generated JWT secrets.
@@ -83,27 +85,45 @@ on the action layer. See [docs/v4-plan.md](docs/v4-plan.md).
 
 ## See Tagvico in action
 
-The interface keeps the important decisions visible: what has been processed,
-which account-scoped model is active, and which vocabulary the model may use.
+Tagvico opens on a chat, keeps what needs a person on one page, and shows who
+in the household owns what.
 
 <table>
   <tr>
     <td width="50%">
-      <img src="website/versions/v3/public/screenshots/ai-models-paper-pine-v3.png" alt="Tagvico v3.2 AI model settings showing the supported provider registry">
-      <br><strong>Use the provider boundary that fits your archive.</strong><br>
-      Live model discovery, write-only credentials, local inference, API providers, ChatGPT subscription, and GitHub Copilot.
+      <img src="website/versions/v3/public/screenshots/needs-you-v35.png" alt="Tagvico 3.5 Needs you page grouping overdue, this week and later actions">
+      <br><strong>See what needs you.</strong><br>
+      Overdue, this week and later, with approvals and review items, filterable by person.
     </td>
     <td width="50%">
-      <img src="website/versions/v3/public/screenshots/companion-paper-pine-v3.png" alt="Tagvico v3.2 persistent Ask Tagvico workspace">
-      <br><strong>Research with a visible approval boundary.</strong><br>
-      Persistent chats, a configured model picker, privacy-safe tool activity, and explicit approval before writes.
+      <img src="website/versions/v3/public/screenshots/person-v35.png" alt="Tagvico 3.5 person page listing one household member's open actions">
+      <br><strong>Give everyone a page.</strong><br>
+      Each household member has their role, open work and approvals in one place.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%">
+      <img src="website/versions/v3/public/screenshots/settings-ai-models-v35.png" alt="Tagvico 3.5 AI models settings with ChatGPT plan listed first">
+      <br><strong>Use your ChatGPT plan, or your own key.</strong><br>
+      ChatGPT plan, OpenAI, OpenRouter, Ollama and compatible endpoints, with write-only credentials.
+    </td>
+    <td width="50%">
+      <img src="website/versions/v3/public/screenshots/settings-channels-v35.png" alt="Tagvico 3.5 Channels settings for Telegram and Discord">
+      <br><strong>Set up Telegram and Discord in Settings.</strong><br>
+      Token check, allowed people, reminders and live status per bot.
     </td>
   </tr>
 </table>
 
-<p align="center"><em>Sanitized v3.2 screens from a representative installation. No document contents, credentials, endpoints, or account identifiers are shown.</em></p>
+<p align="center">
+  <img src="website/versions/v3/public/screenshots/mobile-chat-v35.png" alt="Tagvico 3.5 chat on a phone" width="240">
+  &nbsp;&nbsp;
+  <img src="website/versions/v3/public/screenshots/mobile-needs-you-v35.png" alt="Tagvico 3.5 Needs you page on a phone" width="240">
+</p>
 
-## Stable quick start (v3.4.1)
+<p align="center"><em>Screens from a freshly seeded demo instance with synthetic data. No real documents, credentials, endpoints or account identifiers are shown.</em></p>
+
+## Stable quick start (v3.5.0)
 
 Use only immutable tags that are present on the
 [GitHub releases page](https://github.com/arturict/tagvico-ai/releases).
@@ -117,7 +137,7 @@ services:
   tagvico-ai:
     # Pin an immutable release tag for upgrades you can rely on.
     # See https://github.com/arturict/tagvico-ai/releases for the current version.
-    image: ghcr.io/arturict/tagvico-ai:3.4.1
+    image: ghcr.io/arturict/tagvico-ai:3.5.0
     container_name: tagvico-ai
     restart: unless-stopped
     cap_drop:
@@ -161,7 +181,7 @@ must remain reachable from the LAN.
 1. **Start the container.** Run `docker compose up -d`, then open <http://localhost:8080/setup>.
 2. **Connect Paperless-ngx.** Paste its base URL and an API token (Paperless-ngx → Settings → My API token). Do not add `/api` to the URL. If Paperless runs on the Docker host, use `http://host.docker.internal:<port>` on Docker Desktop or the host's LAN IP on Linux. If both apps share a Docker network, use the Paperless service name.
 3. **Choose a model provider.** Pick OpenRouter for the fastest curated start, Ollama to keep everything on your own hardware, or any other supported provider (see below). Add the required key or endpoint.
-4. **Create the owner and review the safe start.** Setup starts new installations in **Review first** mode with scheduled scans paused. After sign-in, open **Settings** to choose writable fields, enable a schedule, or switch metadata filing to **Automatic** when representative documents have been verified. Ask Tagvico writes always remain approval-gated.
+4. **Create the owner and review the safe start.** Setup starts new installations in **Review first** mode with scheduled scans paused. After sign-in you land in the chat; open **Settings** from the account menu to choose writable fields, enable a schedule, or switch metadata filing to **Automatic** when representative documents have been verified. Chat writes always remain approval-gated.
 
 The first run creates a tiny local admin account, stored in the SQLite database inside the persistent volume.
 
@@ -180,7 +200,7 @@ docker run -d \
   -e TAGVICO_AI_BIND_ADDRESS=127.0.0.1 \
   -e TAGVICO_TELEMETRY_ENDPOINT=https://telemetry.tagvico.arturf.ch/v1/heartbeat \
   -v tagvico_ai_data:/app/data \
-  ghcr.io/arturict/tagvico-ai:3.4.1
+  ghcr.io/arturict/tagvico-ai:3.5.0
 ```
 
 For remote setup, replace the published address with
@@ -250,7 +270,13 @@ The canonical application variables are `TAGVICO_AI_PORT`, `TAGVICO_AI_HOST_PORT
 
 ### Optional Telegram bot
 
-Set `TELEGRAM_BOT_ENABLED=yes`, provide a BotFather token in
+Configure it under **Settings → Channels → Telegram** (enable it, paste the
+BotFather token, add the allowed people), or set the environment variables
+below. The bundled `docker-compose.yml` passes the `TELEGRAM_*` variables
+through empty, so the tab can save them; a value you set in Compose or `.env`
+wins and is shown there as set by the container environment.
+
+With environment variables, set `TELEGRAM_BOT_ENABLED=yes`, provide a BotFather token in
 `TELEGRAM_BOT_TOKEN`, and allowlist users with independent Paperless tokens:
 
 ```dotenv
@@ -280,7 +306,10 @@ calculated totals as assistant summaries rather than accounting-grade results.
 
 ### Optional Discord bot
 
-Set `DISCORD_BOT_ENABLED=yes`, provide an application bot token in
+Configure it under **Settings → Channels → Discord**, or set the environment
+variables below; as with Telegram, a value set in Compose or `.env` wins.
+
+With environment variables, set `DISCORD_BOT_ENABLED=yes`, provide an application bot token in
 `DISCORD_BOT_TOKEN`, and allowlist users with independent Paperless tokens:
 
 ```dotenv
@@ -348,8 +377,10 @@ Activity supports single and bulk rescan, exact restoration of the first metadat
 ## Upgrades
 
 1. Check the latest release at <https://github.com/arturict/tagvico-ai/releases>.
-2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page, for example `ghcr.io/arturict/tagvico-ai:3.4.1`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
+2. Update the image tag in `docker-compose.yml` to the new **immutable version tag** shown on the releases page, for example `ghcr.io/arturict/tagvico-ai:3.5.0`. Avoid `:latest` in production: it makes rollback ambiguous and can pull a breaking change unexpectedly.
 3. `docker compose pull && docker compose up -d`.
+
+Upgrading to 3.5: the bundled `docker-compose.yml` now passes the `TELEGRAM_*` and `DISCORD_*` variables through empty instead of `no`, `yes` and `[]`, so **Settings → Channels** can save them. Values you set yourself in Compose or `.env` still win. Telegram and Discord moved from Automation to the Channels tab, and the former Home dashboard is **Overview** in the account menu. See [Upgrading to 3.5](website/versions/v3/upgrading.md#upgrading-to-3-5).
 
 The container is replaceable, while configuration, processing history, the local admin account, encrypted member tokens, and the installation secret live in the `tagvico_ai_data` volume. Back up and restore that volume as one unit; changing or losing the JWT secret makes encrypted member tokens unreadable.
 

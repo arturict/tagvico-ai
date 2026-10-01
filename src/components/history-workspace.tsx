@@ -232,6 +232,7 @@ export function HistoryWorkspace({ view = 'activity' }: { view?: 'activity' | 'd
       {loadState === 'error' ? <WorkspaceLoadError
         title="History is unavailable"
         message={loadError}
+        mascot
         onRetry={() => void load()}
       /> : loadState === 'loading' && !rows.length ? <div className="pg-skeleton-rows" aria-label="Loading history">
         {Array.from({ length: 7 }, (_, index) => <div className="pg-skeleton-row" key={index}>

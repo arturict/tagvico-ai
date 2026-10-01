@@ -23,19 +23,20 @@ type CompanionResearchResult = {
   output: unknown;
 };
 
-const SOCIAL_ONLY = /^(?:hi|hey|hello|hallo|hoi|servus|moin|guten\s+(?:morgen|tag|abend)|danke|dankesch[oö]n|thanks|thank\s+you|was\s+kannst\s+du|what\s+can\s+you\s+do)[\s!.,?]*$/i;
+const SOCIAL_ONLY = /^(?:hi|hey|hello|hallo|hoi|servus|moin|gr[üu]ezi|guten\s+(?:morgen|tag|abend)|good\s+(?:morning|afternoon|evening)|danke|dankesch[oö]n|vielen\s+dank|thanks|thank\s+you|ok(?:ay)?|alles\s+klar|perfekt|super|great|cool|ja|nein|yes|no|bye|tsch[uü]ss|ciao|how\s+are\s+you|wie\s+geht'?s(?:\s+dir)?|who\s+are\s+you|wer\s+bist\s+du|(?:tell\s+me\s+)?what\s+(?:(?:can|do)\s+(?:you|tagvico)\s+(?:can\s+)?do|(?:you|tagvico)\s+can\s+do)|was\s+kannst\s+du(?:\s+(?:alles|so))?)[\s!.,?]*$/i;
 const DOCUMENT_WORDS = /(?:\b(?:document|documents|doc|docs|paperless|dokument|dokumente|rechnung|rechnungen|invoice|invoices|bill|bills|vertrag|vertr[aä]ge|contract|contracts|brief|letter|letters|notice|insurance|versicherung|receipt|beleg|steuer|tax)\b|doc:\/\/)/i;
 const SEARCH_WORDS = /\b(?:find|search|show|look\s+for|locate|suche|such|finde|zeig|zeige|durchsuche|welche|which)\b/i;
 const CONTENT_WORDS = /\b(?:read|inspect|review|open|content|contents|terms|details|summar|zusammenfass|due|deadline|f[aä]llig|frist|notice\s+period|k[üu]ndigungsfrist|amount|betrag|when|wann|what\s+does|was\s+steht|explain|erkl[aä]r)\w*/i;
-const ACTION_WORDS = /\b(?:action|actions|task|tasks|to-?do|attention|obligation|deadline|deadlines|due\s+soon|aufgabe|aufgaben|aktion|aktionen|handlungsbedarf|pflicht|pflichten|frist|fristen|f[aä]llig)\b/i;
+const ACTION_WORDS = /(?<!\p{L})(?:actions?|tasks?|to-?dos?|attention|obligations?|deadlines?|due|overdue|due\s+soon|payments?|pay|unpaid|reminders?|this\s+week|next\s+week|today|(?:have|need|must|should)\s+(?:i\s+)?(?:to\s+)?do|what(?:'s|\s+is)\s+(?:open|pending|next)|aufgaben?|aktionen?|handlungsbedarf|pflichten?|fristen?|f[aä]llig|[uü]berf[aä]llig|zahlung(?:en)?|zahlen|bezahlen|unbezahlt|erinnerung(?:en)?|diese\s+woche|n[aä]chste\s+woche|heute|erledigen|zu\s+tun|offen\p{L}*|was\s+muss\s+ich|was\s+steht\s+an|ansteht)(?!\p{L})/iu;
 const RECENT_WORDS = /\b(?:recent|latest|newest|new\s+documents?|last\s+documents?|recently\s+added|neueste|neuste|letzte|k[üu]rzlich|neue\s+dokumente)\b/i;
 const COUNT_WORDS = /(?:\bhow\s+many\b|\bcount\b|\bnumber\s+of\b|\bwie\s+viele\b|\banzahl\b|doc:\/\/count_?documents?)/i;
 const TAG_WORDS = /\b(?:tags?|schlagw[oö]rt\w*|etiketten?)\b/i;
 const FOLLOWUP_INTENT = /\b(?:prepare|create|add|make|draft|set\s+up|erstelle\w*|bereite\w*)\b[^.?!]*\b(?:follow-?up|reminder|task|action|aufgabe|nachfass\w*)\b/i;
-const ADAPTER_PLANNING_WORDS = /(?:\b(?:paperless|documents?|docs?|dokumente?|rechnungen?|invoices?|actions?|tags?)\b|doc:\/\/)/i;
 
+/** Everything except small talk may need a tool, so only small talk skips the planning call. */
 export function shouldPlanAdapterResearch(text: string) {
-  return ADAPTER_PLANNING_WORDS.test(String(text || ''));
+  const normalized = String(text || '').trim();
+  return Boolean(normalized) && !SOCIAL_ONLY.test(normalized);
 }
 
 export function shouldReadCompanionSearchResults(text: string) {
@@ -91,9 +92,25 @@ function normalizedSearchQuery(text: string) {
   return (query || text.trim()).slice(0, 300);
 }
 
+const STOP_WORDS = new Set((
+  'a an the and or of for to in on at by with from about into is are was were be been do does did have has had can could would should will '
+  + 'i me my we our you your it its this that these those what which who whom when where why how any some there here please tell show give '
+  + 'der die das den dem des ein eine einen einem einer und oder von für zu in im am an auf mit aus über ist sind war waren hat haben '
+  + 'kann kannst können ich mir mein meine wir du dein es was welche wer wann wo warum wie gibt bitte sag zeig'
+).split(' '));
+
+/** Content words of a free-form question; Paperless full-text search needs terms, not sentences. */
+function fallbackSearchQuery(text: string) {
+  const words = normalizedSearchQuery(text)
+    .split(/\s+/)
+    .filter((word) => word.length > 1 && !STOP_WORDS.has(word.toLowerCase()));
+  return (words.slice(0, 8).join(' ') || normalizedSearchQuery(text)).slice(0, 300);
+}
+
 /**
  * Keeps subscription-backed text adapters useful without pretending they can
- * natively call tools. Only clear Paperless intents trigger research.
+ * natively call tools. Everything except small talk gets at least a search;
+ * deadlines, to-dos, payments and bills in English and German list the actions.
  */
 export function planCompanionResearch(text: string): CompanionResearchPlan {
   const normalized = String(text || '').trim();
@@ -153,6 +170,13 @@ export function planCompanionResearch(text: string): CompanionResearchPlan {
       toolName: 'search_documents',
       input: { query: normalizedSearchQuery(normalized) }
     });
+  }
+
+  // A question that matched nothing above is still a question about the
+  // household's documents unless it is small talk, so it gets one search.
+  if (!steps.length) {
+    steps.push({ toolName: 'search_documents', input: { query: fallbackSearchQuery(normalized) } });
+    return { steps, readSearchResults: shouldReadCompanionSearchResults(normalized) };
   }
 
   return {

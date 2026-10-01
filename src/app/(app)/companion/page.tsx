@@ -5,6 +5,7 @@ import { getHouseholdNavigation } from '@/lib/server/household-navigation';
 import { listSessionApprovals } from '@/lib/server/agent/session-approvals';
 import { loadChatStart } from '@/lib/server/agent/chat-start';
 import { Companion } from '@/components/companion';
+import { dayPart } from '@/components/chat/greeting';
 import type { UIMessage } from 'ai';
 import type { CompanionToolActivity } from '@root/contracts/companion';
 
@@ -94,6 +95,7 @@ export default async function CompanionPage({
     approverNames={approverNames}
     needsCount={navigation?.needsYouCount ?? 0}
     start={start}
+    dayPart={dayPart(new Date())}
     showFirstRun={welcome}
   />;
 }

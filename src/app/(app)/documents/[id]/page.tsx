@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Mascot } from '@/components/mascot/mascot';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import axios from 'axios';
@@ -44,6 +45,7 @@ export default async function DocumentSourcePage({
     if (axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 403)) notFound();
     return <div className="page-column doc-detail">
       <section className="empty-state" role="alert">
+        <Mascot pose="oops" size={64} />
         <h1 className="pg-empty-title">The document could not be loaded</h1>
         <p>Paperless did not answer. Check the connection in Settings and try again.</p>
         <div className="pg-empty-actions">

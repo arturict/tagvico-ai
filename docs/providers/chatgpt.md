@@ -29,12 +29,15 @@ open-source apps, released on 2026-09-29.
    **Finish sign-in**.
 5. Choose a model from the list your plan offers. Tagvico preselects GPT-6
    Luna, the lightest current tier, because filing is frequent and Plus shares
-   its usage limit across apps. On 2026-10-01 a Plus plan listed `gpt-6-astra`,
-   `gpt-5.6-sol`, `gpt-5.6-terra`, `gpt-5.6-luna` and `gpt-5.5`, but answered
-   requests to the unlisted `gpt-6-luna`. When the list lacks it, Tagvico sends
-   one tiny request (about 16 tokens) to check, remembers the result for a week,
-   and offers GPT-6 Luna only if it worked; otherwise it preselects the
-   lightest listed tier.
+   its usage limit across apps. A plan can answer to models its list does not
+   show: on 2026-10-01 a Plus plan listed `gpt-6-astra`, `gpt-5.6-sol`,
+   `gpt-5.6-terra`, `gpt-5.6-luna` and `gpt-5.5`, but answered requests to the
+   unlisted `gpt-6-luna`. For each of GPT-6 Luna (`gpt-6-luna`), GPT-6 Sol
+   (`gpt-6-sol`) and GPT-6.1 Sol (`gpt-6.1-sol`) that the list lacks, Tagvico
+   sends one tiny request (about 16 tokens) at most once a week per account,
+   all three in parallel, and remembers the results. Only the models that
+   answered are added to the picker. GPT-6 Luna stays the preselected model
+   when it is available; otherwise Tagvico preselects the lightest listed tier.
 
 Only Tagvico, which holds the PKCE verifier for that sign-in attempt, can
 exchange the code in that address, and the code is single-use and short-lived.
@@ -54,8 +57,8 @@ backlog is better processed with an API provider or locally.
 
 Tagvico stores the issued client ID, the account's email and name, and the
 OAuth tokens in `data/chatgpt/auth.json` (owner-only permissions), plus a
-random installation ID in `data/chatgpt/host.json`, and the result of the
-GPT-6 Luna check in `data/chatgpt/models.json`. Tokens never reach the
+random installation ID in `data/chatgpt/host.json`, and the weekly results of
+the unlisted-model checks in `data/chatgpt/models.json`. Tokens never reach the
 browser. Access tokens last an hour and are renewed automatically; the renewal
 token stays valid for 30 days after each renewal. **Sign out** revokes the
 session at OpenAI and deletes the tokens; the registration is kept so the next
@@ -70,6 +73,33 @@ OpenAI's preview accepts only streaming Responses API requests without
 temperature, output-token limits or stored conversations; Tagvico sends
 exactly that. Images, file search and hosted tools are not used. Reasoning
 effort is passed through when you choose one.
+
+## How the Companion uses the plan
+
+The Companion chat runs on the plan exactly as it does on the OpenAI API: the
+model decides itself which tools to call (searching documents, listing
+actions, reading a document, proposing changes for your approval), receives the
+results, and answers. Sources are limited to documents the tools returned, and
+every change still waits for your approval.
+
+Technically, `chatgpt` is an AI SDK runtime (`createOpenAI` with the Responses
+API and `https://api.openai.com/v1`, `src/lib/server/agent/model-runtime.ts`).
+A custom `fetch` (`services/chatgptPlanFetch.ts`) takes the plan access token
+for every request (renewing it once after a 401), rewrites the request body to
+the preview contract (`store: false`, `stream: true`, no `temperature` or
+`max_output_tokens`, system and developer messages moved into `instructions`,
+function tools and `tool_choice` kept) and turns plan errors, including those
+inside the event stream, into the messages listed below. The SDK covers the
+contract, so no hand-written tool loop is needed. With `store: false` the SDK
+requests encrypted reasoning items and sends them back between tool steps. If
+the plan ever refuses one of its optional hints (`include`, `parallel_tool_calls`,
+caching or service-tier fields), the request is repeated once without it.
+
+Codex and Copilot cannot call tools themselves. Their chat goes through a
+guarded text adapter: a keyword planner (with a model-planned call first)
+chooses the tools. Everything except small talk gets at least a search, and
+questions about deadlines, to-dos, tasks, payments, bills or "this week" (in
+English and German) list the open actions.
 
 ## Environment variables
 

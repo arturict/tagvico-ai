@@ -172,6 +172,49 @@ test('empty chat is a greeting, the composer and at most three real prompts', ()
   assert.match(welcome, /Tagvico will wait for approval before changing anything/);
 });
 
+test('the start page greets by time of day and carries a small decorative mascot', () => {
+  globalThis.__chat = undefined;
+  const morning = render({ ...baseProps, dayPart: 'morning' });
+  assert.match(morning, /<h1 class="type-greeting chat-greeting">Good morning, release-owner<\/h1>/);
+  assert.match(render({ ...baseProps, dayPart: 'evening' }), /Good evening, release-owner/);
+  // One mascot, hidden from assistive technology, above the greeting.
+  assert.equal((morning.match(/<svg class="mascot /g) || []).length, 1);
+  assert.match(morning, /<svg class="mascot is-idle chat-mascot"[^>]*aria-hidden="true"/);
+  assert.ok(morning.indexOf('chat-mascot') < morning.indexOf('chat-greeting'));
+  // The first-run tip is dismissible and the mascot waves instead of idling.
+  const welcome = render({ ...baseProps, dayPart: 'morning', showFirstRun: true });
+  assert.match(welcome, /<svg class="mascot is-waving chat-mascot"/);
+  assert.match(welcome, /<aside class="chat-tip" aria-label="First steps">/);
+  assert.match(welcome, /aria-label="Dismiss tip"/);
+  assert.match(welcome, /Good morning, release-owner/);
+  assert.doesNotMatch(morning, /chat-tip/);
+});
+
+test('while an answer is on its way the mascot works next to the working line, and stops once text arrives', () => {
+  const asking = [{ id: 'u1', role: 'user', parts: [{ type: 'text', text: 'hi' }] }];
+  globalThis.__chat = { status: 'submitted', messages: asking };
+  const submitted = render({ ...baseProps, initialMessages: asking });
+  assert.match(submitted, /<div class="chat-working"><svg class="mascot is-thinking"[^>]*aria-hidden="true"[^>]*>.*<\/svg><span class="shimmer">Thinking…<\/span><\/div>/);
+  assert.doesNotMatch(submitted, /chat-thinking/);
+
+  const answering = [...asking, { id: 'a1', role: 'assistant', parts: [{ type: 'text', text: 'It is due' }] }];
+  globalThis.__chat = { status: 'streaming', messages: answering };
+  assert.doesNotMatch(render({ ...baseProps, initialMessages: answering }), /chat-working/);
+
+  const searching = [...asking, { id: 'a1', role: 'assistant', parts: [{ type: 'data-companion-activity', data: activity({ status: 'running' }) }] }];
+  globalThis.__chat = { status: 'streaming', messages: searching };
+  assert.match(render({ ...baseProps, initialMessages: searching }), /<span class="shimmer">Working on it…<\/span>/);
+  globalThis.__chat = undefined;
+});
+
+test('chat notices wear the oops mascot', () => {
+  globalThis.__chat = { error: new Error('plain failure') };
+  const failed = render({ ...baseProps, initialMessages: [{ id: 'u1', role: 'user', parts: [{ type: 'text', text: 'hi' }] }] });
+  assert.match(failed, /<div class="chat-notice alert is-danger"[^>]*><svg class="mascot is-oops"/);
+  assert.doesNotMatch(failed, /lucide-circle-alert/);
+  globalThis.__chat = undefined;
+});
+
 test('a conversation has no start page, keeps the composer and shows the footnote once', () => {
   globalThis.__chat = undefined;
   const html = render({ ...baseProps, initialMessages: conversation([], 'Hello there.') });

@@ -27,9 +27,8 @@ import { resolveRuntimeModel } from './model-runtime';
 import type { AgentContext } from './types';
 import companionAgentService from '../../../../services/companionAgentService';
 import {
-  isGpt6Model,
   isOpenAIReasoningModel,
-  openAIReasoningEffort
+  openAIResponsesProviderOptions
 } from '../../../../services/openaiModelParameters';
 
 const { companionSystemPrompt, companionToolSchemas, companionToolDescriptions, companionToolExecutors } = companionAgentService;
@@ -191,16 +190,12 @@ export async function streamCompanion(
     return createUIMessageStreamResponse({ stream, headers: { 'Cache-Control': 'no-store' } });
   }
   const reasoningEffort = String(selection.reasoningEffort || process.env.AI_REASONING_EFFORT || 'auto');
-  const openAIModel = model.provider === 'openai';
-  const effectiveEffort = openAIModel
-    ? openAIReasoningEffort(model.modelId, reasoningEffort)
-    : (reasoningEffort === 'auto' ? undefined : reasoningEffort);
-  const providerOptions = {
-    ...(effectiveEffort ? { reasoningEffort: effectiveEffort } : {}),
-    // The pinned @ai-sdk/openai predates GPT-6 and would treat it as a
-    // non-reasoning model: it would drop the effort and pass temperature on.
-    ...(openAIModel && isGpt6Model(model.modelId) ? { forceReasoning: true } : {})
-  };
+  // The ChatGPT plan is the OpenAI Responses API behind a different login.
+  const planModel = model.provider === 'chatgpt';
+  const openAIModel = model.provider === 'openai' || planModel;
+  const providerOptions = openAIModel
+    ? openAIResponsesProviderOptions(model.modelId, reasoningEffort, planModel)
+    : (reasoningEffort === 'auto' ? {} : { reasoningEffort });
   const tools = toolsFor(context);
   const persist = (steps: FinishedStep[]) => {
     const activities = activitiesFromSteps(steps);
@@ -216,9 +211,9 @@ export async function streamCompanion(
     tools,
     stopWhen: stepCountIs(6),
     // Reasoning models (GPT-5 and later) reject temperature.
-    ...(reasoningEffort === 'auto' && !isOpenAIReasoningModel(model.modelId) ? { temperature: 0.2 } : {}),
+    ...(reasoningEffort === 'auto' && !planModel && !isOpenAIReasoningModel(model.modelId) ? { temperature: 0.2 } : {}),
     ...(Object.keys(providerOptions).length
-      ? { providerOptions: { [model.provider]: providerOptions } }
+      ? { providerOptions: { [openAIModel ? 'openai' : model.provider]: providerOptions } }
       : {}),
     abortSignal: signal,
     onFinish: ({ steps }) => persist(steps),

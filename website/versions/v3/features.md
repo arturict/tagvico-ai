@@ -1,78 +1,122 @@
 # Feature showcase
 
-## Home and action workflows
+## Chat first
 
-Each Paperless document can have one Action Case with a title, summary,
-priority, due date, assignee, and top-level state. A case may contain up to 100
-steps for compound work such as reviewing a renewal, comparing an offer,
-replying, and storing the confirmation. Solo workspaces upgrade to family
-households when another member is added.
+Signing in opens a chat. The start page is a greeting and the composer, with up
+to three suggestion pills built from your real documents and actions, for
+example a question about the next deadline. One quiet line below links to the
+most urgent open item in [Needs you](#needs-you-people-and-cases) and is hidden
+when nothing is waiting.
 
-Household members are managed profiles for assignment, permissions, and Telegram;
-they are not separate Tagvico web accounts. The local admin remains the web
-console owner in v3.
+Answers are plain text. Tool activity appears as one muted line such as
+"Searched 12 documents", and every Paperless document the tools returned is
+cited as a source pill that opens its document view, so you can check the
+answer against the original. Only documents the tools actually returned are
+cited. Chats are listed in the sidebar by day (Today, Yesterday, Previous 7
+days, Older) and can be renamed or deleted from the row menu. **New chat**
+starts a fresh one.
 
-Tagvico mirrors its case ID, state, next due date, assignee, and
-`tagvico/action` tag to Paperless. It preserves unrelated tags and custom
-fields. The complete checklist and audit trail remain in Tagvico.
+The **model picker** at the top left of the chat shows the active model. It
+is one compact popover with a provider rail, search, favourites, provider
+logos, a thinking-effort chip for models that offer it, and keyboard control
+(`Ctrl+1` to `Ctrl+9` jump to a provider). It lists only configured providers
+whose live discovery succeeded, defaults to the document-automation model, and
+keeps a validated per-chat override. The same picker is used in Settings.
 
-![Tagvico v3.2 Home dashboard in the Paper and Pine application shell](/screenshots/home-paper-pine-v3.png)
+![Tagvico 3.5 chat start page with suggestion pills and the people row](/screenshots/chat-v35.png)
 
-This v3.2 capture comes from the representative release installation. It uses
-generic document metadata and synthetic workspace labels. It exposes no
-document contents, real account identifiers, credentials, or private endpoints.
+The capture comes from a freshly seeded demo instance with synthetic documents
+and household members.
 
-## Household Companion and approvals
+## Approvals
 
 The Companion can count, search and read permitted Paperless documents, list
 and inspect tags, list current actions, and prepare document, tag or Action
-Case changes. The Tagvico harness owns the
-session, narrow tool catalog, permissions, transcript, and approval records;
-the selected model never receives shell or filesystem access.
+Case changes. The Tagvico harness owns the session, narrow tool catalog,
+permissions, transcript and approval records; the selected model never
+receives shell or filesystem access.
 
-Read tools run immediately. Write tools only create a durable proposal. An
-owner or adult must approve it before the deterministic executor changes
-Tagvico or Paperless. This includes creating, renaming, recoloring and deleting
-tags as well as changing document metadata. The web chat uses AI SDK v6 streams and AI Elements.
-Paperless research is intent-aware: a greeting stays a normal conversation,
-library totals, including `doc://countdocuments`, use an exact count, and
-document content is read only when the question requires it. Internal tool
-markers are never shown as document citations. Each research card can reveal the safe search term,
-matching document IDs, titles, dates, and result count without exposing OCR.
-Matching source titles link directly to their Paperless-backed document view,
-so the answer can be checked against the permitted original without repeating
-the search.
-The right-hand research trail remains visible while tools run and groups safe
-research evidence with any pending approvals. Conversations can be created,
-searched, renamed, switched, and deleted from the chat workspace.
-The composer model picker groups live models inside collapsible configured
-providers, shows each provider identity, and offers only the reasoning efforts
-advertised by the selected model.
+Read tools run immediately. Write tools only create a durable proposal, shown
+in the chat as an **approval card** with a title, one line describing the
+change, and **Approve** and **Reject** buttons. An owner or adult must approve
+it before the deterministic executor changes Tagvico or Paperless. This
+includes creating, renaming, recoloring and deleting tags as well as changing
+document metadata. After the decision the card collapses to a one-line
+outcome. When the model could not create a proposal, for example because the
+document already has an action, the activity line says so instead of hiding it.
 
-![Tagvico v3.2 Ask Tagvico workspace with persistent conversations, approval boundary, composer, configured model and visible research trail](/screenshots/companion-paper-pine-v3.png)
+The same approvals appear in Needs you, and approving there uses the same
+executor and audit trail.
 
-The capture uses generic count queries and synthetic workspace labels to show
-the research trail. No document contents, real account identifiers,
-credentials, or provider payloads are visible.
+## Needs you, people and cases
 
-## Operations at a glance
+**Needs you** is one page for the whole household. It groups open actions as
+Overdue, This week and Later, lists actions the Companion suggested for you to
+accept, and shows approvals that wait for a decision and documents waiting in
+the review queue. A filter switches between everyone, your own items, finished
+items and each household member. The count next to **Needs you** in the sidebar
+uses the same rule: overdue or due within seven days, approvals you may decide
+and review items.
 
-The dashboard shows processing progress, runner state, Paperless vocabulary
-counts, recent activity, and token/cost-efficiency signals. **Scan now** starts
-an on-demand pass without waiting for the schedule and reports how many
-documents were eligible, applied, staged, skipped, or failed. Trigger tags are
-optional: with no trigger tags, every new unprocessed document is eligible.
+The sidebar shows household members as one row of avatars with their open
+counts, and **Show all** lists everyone. Each person has a page with their role, open
+work grouped by due date, approvals waiting for them and what they finished
+this week. Rows have a menu for quick actions, and a case opens a
+detail page with its summary, owner, due date, priority, checklist and audit
+trail.
 
-Home, Documents, Ask Tagvico, Organize tags, Activity, and Settings stay
-inside one React application shell. Recovery, Manual processing, the Action
-Center, and the conditional Review queue remain available from the workflows
-that need them instead of competing as unexplained primary tabs. They share the same fixed,
-collapsible navigation, Paper & Pine design tokens, responsive
-tables, dialogs, high-contrast tags and controls, and inline feedback.
-Page-shaped skeletons preserve the expected Home, Documents and Activity
-layout while their live data is loading. Provider and model catalogs use the
-same pattern instead of replacing the interface with loading text. The former EJS interfaces
-for user-facing workflows are no longer part of the visible application.
+![Tagvico 3.5 Needs you page grouping overdue, this week and later actions](/screenshots/needs-you-v35.png)
+
+![Tagvico 3.5 person page for one household member](/screenshots/person-v35.png)
+
+Each Paperless document can have one Action Case with a title, summary,
+priority, due date, assignee and top-level state. A case may contain up to 100
+steps for compound work such as reviewing a renewal, comparing an offer,
+replying and storing the confirmation. Solo workspaces upgrade to family
+households when another member is added.
+
+Household members are managed profiles for assignment, permissions and the
+Telegram and Discord bots; they are not separate Tagvico web accounts. The
+local admin remains the web console owner in v3. The owner adds, renames and
+removes members and sets roles in **Settings → People & security**. New
+profiles are **Member**; **Adult** and the owner approve changes, while
+**Member** and **Viewer** can ask and see. Each member can have their own
+Paperless token, stored encrypted, so Paperless keeps deciding what they may
+read.
+
+![Tagvico 3.5 household profiles and Paperless access in People & security settings](/screenshots/settings-people-v35.png)
+
+Tagvico mirrors its case ID, state, next due date, assignee and
+`tagvico/action` tag to Paperless. It preserves unrelated tags and custom
+fields. The complete checklist and audit trail remain in Tagvico.
+
+## Navigation and layout
+
+The desktop sidebar has **New chat**, **Needs you**, **Documents**, the people
+row and the chat history. The account menu at the bottom opens Settings, Open
+Paperless, Review queue (when filing needs review), Organize tags, Activity,
+Overview, What's new, Docs and Sign out. Telegram and Discord status lives in
+**Settings → Channels**, not in the sidebar. On phones a 48 px top bar holds the
+menu button, the page title and New chat; the menu opens a drawer with the same
+content. There is no bottom tab bar.
+
+![Tagvico 3.5 chat on a phone](/screenshots/mobile-chat-v35.png)
+
+![Tagvico 3.5 Needs you page on a phone](/screenshots/mobile-needs-you-v35.png)
+
+The interface follows OpenAI's design language, using the MIT-licensed Apps
+SDK UI design tokens: system fonts, neutral greys, a near-black primary button,
+one blue accent for focus and links, borders instead of shadows, and lists made
+of plain rows with hairline dividers.
+
+**Overview** (the former Home dashboard, reached from the account menu) shows
+processing progress, runner state, Paperless vocabulary counts, recent
+activity and token and cost signals. **Scan now** starts an on-demand pass
+without waiting for the schedule and reports how many documents were eligible,
+applied, staged, skipped or failed. Trigger tags are optional: with no trigger
+tags, every new unprocessed document is eligible. Recovery and Manual
+processing are one click from it. Page-shaped skeletons keep the layout stable
+while live data loads.
 
 ## Review-first tag unification
 
@@ -84,12 +128,6 @@ cannot write to Paperless. Every proposed merge is approved or rejected
 separately. Approved work runs as two explicit, idempotent phases: move
 document references to the chosen target, verify the result, then delete the
 now-unused source tag.
-
-![Tagvico v3.2 Organize tags workspace showing several source tags becoming one canonical target](/screenshots/tags-paper-pine-v3.png)
-
-The representative capture uses generic duplicate tags and synthetic workspace
-labels. It contains no document content, real account identifiers, credentials,
-or endpoints.
 
 ## Included utility: reviewable metadata filing
 
@@ -162,57 +200,66 @@ forever.
 
 ## In-product changelog
 
-**What’s new** in the sidebar opens the release notes bundled with the running
-instance. The top entry is the released v3.4.1 changelog, followed by v3.4.0, v3.3.0, v3.2.6, v3.2.5,
-v3.2.0 and the complete v3.1 history. An entry stays marked as unreleased until its
-image and tag are actually published.
+**What's new** in the account menu opens the release notes bundled with the
+running instance. The top entry is the released v3.5.0 changelog, followed by
+v3.4.1, v3.4.0, v3.3.0, v3.2.6, v3.2.5, v3.2.0 and the complete v3.1 history.
+An entry stays marked as unreleased until its image and tag are actually
+published.
 
 ## Subscription-backed model access
 
 The **ChatGPT plan** provider uses OpenAI's official Sign in with ChatGPT flow:
-an eligible Plus or Pro plan pays for filing and the Companion without an API
-key, and the model picker shows the models that plan offers.
+an eligible Plus or Pro plan pays for filing, the Companion, tag unification
+and TypeSafe titles without an API key. It is listed first, with a **New**
+badge, and the model picker shows the models that plan offers. GPT-6 Luna is
+preselected when the plan answers to it. See the [ChatGPT plan
+guide](./providers#chatgpt-plan).
 
-The older ChatGPT-via-Codex provider uses the bundled official Codex runtime for
-inference and the stable `codex login --device-auth` flow. Its model picker is
-fed by the signed-in account's live `model/list` response, including the
-runtime default and each model's supported reasoning efforts. Curated names are
-never presented as account availability. GitHub Copilot continues to use the
-official Copilot SDK.
+The older **ChatGPT via Codex (legacy)** provider uses the bundled official
+Codex runtime for inference and the stable `codex login --device-auth` flow. It
+is in maintenance mode. Its model picker is fed by the signed-in account's live
+`model/list` response, including the runtime default and each model's supported
+reasoning efforts. Curated names are never presented as account availability.
+GitHub Copilot continues to use the official Copilot SDK.
 
-## Unified setup and settings
+## Settings
 
-Setup and authenticated Settings now use the same React field, provider, and
-validation components. Settings are divided into Paperless, AI models,
-Automation, Tag library, Household, Security & privacy, and Diagnostics. The desktop navigation
-is fixed and collapsible; narrow screens use horizontal, scrollable navigation
-without a second legacy UI.
+Setup and authenticated Settings use the same React field, provider and
+validation components. Settings have six tabs on the left; on phones they sit
+in a scrollable row.
 
-Provider configuration is generated from the central provider registry. The
-model picker supports runtime discovery, search, provider grouping, local
-favorites, capability badges, and keyboard-native controls.
+| Tab | What it holds |
+| --- | --- |
+| Paperless | Base URL, username, write-only API token, a connection test that runs on every save, the public URL used for **Open Paperless** links, and a scan for a running Paperless-ngx instance. |
+| AI models | The provider list (ChatGPT plan first, then OpenAI, OpenRouter and Ollama, with the rest under advanced providers), write-only credentials, the model picker and reasoning effort. |
+| Automation | Scheduled processing, which documents to scan, processing mode, write mode (Review first or Automatic), metadata options, custom fields and AI instructions. |
+| Channels | Telegram and Discord: status, enabled switch, bot token with a token check, allowed people, reminders and the Discord home channel. |
+| Tags | Controlled tagging, vocabulary groups, allowed and never-created tags, markers and duplicate-tag review. |
+| People & security | Household members and roles, per-member Paperless access, two-factor authentication, external enrichment and the anonymous telemetry preview. |
+
+![Tagvico 3.5 AI models settings with ChatGPT plan listed first and marked New](/screenshots/settings-ai-models-v35.png)
+
+![Tagvico 3.5 Channels settings for Telegram and Discord](/screenshots/settings-channels-v35.png)
+
+Settings you save take effect on the running server. A value that is also set
+in the container environment wins over the UI; the field is then read-only and
+the page lists it as set by the container environment.
 
 New installations verify Paperless access and the selected runtime before
 saving configuration. Built-in endpoints are prefilled, models come from the
 runtime's live catalog, and the final summary makes the safe starting state
 explicit: review-first writes and paused scheduled scans. Non-secret progress
 can resume within the same tab without persisting tokens or passwords.
+Provider configuration is generated from the central provider registry.
 
-![Tagvico v3.2 AI model settings with the provider registry and write-only credential boundary](/screenshots/ai-models-paper-pine-v3.png)
-
-This capture shows provider names and product copy only. No API key, account
-identifier, private endpoint, or signed-in profile is exposed.
-
-The Ask Tagvico composer uses the same runtime catalog, but includes only
-configured providers whose live discovery succeeded. It defaults to the
-document-automation model and persists a validated per-session override.
-Redacted activity cards make Paperless search, document reading, action lookup,
-proposal preparation, and tool errors visible without exposing OCR, tokens, or
-raw provider payloads.
+Redacted activity lines in the chat make Paperless search, document reading,
+action lookup, proposal preparation and tool errors visible without exposing
+OCR, tokens or raw provider payloads.
 
 ## Optional Telegram family interface
 
-An opt-in long-polling bot lets allowlisted people search the archive in natural
+Enable and configure it under **Settings → Channels → Telegram**, or through
+the `TELEGRAM_*` variables. An opt-in long-polling bot lets allowlisted people search the archive in natural
 language, ask follow-up questions, download cited originals, and send a PDF or
 photo into Paperless. Each Telegram ID maps to its own Paperless API token;
 unknown users and group chats are ignored, and Paperless enforces every search,
@@ -233,7 +280,8 @@ same Paperless instance as the main Tagvico configuration.
 
 ## Optional Discord family interface
 
-An opt-in Discord companion bot extends the same capabilities as the Telegram
+Enable and configure it under **Settings → Channels → Discord**, or through
+the `DISCORD_*` variables. An opt-in Discord companion bot extends the same capabilities as the Telegram
 interface to Discord users. Allowlisted users search the archive in natural
 language, ask follow-up questions, download cited originals, and send a PDF or
 attachment into Paperless. Each Discord snowflake maps to its own Paperless API

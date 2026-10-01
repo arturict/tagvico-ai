@@ -28,33 +28,43 @@ model is good enough for Automatic mode.
 
 | Provider | Recommended starting point | Why it is a good-value choice |
 | --- | --- | --- |
-| OpenRouter | **GPT-5.4 Mini** with low reasoning | Best general hosted default in Tagvico: reliable structured extraction without paying for a frontier-sized model. Try **GPT-5.4 Nano** or **Gemini 3.1 Flash Lite** for very clean, repetitive documents; avoid the free router for unattended production because the underlying model can change. |
+| OpenRouter | **GPT-6 Luna** (`openai/gpt-6-luna`) with low reasoning | Tagvico's default since 3.5.0 and the cheapest current OpenAI tier (USD 0.10/0.50 per 1M input/output tokens). **GPT-5.4 Mini** remains a proven alternative. Try **GPT-5.4 Nano** or **Gemini 3.1 Flash Lite** for very clean, repetitive documents; avoid the free router for unattended production because the underlying model can change. |
 | Ollama | **Qwen 3.5 4B** on modest hardware; **Gemma 4 12B** with 16 GB VRAM and enough system-RAM headroom | Qwen 4B was the best speed/quality default in Tagvico's July 2026 synthetic test. Gemma 12B scored higher but was roughly twice as slow and its prompt cache needed substantially more system RAM. |
 | Ollama Cloud | **gpt-oss:20b-cloud** | Tagvico's default balances capability with a moderate hosted footprint and avoids buying or running a GPU. Recheck the cloud catalog and account limits before committing to it. |
-| OpenAI direct | **GPT-5.4 Mini**; use **Batch** for non-urgent archives | Mini is the balanced default. **GPT-5.4 Nano** can reduce cost further for predictable invoices and statements. Batch is preferable when turnaround can wait; Flex is useful when supported and occasional slower availability is acceptable. |
+| OpenAI direct | **GPT-6 Luna** (`gpt-6-luna`); use **Batch** for non-urgent archives | Luna is the default since 3.5.0. **GPT-5.4 Mini** is the proven alternative, and **GPT-5.4 Nano** can reduce cost further for predictable invoices and statements. Batch is preferable when turnaround can wait; Flex is useful when supported and occasional slower availability is acceptable. |
 | OpenCode Go | **DeepSeek V4 Flash** | This is Tagvico's budget-oriented default for the Go gateway. It suits classification-heavy workloads; confirm the current subscription allowance and gateway model catalog. |
 | GitHub Copilot | **GPT-5.4 Mini** when the signed-in plan exposes it | It offers a strong quality/cost balance without a separate per-token key inside Tagvico. Prefer a model with the lowest billing multiplier that still passes your test set, because plan entitlements differ. |
 | CLI Proxy / OpenAI-compatible | A subscription-backed model returned by CLIProxyAPI, or a **mini**, **flash**, or roughly **8B–20B instruct** model supported by your gateway | Compatible endpoints vary too much for one universal slug. Load the live catalog, start small, require reliable JSON, and increase model size only when the error rate justifies it. |
 | TypeSafe Jev | **jev-latest** | By far the cheapest hosted option in our synthetic test (about USD 0.08 per 1,000 documents, about 300 ms each), because only input tokens are billed and the text is billed once for all questions. Only worth it when your Paperless vocabulary is settled. |
-| ChatGPT plan | The **Luna** tier your plan lists (preselected; `gpt-5.6-luna` on a Plus plan in September 2026) | No per-token bill. Plus shares a five-hour usage limit across all connected apps, so a large backlog can pause filing until the limit resets. |
+| ChatGPT plan | **GPT-6 Luna**, preselected when your plan answers to it; otherwise the lightest tier the plan lists | No per-token bill. Plus shares a five-hour usage limit across all connected apps, so a large backlog can pause filing until the limit resets. |
 | ChatGPT via Codex (legacy) | The configured Codex model supported by the signed-in account | Suitable for one trusted, low-volume installation when subscription-backed inference is preferable. Model availability remains account-controlled and is not an API service guarantee. |
 
 ## ChatGPT plan
 
 Since 29 September 2026, OpenAI lets eligible ChatGPT Plus and Pro users
 authorise open-source apps to use their plan for inference. Choose **ChatGPT
-plan** in **Settings → AI models** and select **Continue with ChatGPT**. Sign
-in on the ChatGPT tab and allow Tagvico to use your plan. ChatGPT then opens a
-page on `127.0.0.1` that does not load, because Tagvico usually runs on another
+plan**, the first provider in the list, in **Settings → AI models** (or in
+first-run setup) and select **Continue with ChatGPT**. Sign in on the ChatGPT
+tab and allow Tagvico to use your plan. ChatGPT then opens a page on
+`127.0.0.1` that does not load, because Tagvico usually runs on another
 machine; copy that page's full address into Tagvico and select **Finish
 sign-in**. Only this Tagvico instance can redeem the one-time code in it.
 
+Tagvico preselects GPT-6 Luna, the lightest current tier, because filing is
+frequent and Plus shares its usage limit across apps. Some plans do not list
+`gpt-6-luna` but still answer requests to it, so when the list lacks it Tagvico
+sends one tiny request to check, remembers the result for a week, and offers
+Luna only if it worked. Otherwise it preselects the lightest listed tier. Set
+`CHATGPT_MODEL` to choose another model from your plan's list.
+
 Requests count toward your plan and never fall back to another provider. Under
 [ChatGPT Settings → Usage](https://chatgpt.com/settings/usage) you can see and
-limit Tagvico's usage or disconnect it. Tokens stay in `data/chatgpt/` and
-never reach the browser; **Sign out** revokes them at OpenAI. Document text is
-sent to OpenAI with `store: false`. The repository's
-`docs/providers/chatgpt.md` has the details.
+limit Tagvico's usage or disconnect it; **Manage usage** in Settings links
+there. Tokens stay in `data/chatgpt/` and never reach the browser; **Sign out**
+revokes them at OpenAI. Signing in does not give Tagvico your ChatGPT
+conversations or memory. Document text is sent to OpenAI with `store: false`.
+The repository's `docs/providers/chatgpt.md` has the details, including the
+limits of OpenAI's preview.
 
 ## TypeSafe Jev
 
@@ -137,14 +147,14 @@ rises with context length.
 Gemma 4, Qwen 3.5, Granite 4.1, and the tested Ornith build expose tool calling
 through the local Ollama runtime. Tagvico reads Ollama's live
 `/api/show` capabilities and only offers verified tool-capable Ollama models
-in **Ask Tagvico**. Automatic filing uses structured JSON output instead, so a
+in the **chat**. Automatic filing uses structured JSON output instead, so a
 model can remain available for metadata processing even when it is not suitable
 for the Companion.
 
 Reasoning-capable Ollama models may otherwise put schema output in the
 `thinking` field and leave `response` empty. Tagvico disables thinking only for
 structured document extraction, so Qwen 3.5 and Ornith return parseable metadata
-while their tool capability remains available to Ask Tagvico.
+while their tool capability remains available to the chat.
 
 Keep the context window only as large as your documents require, then compare
 field accuracy and throughput on the same test set.
@@ -175,7 +185,7 @@ custom fields, and injection resistance.
 
 The tool score is deliberately narrow: two prompts had to call
 `search_documents` with the required query terms. It proves first-call tool
-compatibility, not multi-turn Ask Tagvico quality, citations, or safe action
+compatibility, not multi-turn chat quality, citations, or safe action
 approval. All four candidates passed those probes in all three repetitions.
 
 The practical default from this run is `qwen3.5:4b`. Gemma 12B produced the

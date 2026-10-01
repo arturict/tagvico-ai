@@ -13,6 +13,10 @@ import { SidebarContent, type SidebarModel } from '@/components/shell/sidebar-co
 import { listedSessions, type ChatSession } from '@/components/shell/chat-sessions';
 import { NEW_CHAT_HREF, pageTitle } from '@/components/shell/routes';
 import { useChatSessions } from '@/components/shell/use-chat-sessions';
+import { DocumentTitle } from '@/components/shell/document-title';
+import { OfflineBanner } from '@/components/shell/offline-banner';
+import { shortcutAction } from '@/components/shell/shortcuts';
+import { ToastProvider } from '@/components/ui/toast';
 
 // Links in the account menu; the first two depend on the write mode and the member's role.
 const moreLinks = [
@@ -67,6 +71,17 @@ export function AppNavigationShell({ children, username, workspaceRole, initialW
   useEffect(() => {
     setMenuOpen(false);
   }, [routeKey]);
+
+  // Ctrl/Cmd+Shift+O starts a new chat from any page, as in ChatGPT.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (shortcutAction(event, event.target as Element | null) !== 'new-chat') return;
+      event.preventDefault();
+      router.push(NEW_CHAT_HREF);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [router]);
 
   // The drawer behaves as a modal dialog: focus moves into it, Tab cycles inside it, Escape closes it
   // and focus returns to the menu button. Keys pressed inside an open menu belong to that menu.
@@ -187,7 +202,9 @@ export function AppNavigationShell({ children, username, workspaceRole, initialW
     }
   };
 
-  return <div className={`shell${collapsed ? ' is-collapsed' : ''}`}>
+  return <ToastProvider><div className={`shell${collapsed ? ' is-collapsed' : ''}`}>
+    <DocumentTitle needsCount={model.needsYou} onNeedsYouPage={Boolean(household) && pathname === '/inbox'} />
+    <OfflineBanner />
 
     <header className="mobile-bar" inert={menuOpen || undefined}>
       <button ref={menuButtonRef} type="button" className="mobile-bar-menu btn btn-ghost btn-icon btn-40" aria-label="Open menu" aria-expanded={menuOpen} aria-controls="mobile-sheet" onClick={() => setMenuOpen(true)}>
@@ -218,5 +235,5 @@ export function AppNavigationShell({ children, username, workspaceRole, initialW
       </div>
     </aside>
     <main className="main" inert={menuOpen || undefined}>{children}</main>
-  </div>;
+  </div></ToastProvider>;
 }
