@@ -138,7 +138,9 @@
   align-items: center;
   gap: 4px;
   padding: 8px 4px;
+  overflow-x: hidden;
   overflow-y: auto;
+  scrollbar-width: none;
   border-right: 1px solid var(--color-border-subtle);
   background: var(--color-surface-secondary);
 }
@@ -491,4 +493,66 @@
     width: 40px;
     height: 40px;
   }
+}
+
+/* The provider's registry badge ("New") as a small dot on its rail icon; the label carries the text. */
+.mp-rail-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-ring);
+}
+
+/* The Settings trigger draws its own border now that it no longer borrows .select (which added a second arrow). */
+.mp-trigger-field {
+  min-height: var(--control-size-md, 36px);
+  padding: 0 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.mp-trigger-field:hover {
+  border-color: var(--color-border-strong);
+}
+
+/* Thinking effort next to the model button: a ghost chip like the model trigger, native select for access. */
+.chat-model-reasoning {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.chat-model-effort {
+  appearance: none;
+  height: 32px;
+  padding: 0 28px 0 10px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: var(--font-text-sm-size);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.chat-model-effort:hover,
+.chat-model-effort:focus-visible {
+  background: var(--color-background-primary-ghost-hover, var(--alpha-04));
+  color: var(--color-text);
+}
+
+.chat-model-reasoning > svg {
+  position: absolute;
+  right: 8px;
+  width: 14px;
+  height: 14px;
+  color: var(--color-text-secondary);
+  pointer-events: none;
 }

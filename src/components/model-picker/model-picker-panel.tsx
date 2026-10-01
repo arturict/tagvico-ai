@@ -132,12 +132,13 @@ export function ModelPickerPanel({
         type="button"
         className="mp-rail-item"
         aria-pressed={!searching && rail.kind === 'provider' && rail.providerId === provider.id}
-        aria-label={provider.name}
-        title={provider.available === false ? `${provider.name} (unavailable)` : provider.name}
+        aria-label={provider.badge ? `${provider.name}, ${provider.badge}` : provider.name}
+        title={provider.available === false ? `${provider.name} (unavailable)` : provider.badge ? `${provider.name} · ${provider.badge}` : provider.name}
         disabled={provider.available === false}
         onClick={() => selectRail({ kind: 'provider', providerId: provider.id })}
       >
         <ProviderLogo icon={provider.icon} size={18} />
+        {provider.badge ? <span className="mp-rail-dot" aria-hidden="true" /> : null}
       </button>)}
     </div>
     <div className="mp-main">
@@ -189,7 +190,8 @@ export function ModelPickerPanel({
             const selected = isSelected(entry, selection);
             const favorite = favorites.includes(entry.key);
             const shortcut = favorite ? shortcutNumber(favoriteList, entry.key) : null;
-            const badges = [...(entry.model.badges ?? []), entry.provider.badge].filter((badge): badge is string => Boolean(badge)).slice(0, 2);
+            // Model rows carry model facts only (Default, Recommended); the provider's own badge sits on its rail icon.
+            const badges = (entry.model.badges ?? []).slice(0, 2);
             return <div
               role="presentation"
               className="mp-row"

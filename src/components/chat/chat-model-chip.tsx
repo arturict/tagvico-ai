@@ -1,4 +1,5 @@
 'use client';
+import { ChevronDown } from 'lucide-react';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ModelPicker } from '@/components/model-picker/model-picker';
@@ -150,7 +151,7 @@ export function ChatModelChip({
     {reasoningOption ? <label className="chat-model-reasoning">
       <span className="sr-only">Thinking effort</span>
       <select
-        className="select select-32"
+        className="chat-model-effort"
         value={selection?.reasoningEffort || reasoningOption.defaultValue || reasoningOption.values[0]?.id || ''}
         disabled={saving}
         onChange={(event) => selection && void choose({ ...selection, reasoningEffort: event.target.value })}
@@ -158,6 +159,7 @@ export function ChatModelChip({
       >
         {reasoningOption.values.map((value) => <option key={value.id} value={value.id}>{value.label}</option>)}
       </select>
+      <ChevronDown aria-hidden="true" />
     </label> : null}
     {error ? <span className="chat-model-error field-error" role="status">{error}</span> : null}
   </div>;

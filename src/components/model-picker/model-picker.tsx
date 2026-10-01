@@ -110,7 +110,7 @@ export function ModelPicker({
   >
     <Popover.Trigger asChild>
       {variant === 'field'
-        ? <button type="button" className="select mp-trigger-field" disabled={disabled} title={title}>
+        ? <button type="button" className="mp-trigger-field" disabled={disabled} title={title}>
             <ProviderLogo icon={currentProvider?.icon ?? null} size={18} />
             <span className="mp-trigger-text">
               <strong>{label}</strong>
@@ -127,7 +127,8 @@ export function ModelPicker({
     <Popover.Portal>
       <Popover.Content
         className="popover mp-popover"
-        align="start"
+        // The Settings field sits at the right edge of its row, so its popover grows leftwards.
+        align={variant === 'field' ? 'end' : 'start'}
         sideOffset={6}
         collisionPadding={8}
         aria-label="Choose model"

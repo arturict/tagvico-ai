@@ -142,13 +142,16 @@ test('the panel renders the rail, search, options with hints and the check', () 
   });
   assert.match(html, /role="group" aria-label="Filter by provider"/);
   assert.match(html, /aria-label="Favourites"[^>]*>/);
-  assert.match(html, /aria-pressed="true" aria-label="ChatGPT plan"/, 'the selected provider is the active rail item');
+  assert.match(html, /aria-pressed="true" aria-label="ChatGPT plan, New"/, 'the selected provider is the active rail item');
   assert.match(html, /role="combobox"[^>]*aria-label="Search models"/);
   assert.match(html, /placeholder="Search models\.\.\."/);
   assert.match(html, /role="listbox" aria-label="Models"/);
   assert.equal((html.match(/role="option"/g) || []).length, 2, 'only the provider in the rail is listed');
   assert.match(html, /role="option"[^>]*aria-selected="true"[^>]*data-model-id="gpt-6-luna"/);
-  assert.match(html, /<span class="mp-badge">Default<\/span><span class="mp-badge">New<\/span>/);
+  // Rows show model facts; the provider badge ("New") moves to the rail icon label.
+  assert.match(html, /<span class="mp-badge">Default<\/span>/);
+  assert.doesNotMatch(html, /<span class="mp-badge">New<\/span>/);
+  assert.match(html, /aria-label="ChatGPT plan, New"/);
   assert.match(html, /<kbd class="mp-kbd" aria-hidden="true">Ctrl\+1<\/kbd>/, 'the one favourite carries Ctrl+1');
   assert.equal((html.match(/<kbd/g) || []).length, 1);
   assert.match(html, /aria-label="Remove GPT-6-Astra from favourites"/);
