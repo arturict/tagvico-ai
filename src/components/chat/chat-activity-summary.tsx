@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ChevronRight, CircleAlert, LoaderCircle, Search } from 'lucide-react';
+import { ChevronRight, CircleAlert, Search } from 'lucide-react';
 import type { CompanionToolActivity } from '@root/contracts/companion';
 
 const SEARCH_TOOLS = new Set(['search_documents', 'list_recent_documents']);
@@ -56,16 +56,15 @@ export function ChatActivitySummary({
   if (!activities.length) return null;
   const summary = summarizeActivities(activities);
   if (!summary.text) return null;
-  const Icon = summary.running ? LoaderCircle : summary.failed ? CircleAlert : Search;
+  const Icon = summary.failed ? CircleAlert : Search;
   return <>
     <details className={`chat-activity${summary.failed ? ' is-failed' : ''}`}>
       <summary>
-        <Icon className={summary.running ? 'is-spinning' : undefined} aria-hidden="true" />
-        <span>{summary.text}</span>
-        <i aria-hidden="true" />
+        <Icon aria-hidden="true" />
+        <span className={summary.running ? 'shimmer' : undefined}>{summary.text}</span>
         <ChevronRight className="chat-activity-chevron" aria-hidden="true" />
       </summary>
-      <div className="chat-activity-steps">{children}</div>
+      <ul className="chat-activity-steps">{children}</ul>
     </details>
     {summary.failure ? <p className="chat-activity-error" role="status">{summary.failure}</p> : null}
     {!summary.failure && summary.notice ? <p className="chat-activity-note" role="status">{summary.notice}</p> : null}

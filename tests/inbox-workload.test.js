@@ -44,6 +44,32 @@ test('feed groups come from the due date relative to today', () => {
   assert.deepEqual(dueChip('2026-10-12', today), { label: 'Due 12 Oct', tone: 'calm' });
 });
 
+test('accepted cases group by due date and suggested cases stay apart, whatever their date', () => {
+  const dates = loadDates();
+  const source = fs.readFileSync(path.join(root, 'src/components/inbox/groups.ts'), 'utf8');
+  const { outputText } = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } });
+  const groupsModule = { exports: {} };
+  new Function('module', 'exports', 'require', outputText)(groupsModule, groupsModule.exports, () => dates);
+  const { groupCases } = groupsModule.exports;
+
+  const today = '2026-10-01';
+  const item = (id, status, dueAt, priority = 'normal') => ({ id, title: id, status, dueAt, priority });
+  const groups = groupCases([
+    item('late-normal', 'open', '2026-09-20'),
+    item('late-urgent', 'waiting', '2026-09-20', 'urgent'),
+    item('soon', 'open', '2026-10-03'),
+    item('later', 'open', '2026-11-01'),
+    item('undated', 'open', null),
+    item('overdue-suggestion', 'suggested', '2026-09-01')
+  ], today);
+
+  assert.deepEqual(groups.due.map((group) => group.key), ['overdue', 'week', 'later']);
+  assert.deepEqual(groups.due[0].items.map((entry) => entry.id), ['late-urgent', 'late-normal'], 'same day: urgent before normal');
+  assert.deepEqual(groups.due[1].items.map((entry) => entry.id), ['soon']);
+  assert.deepEqual(groups.due[2].items.map((entry) => entry.id), ['later', 'undated'], 'no date sorts last');
+  assert.deepEqual(groups.suggestions.map((entry) => entry.id), ['overdue-suggestion']);
+});
+
 test('amounts are read from the case text and never invented', () => {
   const { extractAmount } = loadDates();
   assert.equal(extractAmount('Pay EWL', 'Reminder for CHF 214.35, was due 25 Sep.'), 'CHF 214.35');

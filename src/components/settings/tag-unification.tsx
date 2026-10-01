@@ -1,12 +1,9 @@
 'use client';
 
-import { Check, GitMerge, LoaderCircle, RefreshCw, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { MessageResponse } from '@/components/ai-elements/message';
-import { InlineStatus } from './inline-status';
 import type {
   ModelDescriptor,
-  ProviderDescriptor,
   TagUnificationSuggestion
 } from './types';
 
@@ -33,11 +30,9 @@ function modelReasoningOption(model?: ModelDescriptor): SelectOption | undefined
 }
 
 export function TagUnification({
-  providers,
   activeProviderId,
   activeModelId
 }: {
-  providers: ProviderDescriptor[];
   activeProviderId: string;
   activeModelId: string;
 }) {
@@ -109,9 +104,6 @@ export function TagUnification({
 
   const selectedModel = models.find((model) => model.id === modelId);
   const effortOption = modelReasoningOption(selectedModel);
-  const providerName = providers.find((provider) => provider.instanceId === providerId)?.name
-    || providerOptions.find((provider) => provider.instanceId === providerId)?.name
-    || providerId;
   const suggestionGroups = useMemo(() => {
     const grouped = new Map<string, {
       key: string;
@@ -182,8 +174,8 @@ export function TagUnification({
         message: endpoint === 'decision'
           ? `Suggestion ${payload.decision}.`
           : payload.phase === 'move'
-            ? 'Phase 1 complete. The source tag is now unused; deletion still requires a separate click.'
-            : 'Phase 2 complete. The unused source tag was deleted.'
+            ? 'Documents moved. The old tag is now unused; delete it as a separate step.'
+            : 'The unused old tag was deleted.'
       });
     } catch (error) {
       setStatus({ kind: 'error', message: error instanceof Error ? error.message : 'Could not update this suggestion.' });
@@ -215,12 +207,12 @@ export function TagUnification({
     }
   };
 
-  return <div className="tag-unification">
-    <div className="tag-unification-controls">
-      <label className="settings-field">
-        <span className="settings-field-label">Configured provider</span>
+  return <div className="tag-unification tagorg">
+    <div className="tagorg-controls">
+      <label className="tagorg-control">
+        <span className="tagorg-control-label">Provider</span>
         <select
-          className="settings-select"
+          className="select select-32 tagorg-select"
           value={providerId}
           onChange={(event) => {
             const next = event.target.value;
@@ -234,10 +226,10 @@ export function TagUnification({
           </option>)}
         </select>
       </label>
-      <label className="settings-field">
-        <span className="settings-field-label">Live model</span>
+      <label className="tagorg-control">
+        <span className="tagorg-control-label">Model</span>
         <select
-          className="settings-select"
+          className="select select-32 tagorg-select"
           value={modelId}
           disabled={!models.length}
           onChange={(event) => {
@@ -248,14 +240,14 @@ export function TagUnification({
             setReasoningEffort(nextEffort?.defaultValue || nextEffort?.values[0]?.id || '');
           }}
         >
-          {!models.length ? <option value="">Load a live catalog first</option> : null}
+          {!models.length ? <option value="">Load the model list first</option> : null}
           {models.map((model) => <option key={model.id} value={model.id}>{model.name}</option>)}
         </select>
       </label>
-      {effortOption ? <label className="settings-field">
-        <span className="settings-field-label">Thinking effort</span>
+      {effortOption ? <label className="tagorg-control">
+        <span className="tagorg-control-label">Thinking effort</span>
         <select
-          className="settings-select"
+          className="select select-32 tagorg-select"
           value={reasoningEffort}
           onChange={(event) => setReasoningEffort(event.target.value)}
         >
@@ -263,116 +255,125 @@ export function TagUnification({
         </select>
       </label> : null}
     </div>
-    {busy === 'models' ? <div className="model-catalog-skeleton tag-model-skeleton" aria-label="Loading provider models">
-      {Array.from({ length: 3 }, (_, index) => <span key={index}><i /><b /><small /></span>)}
+    {busy === 'models' ? <div className="pg-skeleton-rows" aria-label="Loading provider models">
+      {Array.from({ length: 2 }, (_, index) => <div className="pg-skeleton-row is-pair" key={index}>
+        <span className="pg-skeleton-bar is-label" /><span className="pg-skeleton-bar is-value" />
+      </div>)}
     </div> : null}
-    <div className="settings-action-cluster tag-unification-actions">
+    <div className="tagorg-toolbar">
       <button
-        className="settings-button is-primary"
+        className="btn btn-primary btn-32"
         type="button"
         disabled={!modelId || Boolean(busy)}
         onClick={() => void analyze()}
       >
-        {busy === 'analyze' ? <LoaderCircle className="is-spinning" aria-hidden="true" /> : <GitMerge aria-hidden="true" />}
         Analyze all tags
       </button>
       <button
-        className="settings-button"
+        className="btn btn-ghost btn-32"
         type="button"
         disabled={Boolean(busy)}
         onClick={() => void loadModels(providerId)}
       >
-        <RefreshCw className={busy === 'models' ? 'is-spinning' : undefined} aria-hidden="true" />
         Refresh models
       </button>
-      <span className="settings-badge">{providerName || 'No provider selected'}</span>
     </div>
-    {status ? <InlineStatus kind={status.kind}>{status.message}</InlineStatus> : null}
-    <p className="tag-unification-safety">
-      Analysis never changes Paperless. Every source tag needs approval. Moving documents and deleting each unused source tag remain two separate calls.
+    {status ? <p
+      className={`tagorg-status${status.kind === 'error' ? ' is-danger-text' : ''}${status.kind === 'loading' ? ' shimmer' : ''}`}
+      role={status.kind === 'error' ? 'alert' : 'status'}
+    >{status.message}</p> : null}
+    <p className="meta tagorg-note">
+      Analysis never changes Paperless. Every merge needs your approval, and moving documents and deleting the old tag are two separate steps.
     </p>
-    <div className="tag-unification-list">
-      {suggestionGroups.map((group) => <article className="tag-unification-group" key={group.key}>
-        <header className="tag-unification-group-head">
-          <div>
-            <span>{group.suggestions.length} source tag{group.suggestions.length === 1 ? '' : 's'} will become</span>
-            <strong>{group.targetTagName}</strong>
-            <small>
-              Existing target · {group.targetDocumentCount} document{group.targetDocumentCount === 1 ? '' : 's'}
-            </small>
-          </div>
-          <GitMerge aria-hidden="true" />
-        </header>
-        <div className="tag-unification-source-list">
-          {group.suggestions.map((suggestion) => <section className={`tag-unification-card is-${suggestion.status}`} key={suggestion.id}>
-            <header>
-              <div>
-                <span className="tag-unification-pair">
-                  <strong>{suggestion.sourceTagName}</strong>
-                  <span aria-hidden="true">→</span>
-                  <strong>{suggestion.targetTagName}</strong>
-                </span>
-                <small>
-                  Moves {suggestion.sourceDocumentCount} document{suggestion.sourceDocumentCount === 1 ? '' : 's'} · {Math.round(suggestion.confidence * 100)}% confidence · {suggestion.modelId}
-                </small>
+    <div className="tagorg-list">
+      {suggestionGroups.map((group) => <section className="tagorg-group" key={group.key} aria-label={`Merge into ${group.targetTagName}`}>
+        <h2 className="list-group-heading tagorg-group-heading">
+          Into {group.targetTagName} · {group.targetDocumentCount} document{group.targetDocumentCount === 1 ? '' : 's'}
+        </h2>
+        <ul className="list">
+          {group.suggestions.map((suggestion) => <li className={`tagorg-item is-${suggestion.status}`} key={suggestion.id}>
+            <div className="tagorg-item-main">
+              <p className="list-row-title tagorg-pair">
+                {suggestion.sourceTagName} <span aria-hidden="true">→</span><span className="sr-only">into</span> {suggestion.targetTagName}
+              </p>
+              <p className="list-row-meta">
+                Moves {suggestion.sourceDocumentCount} document{suggestion.sourceDocumentCount === 1 ? '' : 's'} · {Math.round(suggestion.confidence * 100)}% confidence · {suggestion.modelId}
+              </p>
+              <div className="tagorg-reason">
+                <MessageResponse>{suggestion.reason}</MessageResponse>
               </div>
-              <span className="settings-badge">{suggestion.status}</span>
-            </header>
-            <div className="tag-unification-reason">
-              <MessageResponse>{suggestion.reason}</MessageResponse>
+              {suggestion.lastError ? <p className="tagorg-error is-danger-text" role="alert">{suggestion.lastError}</p> : null}
             </div>
-            {suggestion.lastError ? <InlineStatus kind="error">{suggestion.lastError}</InlineStatus> : null}
-            <footer>
-              {suggestion.status === 'suggested' ? <>
-            <button
-              className="settings-button is-primary"
-              type="button"
-              disabled={busy === suggestion.id}
-              onClick={() => void mutateSuggestion(suggestion, 'decision', { decision: 'approved' })}
-            >
-              <Check aria-hidden="true" /> Approve
-            </button>
-            <button
-              className="settings-button"
-              type="button"
-              disabled={busy === suggestion.id}
-              onClick={() => void mutateSuggestion(suggestion, 'decision', { decision: 'rejected' })}
-            >
-              <X aria-hidden="true" /> Reject
-            </button>
-              </> : null}
-              {(suggestion.status === 'approved' || (suggestion.status === 'failed' && suggestion.currentPhase === 'move')) ? <button
-            className="settings-button is-primary"
-            type="button"
-            disabled={busy === suggestion.id}
-            onClick={() => void mutateSuggestion(suggestion, 'execute', { phase: 'move' })}
-          >
-            <GitMerge aria-hidden="true" /> {suggestion.status === 'failed' ? 'Retry phase 1' : 'Phase 1 · Move documents'}
-              </button> : null}
-              {(suggestion.status === 'moved' || (suggestion.status === 'failed' && suggestion.currentPhase === 'delete')) ? <button
-            className="settings-button tag-unification-delete"
-            type="button"
-            disabled={busy === suggestion.id}
-            onClick={() => void mutateSuggestion(suggestion, 'execute', { phase: 'delete' })}
-          >
-            <Trash2 aria-hidden="true" /> {suggestion.status === 'failed' ? 'Retry phase 2' : 'Phase 2 · Delete unused source'}
-              </button> : null}
-              <button className="settings-button" type="button" onClick={() => void loadAudit(suggestion)}>
-                {auditBySuggestion[suggestion.id] ? 'Hide audit' : 'View audit'}
-              </button>
-            </footer>
-            {auditBySuggestion[suggestion.id] ? <ol className="tag-unification-audit">
+            <div className="tagorg-item-side">
+              {suggestion.status !== 'suggested' ? <span className="tagorg-state">{statusLabel(suggestion.status)}</span> : null}
+              <div className="tagorg-actions">
+                {suggestion.status === 'suggested' ? <>
+                  <button
+                    className="btn btn-primary btn-28"
+                    type="button"
+                    disabled={busy === suggestion.id}
+                    onClick={() => void mutateSuggestion(suggestion, 'decision', { decision: 'approved' })}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    className="btn btn-secondary btn-28"
+                    type="button"
+                    disabled={busy === suggestion.id}
+                    onClick={() => void mutateSuggestion(suggestion, 'decision', { decision: 'rejected' })}
+                  >
+                    Reject
+                  </button>
+                </> : null}
+                {(suggestion.status === 'approved' || (suggestion.status === 'failed' && suggestion.currentPhase === 'move')) ? <button
+                  className="btn btn-primary btn-28"
+                  type="button"
+                  disabled={busy === suggestion.id}
+                  onClick={() => void mutateSuggestion(suggestion, 'execute', { phase: 'move' })}
+                >
+                  {suggestion.status === 'failed' ? 'Retry move' : 'Move documents'}
+                </button> : null}
+                {(suggestion.status === 'moved' || (suggestion.status === 'failed' && suggestion.currentPhase === 'delete')) ? <button
+                  className="btn btn-danger btn-28"
+                  type="button"
+                  disabled={busy === suggestion.id}
+                  onClick={() => void mutateSuggestion(suggestion, 'execute', { phase: 'delete' })}
+                >
+                  {suggestion.status === 'failed' ? 'Retry delete' : 'Delete old tag'}
+                </button> : null}
+                <button className="btn btn-ghost btn-28" type="button" aria-expanded={Boolean(auditBySuggestion[suggestion.id])} onClick={() => void loadAudit(suggestion)}>
+                  {auditBySuggestion[suggestion.id] ? 'Hide log' : 'Log'}
+                </button>
+              </div>
+            </div>
+            {auditBySuggestion[suggestion.id] ? <ol className="tagorg-audit">
               {auditBySuggestion[suggestion.id].length ? auditBySuggestion[suggestion.id].map((entry) => <li key={entry.id}>
                 <span>{entry.phase} · {entry.action}{entry.documentId ? ` · document ${entry.documentId}` : ''}</span>
-                <small>{entry.outcome} · {new Date(entry.createdAt).toLocaleString()}</small>
-              </li>) : <li><span>No execution events yet.</span></li>}
+                <span className="meta">{entry.outcome} · {new Date(entry.createdAt).toLocaleString()}</span>
+              </li>) : <li><span className="meta">No execution events yet.</span></li>}
             </ol> : null}
-          </section>)}
-        </div>
-      </article>)}
-      {!suggestions.length && busy !== 'refresh' ? <div className="settings-model-empty">
-        No tag-unification suggestions yet. Choose a live model and run a read-only analysis.
+          </li>)}
+        </ul>
+      </section>)}
+      {!suggestions.length && busy !== 'refresh' ? <div className="empty-state tagorg-empty">
+        <p>No suggestions yet. Choose a model and analyze your tags.</p>
       </div> : null}
     </div>
   </div>;
+}
+
+// Plain state text for a suggestion that is past the approval step.
+const statusLabels: Record<TagUnificationSuggestion['status'], string> = {
+  suggested: 'Waiting for approval',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  moving: 'Moving documents',
+  moved: 'Documents moved',
+  deleting: 'Deleting old tag',
+  completed: 'Merged',
+  failed: 'Failed'
+};
+
+function statusLabel(status: TagUnificationSuggestion['status']) {
+  return statusLabels[status] || status;
 }

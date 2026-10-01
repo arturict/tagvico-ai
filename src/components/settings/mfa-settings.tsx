@@ -85,25 +85,25 @@ export function MfaSettings() {
     }
   };
 
-  return <div className="settings-mfa">
-    <div className="settings-action-cluster">
-      <button className="settings-button" type="button" disabled={busy} onClick={() => void start()}>{secret ? 'Create a new secret' : 'Set up MFA'}</button>
+  return <div className="set-mfa">
+    <div className="set-actions">
       {status ? <InlineStatus kind={status.kind}>{status.message}</InlineStatus> : null}
+      <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => void start()}>{secret ? 'Create a new secret' : 'Set up MFA'}</button>
     </div>
-    {secret ? <div className="settings-secret-setup">
+    {secret ? <div className="set-secret-setup">
       <p>Authenticator secret</p>
       <code>{secret}</code>
       <details><summary>Provisioning URI</summary><code>{provisioningUri}</code></details>
-      <div className="settings-inline-form">
-        <input className="settings-input" inputMode="numeric" autoComplete="one-time-code" value={otp} maxLength={6} placeholder="123456" aria-label="Authenticator code" onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} />
-        <button className="settings-button" type="button" disabled={busy || otp.length !== 6} onClick={() => void verify()}>Verify and enable</button>
+      <div className="set-inline-form">
+        <input className="input" inputMode="numeric" autoComplete="one-time-code" value={otp} maxLength={6} placeholder="123456" aria-label="Authenticator code" onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} />
+        <button className="btn btn-primary" type="button" disabled={busy || otp.length !== 6} onClick={() => void verify()}>Verify and enable</button>
       </div>
     </div> : null}
-    <details className="settings-danger-zone">
+    <details className="set-danger-zone">
       <summary>Disable MFA</summary>
-      <div className="settings-inline-form">
-        <input className="settings-input" type="password" autoComplete="current-password" value={password} placeholder="Current password" aria-label="Current password" onChange={(event) => setPassword(event.target.value)} />
-        <button className="settings-button is-danger" type="button" disabled={busy || !password} onClick={() => void disable()}>Disable MFA</button>
+      <div className="set-inline-form">
+        <input className="input" type="password" autoComplete="current-password" value={password} placeholder="Current password" aria-label="Current password" onChange={(event) => setPassword(event.target.value)} />
+        <button className="btn btn-danger" type="button" disabled={busy || !password} onClick={() => void disable()}>Disable MFA</button>
       </div>
     </details>
   </div>;

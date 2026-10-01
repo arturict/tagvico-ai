@@ -4,15 +4,6 @@ import { actionCenter, workspaceFor } from './workspace';
 import { zurichToday } from '@/components/inbox/dates';
 import settingsV3Service from '@root/services/settingsV3Service';
 import { runtimeEnvironmentValue } from '@root/services/runtimeEnvironment';
-import channelStatusService from '@root/services/channelStatusService';
-
-type ChannelStatus = ReturnType<typeof channelStatusService.getChannelStatuses>['telegram'];
-
-/** What the sidebar needs of a channel; the full report (tokens never included) lives in channelStatusService. */
-export interface NavigationChannel {
-  state: ChannelStatus['state'];
-  label: string;
-}
 
 export interface HouseholdNavigation {
   household: { name: string; kind: string };
@@ -20,9 +11,6 @@ export interface HouseholdNavigation {
   members: Array<{ id: string; displayName: string; role: string; openCount: number }>;
   needsYouCount: number;
   overdueCount: number;
-  channels: { telegram: NavigationChannel; discord: NavigationChannel };
-  /** Owners configure channels in Settings; other roles only see the status. */
-  canConfigureChannels: boolean;
   paperlessUrl: string | null;
 }
 
@@ -77,19 +65,12 @@ export async function getHouseholdNavigation(user: SessionUser): Promise<Househo
   // The feed lists every pending approval to every role, so the badge counts them too.
   const pendingApprovals = (actionCenter.listApprovals(workspace.householdId) as unknown[]).length;
 
-  const channels = channelStatusService.getChannelStatuses();
-
   return {
     household: { name: workspace.name, kind: workspace.kind },
     currentMemberId: workspace.memberId,
     members,
     needsYouCount: openCases + pendingApprovals,
     overdueCount: overdueCases,
-    channels: {
-      telegram: { state: channels.telegram.state, label: channels.telegram.label },
-      discord: { state: channels.discord.state, label: channels.discord.label }
-    },
-    canConfigureChannels: workspace.role === 'owner',
     paperlessUrl: await getPaperlessPublicUrl()
   };
 }

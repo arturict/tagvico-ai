@@ -4,13 +4,16 @@ export const settingsSectionIds: readonly SettingsSectionId[] = [
   'paperless',
   'providers',
   'automation',
+  'channels',
   'tags',
   'people'
 ];
 
 /**
- * Sections that existed before v3.5 and where their content lives now, so
- * bookmarked /settings/<section> links keep working.
+ * Sections that existed before and where their content lives now, so
+ * bookmarked /settings/<section> links keep working. Telegram and Discord left
+ * Automation for their own Channels tab; /settings/automation itself still
+ * opens Automation (the page redirects an old #telegram or #discord anchor).
  */
 export const legacySettingsSections: Record<string, SettingsSectionId> = {
   general: 'people',
@@ -20,17 +23,20 @@ export const legacySettingsSections: Record<string, SettingsSectionId> = {
   ai: 'providers',
   models: 'providers',
   'ai-models': 'providers',
-  channels: 'automation',
-  telegram: 'automation',
-  discord: 'automation',
+  telegram: 'channels',
+  discord: 'channels',
   'tag-library': 'tags'
 };
+
+/** Anchors that used to point at a channel card inside Automation. */
+export const legacyChannelAnchors: readonly string[] = ['channels', 'telegram', 'discord'];
 
 export const settingsSectionTitles: Record<SettingsSectionId, string> = {
   paperless: 'Paperless',
   providers: 'AI models',
   automation: 'Automation',
-  tags: 'Tag library',
+  channels: 'Channels',
+  tags: 'Tags',
   people: 'People & security'
 };
 

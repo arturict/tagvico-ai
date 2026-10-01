@@ -1,11 +1,11 @@
 import Link from 'next/link';
 
 export default function ActionNotFound() {
-  return <div className="inbox">
-    <div className="inbox-empty">
-      <h2>This action does not exist</h2>
-      <p>It may belong to another household or was removed. Open Needs you to see what is current.</p>
-      <Link className="inbox-btn is-primary" href="/inbox">Open Needs you</Link>
+  return <div className="page-column">
+    <div className="empty-state">
+      <h1 className="page-title">This action does not exist</h1>
+      <p>It may belong to another household or was removed.</p>
+      <Link className="btn btn-secondary btn-32" href="/inbox">Open Needs you</Link>
     </div>
   </div>;
 }

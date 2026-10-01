@@ -10,6 +10,7 @@ export function DraftField({
   placeholder,
   configured = false,
   disabled = false,
+  layout = 'row',
   error,
   onCommit
 }: {
@@ -20,6 +21,8 @@ export function DraftField({
   placeholder?: string;
   configured?: boolean;
   disabled?: boolean;
+  /** `row` puts the label left and the input right; `stack` puts the input under the label. */
+  layout?: 'row' | 'stack';
   /** Validation message from the last failed save of this field. */
   error?: string;
   /** Resolve to `null` to signal a failed save; anything else counts as saved. */
@@ -70,30 +73,34 @@ export function DraftField({
     }
   };
 
-  return <label className="settings-field" htmlFor={id}>
-    <span className="settings-field-label">
-      {label}
-      {saving
-        ? <small>Saving…</small>
-        : saved
-          ? <small className="settings-field-saved">Saved</small>
-          : configured && type === 'password' ? <small>Configured</small> : null}
+  return <label className={`set-field${layout === 'stack' ? ' is-stacked' : ''}`} htmlFor={id}>
+    <span className="set-field-copy">
+      <span className="set-field-label">
+        {label}
+        {saving
+          ? <small>Saving…</small>
+          : saved
+            ? <small className="set-field-saved">Saved</small>
+            : configured && type === 'password' ? <small>Configured</small> : null}
+      </span>
+      {description ? <span className="set-field-help">{description}</span> : null}
     </span>
-    <input
-      id={id}
-      className="settings-input"
-      type={type}
-      value={draft}
-      placeholder={configured && type === 'password' ? 'Configured — type only to replace' : placeholder}
-      autoComplete={type === 'password' ? 'new-password' : 'off'}
-      disabled={disabled}
-      aria-invalid={error ? true : undefined}
-      aria-describedby={error ? `${id}-error` : undefined}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => void commit()}
-      onKeyDown={onKeyDown}
-    />
-    {error ? <span className="settings-field-error" id={`${id}-error`} role="alert">{error}</span> : null}
-    {description ? <span className="settings-field-help">{description}</span> : null}
+    <span className="set-field-control">
+      <input
+        id={id}
+        className="input"
+        type={type}
+        value={draft}
+        placeholder={configured && type === 'password' ? 'Configured, type only to replace' : placeholder}
+        autoComplete={type === 'password' ? 'new-password' : 'off'}
+        disabled={disabled}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => void commit()}
+        onKeyDown={onKeyDown}
+      />
+      {error ? <span className="set-field-error" id={`${id}-error`} role="alert">{error}</span> : null}
+    </span>
   </label>;
 }

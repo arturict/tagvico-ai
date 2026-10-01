@@ -1,11 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Check, RotateCcw, UserPlus, X } from 'lucide-react';
-import { MemberAvatar } from '@/components/member-avatar';
+import { useCallback, useRef, useState } from 'react';
 import { caseFromRow } from './case-mapper';
-import { dueChip, shortDate, zurichToday } from './dates';
+import { zurichToday } from './dates';
 import type { InboxApproval, InboxCase, InboxMember, InboxReview } from './types';
 
 export const APPROVAL_REASON = 'Only an owner or adult can approve changes.';
@@ -163,144 +161,11 @@ export function useWorkboard(initial: { cases: InboxCase[]; approvals: InboxAppr
   return { cases, approvals, reviews, busy, flash, setFlash, patchCase, assign, decide, decideReview };
 }
 
+/** Result of the last action as one calm line: plain text, danger text only for errors. Stays in view while the list scrolls. */
 export function FlashMessage({ flash }: { flash: Flash | null }) {
   return <div className="inbox-status" role="status" aria-live="polite">
     {flash ? <p className={flash.tone === 'error' ? 'inbox-error' : flash.tone === 'warn' ? 'inbox-warn' : 'inbox-notice'}>
-      {flash.text}{flash.href ? <> <Link href={flash.href}>{flash.linkLabel || 'Open'}</Link></> : null}
+      {flash.text}{flash.href ? <> <Link className="link" href={flash.href}>{flash.linkLabel || 'Open'}</Link></> : null}
     </p> : null}
   </div>;
-}
-
-export function CaseCard({ item, today, members, memberById, canMutate, busy, showAssignee = true, onDone, onAccept, onDismiss, onAssign, onReopen }: {
-  item: InboxCase;
-  today: string;
-  members: InboxMember[];
-  memberById: Map<string, InboxMember>;
-  canMutate: boolean;
-  busy: boolean;
-  showAssignee?: boolean;
-  onDone?: () => void;
-  onAccept?: () => void;
-  onDismiss?: () => void;
-  onAssign?: (memberId: string | null) => void;
-  onReopen?: () => void;
-}) {
-  const assignee = item.assigneeId ? memberById.get(item.assigneeId) : undefined;
-  const due = item.dueAt && item.status !== 'done' ? dueChip(item.dueAt, today) : null;
-  return <li className={`inbox-card${due?.tone === 'overdue' ? ' is-overdue' : ''}`} data-case-id={item.id}>
-    <div className="inbox-card-main">
-      <Link className="inbox-card-title" href={`/actions/${item.id}`}>{item.title}</Link>
-      {item.summary ? <p className="inbox-card-summary">{item.summary}</p> : null}
-      <div className="inbox-card-meta">
-        {due ? <span className={`inbox-chip-static is-${due.tone}`}>{due.label}</span> : null}
-        {item.amount ? <span className="inbox-chip-static is-amount">{item.amount}</span> : null}
-        {item.status === 'done' && item.doneAt ? <span className="inbox-chip-static">Done {shortDate(item.doneAt)}</span> : null}
-        {item.status === 'suggested' ? <span className="inbox-chip-static is-suggested">Suggested</span> : null}
-        {item.status === 'waiting' ? <span className="inbox-chip-static">Waiting</span> : null}
-        {item.priority === 'urgent' || item.priority === 'high' ? <span className={`inbox-chip-static is-${item.priority}`}>{item.priority === 'urgent' ? 'Urgent' : 'High priority'}</span> : null}
-        {item.stepCount > 0 ? <span className="inbox-doc">{item.doneStepCount}/{item.stepCount} steps</span> : null}
-        {showAssignee ? (assignee
-          ? <span className="inbox-person"><MemberAvatar name={assignee.name} memberId={assignee.id} size={20} />{assignee.name}</span>
-          : <span className="inbox-person is-unassigned">Unassigned</span>) : null}
-        {item.documentId ? <Link className="inbox-doc inbox-doc-link" href={`/documents/${item.documentId}`}>Document #{item.documentId}</Link> : null}
-      </div>
-    </div>
-    {canMutate ? <div className="inbox-card-actions">
-      {item.status === 'done' ? <button type="button" className="inbox-btn" disabled={busy} onClick={onReopen}><RotateCcw size={15} aria-hidden="true" />Reopen</button> : <>
-        {item.status === 'suggested' ? <button type="button" className="inbox-btn is-primary" disabled={busy} onClick={onAccept}><Check size={15} aria-hidden="true" />Accept</button> : null}
-        <button type="button" className={item.status === 'suggested' ? 'inbox-btn' : 'inbox-btn is-primary'} disabled={busy} onClick={onDone}><Check size={15} aria-hidden="true" />Done</button>
-        {members.length > 1 && onAssign ? <AssignMenu members={members} current={item.assigneeId} disabled={busy} onPick={onAssign} title={item.title} /> : null}
-        {item.status === 'suggested' && onDismiss ? <button type="button" className="inbox-btn" disabled={busy} onClick={onDismiss}><X size={15} aria-hidden="true" />Dismiss</button> : null}
-      </>}
-    </div> : null}
-  </li>;
-}
-
-export function AssignMenu({ members, current, disabled, onPick, title }: {
-  members: InboxMember[];
-  current: string | null;
-  disabled: boolean;
-  onPick: (memberId: string | null) => void;
-  title: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: MouseEvent | KeyboardEvent) => {
-      if (event instanceof KeyboardEvent) { if (event.key === 'Escape') setOpen(false); return; }
-      if (root.current && !root.current.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', close);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close); };
-  }, [open]);
-  const pick = (memberId: string | null) => { setOpen(false); if (memberId !== current) onPick(memberId); };
-  return <div className="inbox-assign" ref={root}>
-    <button type="button" className="inbox-btn" disabled={disabled} aria-haspopup="menu" aria-expanded={open} aria-label={`Assign “${title}”`} onClick={() => setOpen((value) => !value)}>
-      <UserPlus size={15} aria-hidden="true" />Assign
-    </button>
-    {open ? <div className="inbox-menu" role="menu">
-      {members.map((member) => <button key={member.id} type="button" role="menuitemradio" aria-checked={member.id === current} onClick={() => pick(member.id)}>
-        <MemberAvatar name={member.name} memberId={member.id} size={20} />{member.name}
-      </button>)}
-      <button type="button" role="menuitemradio" aria-checked={current === null} onClick={() => pick(null)}>Unassigned</button>
-    </div> : null}
-  </div>;
-}
-
-export function ApprovalCard({ item, today, canDecide, busy, onDecide }: {
-  item: InboxApproval;
-  today: string;
-  canDecide: boolean;
-  busy: boolean;
-  onDecide: (decision: 'approved' | 'rejected') => void;
-}) {
-  const due = item.dueAt ? dueChip(item.dueAt, today) : null;
-  const reasonId = `approval-reason-${item.id}`;
-  return <li className="inbox-card is-approval" data-approval-id={item.id}>
-    <div className="inbox-card-main">
-      <p className="inbox-card-title">{item.title}</p>
-      {item.detail ? <p className="inbox-card-summary">{item.detail}</p> : null}
-      <div className="inbox-card-meta">
-        <span className="inbox-chip-static">{item.meta}</span>
-        {due ? <span className={`inbox-chip-static is-${due.tone}`}>{due.label}</span> : null}
-        {item.amount ? <span className="inbox-chip-static is-amount">{item.amount}</span> : null}
-        {item.priority === 'urgent' || item.priority === 'high' ? <span className={`inbox-chip-static is-${item.priority}`}>{item.priority === 'urgent' ? 'Urgent' : 'High priority'}</span> : null}
-        {item.requestedById && item.requestedByName
-          ? <span className="inbox-person"><MemberAvatar name={item.requestedByName} memberId={item.requestedById} size={20} />Asked by {item.requestedByName}</span>
-          : <span className="inbox-person">Proposed by Tagvico</span>}
-        {item.requestedOn ? <span className="inbox-doc">{shortDate(item.requestedOn)}</span> : null}
-        {item.href && item.hrefLabel ? <Link className="inbox-doc inbox-doc-link" href={item.href}>{item.hrefLabel}</Link> : null}
-      </div>
-    </div>
-    <div className="inbox-card-actions">
-      <button type="button" className="inbox-btn is-primary" disabled={busy || !canDecide} aria-describedby={canDecide ? undefined : reasonId} onClick={() => onDecide('approved')}><Check size={15} aria-hidden="true" />{busy ? 'Working…' : 'Approve'}</button>
-      <button type="button" className="inbox-btn" disabled={busy || !canDecide} aria-describedby={canDecide ? undefined : reasonId} onClick={() => onDecide('rejected')}><X size={15} aria-hidden="true" />Reject</button>
-      {canDecide ? null : <span id={reasonId} className="inbox-reason">{APPROVAL_REASON}</span>}
-    </div>
-  </li>;
-}
-
-export function ReviewCard({ item, canDecide, busy, onDecide }: {
-  item: InboxReview;
-  canDecide: boolean;
-  busy: boolean;
-  onDecide: (action: 'apply' | 'reject') => void;
-}) {
-  return <li className="inbox-card is-approval" data-review-id={item.id}>
-    <div className="inbox-card-main">
-      <Link className="inbox-card-title" href={`/documents/${item.documentId}`}>{item.title}</Link>
-      {item.changes.length ? <p className="inbox-card-summary">Suggests changing {item.changes.join(', ')}.</p> : null}
-      <div className="inbox-card-meta">
-        <span className="inbox-chip-static is-suggested">AI suggestion</span>
-        <Link className="inbox-doc inbox-doc-link" href={`/documents/${item.documentId}`}>Document #{item.documentId}</Link>
-        {item.stagedOn ? <span className="inbox-doc">{shortDate(item.stagedOn)}</span> : null}
-      </div>
-    </div>
-    <div className="inbox-card-actions">
-      <button type="button" className="inbox-btn is-primary" disabled={busy || !canDecide} onClick={() => onDecide('apply')}><Check size={15} aria-hidden="true" />{busy ? 'Working…' : 'Apply'}</button>
-      <button type="button" className="inbox-btn" disabled={busy || !canDecide} onClick={() => onDecide('reject')}><X size={15} aria-hidden="true" />Reject</button>
-    </div>
-  </li>;
 }

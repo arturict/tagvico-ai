@@ -147,13 +147,14 @@ test('retired and unsupported provider definitions are never exposed as verified
   ), true);
 });
 
-test('Companion exposes persistent conversation controls and owner-scoped session APIs', () => {
+test('Companion keeps the sidebar chat list current and the session APIs owner-scoped', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'companion.tsx'), 'utf8');
   const sessionsRoute = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'api', 'companion', 'sessions', 'route.ts'), 'utf8');
   const sessionRoute = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'api', 'companion', 'sessions', '[sessionId]', 'route.ts'), 'utf8');
-  assert.match(source, /New chat/);
-  assert.match(source, /api\/companion\/sessions/);
-  assert.match(source, /router\.push\(`\/companion\?chat=/);
+  // The sidebar lists, renames and deletes chats; the chat tells it when the list changed.
+  assert.match(source, /new Event\('tagvico:sessions-changed'\)/);
+  assert.match(source, /wasWorking\.current = false;[\s\S]*?announceSessionsChanged\(\);/, 'a finished answer refreshes the list');
+  assert.doesNotMatch(source, /ChatHistoryPanel|aria-label="Chat history"/);
   assert.match(sessionsRoute, /workspace\.memberId/);
   assert.match(sessionRoute, /renameSession\(workspace\.householdId,\s*workspace\.memberId/);
   assert.match(sessionRoute, /deleteSession\(workspace\.householdId,\s*workspace\.memberId/);
@@ -324,19 +325,22 @@ test('Copilot runtime applies persisted model reasoning selections', () => {
   assert.match(service, /reasoningEffort: options\.reasoningEffort as CopilotReasoningEffort/);
 });
 
-test('mobile Companion keeps chat and conversation controls reachable', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'companion.tsx'), 'utf8');
+test('mobile Companion fills the space between the top bar and the screen edge with the composer at the bottom', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'styles', 'chat.css'), 'utf8');
-  assert.match(source, /aria-label="Chat history"/);
-  assert.match(source, /aria-label="New chat"/);
-  assert.match(css, /\.chat-head \.chat-history-toggle\s*\{[\s\S]*?display:\s*inline-flex/);
-  assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.chat-history\s*\{[\s\S]*?position:\s*fixed/);
-  assert.match(css, /\.chat-suggestions,\s*\.chat-first-run-steps\s*\{[\s\S]*?grid-template-columns:\s*1fr/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.chat-page\s*\{[\s\S]*?position:\s*fixed[\s\S]*?top:\s*var\(--shell-top-bar[\s\S]*?bottom:\s*var\(--shell-bottom-bar/);
+  // Greeting and prompts stay in the middle, the composer follows them at the bottom.
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.chat-starters\s*\{[\s\S]*?order:\s*2/);
+  assert.match(css, /@media \(max-width: 900px\)[\s\S]*?\.chat-dock\s*\{[\s\S]*?order:\s*3/);
+  assert.match(css, /safe-area-inset-bottom/);
+  // 16px text in the composer keeps iOS from zooming the page.
+  assert.match(css, /\.chat-composer textarea\s*\{[\s\S]*?font-size:\s*var\(--font-text-md-size\)/);
 });
 
 test('provider model lists have their own bounded scrolling surfaces', () => {
   const css = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'globals.css'), 'utf8');
   assert.match(css, /\.settings-model-list\s*\{[\s\S]*?overflow-y:\s*auto/);
-  assert.match(css, /\.companion-model-list\s*\{[\s\S]*?overflow-y:\s*auto/);
   assert.match(css, /scrollbar-gutter:\s*stable/);
+  const chat = fs.readFileSync(path.join(__dirname, '..', 'src', 'app', 'styles', 'chat.css'), 'utf8');
+  assert.match(chat, /\.chat-model-list\s*\{[\s\S]*?overflow-y:\s*auto/);
+  assert.match(chat, /\.chat-model-dialog\s*\{[\s\S]*?max-height:[\s\S]*?overflow:\s*hidden/);
 });

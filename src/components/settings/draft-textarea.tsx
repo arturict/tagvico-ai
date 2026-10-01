@@ -56,37 +56,41 @@ export function DraftTextarea({
     finally { setSaving(false); }
   };
 
-  return <label className="settings-field" htmlFor={id}>
-    <span className="settings-field-label">
-      {label}
-      {saving
-        ? <small>Saving…</small>
-        : saved
-          ? <small className="settings-field-saved">Saved</small>
-          : configured && sensitive ? <small>Configured</small> : null}
+  return <label className="set-field is-stacked" htmlFor={id}>
+    <span className="set-field-copy">
+      <span className="set-field-label">
+        {label}
+        {saving
+          ? <small>Saving…</small>
+          : saved
+            ? <small className="set-field-saved">Saved</small>
+            : configured && sensitive ? <small>Configured</small> : null}
+      </span>
+      {description ? <span className="set-field-help">{description}</span> : null}
     </span>
-    <textarea
-      id={id}
-      className="settings-input settings-textarea"
-      rows={rows}
-      value={draft}
-      placeholder={configured && sensitive ? 'Configured — type only to replace' : placeholder}
-      aria-invalid={error ? true : undefined}
-      aria-describedby={error ? `${id}-error` : undefined}
-      onChange={(event) => setDraft(event.target.value)}
-      onBlur={() => void commit()}
-      onKeyDown={(event) => {
-        if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-          event.preventDefault();
-          event.currentTarget.blur();
-        }
-        if (event.key === 'Escape') {
-          setDraft(sensitive ? '' : value);
-          event.currentTarget.blur();
-        }
-      }}
-    />
-    {error ? <span className="settings-field-error" id={`${id}-error`} role="alert">{error}</span> : null}
-    {description ? <span className="settings-field-help">{description}</span> : null}
+    <span className="set-field-control">
+      <textarea
+        id={id}
+        className="textarea"
+        rows={rows}
+        value={draft}
+        placeholder={configured && sensitive ? 'Configured, type only to replace' : placeholder}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error ? `${id}-error` : undefined}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => void commit()}
+        onKeyDown={(event) => {
+          if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+            event.preventDefault();
+            event.currentTarget.blur();
+          }
+          if (event.key === 'Escape') {
+            setDraft(sensitive ? '' : value);
+            event.currentTarget.blur();
+          }
+        }}
+      />
+      {error ? <span className="set-field-error" id={`${id}-error`} role="alert">{error}</span> : null}
+    </span>
   </label>;
 }

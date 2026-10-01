@@ -113,53 +113,57 @@ export function ChatGPTPlanSignIn({
     if (loginId) await fetch(`${apiBase}/login/${encodeURIComponent(loginId)}/cancel`, { method: 'POST' }).catch(() => undefined);
   };
 
-  return <div className="settings-auth-panel">
-    <div className="settings-action-cluster">
+  return <div className="set-auth">
+    <div className="set-actions is-start">
       <InlineStatus kind={authenticated ? 'success' : 'neutral'}>
         {authenticated ? `Using ChatGPT plan${accountLabel ? ` · ${accountLabel}` : ''}` : 'Not connected'}
       </InlineStatus>
       {!pending ? <button
-        className={`settings-button${authenticated ? '' : ' is-primary'}`}
+        className={`btn ${authenticated ? 'btn-secondary' : 'btn-primary'}`}
         type="button"
         disabled={busy}
         onClick={() => void start()}
       >
         {authenticated ? 'Reconnect ChatGPT' : 'Continue with ChatGPT'}
       </button> : null}
-      {authenticated ? <a className="settings-button" href={USAGE_URL} target="_blank" rel="noreferrer">Manage usage</a> : null}
+      {authenticated ? <a className="btn btn-secondary" href={USAGE_URL} target="_blank" rel="noreferrer">Manage usage</a> : null}
       {authenticated && onLogout && !pending
-        ? <button className="settings-button is-danger" type="button" disabled={busy} onClick={() => void onLogout()}>Sign out</button>
+        ? <button className="btn btn-danger" type="button" disabled={busy} onClick={() => void onLogout()}>Sign out</button>
         : null}
     </div>
-    {pending ? <div className="settings-auth-panel">
-      <ol className="settings-field-help">
-        <li>Sign in on the ChatGPT tab (<a href={pending.authorizeUrl} target="_blank" rel="noreferrer">open it again</a>) and allow Tagvico to use your plan.</li>
+    {pending ? <div className="set-auth-pending">
+      <ol className="set-steps">
+        <li>Sign in on the ChatGPT tab (<a className="link" href={pending.authorizeUrl} target="_blank" rel="noreferrer">open it again</a>) and allow Tagvico to use your plan.</li>
         <li>ChatGPT then opens a page on 127.0.0.1 that does not load. That is expected.</li>
         <li>Copy the full address of that page and paste it here.</li>
       </ol>
-      <label className="settings-field">
-        <span className="settings-field-label">Address of the page ChatGPT opened</span>
-        <input
-          className="settings-input"
-          type="url"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="http://127.0.0.1:1455/auth/callback?code=…"
-          value={callbackUrl}
-          aria-invalid={problem ? true : undefined}
-          onChange={(event) => { setCallbackUrl(event.target.value); setProblem(''); }}
-        />
-        {problem ? <span className="settings-field-error" role="alert">{problem}</span> : null}
+      <label className="set-field is-stacked">
+        <span className="set-field-copy">
+          <span className="set-field-label">Address of the page ChatGPT opened</span>
+        </span>
+        <span className="set-field-control">
+          <input
+            className="input"
+            type="url"
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="http://127.0.0.1:1455/auth/callback?code=…"
+            value={callbackUrl}
+            aria-invalid={problem ? true : undefined}
+            onChange={(event) => { setCallbackUrl(event.target.value); setProblem(''); }}
+          />
+          {problem ? <span className="set-field-error" role="alert">{problem}</span> : null}
+        </span>
       </label>
-      <div className="settings-action-cluster">
-        <button className="settings-button" type="button" disabled={busy || !callbackUrl.trim()} onClick={() => void finish()}>
+      <div className="set-actions is-start">
+        <button className="btn btn-primary" type="button" disabled={busy || !callbackUrl.trim()} onClick={() => void finish()}>
           {busy ? 'Connecting…' : 'Finish sign-in'}
         </button>
-        <button className="settings-button" type="button" disabled={busy} onClick={() => void cancel()}>Cancel</button>
+        <button className="btn btn-secondary" type="button" disabled={busy} onClick={() => void cancel()}>Cancel</button>
       </div>
     </div> : null}
-    <span className="settings-field-help">
-      Plus and Pro plans only. Requests count toward your ChatGPT plan; you can set a limit for Tagvico under Manage usage. Document text is sent to OpenAI.
-    </span>
+    <p className="set-note">
+      Plus and Pro plans only. Usage counts toward your plan, and document text is sent to OpenAI.
+    </p>
   </div>;
 }

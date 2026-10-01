@@ -1,34 +1,25 @@
-import { CalendarDays, CheckCircle2, Construction, Sparkles } from 'lucide-react';
 import { changelogEntries } from '@/lib/changelog';
 
 export function ChangelogWorkspace() {
-  return <div className="page changelog-page">
-    <header className="page-head">
-      <div>
-        <p className="eyebrow">Product updates</p>
-        <h1>What&apos;s new</h1>
-        <p className="lede">Improvements, fixes and new capabilities in the version running on your own Tagvico instance.</p>
+  return <div className="page-column log-page">
+    <header className="page-header">
+      <div className="page-header-text">
+        <h1 className="page-title">What&apos;s new</h1>
       </div>
     </header>
-    <div className="changelog-list">
-      {changelogEntries.map((entry) => <article className="workspace-card changelog-entry" key={entry.version}>
-        <header>
-          <div className={`changelog-version${entry.status === 'unreleased' ? ' is-next' : ''}`}>
-            {entry.status === 'unreleased' ? <Construction aria-hidden="true" /> : <CheckCircle2 aria-hidden="true" />}
-            <span>{entry.version}</span>
-          </div>
-          <div>
-            <h2>{entry.title}</h2>
-            <p>{entry.summary}</p>
-          </div>
-          <time><CalendarDays aria-hidden="true" /> {entry.date}</time>
+    <div className="log-list">
+      {changelogEntries.map((entry) => <article className="log-entry" key={entry.version}>
+        <header className="log-entry-head">
+          <h2 className="log-entry-title">{entry.title}</h2>
+          <p className="meta">
+            Version {entry.version} · {entry.status === 'unreleased' ? 'In progress' : entry.date}
+          </p>
         </header>
-        <div className="changelog-groups">
-          {entry.groups.map((group) => <section key={group.title}>
-            <h3><Sparkles aria-hidden="true" /> {group.title}</h3>
-            <ul>{group.items.map((item) => <li key={item}>{item}</li>)}</ul>
-          </section>)}
-        </div>
+        <p className="log-summary">{entry.summary}</p>
+        {entry.groups.map((group) => <section className="log-group" key={group.title}>
+          <h3 className="log-group-title">{group.title}</h3>
+          <ul className="log-items">{group.items.map((item) => <li key={item}>{item}</li>)}</ul>
+        </section>)}
       </article>)}
     </div>
   </div>;

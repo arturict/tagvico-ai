@@ -25,7 +25,7 @@ const roleOptions = [
   { id: 'viewer', label: 'Viewer' }
 ] as const;
 
-const roleHelp = 'Adults and the owner approve changes. Members and viewers can ask and see, but not approve.';
+const roleHelp = 'Adults and the owner approve changes. Members and viewers can ask and see.';
 
 async function request<T = Record<string, unknown>>(url: string, options: RequestInit) {
   const response = await fetch(url, options);
@@ -96,7 +96,7 @@ function MemberRow({
     }
   };
 
-  return <div className="settings-member household-member" data-member-id={member.id}>
+  return <div className="set-member household-member" data-member-id={member.id}>
     <MemberAvatar name={member.display_name} memberId={member.id} size={32} />
     <span className="household-member-name">
       {renaming ? <form
@@ -107,48 +107,48 @@ function MemberRow({
         }}
       >
         <input
-          className="settings-input"
+          className="input"
           value={name}
           maxLength={100}
           aria-label={`New name for ${member.display_name}`}
           autoFocus
           onChange={(event) => setName(event.target.value)}
         />
-        <button className="settings-button is-primary" disabled={busy || !name.trim()}>Save name</button>
-        <button className="settings-button" type="button" onClick={() => { setRenaming(false); setName(member.display_name); setError(''); }}>
+        <button className="btn btn-primary" disabled={busy || !name.trim()}>Save name</button>
+        <button className="btn btn-secondary" type="button" onClick={() => { setRenaming(false); setName(member.display_name); setError(''); }}>
           Cancel
         </button>
       </form> : <>
         <strong>{member.display_name}{isSelf ? <small> you</small> : null}</strong>
         <small>
-          Paperless {member.paperless_configured ? 'token configured' : 'token missing'}
+          Paperless token {member.paperless_configured ? 'configured' : 'missing'}
           {member.paperless_user_id ? ` · user ${member.paperless_user_id}` : ''}
         </small>
       </>}
-      {error ? <span className="settings-field-error" role="alert">{error}</span> : null}
+      {error ? <span className="set-field-error" role="alert">{error}</span> : null}
     </span>
     {isOwnerView && !isOwner ? <select
-      className="settings-select household-role"
+      className="select household-role"
       value={member.role}
       disabled={busy}
       aria-label={`Role of ${member.display_name}`}
       onChange={(event) => void update({ role: event.target.value }, `${member.display_name} is now ${event.target.value === 'adult' ? 'an adult' : `a ${event.target.value}`}.`)}
     >
       {roleOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-    </select> : <span className="settings-badge">{member.role}</span>}
+    </select> : <span className="set-member-role">{member.role}</span>}
     {isOwnerView && !isOwner && !renaming ? <span className="household-actions">
-      <button className="settings-button" type="button" disabled={busy} onClick={() => setRenaming(true)}>Rename</button>
+      <button className="btn btn-ghost btn-32" type="button" disabled={busy} onClick={() => setRenaming(true)}>Rename</button>
       {confirmingRemoval ? <>
-        <button className="settings-button is-danger" type="button" disabled={busy} onClick={() => void remove()}>
+        <button className="btn btn-danger btn-32" type="button" disabled={busy} onClick={() => void remove()}>
           Remove {member.display_name}
         </button>
-        <button className="settings-button" type="button" onClick={() => setConfirmingRemoval(false)}>Keep</button>
+        <button className="btn btn-ghost btn-32" type="button" onClick={() => setConfirmingRemoval(false)}>Keep</button>
       </> : member.has_login
-        ? <span className="settings-field-help">Has a sign-in</span>
-        : <button className="settings-button" type="button" disabled={busy} onClick={() => setConfirmingRemoval(true)}>Remove</button>}
+        ? <span className="set-field-help">Has a sign-in</span>
+        : <button className="btn btn-ghost btn-32" type="button" disabled={busy} onClick={() => setConfirmingRemoval(true)}>Remove</button>}
     </span> : null}
     {isOwnerView && isOwner && !renaming ? <span className="household-actions">
-      <button className="settings-button" type="button" disabled={busy} onClick={() => setRenaming(true)}>Rename</button>
+      <button className="btn btn-ghost btn-32" type="button" disabled={busy} onClick={() => setRenaming(true)}>Rename</button>
     </span> : null}
   </div>;
 }
@@ -199,26 +199,19 @@ function PaperlessAccessRow({
     }
   };
 
-  return <SettingsRow
-    title={member.display_name}
-    description={`Role: ${member.role} · token ${member.paperless_configured ? 'configured' : 'missing'}`}
-    stack
-  >
-    <form className="settings-access-form" onSubmit={(event) => void save(event)} data-member-id={member.id}>
-      <label className="settings-field">
-        <span className="sr-only">{member.display_name} Paperless API token</span>
-        <input
-          className="settings-input"
-          name="token"
-          type="password"
-          autoComplete="new-password"
-          placeholder={member.paperless_configured ? 'Configured — type only to replace' : 'Paperless API token'}
-          aria-label={`${member.display_name} Paperless API token`}
-          aria-invalid={errors.token ? true : undefined}
-        />
-      </label>
+  return <SettingsRow title={member.display_name} stack>
+    <form className="set-access-form" onSubmit={(event) => void save(event)} data-member-id={member.id}>
+      <input
+        className="input"
+        name="token"
+        type="password"
+        autoComplete="new-password"
+        placeholder={member.paperless_configured ? 'Configured, type to replace' : 'Paperless API token'}
+        aria-label={`${member.display_name} Paperless API token`}
+        aria-invalid={errors.token ? true : undefined}
+      />
       {paperlessUsers && paperlessUsers.length ? <select
-        className="settings-select"
+        className="select"
         name="paperlessUserId"
         defaultValue={member.paperless_user_id ? String(member.paperless_user_id) : ''}
         key={`${member.id}-${member.paperless_user_id ?? 'none'}`}
@@ -227,7 +220,7 @@ function PaperlessAccessRow({
         <option value="">No Paperless user</option>
         {paperlessUsers.map((user) => <option key={user.id} value={user.id}>{user.username} (#{user.id})</option>)}
       </select> : <input
-        className="settings-input"
+        className="input"
         name="paperlessUserId"
         type="number"
         min="1"
@@ -237,23 +230,21 @@ function PaperlessAccessRow({
         aria-label={`${member.display_name} Paperless user ID`}
         aria-invalid={errors.paperlessUserId ? true : undefined}
       />}
-      <label className="settings-checkbox"><input name="removeToken" type="checkbox" /> Remove token</label>
-      <button className="settings-button" disabled={busy}>Save access</button>
+      <label className="set-check"><input name="removeToken" type="checkbox" /> Remove token</label>
+      <button className="btn btn-secondary" disabled={busy}>Save access</button>
     </form>
-    {Object.entries(errors).map(([field, message]) => <span className="settings-field-error" role="alert" key={field}>{message}</span>)}
+    {Object.entries(errors).map(([field, message]) => <span className="set-field-error" role="alert" key={field}>{message}</span>)}
   </SettingsRow>;
 }
 
 export function HouseholdSettings({
   currentMemberId,
   currentRole,
-  householdKind,
   members: initialMembers,
   onMessage
 }: {
   currentMemberId: string;
   currentRole: string;
-  householdKind: string;
   members: HouseholdMember[];
   onMessage: Notify;
 }) {
@@ -301,13 +292,8 @@ export function HouseholdSettings({
   const managedMembers = isOwnerView ? members : members.filter((member) => member.id === currentMemberId);
 
   return <>
-    <SettingsSection
-      title="Household profiles"
-      description={householdKind === 'solo'
-        ? 'This is a solo workspace. Managed profiles turn it into a household without creating extra web logins.'
-        : 'Profiles control assignments and Paperless permissions inside this household.'}
-    >
-      <div className="settings-member-list">
+    <SettingsSection title="Household profiles" description={roleHelp}>
+      <div className="set-member-list">
         {members.map((member) => <MemberRow
           key={member.id}
           member={member}
@@ -319,9 +305,9 @@ export function HouseholdSettings({
         />)}
       </div>
       {isOwnerView ? <>
-        <form className="settings-inline-form" onSubmit={(event) => void add(event)}>
+        <form className="set-inline-form" onSubmit={(event) => void add(event)}>
           <input
-            className="settings-input"
+            className="input"
             name="displayName"
             value={newName}
             maxLength={100}
@@ -331,19 +317,18 @@ export function HouseholdSettings({
             aria-invalid={addError ? true : undefined}
             onChange={(event) => setNewName(event.target.value)}
           />
-          <select className="settings-select" name="role" value={newRole} aria-label="Profile role" onChange={(event) => setNewRole(event.target.value)}>
+          <select className="select" name="role" value={newRole} aria-label="Profile role" onChange={(event) => setNewRole(event.target.value)}>
             {roleOptions.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
           </select>
-          <button className="settings-button" disabled={working || !newName.trim()}>Add profile</button>
+          <button className="btn btn-secondary" disabled={working || !newName.trim()}>Add profile</button>
         </form>
-        {addError ? <span className="settings-field-error household-add-error" role="alert">{addError}</span> : null}
-        <p className="settings-field-help household-role-help">{roleHelp}</p>
+        {addError ? <span className="set-field-error household-add-error" role="alert">{addError}</span> : null}
       </> : <InlineStatus kind="neutral">Only the household owner can add, rename or remove profiles.</InlineStatus>}
     </SettingsSection>
 
     <SettingsSection
-      title="Profile Paperless access"
-      description="Tokens stay encrypted and are never returned to this page. Tagvico checks a new token with Paperless before saving it."
+      title="Paperless access"
+      description="Tokens are write-only and checked with Paperless before they are saved."
     >
       {managedMembers.map((member) => <PaperlessAccessRow
         key={member.id}

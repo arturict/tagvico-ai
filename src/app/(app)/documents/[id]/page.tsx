@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, ExternalLink, FileText, MessageCircle } from 'lucide-react';
+import { ArrowLeft, ExternalLink } from 'lucide-react';
 import axios from 'axios';
 import { requireUser } from '@/lib/server/auth';
 import { workspaceFor } from '@/lib/server/workspace';
@@ -8,11 +8,22 @@ import { getPaperlessPublicUrl } from '@/lib/server/household-navigation';
 import * as actionSync from '@root/services/actionSyncService';
 
 export const dynamic = 'force-dynamic';
-export const metadata = { title: 'Document source' };
+export const metadata = { title: 'Document' };
 
-function plain(value: unknown) {
+const dayFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
+// Shows the calendar day of a Paperless timestamp (read in UTC so the server time zone cannot shift it), or the raw value if it is not ISO.
+function day(value: unknown) {
   if (value === null || value === undefined || value === '') return 'Not set';
-  return String(value);
+  const text = String(value);
+  const iso = text.slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? dayFormat.format(new Date(`${iso}T00:00:00Z`)) : text;
+}
+
+// Correspondent and document type arrive as Paperless ids; the names are not loaded on this page.
+function reference(value: unknown) {
+  if (value === null || value === undefined || value === '') return 'Not set';
+  return `#${String(value)}`;
 }
 
 export default async function DocumentSourcePage({
@@ -31,13 +42,13 @@ export default async function DocumentSourcePage({
   } catch (error) {
     // Paperless answers 404 for a missing document and 403 when the member's own account may not see it.
     if (axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 403)) notFound();
-    return <div className="page document-source-page">
-      <section className="empty" role="alert">
-        <h2>The document could not be loaded</h2>
+    return <div className="page-column doc-detail">
+      <section className="empty-state" role="alert">
+        <h1 className="pg-empty-title">The document could not be loaded</h1>
         <p>Paperless did not answer. Check the connection in Settings and try again.</p>
-        <div className="workspace-actions">
-          <Link className="button" href="/documents"><ArrowLeft aria-hidden="true" /> All documents</Link>
-          <Link className="button" href="/settings/paperless">Paperless settings</Link>
+        <div className="pg-empty-actions">
+          <Link className="btn btn-secondary btn-32" href="/documents">All documents</Link>
+          <Link className="btn btn-ghost btn-32" href="/settings/paperless">Paperless settings</Link>
         </div>
       </section>
     </div>;
@@ -57,43 +68,33 @@ export default async function DocumentSourcePage({
   }
   const paperlessUrl = await getPaperlessPublicUrl();
 
-  return <div className="page document-source-page">
-    <header className="page-head">
-      <div>
-        <p className="eyebrow">Paperless source · Document #{rawId}</p>
-        <h1>{title}</h1>
-        <p className="lede">Read-only OCR and metadata from the Paperless account linked to this workspace.</p>
+  return <div className="page-column doc-detail">
+    <Link className="btn btn-ghost btn-28 pg-back" href="/documents"><ArrowLeft aria-hidden="true" /> Documents</Link>
+    <header className="page-header pg-header">
+      <div className="page-header-text">
+        <h1 className="page-title">{title}</h1>
       </div>
-      <div className="workspace-actions">
-        <Link className="button" href="/documents"><ArrowLeft aria-hidden="true" /> Documents</Link>
-        {paperlessUrl ? <a className="button" href={`${paperlessUrl}/documents/${rawId}/details`} target="_blank" rel="noopener noreferrer"><ExternalLink aria-hidden="true" /> Open in Paperless<span className="sr-only"> (new tab)</span></a> : null}
-        <Link className="button primary" href="/companion?new=1"><MessageCircle aria-hidden="true" /> Chat</Link>
-      </div>
+      {paperlessUrl ? <div className="page-actions">
+        <a className="btn btn-secondary btn-32" href={`${paperlessUrl}/documents/${rawId}/details`} target="_blank" rel="noopener noreferrer"><ExternalLink aria-hidden="true" /> Open in Paperless<span className="sr-only"> (new tab)</span></a>
+      </div> : null}
     </header>
 
-    <section className="document-source-layout">
-      <article className="workspace-card document-source-content">
-        <div className="workspace-card-head">
-          <div><p className="eyebrow">Source text</p><h2>OCR preview</h2></div>
-          <FileText aria-hidden="true" />
-        </div>
-        {content
-          ? <pre>{content}</pre>
-          : <div className="empty"><h2>No OCR text is available</h2><p>Verify the original in Paperless if this source is image-only.</p></div>}
-      </article>
+    <dl className="pg-rows doc-meta">
+      <div className="pg-row"><dt>ID</dt><dd>{rawId}</dd></div>
+      <div className="pg-row"><dt>Created</dt><dd>{day(document.created)}</dd></div>
+      <div className="pg-row"><dt>Modified</dt><dd>{day(document.modified)}</dd></div>
+      <div className="pg-row"><dt>Correspondent</dt><dd>{reference(document.correspondent)}</dd></div>
+      <div className="pg-row"><dt>Document type</dt><dd>{reference(document.document_type)}</dd></div>
+      <div className="pg-row"><dt>Tags</dt><dd>{tagIds.length ? tagIds.map((id) => tagNames.get(id) || `#${id}`).join(', ') : 'None'}</dd></div>
+    </dl>
 
-      <aside className="workspace-card document-source-metadata">
-        <div className="workspace-card-head"><div><p className="eyebrow">Paperless metadata</p><h2>Source details</h2></div></div>
-        <dl>
-          <div><dt>Document ID</dt><dd>#{rawId}</dd></div>
-          <div><dt>Created</dt><dd>{plain(document.created)}</dd></div>
-          <div><dt>Modified</dt><dd>{plain(document.modified)}</dd></div>
-          <div><dt>Correspondent ID</dt><dd>{plain(document.correspondent)}</dd></div>
-          <div><dt>Document type ID</dt><dd>{plain(document.document_type)}</dd></div>
-          <div><dt>Tags</dt><dd>{tagIds.length ? tagIds.map((id) => tagNames.get(id) || `#${id}`).join(', ') : 'None'}</dd></div>
-        </dl>
-        <p className="workspace-muted">This view is read-only. It does not expose credentials or provider payloads.</p>
-      </aside>
+    <section className="section doc-text" aria-labelledby="doc-text-title">
+      <h2 className="section-title" id="doc-text-title">Text</h2>
+      {content
+        ? <pre className="pg-ocr">{content}</pre>
+        : <p className="pg-muted">No OCR text is available. If the file is image-only, check the original in Paperless.</p>}
     </section>
+
+    <p className="meta doc-note">This view is read-only.</p>
   </div>;
 }

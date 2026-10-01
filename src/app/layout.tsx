@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import './styles/foundation.css';
 import './styles/shell.css';
 import './styles/chat.css';
 import './styles/inbox.css';
 import './styles/settings.css';
-import { cn } from "@/lib/utils";
+import './styles/pages.css';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { GeistSans } from 'geist/font/sans';
 
 export const metadata: Metadata = {
   applicationName: 'Tagvico AI',
@@ -23,9 +23,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#f5f2e8'
+  themeColor: '#ffffff'
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en" className={cn("font-sans", GeistSans.variable)}><body><TooltipProvider>{children}</TooltipProvider></body></html>;
+  return <html lang="en" className="font-sans"><body><TooltipProvider>{children}</TooltipProvider></body></html>;
 }

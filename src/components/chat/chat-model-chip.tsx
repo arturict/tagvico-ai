@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Brain, Check, ChevronDown, ChevronRight, RefreshCw, Search, X } from 'lucide-react';
+import { Check, ChevronDown, ChevronRight, RefreshCw, Search, X } from 'lucide-react';
 import { Dialog } from 'radix-ui';
 import { ProviderIcon } from '@/components/provider-icon';
 import type {
@@ -16,9 +16,9 @@ type CatalogResponse = CompanionModelCatalog & {
 export type ModelChipState = 'loading' | 'ready' | 'none' | 'error';
 
 /**
- * The model of this conversation, as a chip in the composer. The list is the
- * verified catalog of the configured providers; a choice is stored on the
- * conversation and used for the next message.
+ * The model of this conversation, as a picker at the top left of the chat. The
+ * list is the verified catalog of the configured providers; a choice is stored
+ * on the conversation and used for the next message.
  */
 export function ChatModelChip({
   sessionId,
@@ -114,14 +114,14 @@ export function ChatModelChip({
   };
 
   if (!loading && !catalog.providers.length) {
-    return <div className="companion-model-control">
+    return <div className="chat-model-control">
       {error
-        ? <button type="button" className="chat-chip is-warning" onClick={() => void load()}>{error} Retry</button>
-        : <a className="chat-chip is-warning" href="/settings/providers">Connect an AI model</a>}
+        ? <button type="button" className="btn btn-secondary btn-32" onClick={() => void load()}>{error} Retry</button>
+        : <a className="btn btn-secondary btn-32" href="/settings/providers">Connect an AI model</a>}
     </div>;
   }
 
-  return <div className="companion-model-control">
+  return <div className="chat-model-control">
     <Dialog.Root onOpenChange={(open) => {
       if (!open) setQuery('');
       if (open && selection?.providerInstanceId) {
@@ -132,39 +132,36 @@ export function ChatModelChip({
     }}>
       <Dialog.Trigger asChild>
         <button
-          className="companion-model-trigger"
+          className="btn btn-ghost chat-model-trigger"
           type="button"
           disabled={loading || saving}
           aria-label="Choose model"
           title={selectedProvider ? `${selectedProvider.name} · ${selectedModel?.name || selection?.modelId || ''}` : undefined}
         >
-          <ProviderIcon icon={selectedProvider?.icon || null} name={selectedProvider?.name || 'AI provider'} size={16} />
-          <span>
-            <small>{selectedProvider?.name || (loading ? 'Loading models' : 'No model')}</small>
-            <strong>{selectedModel?.name || selection?.modelId || 'Choose a model'}</strong>
-          </span>
+          <span>{selectedModel?.name || selection?.modelId || (loading ? 'Loading models' : 'Choose a model')}</span>
           <ChevronDown aria-hidden="true" />
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
-        <Dialog.Overlay className="settings-dialog-overlay" />
-        <Dialog.Content className="companion-model-dialog" aria-describedby="chat-model-description">
-          <header className="settings-dialog-head">
+        <Dialog.Overlay className="dialog-backdrop" />
+        <Dialog.Content className="dialog chat-model-dialog" aria-describedby="chat-model-description">
+          <header className="chat-model-dialog-head">
             <div>
-              <Dialog.Title>Model</Dialog.Title>
-              <Dialog.Description id="chat-model-description">
-                Used for the next message in this chat. Only models your connected providers list right now appear here.
+              <Dialog.Title className="type-section">Model</Dialog.Title>
+              <Dialog.Description id="chat-model-description" className="meta">
+                Used for the next message in this chat.
               </Dialog.Description>
             </div>
-            <Dialog.Close className="settings-icon-button" aria-label="Close model picker">
+            <Dialog.Close className="btn btn-ghost btn-icon btn-32" aria-label="Close model picker">
               <X aria-hidden="true" />
             </Dialog.Close>
           </header>
-          <div className="companion-model-toolbar">
-            <label className="settings-search">
+          <div className="chat-model-toolbar">
+            <label className="chat-model-search">
               <Search aria-hidden="true" />
               <span className="sr-only">Search models</span>
               <input
+                className="input"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search models"
@@ -172,25 +169,23 @@ export function ChatModelChip({
               />
             </label>
             <button
-              className="settings-icon-button"
+              className="btn btn-ghost btn-icon"
               type="button"
               onClick={() => void load(true)}
               disabled={loading}
               aria-label="Refresh models"
             >
-              <RefreshCw className={loading ? 'is-spinning' : undefined} aria-hidden="true" />
+              <RefreshCw className={loading ? 'chat-spin' : undefined} aria-hidden="true" />
             </button>
           </div>
-          <div className="companion-model-list">
-            {loading ? <div className="model-catalog-skeleton" aria-label="Loading models">
-              {Array.from({ length: 5 }, (_, index) => <span key={index}><i /><b /><small /></span>)}
-            </div> : null}
+          <div className="chat-model-list">
+            {loading ? <p className="chat-model-empty shimmer">Loading models</p> : null}
             {!loading && visibleProviders.map((provider) => {
               const expanded = Boolean(normalizedQuery) || expandedProviders.includes(provider.instanceId);
-              return <section className={`companion-provider-group${expanded ? ' is-expanded' : ''}`} key={provider.instanceId}>
+              return <section className="chat-model-group" key={provider.instanceId}>
                 <button
                   type="button"
-                  className="companion-provider-toggle"
+                  className="chat-model-provider"
                   onClick={() => toggleProvider(provider.instanceId)}
                   aria-expanded={expanded}
                 >
@@ -198,7 +193,7 @@ export function ChatModelChip({
                   <span><strong>{provider.name}</strong><small>{provider.models.length} model{provider.models.length === 1 ? '' : 's'}</small></span>
                   {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
                 </button>
-                {expanded ? <div className="companion-provider-models">{provider.models.map((model) => {
+                {expanded ? <div className="chat-model-options">{provider.models.map((model) => {
                   const selected = selection?.providerInstanceId === provider.instanceId
                     && selection.modelId === model.id;
                   const modelReasoning = model.options.find(
@@ -207,10 +202,16 @@ export function ChatModelChip({
                   const defaultReasoning = modelReasoning?.type === 'select'
                     ? modelReasoning.defaultValue || modelReasoning.values[0]?.id
                     : undefined;
+                  const traits = [
+                    model.isDefault ? 'Default' : '',
+                    model.capabilities.includes('tools') ? 'Tools' : '',
+                    model.capabilities.includes('vision') ? 'Vision' : '',
+                    model.capabilities.includes('thinking') ? 'Thinking' : ''
+                  ].filter(Boolean);
                   return <Dialog.Close asChild key={model.id}>
                     <button
                       type="button"
-                      className={selected ? 'is-selected' : undefined}
+                      className={`chat-model-option${selected ? ' is-selected' : ''}`}
                       onClick={() => void choose({
                         providerInstanceId: provider.instanceId,
                         modelId: model.id,
@@ -220,12 +221,7 @@ export function ChatModelChip({
                       <span>
                         <strong>{model.name}</strong>
                         <small>{model.id}</small>
-                        <span className="settings-capabilities">
-                          {model.isDefault ? <span>Default</span> : null}
-                          {model.capabilities.includes('tools') ? <span>Tools</span> : null}
-                          {model.capabilities.includes('vision') ? <span>Vision</span> : null}
-                          {model.capabilities.includes('thinking') ? <span>Thinking</span> : null}
-                        </span>
+                        {traits.length ? <em>{traits.join(' · ')}</em> : null}
                       </span>
                       {selected ? <Check aria-label="Selected" /> : null}
                     </button>
@@ -233,17 +229,17 @@ export function ChatModelChip({
                 })}</div> : null}
               </section>;
             })}
-            {!loading && !visibleProviders.length ? <div className="settings-model-empty">
+            {!loading && !visibleProviders.length ? <p className="chat-model-empty">
               {normalizedQuery ? 'No model matches your search.' : 'No connected provider listed a model.'}
-            </div> : null}
+            </p> : null}
           </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-    {reasoningOption ? <label className="companion-reasoning-control">
-      <Brain aria-hidden="true" />
+    {reasoningOption ? <label className="chat-model-reasoning">
       <span className="sr-only">Thinking effort</span>
       <select
+        className="select select-32"
         value={selection?.reasoningEffort || reasoningOption.defaultValue || reasoningOption.values[0]?.id || ''}
         disabled={saving}
         onChange={(event) => selection && void choose({ ...selection, reasoningEffort: event.target.value })}
@@ -252,6 +248,6 @@ export function ChatModelChip({
         {reasoningOption.values.map((value) => <option key={value.id} value={value.id}>{value.label}</option>)}
       </select>
     </label> : null}
-    {error ? <span className="companion-model-error" role="status">{error}</span> : null}
+    {error ? <span className="chat-model-error field-error" role="status">{error}</span> : null}
   </div>;
 }

@@ -24,7 +24,8 @@ export function ChatErrorNotice({
   onDismiss: () => void;
 }) {
   const settingsLabel = SETTINGS_ACTIONS[error.code];
-  return <div className={`chat-notice${settingsLabel || error.code === 'provider-limit' ? ' is-calm' : ''}`} role="alert" data-error-code={error.code}>
+  const calm = Boolean(settingsLabel) || error.code === 'provider-limit';
+  return <div className={`chat-notice alert ${calm ? 'is-warning' : 'is-danger'}`} role="alert" data-error-code={error.code}>
     <CircleAlert aria-hidden="true" />
     <span>{error.message}</span>
     {settingsLabel ? (canManageSettings
@@ -33,6 +34,6 @@ export function ChatErrorNotice({
     {onRetry ? <button type="button" className="chat-notice-action" onClick={onRetry}>
       <RotateCcw aria-hidden="true" />Try again
     </button> : null}
-    <button type="button" onClick={onDismiss} aria-label="Dismiss message"><X /></button>
+    <button type="button" className="chat-notice-dismiss" onClick={onDismiss} aria-label="Dismiss message"><X aria-hidden="true" /></button>
   </div>;
 }

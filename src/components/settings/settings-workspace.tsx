@@ -1,10 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Bot,
   FileStack,
+  MessageSquare,
   SlidersHorizontal,
   Tags,
   UsersRound
@@ -22,7 +24,7 @@ import { PaperlessConnection } from './paperless-connection';
 import { PaperlessDiscovery } from './paperless-discovery';
 import { idleAuth, providerAuthFromStatus, type ProviderAuth } from './provider-auth';
 import { ProviderPicker } from './provider-picker';
-import { settingsSectionTitles } from './sections';
+import { legacyChannelAnchors, settingsSectionTitles } from './sections';
 import { SettingSwitch } from './setting-switch';
 import { SettingsRow, SettingsSection } from './settings-section';
 import { TagGroupCard } from './tag-group-card';
@@ -39,17 +41,10 @@ const sections = [
   { id: 'paperless', Icon: FileStack },
   { id: 'providers', Icon: Bot },
   { id: 'automation', Icon: SlidersHorizontal },
+  { id: 'channels', Icon: MessageSquare },
   { id: 'tags', Icon: Tags },
   { id: 'people', Icon: UsersRound }
 ] as const;
-
-const descriptions: Record<SettingsSectionId, string> = {
-  paperless: 'The source of documents, permissions and filing vocabulary.',
-  providers: 'Sign in with ChatGPT or connect another provider, then choose the model.',
-  automation: 'Control when Tagvico processes documents and which execution mode it uses.',
-  tags: 'Control the vocabulary, clean up duplicates and define safe metadata boundaries.',
-  people: 'Household profiles, Paperless access, sign-in protection and outbound access.'
-};
 
 /** Provider errors can carry a pasted JSON body; show only the readable first line. */
 const plainError = (message: string) => message.split('\n')[0].replace(/:\s*[{[].*$/, '').slice(0, 220);
@@ -61,7 +56,6 @@ const isRecommendedModel = (modelId: string) => /(^|\/)gpt-6-luna$/i.test(modelI
 type HouseholdProps = {
   currentMemberId: string;
   currentRole: string;
-  householdKind: string;
   members: HouseholdMember[];
 };
 
@@ -121,25 +115,20 @@ function MemberSettingsPage({ household }: { household: HouseholdProps }) {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), 5000);
   };
-  return <div className="settings-page">
-    <header className="settings-page-head">
-      <div>
-        <h1>{settingsSectionTitles.people}</h1>
-        <p>{descriptions.people}</p>
-      </div>
-    </header>
-    <div className="settings-layout">
-      <div className="settings-side">
-        <nav className="settings-nav" aria-label="Settings sections">
+  return <div className="page-column is-wide set-page">
+    <header className="page-header"><h1 className="page-title">Settings</h1></header>
+    <div className="set-layout">
+      <div className="set-side">
+        <nav className="set-nav" aria-label="Settings sections">
           <Link href="/settings/people" className="is-active" aria-current="page">
             <UsersRound aria-hidden="true" />
             <span>{settingsSectionTitles.people}</span>
           </Link>
         </nav>
       </div>
-      <div className="settings-content"><HouseholdSettings {...household} onMessage={showMessage} /></div>
+      <div className="set-content"><HouseholdSettings {...household} onMessage={showMessage} /></div>
     </div>
-    {toast ? <div className={`settings-toast is-${toast.kind}`} role={toast.kind === 'error' ? 'alert' : 'status'}>
+    {toast ? <div className={`set-toast is-${toast.kind}`} role={toast.kind === 'error' ? 'alert' : 'status'}>
       {toast.message}
     </div> : null}
   </div>;
@@ -176,6 +165,14 @@ function OwnerSettingsWorkspace({
   const [authByProvider, setAuthByProvider] = useState<Record<string, ProviderAuth>>({});
   const [manualModelOpen, setManualModelOpen] = useState(false);
   const [newTagGroupName, setNewTagGroupName] = useState('');
+  const router = useRouter();
+
+  // Channel cards used to live in Automation; an old #telegram or #discord link goes to the Channels tab.
+  useEffect(() => {
+    if (section !== 'automation') return;
+    const anchor = window.location.hash.replace(/^#/, '').toLowerCase();
+    if (legacyChannelAnchors.includes(anchor)) router.replace('/settings/channels');
+  }, [section, router]);
 
   useEffect(() => () => {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
@@ -504,39 +501,20 @@ function OwnerSettingsWorkspace({
 
   const content = (() => {
     if (section === 'paperless') {
-      return <>
-        <SettingsSection title="Paperless connection" description="The token is write-only. Every save checks the connection with Paperless.">
-          <PaperlessConnection paperless={settings.paperless} applyPatch={applyPatch} errorFor={errorFor} />
-        </SettingsSection>
-        <SettingsSection
-          title="Instance discovery"
-          description="Scan common Docker, host and local-network addresses without changing your saved connection."
-        >
-          <SettingsRow
-            title="Find Paperless-ngx"
-            description="This is read-only discovery. Found URLs are shown for comparison and are never saved automatically."
-            stack
-          >
-            <PaperlessDiscovery baseUrl={settings.paperless.baseUrl} />
-          </SettingsRow>
-        </SettingsSection>
-        <SettingsSection title="System info" description="A redacted view of this installation. It contains no tokens, account IDs or private credential values.">
-          <dl className="settings-diagnostics">
-            <div><dt>Tagvico version</dt><dd>{settings.diagnostics.version}</dd></div>
-            <div><dt>Setup complete</dt><dd>{settings.diagnostics.configured ? 'Yes' : 'No'}</dd></div>
-            <div><dt>Provider definitions</dt><dd>{settings.diagnostics.providerRegistrySize}</dd></div>
-            <div><dt>Active provider</dt><dd>{settings.ai.activeProviderInstanceId}</dd></div>
-            <div><dt>Active model</dt><dd>{settings.ai.activeModelId || 'Not configured'}</dd></div>
-            <div><dt>Settings revision</dt><dd><code>{settings.revision}</code></dd></div>
-          </dl>
-        </SettingsSection>
-      </>;
+      return <SettingsSection title="Connection" description="The API token is write-only. Every save is checked against Paperless.">
+        <PaperlessConnection paperless={settings.paperless} applyPatch={applyPatch} errorFor={errorFor} />
+        <SettingsRow title="Find Paperless-ngx" description="Scans common local addresses. Nothing is saved." stack>
+          <PaperlessDiscovery baseUrl={settings.paperless.baseUrl} />
+        </SettingsRow>
+      </SettingsSection>;
     }
     if (section === 'providers') {
-      const configuredIsHero = configuredProvider?.instanceId === 'chatgpt';
-      const probeCluster = (provider: { instanceId: string; name: string }, extra?: ReactNode) => <div className="settings-action-cluster">
+      const selected = configuredProvider;
+      const selectedIsChatGPT = selected?.instanceId === 'chatgpt';
+      const probeActions = (provider: { instanceId: string; name: string }, extra?: ReactNode) => <div className="set-actions is-start">
+        {extra}
         <button
-          className="settings-button"
+          className="btn btn-secondary"
           type="button"
           onClick={() => {
             setConfiguredProviderId(provider.instanceId);
@@ -545,128 +523,115 @@ function OwnerSettingsWorkspace({
         >
           Test {provider.name}
         </button>
-        {extra}
         {probeStatus && configuredProvider?.instanceId === provider.instanceId
           ? <InlineStatus kind={probeStatus.startsWith('Connected') ? 'success' : probeStatus.includes('…') ? 'loading' : 'error'}>{probeStatus}</InlineStatus>
           : null}
       </div>;
-      return <>
-        <SettingsSection
-          title="AI provider"
-          description="Tagvico uses one provider for filing and the chat. Secrets are write-only and are never sent back to this browser."
-        >
-          <div className="provider-panel">
-            <ProviderPicker
-              providers={settings.ai.providers}
-              selectedId={configuredProvider?.instanceId || ''}
-              activeId={settings.ai.activeProviderInstanceId}
-              onSelect={setConfiguredProviderId}
-              heroAction={<>
-                <ChatGPTPlanSignIn
-                  apiBase="/api/chatgpt"
-                  authenticated={chatgptAuth.authenticated}
-                  accountLabel={chatgptAuth.label}
-                  onConnected={async () => {
-                    const firstConnection = !chatgptAuth.authenticated;
-                    showMessage('success', 'ChatGPT plan connected.');
-                    setConfiguredProviderId('chatgpt');
-                    await loadProviderAuth('chatgpt');
-                    if (firstConnection && settingsRef.current.ai.activeProviderInstanceId !== 'chatgpt') {
-                      await selectProvider('chatgpt');
-                    } else {
-                      await loadModels('chatgpt');
-                    }
-                  }}
-                  onError={(message) => showMessage('error', message)}
-                  onLogout={() => logoutProvider('chatgpt')}
-                />
-                {chatgptAuth.authenticated && settings.ai.activeProviderInstanceId !== 'chatgpt' ? <div className="settings-action-cluster">
-                  <button className="settings-button" type="button" onClick={() => void selectProvider('chatgpt')}>
-                    Use ChatGPT plan for Tagvico
-                  </button>
-                </div> : null}
-                {chatgptProvider && chatgptAuth.authenticated ? probeCluster(chatgptProvider) : null}
-              </>}
-            />
+      const providerPanel = selectedIsChatGPT ? <div className="set-panel">
+        <ChatGPTPlanSignIn
+          apiBase="/api/chatgpt"
+          authenticated={chatgptAuth.authenticated}
+          accountLabel={chatgptAuth.label}
+          onConnected={async () => {
+            const firstConnection = !chatgptAuth.authenticated;
+            showMessage('success', 'ChatGPT plan connected.');
+            setConfiguredProviderId('chatgpt');
+            await loadProviderAuth('chatgpt');
+            if (firstConnection && settingsRef.current.ai.activeProviderInstanceId !== 'chatgpt') {
+              await selectProvider('chatgpt');
+            } else {
+              await loadModels('chatgpt');
+            }
+          }}
+          onError={(message) => showMessage('error', message)}
+          onLogout={() => logoutProvider('chatgpt')}
+        />
+        {chatgptProvider && chatgptAuth.authenticated ? probeActions(
+          chatgptProvider,
+          settings.ai.activeProviderInstanceId !== 'chatgpt'
+            ? <button className="btn btn-primary" type="button" onClick={() => void selectProvider('chatgpt')}>
+                Use ChatGPT plan for Tagvico
+              </button>
+            : null
+        ) : null}
+      </div> : selected ? <div className="set-panel">
+        {selected.fields.length ? selected.fields.map((field) => {
+          const stored = selected.configuration[field.key];
+          return <DraftField
+            key={field.key}
+            label={field.label}
+            description={field.description}
+            type={field.type}
+            value={typeof stored === 'string' ? stored : ''}
+            configured={typeof stored === 'object' && stored.configured}
+            placeholder={field.placeholder}
+            error={errorFor(`provider.${field.key}`)}
+            onCommit={async (value) => {
+              const saved = await applyPatch({
+                provider: { instanceId: selected.instanceId, values: { [field.key]: value } }
+              }, `${field.label} saved.`);
+              if (saved) {
+                setModelsByProvider((current) => {
+                  const next = { ...current };
+                  delete next[selected.instanceId];
+                  return next;
+                });
+              }
+            }}
+          />;
+        }) : <InlineStatus kind="neutral">This runtime signs in with an account instead of an API key.</InlineStatus>}
+        {selected.instanceId === 'codex' ? <div className="set-auth">
+          <div className="set-actions is-start">
+            <InlineStatus kind={providerAuth.loading ? 'loading' : providerAuth.authenticated ? 'success' : 'neutral'}>
+              {providerAuth.loading ? 'Checking account…' : providerAuth.label}
+            </InlineStatus>
+            <button className="btn btn-secondary" type="button" disabled={Boolean(codexLogin)} onClick={() => void startCodexLogin()}>
+              {codexLogin ? 'Waiting for sign-in…' : providerAuth.authenticated ? 'Reconnect ChatGPT' : 'Sign in with ChatGPT'}
+            </button>
+            {providerAuth.authenticated
+              ? <button className="btn btn-danger" type="button" onClick={() => void logoutProvider('codex')}>Sign out</button>
+              : null}
           </div>
-          {configuredProvider && !configuredIsHero ? <SettingsRow
-            title={`${configuredProvider.name} configuration`}
-            description={configuredProvider.description}
-            stack
-          >
-            {configuredProvider.fields.length ? <div className="settings-fields-grid">
-              {configuredProvider.fields.map((field) => {
-                const stored = configuredProvider.configuration[field.key];
-                return <DraftField
-                  key={field.key}
-                  label={field.label}
-                  description={field.description}
-                  type={field.type}
-                  value={typeof stored === 'string' ? stored : ''}
-                  configured={typeof stored === 'object' && stored.configured}
-                  placeholder={field.placeholder}
-                  error={errorFor(`provider.${field.key}`)}
-                  onCommit={async (value) => {
-                    const saved = await applyPatch({
-                      provider: { instanceId: configuredProvider.instanceId, values: { [field.key]: value } }
-                    }, `${field.label} saved.`);
-                    if (saved) {
-                      setModelsByProvider((current) => {
-                        const next = { ...current };
-                        delete next[configuredProvider.instanceId];
-                        return next;
-                      });
-                    }
-                  }}
-                />;
-              })}
-            </div> : <InlineStatus kind="neutral">This runtime uses account authentication instead of an API-key field.</InlineStatus>}
-            {configuredProvider.instanceId === 'codex' ? <div className="settings-auth-panel">
-              <div className="settings-action-cluster">
-                <InlineStatus kind={providerAuth.loading ? 'loading' : providerAuth.authenticated ? 'success' : 'neutral'}>
-                  {providerAuth.loading ? 'Checking account…' : providerAuth.label}
-                </InlineStatus>
-                <button className="settings-button" type="button" disabled={Boolean(codexLogin)} onClick={() => void startCodexLogin()}>
-                  {codexLogin ? 'Waiting for sign-in…' : providerAuth.authenticated ? 'Reconnect ChatGPT' : 'Sign in with ChatGPT'}
-                </button>
-                {providerAuth.authenticated
-                  ? <button className="settings-button is-danger" type="button" onClick={() => void logoutProvider('codex')}>Sign out</button>
-                  : null}
-              </div>
-              {codexLoginOutput ? <pre className="settings-auth-output">{codexLoginOutput}</pre> : null}
-            </div> : null}
-            {configuredProvider.instanceId === 'copilot' ? <div className="settings-auth-panel">
-              <div className="settings-action-cluster">
-                <InlineStatus kind={providerAuth.loading ? 'loading' : providerAuth.authenticated ? 'success' : 'neutral'}>
-                  {providerAuth.loading ? 'Checking account…' : providerAuth.label}
-                </InlineStatus>
-                <button className="settings-button" type="button" disabled={Boolean(copilotLogin)} onClick={() => void startCopilotLogin()}>
-                  {copilotLogin ? 'Waiting for sign-in…' : providerAuth.authenticated ? 'Reconnect Copilot' : 'Sign in with GitHub'}
-                </button>
-                {providerAuth.authenticated
-                  ? <button className="settings-button is-danger" type="button" onClick={() => void logoutProvider('copilot')}>Sign out</button>
-                  : null}
-              </div>
-              {copilotChallenge.verificationUrl ? <div className="settings-auth-challenge">
-                <span>Code <strong>{copilotChallenge.userCode}</strong></span>
-                <a href={copilotChallenge.verificationUrl} target="_blank" rel="noreferrer">Open GitHub device sign-in</a>
-              </div> : null}
-            </div> : null}
-            {probeCluster(configuredProvider, configuredProvider.instanceId !== settings.ai.activeProviderInstanceId ? <button
-              className="settings-button is-primary"
-              type="button"
-              onClick={() => void selectProvider(configuredProvider.instanceId)}
-            >
-              Use {configuredProvider.name}
-            </button> : null)}
-          </SettingsRow> : null}
+          {codexLoginOutput ? <pre className="set-auth-output">{codexLoginOutput}</pre> : null}
+        </div> : null}
+        {selected.instanceId === 'copilot' ? <div className="set-auth">
+          <div className="set-actions is-start">
+            <InlineStatus kind={providerAuth.loading ? 'loading' : providerAuth.authenticated ? 'success' : 'neutral'}>
+              {providerAuth.loading ? 'Checking account…' : providerAuth.label}
+            </InlineStatus>
+            <button className="btn btn-secondary" type="button" disabled={Boolean(copilotLogin)} onClick={() => void startCopilotLogin()}>
+              {copilotLogin ? 'Waiting for sign-in…' : providerAuth.authenticated ? 'Reconnect Copilot' : 'Sign in with GitHub'}
+            </button>
+            {providerAuth.authenticated
+              ? <button className="btn btn-danger" type="button" onClick={() => void logoutProvider('copilot')}>Sign out</button>
+              : null}
+          </div>
+          {copilotChallenge.verificationUrl ? <p className="set-note">
+            Code <strong>{copilotChallenge.userCode}</strong>{' '}
+            <a className="link" href={copilotChallenge.verificationUrl} target="_blank" rel="noreferrer">Open GitHub device sign-in</a>
+          </p> : null}
+        </div> : null}
+        {probeActions(selected, selected.instanceId !== settings.ai.activeProviderInstanceId ? <button
+          className="btn btn-primary"
+          type="button"
+          onClick={() => void selectProvider(selected.instanceId)}
+        >
+          Use {selected.name}
+        </button> : null)}
+      </div> : null;
+      return <>
+        <SettingsSection title="Provider" description="Tagvico uses one provider for filing and chat. Keys are write-only.">
+          <ProviderPicker
+            providers={settings.ai.providers}
+            selectedId={selected?.instanceId || ''}
+            activeId={settings.ai.activeProviderInstanceId}
+            onSelect={setConfiguredProviderId}
+          />
+          {providerPanel}
         </SettingsSection>
 
-        <SettingsSection
-          title="Model"
-          description={`Discovered from ${activeProvider?.name || 'the active provider'}. Applies to filing and the chat.`}
-        >
-          <SettingsRow title="Model" description="Search live models, favorite frequent choices and inspect capabilities." stack>
+        <SettingsSection title="Model">
+          <SettingsRow title="Model" description={`From ${activeProvider?.name || 'the active provider'}.`}>
             <ModelPicker
               providers={settings.ai.providers}
               activeProviderId={settings.ai.activeProviderInstanceId}
@@ -678,50 +643,46 @@ function OwnerSettingsWorkspace({
               onRefresh={async () => { await loadModels(); }}
               onSelect={selectModel}
             />
-            {recommendedModel ? <div className="settings-action-cluster">
-              <span className="settings-field-help">
-                {recommendedModel.id === settings.ai.activeModelId
-                  ? `${recommendedModel.name} is the recommended default for filing invoices, letters and forms.`
-                  : `${recommendedModel.name} is the recommended default for filing.`}
-              </span>
-              {recommendedModel.id !== settings.ai.activeModelId ? <button
-                className="settings-button"
-                type="button"
-                onClick={() => void selectModel(recommendedModel)}
-              >
-                Use {recommendedModel.name}
-              </button> : null}
-            </div> : null}
-            {activeProvider?.manualModelInput ? <>
+          </SettingsRow>
+          {recommendedModel && recommendedModel.id !== settings.ai.activeModelId ? <SettingsRow
+            title={`${recommendedModel.name} is recommended for filing`}
+          >
+            <button className="btn btn-secondary" type="button" onClick={() => void selectModel(recommendedModel)}>
+              Use {recommendedModel.name}
+            </button>
+          </SettingsRow> : null}
+          {activeProvider?.manualModelInput ? <>
+            <div className="set-row">
               <button
-                className="settings-link-button"
+                className="btn btn-ghost"
                 type="button"
                 aria-expanded={manualModelOpen}
                 onClick={() => setManualModelOpen((open) => !open)}
               >
                 {manualModelOpen ? 'Hide manual model ID' : 'Use another model ID'}
               </button>
-              {manualModelOpen ? <DraftField
-                label="Manual model ID"
-                description="Use this only when the provider has no catalog or a new model is not listed yet."
-                value={settings.ai.activeModelId}
-                placeholder="provider/model-id"
-                error={errorFor('ai.activeModelId')}
-                onCommit={(activeModelId) => applyPatch({ ai: { activeModelId } }, 'Model ID saved.')}
-              /> : null}
-            </> : null}
-            {activeModel?.options.map((option) => {
-              if (option.type !== 'select') return null;
-              const current = String(settings.ai.modelOptions[option.id] ?? option.defaultValue ?? option.values[0]?.id ?? '');
-              const save = (value: string) => void applyPatch({
-                ai: { modelOptions: { [option.id]: value } }
-              }, `${option.label} saved.`);
-              if (option.values.length <= 4) {
-                return <fieldset className="settings-field settings-segmented" key={option.id}>
-                  <legend className="settings-field-label">{option.label}<small>Runtime capability</small></legend>
-                  <div className="settings-segmented-options">
-                    {option.values.map((value) => <label className={value.id === current ? 'is-active' : undefined} key={value.id}>
+            </div>
+            {manualModelOpen ? <DraftField
+              label="Manual model ID"
+              description="For providers without a catalog, or a model that is not listed yet."
+              value={settings.ai.activeModelId}
+              placeholder="provider/model-id"
+              error={errorFor('ai.activeModelId')}
+              onCommit={(activeModelId) => applyPatch({ ai: { activeModelId } }, 'Model ID saved.')}
+            /> : null}
+          </> : null}
+          {activeModel?.options.map((option) => {
+            if (option.type !== 'select') return null;
+            const current = String(settings.ai.modelOptions[option.id] ?? option.defaultValue ?? option.values[0]?.id ?? '');
+            const save = (value: string) => void applyPatch({
+              ai: { modelOptions: { [option.id]: value } }
+            }, `${option.label} saved.`);
+            return <SettingsRow title={option.label} description={option.description} key={option.id}>
+              {option.values.length <= 4
+                ? <div className="segmented" role="radiogroup" aria-label={option.label}>
+                    {option.values.map((value) => <label className={`segmented-item${value.id === current ? ' is-active' : ''}`} key={value.id}>
                       <input
+                        className="sr-only"
                         type="radio"
                         name={`model-option-${option.id}`}
                         value={value.id}
@@ -731,199 +692,190 @@ function OwnerSettingsWorkspace({
                       <span>{value.label}</span>
                     </label>)}
                   </div>
-                  {option.description ? <span className="settings-field-help">{option.description}</span> : null}
-                </fieldset>;
-              }
-              return <label className="settings-field" key={option.id}>
-                <span className="settings-field-label">{option.label}<small>Runtime capability</small></span>
-                <select className="settings-select" value={current} onChange={(event) => save(event.target.value)}>
-                  {option.values.map((value) => <option value={value.id} key={value.id}>{value.label}</option>)}
-                </select>
-                {option.description ? <span className="settings-field-help">{option.description}</span> : null}
-              </label>;
-            })}
-            {!activeModel && !modelsLoading ? <InlineStatus kind="neutral">
-              Load the live catalog to reveal model-specific options such as thinking effort.
-            </InlineStatus> : null}
-          </SettingsRow>
+                : <select className="select" aria-label={option.label} value={current} onChange={(event) => save(event.target.value)}>
+                    {option.values.map((value) => <option value={value.id} key={value.id}>{value.label}</option>)}
+                  </select>}
+            </SettingsRow>;
+          })}
+          {!activeModel && !modelsLoading ? <InlineStatus kind="neutral">
+            Model options such as thinking effort appear once the live catalog has loaded.
+          </InlineStatus> : null}
         </SettingsSection>
       </>;
     }
     if (section === 'automation') {
-      return <><SettingsSection title="Processing schedule" description="Changes are persisted only on blur, Enter or an explicit switch action.">
-        <SettingsRow title="Scan interval" description="Cron syntax. The default runs every 30 minutes.">
+      return <>
+        <SettingsSection title="Processing">
           <DraftField
-            label="Cron expression"
+            label="Scan schedule"
+            description="Cron expression. The default is every 30 minutes."
             value={settings.automation.scanInterval}
             error={errorFor('automation.scanInterval')}
             onCommit={(scanInterval) => applyPatch({ automation: { scanInterval } }, 'Schedule saved.')}
           />
-        </SettingsRow>
-        <SettingsRow title="Automatic processing" description="Process new documents on the configured schedule.">
-          <SettingSwitch
-            checked={settings.automation.automaticProcessing}
-            label="Automatic processing"
-            onCheckedChange={(automaticProcessing) => void applyPatch({ automation: { automaticProcessing } })}
-          />
-        </SettingsRow>
-        <SettingsRow title="Eligible documents" description="Trigger tags are optional. Without them, every new unprocessed document is scanned.">
-          <InlineStatus kind={settings.tags.triggerTags.length ? 'neutral' : 'success'}>
-            {settings.tags.triggerTags.length
-              ? `Only documents tagged ${settings.tags.triggerTags.join(', ')} are eligible.`
-              : 'All new documents are eligible. No trigger tag is required.'}
-          </InlineStatus>
-        </SettingsRow>
-        <SettingsRow title="Processing mode" description="Batch mode may trade latency for lower provider cost.">
-          <select
-            className="settings-select"
-            value={settings.automation.processingMode}
-            onChange={(event) => void applyPatch({ automation: { processingMode: event.target.value } })}
-          >
-            <option value="standard">Standard</option>
-            <option value="flex">Flex</option>
-            <option value="batch">Batch</option>
-          </select>
-        </SettingsRow>
-        <SettingsRow title="Write mode" description="Review-first stages suggestions for approval. Automatic writes approved metadata directly." stack>
-          <div className="settings-mode-grid">
-            <label className={settings.automation.writeMode === 'review' ? 'is-active' : undefined}>
-              <input
-                type="radio"
-                name="write_mode"
-                value="review"
-                checked={settings.automation.writeMode === 'review'}
-                onChange={() => void applyPatch({ automation: { writeMode: 'review' } }, 'Review-first mode enabled.')}
-              />
-              <span><strong>Review first</strong><small>Stage every suggestion in the review queue before Paperless changes.</small></span>
-            </label>
-            <label className={settings.automation.writeMode === 'automatic' ? 'is-active' : undefined}>
-              <input
-                type="radio"
-                name="write_mode"
-                value="automatic"
-                checked={settings.automation.writeMode === 'automatic'}
-                onChange={() => void applyPatch({ automation: { writeMode: 'automatic' } }, 'Automatic write mode enabled.')}
-              />
-              <span><strong>Full access</strong><small>Apply metadata automatically when policy and confidence checks pass.</small></span>
-            </label>
-          </div>
-        </SettingsRow>
-      </SettingsSection>
-      {channels ? <ChannelSettings channels={channels} onMessage={showMessage} /> : null}
-      <SettingsSection title="Metadata behavior" description="Decide which existing information the model may reuse and which fields it may propose.">
-        <SettingsRow title="Reuse existing metadata" description="Include existing tags, correspondent and document type as context instead of starting from an empty record.">
-          <SettingSwitch
-            checked={settings.automation.useExistingData}
-            label="Reuse existing metadata"
-            onCheckedChange={(useExistingData) => void applyPatch({ automation: { useExistingData } })}
-          />
-        </SettingsRow>
-        <SettingsRow title="Custom fields" description="Let the model populate the explicit custom-field definitions listed under Paperless custom fields below.">
-          <SettingSwitch
-            checked={settings.automation.assignCustomFields}
-            label="Populate custom fields"
-            onCheckedChange={(assignCustomFields) => void applyPatch({ automation: { assignCustomFields } })}
-          />
-        </SettingsRow>
-        <SettingsRow title="Owner assignment" description="Match documents to Paperless users using the profiles below.">
-          <SettingSwitch
-            checked={settings.automation.assignOwner}
-            label="Assign document owners"
-            onCheckedChange={(assignOwner) => void applyPatch({ automation: { assignOwner } })}
-          />
-        </SettingsRow>
-        <SettingsRow title="Owner profiles" description="One profile per line, for example: alex: health insurance, private invoices." stack>
+          <SettingsRow title="Automatic processing">
+            <SettingSwitch
+              checked={settings.automation.automaticProcessing}
+              label="Automatic processing"
+              onCheckedChange={(automaticProcessing) => void applyPatch({ automation: { automaticProcessing } })}
+            />
+          </SettingsRow>
+          <SettingsRow title="Documents to scan">
+            <span className="set-value">
+              {settings.tags.triggerTags.length
+                ? `Tagged ${settings.tags.triggerTags.join(', ')}`
+                : 'All new documents'}
+              {' '}
+              <Link className="link" href="/settings/tags">Change</Link>
+            </span>
+          </SettingsRow>
+          <SettingsRow title="Processing mode" description="Batch can lower cost but is slower.">
+            <select
+              className="select"
+              aria-label="Processing mode"
+              value={settings.automation.processingMode}
+              onChange={(event) => void applyPatch({ automation: { processingMode: event.target.value } })}
+            >
+              <option value="standard">Standard</option>
+              <option value="flex">Flex</option>
+              <option value="batch">Batch</option>
+            </select>
+          </SettingsRow>
+          <SettingsRow title="Write mode" stack>
+            <div className="set-radio-list">
+              <label className={settings.automation.writeMode === 'review' ? 'is-active' : undefined}>
+                <input
+                  type="radio"
+                  name="write_mode"
+                  value="review"
+                  checked={settings.automation.writeMode === 'review'}
+                  onChange={() => void applyPatch({ automation: { writeMode: 'review' } }, 'Review-first mode enabled.')}
+                />
+                <span><strong>Review first</strong><small>Suggestions wait in the review queue until you approve them.</small></span>
+              </label>
+              <label className={settings.automation.writeMode === 'automatic' ? 'is-active' : undefined}>
+                <input
+                  type="radio"
+                  name="write_mode"
+                  value="automatic"
+                  checked={settings.automation.writeMode === 'automatic'}
+                  onChange={() => void applyPatch({ automation: { writeMode: 'automatic' } }, 'Automatic write mode enabled.')}
+                />
+                <span><strong>Full access</strong><small>Metadata is applied automatically when policy and confidence checks pass.</small></span>
+              </label>
+            </div>
+          </SettingsRow>
+        </SettingsSection>
+
+        <SettingsSection title="Metadata">
+          <SettingsRow title="Reuse existing metadata" description="Give the model the current tags, correspondent and type as context.">
+            <SettingSwitch
+              checked={settings.automation.useExistingData}
+              label="Reuse existing metadata"
+              onCheckedChange={(useExistingData) => void applyPatch({ automation: { useExistingData } })}
+            />
+          </SettingsRow>
+          <SettingsRow title="Fill custom fields" description="Only the fields listed under Custom fields.">
+            <SettingSwitch
+              checked={settings.automation.assignCustomFields}
+              label="Populate custom fields"
+              onCheckedChange={(assignCustomFields) => void applyPatch({ automation: { assignCustomFields } })}
+            />
+          </SettingsRow>
+          <SettingsRow title="Assign owners" description="Match documents to Paperless users using the profiles below.">
+            <SettingSwitch
+              checked={settings.automation.assignOwner}
+              label="Assign document owners"
+              onCheckedChange={(assignOwner) => void applyPatch({ automation: { assignOwner } })}
+            />
+          </SettingsRow>
           <DraftTextarea
-            label="Matching hints"
+            label="Owner profiles"
+            description="One per line, for example: alex: health insurance, private invoices."
             value={settings.automation.ownerProfiles}
-            rows={6}
+            rows={5}
             placeholder={'alex: private invoices, health insurance\nfinance: vendor bills, receipts'}
             onCommit={(ownerProfiles) => applyPatch({ automation: { ownerProfiles } }, 'Owner profiles saved.')}
           />
-        </SettingsRow>
-      </SettingsSection>
-      <SettingsSection title="Paperless custom fields" description="Only fields listed here may be proposed by the model.">
-        <SettingsRow title="Allowed fields" description="Names and types must match your Paperless custom-field setup." stack>
-          <CustomFieldsEditor fields={settings.security.customFields} onChange={(customFields) => applyPatch({ security: { customFields } }, 'Custom fields saved.')} />
-        </SettingsRow>
-      </SettingsSection>
-      <SettingsSection title="AI instructions" description="Tune filing behavior without replacing Tagvico's structured-output and safety contracts.">
-        <SettingsRow title="Custom filing prompt" description="Optional instructions for your own archive, terminology and filing preferences." stack>
+        </SettingsSection>
+
+        <SettingsSection title="Custom fields">
+          <SettingsRow title="Allowed fields" description="Names and types must match Paperless. The model may only fill these." stack>
+            <CustomFieldsEditor fields={settings.security.customFields} onChange={(customFields) => applyPatch({ security: { customFields } }, 'Custom fields saved.')} />
+          </SettingsRow>
+        </SettingsSection>
+
+        <SettingsSection title="AI instructions">
           <DraftTextarea
             label="Additional instructions"
+            description="Optional. Applied to scans and manual analysis."
             value={settings.automation.customPrompt}
-            rows={7}
+            rows={6}
             placeholder="For example: Prefer broad reusable tags. Treat apprenticeship documents as Education."
-            description="Applied to automatic scans and manual document analysis. Leave empty to use Tagvico's general prompt."
             onCommit={(customPrompt) => applyPatch({ automation: { customPrompt } }, 'Custom filing prompt saved.')}
           />
-        </SettingsRow>
-        <details className="settings-advanced">
-          <summary>Advanced system prompt</summary>
-          <div className="settings-advanced-content">
-            <InlineStatus kind="neutral">
-              Advanced changes affect every provider. Tagvico still appends its immutable prompt-injection, minimal-tagging and structured-output rules.
-            </InlineStatus>
-            <DraftTextarea
-              label="System instructions"
-              value={settings.automation.advancedSystemPrompt}
-              rows={10}
-              placeholder="Leave empty to use Tagvico's maintained general system prompt."
-              description="Use this only when the normal custom filing prompt is not sufficient."
-              onCommit={(advancedSystemPrompt) => applyPatch({ automation: { advancedSystemPrompt } }, 'Advanced system prompt saved.')}
-            />
-          </div>
-        </details>
-      </SettingsSection></>;
+          <details className="set-advanced">
+            <summary>Advanced system prompt</summary>
+            <div className="set-advanced-content">
+              <p className="set-note">Applies to every provider. Tagvico still adds its fixed rules for prompt injection, minimal tagging and structured output.</p>
+              <DraftTextarea
+                label="System instructions"
+                description="Leave empty to use the maintained default."
+                value={settings.automation.advancedSystemPrompt}
+                rows={9}
+                placeholder="Leave empty to use Tagvico's general system prompt."
+                onCommit={(advancedSystemPrompt) => applyPatch({ automation: { advancedSystemPrompt } }, 'Advanced system prompt saved.')}
+              />
+            </div>
+          </details>
+        </SettingsSection>
+      </>;
+    }
+    if (section === 'channels') {
+      return channels ? <ChannelSettings channels={channels} onMessage={showMessage} /> : null;
     }
     if (section === 'tags') {
       return <>
-        <SettingsSection title="Tagging policy" description={`${settings.tags.vocabularySize} unique tags are currently enabled.`}>
-          <SettingsRow title="Controlled tagging" description="The model may assign only exact tags from enabled groups.">
+        <SettingsSection title="Policy">
+          <SettingsRow
+            title="Controlled tagging"
+            description={`Only exact tags from enabled groups. ${settings.tags.vocabularySize} enabled.`}
+          >
             <SettingSwitch
               checked={settings.tags.controlled}
               label="Controlled tagging"
               onCheckedChange={(controlled) => void applyPatch({ tags: { controlled } })}
             />
           </SettingsRow>
-          {settings.tags.controlled && settings.tags.vocabularySize === 0 ? <div className="settings-row">
+          {settings.tags.controlled && settings.tags.vocabularySize === 0 ? <div className="set-row">
             <InlineStatus kind="error">
               Controlled tagging is on, but no group is enabled, so the model cannot assign any tag. Enable a group below or turn controlled tagging off.
             </InlineStatus>
           </div> : null}
-          <SettingsRow title="Maximum tags per document" description="Keep the filing result focused.">
-            <DraftField
-              label="Maximum"
-              type="number"
-              value={String(settings.tags.maximumPerDocument)}
-              error={errorFor('tags.maximumPerDocument')}
-              onCommit={(value) => applyPatch({ tags: { maximumPerDocument: Number(value) } })}
-            />
-          </SettingsRow>
+          <DraftField
+            label="Maximum tags per document"
+            type="number"
+            value={String(settings.tags.maximumPerDocument)}
+            error={errorFor('tags.maximumPerDocument')}
+            onCommit={(value) => applyPatch({ tags: { maximumPerDocument: Number(value) } })}
+          />
         </SettingsSection>
-        <SettingsSection title="Vocabulary groups" description="Compact groups make enablement and vocabulary editing visible without giant checkbox cards.">
-          <div className="settings-tag-create">
-            <label>
-              <span>New custom group</span>
-              <input
-                className="settings-input"
-                value={newTagGroupName}
-                maxLength={120}
-                placeholder="For example: Travel"
-                onChange={(event) => setNewTagGroupName(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    void addTagGroup();
-                  }
-                }}
-              />
-            </label>
-            <button className="settings-button" type="button" disabled={!newTagGroupName.trim()} onClick={() => void addTagGroup()}>
+
+        <SettingsSection title="Vocabulary groups">
+          <form className="set-inline-form" onSubmit={(event) => { event.preventDefault(); void addTagGroup(); }}>
+            <input
+              className="input"
+              aria-label="New custom group"
+              value={newTagGroupName}
+              maxLength={120}
+              placeholder="New custom group, for example Travel"
+              onChange={(event) => setNewTagGroupName(event.target.value)}
+            />
+            <button className="btn btn-secondary" type="submit" disabled={!newTagGroupName.trim()}>
               Create group
             </button>
-          </div>
-          <div className="settings-tag-grid">
+          </form>
+          <div className="set-tag-groups">
             {settings.tags.groups.map((group) => <TagGroupCard
               key={group.id}
               group={group}
@@ -932,25 +884,18 @@ function OwnerSettingsWorkspace({
               onDelete={deleteTagGroup}
             />)}
           </div>
-        </SettingsSection>
-        <SettingsSection
-          title="Unify duplicate tags"
-          description="Tag cleanup now has a dedicated review workspace with a clear many-to-one impact preview."
-        >
-          <SettingsRow
-            title="Open tag organizer"
-            description="Analysis is read-only. Moving documents and deleting the unused source remain explicit, separate and auditable."
-          >
-            <Link className="settings-button is-primary" href="/tags">Organize tags</Link>
+          <SettingsRow title="Duplicate tags" description="Find overlapping tags and merge them in two steps.">
+            <Link className="btn btn-secondary" href="/tags">Organize tags</Link>
           </SettingsRow>
         </SettingsSection>
-        <SettingsSection title="Assigned metadata">
+
+        <SettingsSection title="The model may assign">
           {([
-            ['assignTags', 'Tags', 'Let the model assign tags.'],
-            ['assignCorrespondents', 'Correspondent', 'Let the model assign a correspondent.'],
-            ['assignDocumentType', 'Document type', 'Let the model assign a document type.'],
-            ['assignTitle', 'Title', 'Let the model improve the document title.']
-          ] as const).map(([key, title, description]) => <SettingsRow key={key} title={title} description={description}>
+            ['assignTags', 'Tags'],
+            ['assignCorrespondents', 'Correspondent'],
+            ['assignDocumentType', 'Document type'],
+            ['assignTitle', 'Title']
+          ] as const).map(([key, title]) => <SettingsRow key={key} title={title}>
             <SettingSwitch
               checked={settings.tags[key]}
               label={title}
@@ -958,143 +903,124 @@ function OwnerSettingsWorkspace({
             />
           </SettingsRow>)}
         </SettingsSection>
-        <SettingsSection title="Processing markers" description="Keep automation predictable when you trigger scans with tags or mark completed documents.">
-          <SettingsRow title="AI-processed tag" description="Add a stable marker after Tagvico successfully processes a document." stack>
+
+        <SettingsSection title="Never create new">
+          {([
+            ['restrictToExistingTags', 'Existing tags only'],
+            ['restrictToExistingCorrespondents', 'Existing correspondents only'],
+            ['restrictToExistingDocumentTypes', 'Existing document types only']
+          ] as const).map(([key, title]) => <SettingsRow key={key} title={title}>
+            <SettingSwitch
+              checked={settings.tags[key]}
+              label={title}
+              onCheckedChange={(checked) => void applyPatch({ tags: { [key]: checked } })}
+            />
+          </SettingsRow>)}
+        </SettingsSection>
+
+        <SettingsSection title="Markers">
+          <SettingsRow title="AI-processed tag" description="Added after Tagvico processes a document.">
             <SettingSwitch
               checked={settings.tags.addProcessedTag}
               label="Add processed tag"
               onCheckedChange={(addProcessedTag) => void applyPatch({ tags: { addProcessedTag } })}
             />
-            <DraftField
-              label="Processed tag name"
-              value={settings.tags.processedTagName}
-              disabled={!settings.tags.addProcessedTag}
-              error={errorFor('tags.processedTagName')}
-              onCommit={(processedTagName) => applyPatch({ tags: { processedTagName } }, 'Processed tag name saved.')}
-            />
           </SettingsRow>
-          <SettingsRow title="Optional trigger tags" description="Leave empty to scan every new document. Add tags only when you intentionally want an opt-in queue." stack>
-            <DraftField
-              label="Only scan documents tagged"
-              value={settings.tags.triggerTags.join(', ')}
-              placeholder="todo-ai, inbox-ai"
-              onCommit={(value) => applyPatch({ tags: { triggerTags: value.split(',').map((tag) => tag.trim()).filter(Boolean) } }, 'Trigger tags saved.')}
-            />
-            <InlineStatus kind={settings.tags.triggerTags.length ? 'neutral' : 'success'}>
-              {settings.tags.triggerTags.length
-                ? `${settings.tags.triggerTags.length} trigger tag${settings.tags.triggerTags.length === 1 ? '' : 's'} restrict automatic scanning.`
-                : 'No trigger tags configured — all new unprocessed documents will be scanned.'}
-            </InlineStatus>
-          </SettingsRow>
-        </SettingsSection>
-        <SettingsSection title="Existing vocabulary boundaries" description="Prevent automation from creating new filing entities in Paperless.">
-          {([
-            ['restrictToExistingTags', 'Existing tags only', 'Never create a new Paperless tag.'],
-            ['restrictToExistingCorrespondents', 'Existing correspondents only', 'Never create a new correspondent.'],
-            ['restrictToExistingDocumentTypes', 'Existing document types only', 'Never create a new document type.']
-          ] as const).map(([key, title, description]) => <SettingsRow key={key} title={title} description={description}>
-            <SettingSwitch
-              checked={settings.tags[key]}
-              label={title}
-              onCheckedChange={(checked) => void applyPatch({ tags: { [key]: checked } })}
-            />
-          </SettingsRow>)}
+          <DraftField
+            label="Processed tag name"
+            value={settings.tags.processedTagName}
+            disabled={!settings.tags.addProcessedTag}
+            error={errorFor('tags.processedTagName')}
+            onCommit={(processedTagName) => applyPatch({ tags: { processedTagName } }, 'Processed tag name saved.')}
+          />
+          <DraftField
+            label="Only scan documents tagged"
+            description="Optional. Empty scans every new document."
+            value={settings.tags.triggerTags.join(', ')}
+            placeholder="todo-ai, inbox-ai"
+            onCommit={(value) => applyPatch({ tags: { triggerTags: value.split(',').map((tag) => tag.trim()).filter(Boolean) } }, 'Trigger tags saved.')}
+          />
         </SettingsSection>
       </>;
     }
     return <>
       <HouseholdSettings {...household} onMessage={showMessage} />
       {household.currentRole === 'owner' ? <>
-      <SettingsSection title="Multi-factor authentication" description="Protect this Tagvico account with a TOTP authenticator.">
-        <SettingsRow title="Authenticator app" description="Setup secrets expire after ten minutes and are shown only during enrollment." stack>
-          <MfaSettings />
-        </SettingsRow>
-      </SettingsSection>
-      <SettingsSection title="Local API authentication" description="This write-only key protects authenticated Tagvico API requests; it is separate from outbound enrichment.">
-        <SettingsRow title="Tagvico API key" description="Use at least 32 characters. Leaving this empty retains the configured key." stack>
+        <SettingsSection title="Security" description="Keys and JSON values here are write-only. Empty fields keep the saved value.">
+          <SettingsRow title="Two-factor authentication" description="Authenticator app. Setup secrets expire after ten minutes." stack>
+            <MfaSettings />
+          </SettingsRow>
           <DraftField
             label="Tagvico API key"
             type="password"
             value=""
+            description="At least 32 characters."
             configured={settings.security.apiKey.configured}
             error={errorFor('security.apiKey')}
             onCommit={(apiKey) => applyPatch({ security: { apiKey } })}
           />
-        </SettingsRow>
-      </SettingsSection>
-      <SettingsSection title="External enrichment" description="Optional outbound lookup performed during analysis. Keep it disabled unless the destination is trusted.">
-        <SettingsRow title="Enable enrichment" description="Attach a controlled external response to the analysis prompt. This does not expose or enable the Tagvico API.">
-          <SettingSwitch
-            checked={settings.security.externalApiEnabled}
-            label="External enrichment"
-            onCheckedChange={(externalApiEnabled) => void applyPatch({ security: { externalApiEnabled } })}
-          />
-        </SettingsRow>
-        <SettingsRow title="Request" description="URL, HTTP method and timeout for the controlled lookup." stack>
-          <div className="settings-fields-grid">
-            <DraftField label="URL" type="url" value={settings.security.externalApiUrl} placeholder="https://api.example.com/lookup" error={errorFor('security.externalApiUrl')} onCommit={(externalApiUrl) => applyPatch({ security: { externalApiUrl } })} />
-            <label className="settings-field">
-              <span className="settings-field-label">Method</span>
-              <select className="settings-select" value={settings.security.externalApiMethod} onChange={(event) => void applyPatch({ security: { externalApiMethod: event.target.value } })}>
-                <option value="GET">GET</option><option value="POST">POST</option><option value="PUT">PUT</option>
-              </select>
-            </label>
-            <DraftField label="Timeout (ms)" type="number" value={String(settings.security.externalApiTimeout)} error={errorFor('security.externalApiTimeout')} onCommit={(value) => applyPatch({ security: { externalApiTimeout: Number(value) } })} />
-            <DraftField label="Response selector" value={settings.security.externalApiSelector} placeholder="result.invoice.vendor" onCommit={(externalApiSelector) => applyPatch({ security: { externalApiSelector } })} />
-          </div>
-        </SettingsRow>
-        <SettingsRow title="Headers and body" description="These JSON values are write-only because they may contain credentials. Empty fields retain the stored values." stack>
-          <div className="settings-fields-grid">
-            <DraftTextarea
-              label="Headers JSON"
-              value=""
-              rows={6}
-              sensitive
-              configured={settings.security.externalApiHeaders.configured}
-              error={errorFor('security.externalApiHeaders')}
-              onCommit={(externalApiHeaders) => applyPatch({ security: { externalApiHeaders } })}
-            />
-            <DraftTextarea
-              label="Body JSON"
-              value=""
-              rows={6}
-              sensitive
-              configured={settings.security.externalApiBody.configured}
-              error={errorFor('security.externalApiBody')}
-              onCommit={(externalApiBody) => applyPatch({ security: { externalApiBody } })}
-            />
-          </div>
-        </SettingsRow>
-      </SettingsSection>
-      </> : null}
-      {household.currentRole === 'owner' ? <SettingsSection title="Privacy" description="Telemetry is a minimal heartbeat without document content.">
-        <SettingsRow title="Anonymous telemetry" description="Send a minimal, non-document heartbeat to help improve Tagvico.">
-          <div className="settings-action-cluster">
+        </SettingsSection>
+
+        <SettingsSection title="External enrichment">
+          <SettingsRow title="Enable lookup" description="Adds a response from an outside service to the analysis prompt. Keep it off unless you trust the destination.">
             <SettingSwitch
-              checked={settings.general.telemetryEnabled}
-              disabled={!settings.general.telemetryAvailable}
-              label="Anonymous telemetry"
-              onCheckedChange={(telemetryEnabled) => void applyPatch({ general: { telemetryEnabled } })}
+              checked={settings.security.externalApiEnabled}
+              label="External enrichment"
+              onCheckedChange={(externalApiEnabled) => void applyPatch({ security: { externalApiEnabled } })}
             />
-            {!settings.general.telemetryAvailable
-              ? <span className="settings-badge">Collector not configured</span>
-              : null}
-          </div>
-        </SettingsRow>
-      </SettingsSection> : null}
+          </SettingsRow>
+          <DraftField label="URL" type="url" value={settings.security.externalApiUrl} placeholder="https://api.example.com/lookup" error={errorFor('security.externalApiUrl')} onCommit={(externalApiUrl) => applyPatch({ security: { externalApiUrl } })} />
+          <SettingsRow title="Method">
+            <select className="select" aria-label="Method" value={settings.security.externalApiMethod} onChange={(event) => void applyPatch({ security: { externalApiMethod: event.target.value } })}>
+              <option value="GET">GET</option><option value="POST">POST</option><option value="PUT">PUT</option>
+            </select>
+          </SettingsRow>
+          <DraftField label="Timeout (ms)" type="number" value={String(settings.security.externalApiTimeout)} error={errorFor('security.externalApiTimeout')} onCommit={(value) => applyPatch({ security: { externalApiTimeout: Number(value) } })} />
+          <DraftField label="Response selector" value={settings.security.externalApiSelector} placeholder="result.invoice.vendor" onCommit={(externalApiSelector) => applyPatch({ security: { externalApiSelector } })} />
+          <DraftTextarea
+            label="Headers JSON"
+            value=""
+            rows={4}
+            sensitive
+            configured={settings.security.externalApiHeaders.configured}
+            error={errorFor('security.externalApiHeaders')}
+            onCommit={(externalApiHeaders) => applyPatch({ security: { externalApiHeaders } })}
+          />
+          <DraftTextarea
+            label="Body JSON"
+            value=""
+            rows={4}
+            sensitive
+            configured={settings.security.externalApiBody.configured}
+            error={errorFor('security.externalApiBody')}
+            onCommit={(externalApiBody) => applyPatch({ security: { externalApiBody } })}
+          />
+        </SettingsSection>
+
+        <SettingsSection title="Privacy">
+          <SettingsRow title="Anonymous telemetry" description="A minimal heartbeat without document content.">
+            <div className="set-actions">
+              {!settings.general.telemetryAvailable
+                ? <span className="meta">Collector not configured</span>
+                : null}
+              <SettingSwitch
+                checked={settings.general.telemetryEnabled}
+                disabled={!settings.general.telemetryAvailable}
+                label="Anonymous telemetry"
+                onCheckedChange={(telemetryEnabled) => void applyPatch({ general: { telemetryEnabled } })}
+              />
+            </div>
+          </SettingsRow>
+        </SettingsSection>
+      </> : null}
     </>;
   })();
 
-  return <div className="settings-page">
-    <header className="settings-page-head">
-      <div>
-        <h1>{settingsSectionTitles[section]}</h1>
-        <p>{descriptions[section]}</p>
-      </div>
-    </header>
-    <div className="settings-layout">
-      <div className="settings-side">
-        <nav className="settings-nav" aria-label="Settings sections">
+  return <div className="page-column is-wide set-page">
+    <header className="page-header"><h1 className="page-title">Settings</h1></header>
+    <div className="set-layout">
+      <div className="set-side">
+        <nav className="set-nav" aria-label="Settings sections">
           {sections
             .filter(({ id }) => household.currentRole === 'owner' || id === 'people')
             .map(({ id, Icon }) => <Link
@@ -1107,11 +1033,11 @@ function OwnerSettingsWorkspace({
               <span>{settingsSectionTitles[id]}</span>
             </Link>)}
         </nav>
-        <p className="settings-version">Tagvico v{settings.diagnostics.version}</p>
+        <p className="set-version">Tagvico v{settings.diagnostics.version}</p>
       </div>
-      <div className="settings-content">{content}</div>
+      <div className="set-content">{content}</div>
     </div>
-    {toast ? <div className={`settings-toast is-${toast.kind}`} role={toast.kind === 'error' ? 'alert' : 'status'}>
+    {toast ? <div className={`set-toast is-${toast.kind}`} role={toast.kind === 'error' ? 'alert' : 'status'}>
       {toast.message}
     </div> : null}
   </div>;

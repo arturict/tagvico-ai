@@ -244,23 +244,11 @@ test('first success opens Ask Tagvico and research sources link to document view
 });
 
 test('mobile settings navigation scrolls internally without widening the page', () => {
-  const styles = read('src/app/globals.css');
+  const styles = read('src/app/styles/settings.css');
   const mobileSettings = styles.slice(styles.lastIndexOf('@media (max-width: 820px)'));
-  assert.match(mobileSettings, /\.settings-nav\s*\{[\s\S]*overflow-x:\s*auto/);
+  assert.match(mobileSettings, /\.set-nav\s*\{[\s\S]*overflow-x:\s*auto/);
   assert.match(mobileSettings, /max-width:\s*100%/);
   assert.match(mobileSettings, /margin-right:\s*0/);
-});
-
-test('Companion relative dates hydrate from one server timestamp and advance after mount', () => {
-  const page = read('src/app/(app)/companion/page.tsx');
-  const companion = read('src/components/companion.tsx');
-  assert.match(page, /renderedAt=\{Date\.now\(\)\}/);
-  assert.match(companion, /useState\(renderedAt\)/);
-  assert.match(companion, /setInterval\(\(\) => setReferenceTime\(Date\.now\(\)\), 60_000\)/);
-  assert.match(companion, /relativeDate\(session\.updated_at,\s*referenceTime\)/);
-  assert.match(companion, /Intl\.RelativeTimeFormat\('en'/);
-  assert.match(companion, /value\.replace\(' ', 'T'\).*Z/);
-  assert.doesNotMatch(companion, /timestamp - Date\.now\(\)/);
 });
 
 test('subscription sign-in routes are limited to the open initial setup window', () => {

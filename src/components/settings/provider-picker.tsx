@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { ProviderIcon } from '@/components/provider-icon';
 import type { ProviderDescriptor } from './types';
@@ -15,6 +15,7 @@ const groupById: Record<string, ProviderGroup> = {
 };
 
 const shortDescriptions: Record<string, string> = {
+  chatgpt: 'Use your Plus or Pro plan, no API key',
   openai: 'Your own API key',
   openrouter: 'Many models, one key',
   ollama: 'Runs on your own server',
@@ -25,8 +26,6 @@ const shortDescriptions: Record<string, string> = {
   opencode: 'OpenCode Go subscription',
   codex: 'Legacy device sign-in'
 };
-
-const heroSummary = 'Use your ChatGPT Plus or Pro plan to pay for Tagvico. No API key, no billing setup. Recommended.';
 
 /** Providers not named here are advanced, so a new registry entry never crowds the main list. */
 export function providerGroup(instanceId: string): ProviderGroup {
@@ -44,33 +43,39 @@ function ProviderOption({
   active: boolean;
   onSelect: (instanceId: string) => void;
 }) {
-  return <button
-    type="button"
-    className={`provider-option${selected ? ' is-selected' : ''}`}
-    aria-pressed={selected}
-    disabled={!provider.available}
-    onClick={() => onSelect(provider.instanceId)}
-  >
-    <ProviderIcon icon={provider.icon} name={provider.name} size={28} />
+  return <label className={`provider-option${selected ? ' is-selected' : ''}`}>
+    <input
+      type="radio"
+      className="provider-option-radio"
+      name="ai-provider"
+      value={provider.instanceId}
+      checked={selected}
+      disabled={!provider.available}
+      onChange={() => onSelect(provider.instanceId)}
+    />
+    <ProviderIcon icon={provider.icon} name={provider.name} size={24} />
     <span className="provider-option-copy">
-      <strong>{provider.name}</strong>
+      <strong>
+        {provider.name}
+        {provider.badge ? <span className="badge">{provider.badge}</span> : null}
+      </strong>
       <small>{shortDescriptions[provider.instanceId] || provider.description}</small>
     </span>
     {active ? <span className="provider-option-state">In use</span> : null}
-  </button>;
+  </label>;
 }
 
 /**
- * One picker for Settings and first-run setup: the ChatGPT plan as a hero card
- * with its sign-in inline, the common alternatives in small groups and the rest
- * behind a disclosure. The provider in use always stays in the main list.
+ * One radio list for Settings and first-run setup: the ChatGPT plan first, the
+ * common alternatives next and the rest behind a disclosure. The provider in use
+ * always stays in the main list. The selected provider's own panel (sign-in,
+ * keys, test) is rendered by the caller under the list.
  */
 export function ProviderPicker({
   providers,
   selectedId,
   activeId,
-  onSelect,
-  heroAction
+  onSelect
 }: {
   providers: ProviderDescriptor[];
   /** Provider whose configuration is open (Settings) or chosen (setup). */
@@ -78,12 +83,10 @@ export function ProviderPicker({
   /** Provider Tagvico currently uses; shown as "In use". */
   activeId?: string;
   onSelect: (instanceId: string) => void;
-  /** Sign-in flow (or a button that selects the plan) rendered inside the hero card. */
-  heroAction: ReactNode;
 }) {
   const visible = providers.filter((provider) => provider.available);
-  const hero = visible.find((provider) => providerGroup(provider.instanceId) === 'hero');
   const inGroup = (group: ProviderGroup) => visible.filter((provider) => providerGroup(provider.instanceId) === group);
+  const hero = inGroup('hero');
   const apiKey = ['openai', 'openrouter']
     .map((id) => inGroup('apikey').find((provider) => provider.instanceId === id))
     .filter((provider): provider is ProviderDescriptor => Boolean(provider));
@@ -93,61 +96,26 @@ export function ProviderPicker({
   const collapsed = advanced.filter((provider) => provider.instanceId !== activeId);
   const selectedIsCollapsed = collapsed.some((provider) => provider.instanceId === selectedId);
   const [advancedOpen, setAdvancedOpen] = useState(selectedIsCollapsed);
-  const isActive = (provider: ProviderDescriptor) => provider.instanceId === activeId;
   const option = (provider: ProviderDescriptor) => <ProviderOption
     key={provider.instanceId}
     provider={provider}
     selected={provider.instanceId === selectedId}
-    active={isActive(provider)}
+    active={provider.instanceId === activeId}
     onSelect={onSelect}
   />;
 
-  return <div className="provider-picker">
-    {hero ? <section
-      className={`provider-hero${hero.instanceId === selectedId ? ' is-selected' : ''}`}
-      aria-label={hero.name}
-    >
-      <div className="provider-hero-head">
-        <ProviderIcon icon={hero.icon} name={hero.name} size={44} />
-        <div>
-          <h3>
-            {hero.name}
-            {hero.badge ? <em className="provider-badge">{hero.badge}</em> : null}
-            {isActive(hero) ? <span className="provider-option-state">In use</span> : null}
-          </h3>
-          <p>{heroSummary}</p>
-        </div>
-      </div>
-      <div className="provider-hero-action">{heroAction}</div>
-    </section> : null}
-
-    <h3 className="provider-picker-label">Other providers</h3>
-    <div className="provider-groups">
-      {apiKey.length ? <div className="provider-group">
-        <h4>API key</h4>
-        {apiKey.map(option)}
-      </div> : null}
-      {local.length ? <div className="provider-group">
-        <h4>Local, private</h4>
-        {local.map(option)}
-      </div> : null}
-      {promoted.length ? <div className="provider-group">
-        <h4>In use</h4>
-        {promoted.map(option)}
-      </div> : null}
-    </div>
-
+  return <div className="provider-picker" role="radiogroup" aria-label="AI provider">
+    {[...hero, ...apiKey, ...local, ...promoted].map(option)}
     {collapsed.length ? <details
       className="provider-advanced"
       open={advancedOpen}
       onToggle={(event) => setAdvancedOpen(event.currentTarget.open)}
     >
       <summary>
-        <span>Advanced providers</span>
-        <small>{collapsed.length} more</small>
+        <span>More providers</span>
         <ChevronDown aria-hidden="true" />
       </summary>
-      <div className="provider-advanced-list">{collapsed.map(option)}</div>
+      {collapsed.map(option)}
     </details> : null}
   </div>;
 }

@@ -83,19 +83,17 @@ export default async function CompanionPage({
     getHouseholdNavigation(user).catch(() => null),
     isEmpty ? loadChatStart(workspace.householdId, workspace.memberId) : Promise.resolve(null)
   ]);
-  return <div className="page chat-page"><Companion
+  return <Companion
     key={sessionId}
     sessionId={sessionId}
     displayName={displayName}
     initialMessages={initialMessages}
     initialApprovals={listSessionApprovals(workspace.householdId, sessionId)}
-    initialSessions={JSON.parse(JSON.stringify(sessions))}
     canApprove={['owner', 'adult'].includes(workspace.role)}
     isOwner={workspace.role === 'owner'}
     approverNames={approverNames}
     needsCount={navigation?.needsYouCount ?? 0}
     start={start}
-    renderedAt={Date.now()}
     showFirstRun={welcome}
-  /></div>;
+  />;
 }

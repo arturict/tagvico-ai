@@ -5,16 +5,17 @@ type WorkspaceLoadErrorProps = {
   retrying?: boolean;
 };
 
+/* What failed, the reason, and one retry button; sits where the content would have loaded. */
 export function WorkspaceLoadError({
   title,
   message,
   onRetry,
   retrying = false
 }: WorkspaceLoadErrorProps) {
-  return <div className="empty workspace-load-error" role="alert">
-    <h2>{title}</h2>
+  return <div className="empty-state pg-load-error" role="alert">
+    <p className="pg-empty-title">{title}</p>
     <p>{message}</p>
-    <button className="button" type="button" disabled={retrying} onClick={onRetry}>
+    <button className="btn btn-secondary btn-32" type="button" disabled={retrying} onClick={onRetry}>
       {retrying ? 'Retrying…' : 'Try again'}
     </button>
   </div>;

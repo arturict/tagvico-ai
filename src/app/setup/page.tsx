@@ -49,14 +49,9 @@ export default async function SetupPage() {
     configuration: {},
     suggestedModels: definition.suggestedModels
   })) as ProviderDescriptor[];
-  return <main className="setup-page">
-    <header className="setup-head">
-      <Image className="brand-mark" src="/tagvico-icon.png" alt="" width={44} height={44} />
-      <div>
-        <h1>One calm setup flow.</h1>
-        <p>Connect Paperless, choose a runtime and create the owner account. The same components continue in Settings after sign-in.</p>
-      </div>
-    </header>
+  return <main className="auth-page"><section className="auth-column is-wide" aria-labelledby="setup-title">
+    <div className="auth-logo"><Image src="/tagvico-icon.png" alt="" width={28} height={28} /><span>Tagvico</span></div>
+    <h1 className="auth-title is-compact" id="setup-title">Set up Tagvico</h1>
     <SetupWizard providers={providers} />
-  </main>;
+  </section></main>;
 }

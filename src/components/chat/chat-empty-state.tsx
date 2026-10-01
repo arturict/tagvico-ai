@@ -1,78 +1,43 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { ArrowRight, CalendarClock, CheckSquare, CircleAlert, FileSearch, FileText, Inbox, Tag, Tags, type LucideIcon } from 'lucide-react';
+import { CircleAlert } from 'lucide-react';
 import type { CompanionSuggestion, CompanionSuggestionIcon } from '@root/services/companionResearchService';
 import { COMPANION_TOOL_ERRORS } from '@root/contracts/companion';
+import { shortDate } from '@/components/inbox/dates';
 
-const icons: Record<CompanionSuggestionIcon, LucideIcon> = {
-  calendar: CalendarClock,
-  files: FileSearch,
-  summary: FileText,
-  tags: Tags,
-  followup: CheckSquare,
-  'tag-create': Tag
-};
+/** The most urgent open item of the household: the earliest due date, if any open action has one. */
+export type ChatUrgentItem = { title: string; dueAt: string | null; overdue: boolean };
 
-function partOfDay(hour: number) {
-  if (hour >= 5 && hour < 12) return 'Good morning';
-  if (hour >= 12 && hour < 18) return 'Good afternoon';
-  return 'Good evening';
+/** One pill per slot, taking the first icon of a slot that the real data produced a prompt for. */
+const PILL_SLOTS: CompanionSuggestionIcon[][] = [
+  ['calendar'],
+  ['summary', 'files'],
+  ['followup', 'tags']
+];
+
+export function starterPills(suggestions: CompanionSuggestion[]) {
+  return PILL_SLOTS.flatMap((slot) => {
+    const found = slot.map((icon) => suggestions.find((suggestion) => suggestion.icon === icon)).find(Boolean);
+    return found ? [found] : [];
+  });
 }
 
+/** Greeting and, when something blocks answers, one notice. The composer follows directly below. */
 export function ChatEmptyState({
   displayName,
-  needsCount,
-  suggestions,
   paperless,
   canManageSettings,
-  firstRun,
-  onAsk
+  firstRun
 }: {
   displayName: string;
-  needsCount: number;
-  suggestions: CompanionSuggestion[];
   paperless: 'ok' | 'unreachable' | 'access';
   canManageSettings: boolean;
-  firstRun?: { eyebrow: string; title: string; body: string } | null;
-  onAsk: (prompt: string) => void;
+  firstRun?: { title: string; body: string } | null;
 }) {
-  // Time of day depends on the visitor's clock, so it is filled in after mount
-  // to keep server and client markup identical during hydration.
-  const [clock, setClock] = useState<{ greeting: string; date: string } | null>(null);
-  useEffect(() => {
-    const now = new Date();
-    setClock({
-      greeting: partOfDay(now.getHours()),
-      date: new Intl.DateTimeFormat('en', { weekday: 'long', day: 'numeric', month: 'long' }).format(now)
-    });
-  }, []);
-
   return <div className={`chat-empty${firstRun ? ' is-first-run' : ''}`}>
-    <p className="chat-eyebrow">{firstRun ? firstRun.eyebrow : clock?.date || 'Chat'}</p>
-    {firstRun ? <h2>{firstRun.title}</h2> : <h2>
-      {clock?.greeting || 'Hello'}, {displayName}.<br />
-      What do you want to <mark>know</mark>?
-    </h2>}
-    <p className="chat-empty-lead">{firstRun
-      ? firstRun.body
-      : 'Ask across your whole archive. Answers cite their sources, and anything that needs doing becomes a proposal you can approve.'}</p>
-    {firstRun ? <ol className="chat-first-run-steps">
-      <li><span>1</span><strong>Ask</strong><small>Start with one of the questions below.</small></li>
-      <li><span>2</span><strong>Verify</strong><small>Open a numbered source to see the document.</small></li>
-      <li><span>3</span><strong>Act safely</strong><small>Request an action, review it, then approve or reject.</small></li>
-    </ol> : null}
-    <a className={`chat-needs${needsCount ? ' has-items' : ''}`} href="/inbox">
-      <span className="chat-needs-mark"><Inbox aria-hidden="true" /></span>
-      <span>
-        <strong>{needsCount
-          ? `${needsCount} ${needsCount === 1 ? 'thing waits' : 'things wait'} for you`
-          : 'Nothing waits for you'}</strong>
-        <small>{needsCount ? 'Open the inbox to see approvals, reviews and deadlines' : 'Approvals, reviews and deadlines appear in the inbox'}</small>
-      </span>
-      <ArrowRight aria-hidden="true" />
-    </a>
-    {paperless !== 'ok' ? <p className="chat-paperless-note" role="status">
+    <h1 className="type-greeting chat-greeting">{firstRun ? firstRun.title : `What can I help with, ${displayName}?`}</h1>
+    {firstRun ? <p className="chat-first-run">{firstRun.body}</p> : null}
+    {paperless !== 'ok' ? <p className="chat-paperless-note alert is-warning" role="status">
       <CircleAlert aria-hidden="true" />
       <span>
         {paperless === 'access' ? COMPANION_TOOL_ERRORS.access : COMPANION_TOOL_ERRORS.unreachable}
@@ -80,21 +45,41 @@ export function ChatEmptyState({
         {canManageSettings ? <> <a href="/settings/paperless">Open Paperless settings</a></> : null}
       </span>
     </p> : null}
-    <div className="chat-empty-label"><span>Try asking</span><small>Any language works. Tagvico answers in yours.</small></div>
-    <div className="chat-suggestions">
-      {suggestions.map(({ kind, icon, prompt, hint }) => {
-        const Icon = icons[icon];
-        return <button
-          type="button"
-          key={prompt}
-          className={`chat-suggestion is-${kind.toLowerCase()}`}
-          onClick={() => onAsk(prompt)}
-        >
-          <span className="chat-suggestion-kind"><Icon aria-hidden="true" />{kind}</span>
-          <strong>{prompt}</strong>
-          <small>{hint}</small>
-        </button>;
-      })}
-    </div>
+  </div>;
+}
+
+/** Up to three prompts built from real data and one quiet line to Needs you; hidden when nothing waits. */
+export function ChatStarters({
+  needsCount,
+  urgent,
+  suggestions,
+  onAsk
+}: {
+  needsCount: number;
+  urgent: ChatUrgentItem | null;
+  suggestions: CompanionSuggestion[];
+  onAsk: (prompt: string) => void;
+}) {
+  const pills = starterPills(suggestions);
+  const more = urgent ? needsCount - 1 : needsCount;
+  return <div className="chat-starters">
+    {pills.length ? <div className="chat-suggestions">
+      {pills.map(({ prompt }) => <button
+        type="button"
+        key={prompt}
+        className="chat-suggestion"
+        title={prompt}
+        onClick={() => onAsk(prompt)}
+      ><span>{prompt}</span></button>)}
+    </div> : null}
+    {needsCount > 0 ? <a className="chat-needs" href="/inbox">
+      {urgent ? <>
+        <span className="chat-needs-title">{urgent.title}</span>
+        {urgent.dueAt ? <span className={urgent.overdue ? 'is-danger-text' : undefined}>
+          {urgent.overdue ? ' was due ' : ' is due '}{shortDate(urgent.dueAt)}.
+        </span> : <span>.</span>}
+        {more > 0 ? <span> {more} more {more === 1 ? 'needs' : 'need'} you.</span> : null}
+      </> : <span>{needsCount} {needsCount === 1 ? 'thing needs' : 'things need'} you.</span>}
+    </a> : null}
   </div>;
 }

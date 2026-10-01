@@ -2,8 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useMemo, useState, type FormEvent } from 'react';
-import { ArrowLeft, Check, Circle, CloudDownload, CloudUpload, ExternalLink, Plus } from 'lucide-react';
-import { MemberAvatar } from '@/components/member-avatar';
+import { ArrowLeft, Circle, CircleCheck } from 'lucide-react';
 import { caseFromRow } from './case-mapper';
 import { dueChip, shortDate, shortDateTime } from './dates';
 import type { InboxMember } from './types';
@@ -58,6 +57,21 @@ function describeEvent(event: CaseEvent, names: Map<string, string>) {
   }
 }
 
+type ActivityEntry = { id: string; text: string; who: string; at: string; count: number };
+
+/** Events arrive newest first; a run of identical ones (a sync that keeps failing) reads as one line with a count. */
+function collapseEvents(events: CaseEvent[], names: Map<string, string>) {
+  const entries: ActivityEntry[] = [];
+  for (const event of events) {
+    const text = describeEvent(event, names);
+    const who = event.actor_member_id ? names.get(event.actor_member_id) || 'Someone' : '';
+    const last = entries[entries.length - 1];
+    if (last && last.text === text && last.who === who) last.count += 1;
+    else entries.push({ id: event.id, text, who, at: event.created_at, count: 1 });
+  }
+  return entries;
+}
+
 const SYNC_LABEL: Record<string, string> = { synced: 'In sync with Paperless', pending: 'Changes not pushed yet', error: 'Last sync failed', conflict: 'Paperless changed too' };
 
 export function CaseDetail({ initial, members, today, canMutate }: { initial: CaseRecord; members: InboxMember[]; today: string; canMutate: boolean }) {
@@ -65,8 +79,7 @@ export function CaseDetail({ initial, members, today, canMutate }: { initial: Ca
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   const names = useMemo(() => new Map(members.map((member) => [member.id, member.name])), [members]);
-  const assignee = item.assigneeMemberId ? members.find((member) => member.id === item.assigneeMemberId) : undefined;
-  const summary = caseFromRow(item);
+  const amount = caseFromRow(item).amount;
   const due = item.dueAt && item.status !== 'done' && item.status !== 'dismissed' ? dueChip(item.dueAt, today) : null;
   const locked = !canMutate || busy;
 
@@ -107,103 +120,109 @@ export function CaseDetail({ initial, members, today, canMutate }: { initial: Ca
   );
 
   const stepsDone = item.steps.filter((step) => step.status === 'done').length;
+  const activity = collapseEvents(item.events, names);
 
-  return <div className="inbox case-detail">
-    <Link className="inbox-link case-back" href="/inbox"><ArrowLeft size={14} aria-hidden="true" /> Needs you</Link>
-    <header className="case-head">
-      <p className="inbox-eyebrow">Action</p>
-      <h1>{item.title}</h1>
-      <p className="inbox-lede">{item.summary || 'No summary yet.'}</p>
-      <div className="inbox-card-meta">
-        <span className={`inbox-chip-static${item.status === 'suggested' ? ' is-suggested' : ''}`}>{item.status === 'suggested' ? 'Suggested' : STATUS_OPTIONS.find((option) => option.value === item.status)?.label || item.status}</span>
-        {due ? <span className={`inbox-chip-static is-${due.tone}`}>{due.label}</span> : null}
-        {summary.amount ? <span className="inbox-chip-static is-amount">{summary.amount}</span> : null}
-        {item.priority === 'urgent' || item.priority === 'high' ? <span className={`inbox-chip-static is-${item.priority}`}>{item.priority === 'urgent' ? 'Urgent' : 'High priority'}</span> : null}
-        {assignee ? <span className="inbox-person"><MemberAvatar name={assignee.name} memberId={assignee.id} size={20} />{assignee.name}</span> : <span className="inbox-person is-unassigned">Unassigned</span>}
-        <Link className="inbox-doc inbox-doc-link" href={`/documents/${item.paperlessDocumentId}`}>Document #{item.paperlessDocumentId}</Link>
+  return <div className="page-column inbox case-detail">
+    <Link className="link case-back" href="/inbox"><ArrowLeft size={14} aria-hidden="true" /> Needs you</Link>
+    <header className="page-header">
+      <div className="page-header-text">
+        <h1 className="page-title">{item.title}</h1>
+        {item.summary ? <p className="page-description">{item.summary}</p> : null}
+        <p className="meta meta-parts">
+          <span><Link href={`/documents/${item.paperlessDocumentId}`}>Document #{item.paperlessDocumentId}</Link></span>
+          {amount ? <span>{amount}</span> : null}
+        </p>
       </div>
     </header>
 
     <div className="inbox-status" role="status" aria-live="polite">
       {flash ? <p className={flash.tone === 'ok' ? 'inbox-notice' : 'inbox-error'}>{flash.text}</p> : null}
     </div>
-    {!canMutate ? <p className="inbox-muted">You have read-only household access.</p> : null}
+    {!canMutate ? <p className="meta">You have read-only household access.</p> : null}
 
-    <div className="case-grid">
-      <section className="case-panel" aria-label="Details">
-        <h2>Details</h2>
-        {item.status === 'suggested' && canMutate ? <div className="case-suggestion">
-          <p>Tagvico suggested this action from the document. Accept it to keep it open, or dismiss it.</p>
-          <div className="inbox-card-actions">
-            <button type="button" className="inbox-btn is-primary" disabled={locked} onClick={() => patch({ status: 'open' }, 'Suggestion accepted.')}><Check size={15} aria-hidden="true" />Accept</button>
-            <button type="button" className="inbox-btn" disabled={locked} onClick={() => patch({ status: 'dismissed' }, 'Suggestion dismissed.')}>Dismiss</button>
+    {item.status === 'suggested' && canMutate ? <div className="alert case-suggestion">
+      <p>Tagvico suggested this action from the document.</p>
+      <div className="case-suggestion-actions">
+        <button type="button" className="btn btn-primary btn-32" disabled={locked} onClick={() => patch({ status: 'open' }, 'Suggestion accepted.')}>Accept</button>
+        <button type="button" className="btn btn-secondary btn-32" disabled={locked} onClick={() => patch({ status: 'dismissed' }, 'Suggestion dismissed.')}>Dismiss</button>
+      </div>
+    </div> : null}
+
+    <section className="section" aria-label="Properties">
+      <div className="list">
+        {item.status === 'suggested' ? null : <div className="list-row prop-row">
+          <label className="field-label" htmlFor="case-status">Status</label>
+          <select id="case-status" className="select select-32 prop-control" disabled={locked} value={item.status} onChange={(event) => patch({ status: event.target.value }, 'Status saved.')}>
+            {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </div>}
+        <div className="list-row prop-row">
+          <label className="field-label" htmlFor="case-assignee">Assigned to</label>
+          <select id="case-assignee" className="select select-32 prop-control" disabled={locked} value={item.assigneeMemberId || ''} onChange={(event) => patch({ assigneeMemberId: event.target.value || null }, event.target.value ? `Assigned to ${names.get(event.target.value) || 'a member'}.` : 'Unassigned.')}>
+            <option value="">Unassigned</option>
+            {members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
+          </select>
+        </div>
+        <div className="list-row prop-row">
+          <label className="field-label" htmlFor="case-priority">Priority</label>
+          <select id="case-priority" className="select select-32 prop-control" disabled={locked} value={item.priority} onChange={(event) => patch({ priority: event.target.value }, 'Priority saved.')}>
+            {PRIORITY_OPTIONS.map((option) => <option key={option} value={option}>{option[0].toUpperCase() + option.slice(1)}</option>)}
+          </select>
+        </div>
+        <div className="list-row prop-row">
+          <div className="prop-label">
+            <label className="field-label" htmlFor="case-due">Due date</label>
+            {due ? <span className={`field-help${due.tone === 'overdue' ? ' is-danger-text' : ''}`}>{due.label}</span> : null}
           </div>
-        </div> : null}
-        <div className="case-fields">
-          {item.status === 'suggested' ? null : <label>Status
-            <select disabled={locked} value={item.status} onChange={(event) => patch({ status: event.target.value }, 'Status saved.')}>
-              {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </label>}
-          <label>Assigned to
-            <select disabled={locked} value={item.assigneeMemberId || ''} onChange={(event) => patch({ assigneeMemberId: event.target.value || null }, event.target.value ? `Assigned to ${names.get(event.target.value) || 'a member'}.` : 'Unassigned.')}>
-              <option value="">Unassigned</option>
-              {members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
-            </select>
-          </label>
-          <label>Priority
-            <select disabled={locked} value={item.priority} onChange={(event) => patch({ priority: event.target.value }, 'Priority saved.')}>
-              {PRIORITY_OPTIONS.map((option) => <option key={option} value={option}>{option[0].toUpperCase() + option.slice(1)}</option>)}
-            </select>
-          </label>
-          <label>Due date
-            <span className="case-date">
-              <input type="date" disabled={locked} value={item.dueAt ? item.dueAt.slice(0, 10) : ''} onChange={(event) => patch({ dueAt: event.target.value || null }, event.target.value ? 'Due date saved.' : 'Due date cleared.')} />
-              {item.dueAt ? <button type="button" className="inbox-btn" disabled={locked} onClick={() => patch({ dueAt: null }, 'Due date cleared.')}>Clear</button> : null}
-            </span>
-          </label>
+          <div className="prop-control prop-date">
+            <input id="case-due" type="date" className="input input-32" disabled={locked} value={item.dueAt ? item.dueAt.slice(0, 10) : ''} onChange={(event) => patch({ dueAt: event.target.value || null }, event.target.value ? 'Due date saved.' : 'Due date cleared.')} />
+            {item.dueAt ? <button type="button" className="btn btn-ghost btn-32" disabled={locked} onClick={() => patch({ dueAt: null }, 'Due date cleared.')}>Clear</button> : null}
+          </div>
         </div>
+      </div>
+    </section>
 
-        <h2 className="case-steps-title">Steps {item.steps.length ? <span>{stepsDone}/{item.steps.length}</span> : null}</h2>
-        {item.steps.length ? <ul className="case-steps">
-          {item.steps.map((step) => <li key={step.id}>
-            <button
-              type="button"
-              className={`case-step${step.status === 'done' ? ' is-done' : ''}`}
-              disabled={locked}
-              aria-pressed={step.status === 'done'}
-              onClick={() => run(() => request(`/api/actions/${item.id}/steps/${step.id}`, 'PATCH', { status: step.status === 'done' ? 'open' : 'done' }), step.status === 'done' ? 'Step reopened.' : 'Step done.')}
-            >
-              {step.status === 'done' ? <Check size={16} aria-hidden="true" /> : <Circle size={16} aria-hidden="true" />}
-              <span>{step.title}</span>
-              {step.due_at ? <small>{shortDate(step.due_at)}</small> : null}
-            </button>
-          </li>)}
-        </ul> : <p className="person-note">No steps yet.</p>}
-        {canMutate ? <form className="case-add-step" onSubmit={addStep}>
-          <input name="title" required maxLength={240} placeholder="Add a step" aria-label="New step" disabled={busy} />
-          <button type="submit" className="inbox-btn" disabled={busy}><Plus size={15} aria-hidden="true" />Add</button>
-        </form> : null}
-      </section>
+    <section className="section" aria-label="Steps">
+      <h2 className="section-title">Steps{item.steps.length ? <span className="group-count">{stepsDone}/{item.steps.length}</span> : null}</h2>
+      {item.steps.length ? <ul className="list">
+        {item.steps.map((step) => <li key={step.id} className="list-row case-step-row">
+          <button
+            type="button"
+            className={`case-step${step.status === 'done' ? ' is-done' : ''}`}
+            disabled={locked}
+            aria-pressed={step.status === 'done'}
+            onClick={() => run(() => request(`/api/actions/${item.id}/steps/${step.id}`, 'PATCH', { status: step.status === 'done' ? 'open' : 'done' }), step.status === 'done' ? 'Step reopened.' : 'Step done.')}
+          >
+            {step.status === 'done' ? <CircleCheck size={18} aria-hidden="true" /> : <Circle size={18} aria-hidden="true" />}
+            <span className="case-step-title">{step.title}</span>
+            {step.due_at ? <small>{shortDate(step.due_at)}</small> : null}
+          </button>
+        </li>)}
+      </ul> : <p className="meta">No steps yet.</p>}
+      {canMutate ? <form className="case-add-step" onSubmit={addStep}>
+        <input className="input input-32" name="title" required maxLength={240} placeholder="Add a step" aria-label="New step" disabled={busy} />
+        <button type="submit" className="btn btn-secondary btn-32" disabled={busy}>Add</button>
+      </form> : null}
+    </section>
 
-      <aside className="case-panel" aria-label="Paperless and activity">
-        <h2>Paperless</h2>
-        <p className={`case-sync is-${item.syncStatus}`}>{SYNC_LABEL[item.syncStatus] || item.syncStatus}{item.lastSyncedAt ? ` · ${shortDateTime(item.lastSyncedAt)}` : ''}</p>
-        {item.syncError ? <p className="inbox-error">{item.syncError}</p> : null}
-        <div className="inbox-card-actions">
-          <button type="button" className="inbox-btn" disabled={locked} onClick={() => syncCase('push')}><CloudUpload size={15} aria-hidden="true" />Push to Paperless</button>
-          <button type="button" className="inbox-btn" disabled={locked} onClick={() => syncCase('pull')}><CloudDownload size={15} aria-hidden="true" />Pull changes</button>
-        </div>
-        <Link className="inbox-link case-source" href={`/documents/${item.paperlessDocumentId}`}><ExternalLink size={13} aria-hidden="true" /> View document #{item.paperlessDocumentId}</Link>
+    <section className="section" aria-label="Paperless">
+      <h2 className="section-title">Paperless</h2>
+      <p className="meta case-sync">{SYNC_LABEL[item.syncStatus] || item.syncStatus}{item.lastSyncedAt ? ` · ${shortDateTime(item.lastSyncedAt)}` : ''}</p>
+      {item.syncError ? <p className="inbox-error">{item.syncError}</p> : null}
+      <div className="case-sync-actions">
+        <button type="button" className="btn btn-secondary btn-32" disabled={locked} onClick={() => syncCase('push')}>Push to Paperless</button>
+        <button type="button" className="btn btn-secondary btn-32" disabled={locked} onClick={() => syncCase('pull')}>Pull changes</button>
+      </div>
+    </section>
 
-        <h2 className="case-steps-title">Activity</h2>
-        {item.events.length ? <ul className="case-activity">
-          {item.events.slice(0, 12).map((event) => <li key={event.id}>
-            <span>{describeEvent(event, names)}</span>
-            <small>{event.actor_member_id ? `${names.get(event.actor_member_id) || 'Someone'} · ` : ''}{shortDateTime(event.created_at)}</small>
-          </li>)}
-        </ul> : <p className="person-note">Nothing has happened yet.</p>}
-      </aside>
-    </div>
+    <section className="section" aria-label="Activity">
+      <h2 className="section-title">Activity</h2>
+      {activity.length ? <ul className="case-activity">
+        {activity.slice(0, 12).map((entry) => <li key={entry.id}>
+          <span>{entry.text}{entry.count > 1 ? ` (${entry.count} times)` : ''}</span>
+          <small>{entry.who ? `${entry.who} · ` : ''}{shortDateTime(entry.at)}</small>
+        </li>)}
+      </ul> : <p className="meta">Nothing has happened yet.</p>}
+    </section>
   </div>;
 }

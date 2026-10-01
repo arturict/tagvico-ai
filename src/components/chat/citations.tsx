@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import { createContext, useContext, type ComponentProps } from 'react';
 import type { CompanionToolActivity } from '@root/contracts/companion';
 
 const CITATION_PATTERN = /\[doc:(\d+)\]/gi;
@@ -43,32 +43,41 @@ export function citedDocuments(
   }));
 }
 
-/** Markdown link override: `[1](/documents/42)` becomes a numbered chip, other links stay plain. */
+/** Titles of the documents an answer cites, so an inline source pill can name its document. */
+export const CitationTitles = createContext<ReadonlyMap<number, string>>(new Map());
+
+/** Markdown link override: `[1](/documents/42)` becomes a small source pill with the document title, other links stay plain. */
 export function CitationLink({ href, children, node, ...anchor }: ComponentProps<'a'> & { node?: unknown }) {
   void node;
+  const titles = useContext(CitationTitles);
   const label = typeof children === 'string' ? children : '';
   if (href && DOCUMENT_HREF.test(href) && /^\d{1,3}$/.test(label)) {
+    const title = titles.get(Number(href.split('/').pop())) || `Source ${label}`;
     return <a
       className="chat-cite"
       href={href}
       target="_blank"
       rel="noreferrer"
-      aria-label={`Open source ${label}`}
-    >{label}</a>;
+      title={title}
+    >{title}</a>;
   }
   return <a {...anchor} href={href} target="_blank" rel="noopener noreferrer">{children}</a>;
 }
 
 export const citationComponents = { a: CitationLink };
 
+/** Compact list of the cited documents under an answer. */
 export function SourceChips({ documents }: { documents: CitedDocument[] }) {
   if (!documents.length) return null;
-  return <ul className="chat-sources" aria-label="Sources">
-    {documents.map((document) => <li key={document.id}>
-      <a href={`/documents/${document.id}`} target="_blank" rel="noreferrer" title={document.title}>
-        <b>{document.number}</b>
-        <span>{document.title}</span>
-      </a>
-    </li>)}
-  </ul>;
+  return <div className="chat-sources-block">
+    <p className="chat-sources-label">Sources</p>
+    <ul className="chat-sources" aria-label="Sources">
+      {documents.map((document) => <li key={document.id}>
+        <a href={`/documents/${document.id}`} target="_blank" rel="noreferrer" title={document.title}>
+          <b>{document.number}</b>
+          <span>{document.title}</span>
+        </a>
+      </li>)}
+    </ul>
+  </div>;
 }

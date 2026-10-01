@@ -38,7 +38,7 @@ export default async function SettingsSectionPage({
     ? await settingsV3Service.getSettings() as SettingsResponse
     : null;
   const members = householdMembersService.listMembers(workspace.householdId);
-  const channels = section === 'automation'
+  const channels = section === 'channels'
     ? {
         telegram: channelSettingsService.getChannelSettings('telegram', workspace.householdId),
         discord: channelSettingsService.getChannelSettings('discord', workspace.householdId)
@@ -51,7 +51,6 @@ export default async function SettingsSectionPage({
     household={{
       currentMemberId: workspace.memberId,
       currentRole: workspace.role,
-      householdKind: workspace.kind,
       members: JSON.parse(JSON.stringify(members))
     }}
   />;

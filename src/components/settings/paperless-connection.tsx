@@ -49,54 +49,47 @@ export function PaperlessConnection({
   };
 
   return <>
-    <SettingsRow title="Connection" description="The address Tagvico itself uses to reach Paperless. Use the base address only; API paths are added automatically." stack>
-      <div className="settings-fields-grid">
-        <DraftField
-          label="Base URL"
-          type="url"
-          value={paperless.baseUrl}
-          placeholder="http://paperless:8000"
-          error={errorFor('paperless.baseUrl')}
-          onCommit={(baseUrl) => saveConnection({ baseUrl })}
-        />
-        <DraftField
-          label="Paperless username"
-          value={paperless.username}
-          error={errorFor('paperless.username')}
-          onCommit={(username) => applyPatch({ paperless: { username } })}
-        />
-        <DraftField
-          label="API token"
-          type="password"
-          value=""
-          configured={paperless.token.configured}
-          description="Write-only. Leaving the field empty keeps the saved token."
-          error={errorFor('paperless.token')}
-          onCommit={(token) => saveConnection({ token })}
-        />
-      </div>
-      <div className="settings-action-cluster">
-        <button className="settings-button" type="button" disabled={test.kind === 'loading'} onClick={() => void runTest()}>
-          Test connection
-        </button>
+    <DraftField
+      label="Base URL"
+      type="url"
+      value={paperless.baseUrl}
+      placeholder="http://paperless:8000"
+      description="Base address only, without an API path."
+      error={errorFor('paperless.baseUrl')}
+      onCommit={(baseUrl) => saveConnection({ baseUrl })}
+    />
+    <DraftField
+      label="Paperless username"
+      value={paperless.username}
+      error={errorFor('paperless.username')}
+      onCommit={(username) => applyPatch({ paperless: { username } })}
+    />
+    <DraftField
+      label="API token"
+      type="password"
+      value=""
+      configured={paperless.token.configured}
+      error={errorFor('paperless.token')}
+      onCommit={(token) => saveConnection({ token })}
+    />
+    <SettingsRow title="Status" description="Every save runs this check.">
+      <div className="set-actions">
         {test.kind !== 'idle'
           ? <InlineStatus kind={test.kind === 'loading' ? 'loading' : test.kind}>{test.message}</InlineStatus>
           : null}
+        <button className="btn btn-secondary" type="button" disabled={test.kind === 'loading'} onClick={() => void runTest()}>
+          Test connection
+        </button>
       </div>
     </SettingsRow>
-    <SettingsRow
-      title="Address for Open Paperless links"
-      description="The address you open in a browser, such as https://paperless.example.org. Leave empty to use the connection address."
-      stack
-    >
-      <DraftField
-        label="Public URL"
-        type="url"
-        value={paperless.publicUrl}
-        placeholder="https://paperless.example.org"
-        error={errorFor('paperless.publicUrl')}
-        onCommit={(publicUrl) => applyPatch({ paperless: { publicUrl } }, 'Open Paperless address saved.')}
-      />
-    </SettingsRow>
+    <DraftField
+      label="Public URL"
+      type="url"
+      value={paperless.publicUrl}
+      placeholder="https://paperless.example.org"
+      description="Address for Open Paperless links. Empty uses the base URL."
+      error={errorFor('paperless.publicUrl')}
+      onCommit={(publicUrl) => applyPatch({ paperless: { publicUrl } }, 'Open Paperless address saved.')}
+    />
   </>;
 }

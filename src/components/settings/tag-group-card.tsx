@@ -43,13 +43,13 @@ export function TagGroupCard({
     }
   };
 
-  return <article className={`settings-tag-card${group.enabled ? ' is-enabled' : ''}`}>
+  return <article className={`set-tag-group${group.enabled ? ' is-enabled' : ''}`}>
     <header>
-      <div>
+      <div className="set-tag-group-name">
         {group.preset || group.permanent
           ? <strong>{group.name}</strong>
           : <input
-              className="settings-tag-name"
+              className="set-tag-name"
               value={nameDraft}
               disabled={saving}
               aria-label="Group name"
@@ -70,12 +70,12 @@ export function TagGroupCard({
                 }
               }}
             />}
-        <small>{group.tags.length} tags{group.permanent ? ' · permanent group' : ''}</small>
+        <small>{group.tags.length} {group.tags.length === 1 ? 'tag' : 'tags'}{group.permanent ? ', permanent group' : ''}</small>
       </div>
-      <div className="settings-tag-card-actions">
+      <div className="set-tag-group-actions">
         {!group.preset && !group.permanent && onDelete
           ? <button
-              className="settings-icon-button is-danger"
+              className="btn btn-ghost btn-icon btn-32"
               type="button"
               disabled={saving}
               aria-label={`Delete ${group.name}`}
@@ -93,9 +93,9 @@ export function TagGroupCard({
       </div>
     </header>
     {duplicateTags.length
-      ? <p className="settings-tag-warning">Also used in another group: {duplicateTags.join(', ')}</p>
+      ? <p className="set-tag-warning">Also used in another group: {duplicateTags.join(', ')}</p>
       : null}
-    <div className="settings-tag-chips">
+    <div className="set-tag-chips">
       {group.tags.map((tag) => <span key={tag}>
         {tag}
         <button
@@ -109,7 +109,7 @@ export function TagGroupCard({
       </span>)}
       {!group.tags.length ? <small>No tags in this group.</small> : null}
     </div>
-    <label className="settings-tag-add">
+    <label className="set-tag-add">
       <span className="sr-only">Add a tag to {group.name}</span>
       <input
         value={draft}

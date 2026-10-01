@@ -42,19 +42,19 @@ export function CustomFieldsEditor({
     if (saved) setName('');
   };
 
-  return <div className="settings-custom-fields">
-    {fields.length ? <div className="settings-custom-field-list">{fields.map((field, index) => <div key={`${field.value}-${index}`}>
+  return <div className="set-custom-fields">
+    {fields.length ? <ul className="set-custom-field-list">{fields.map((field, index) => <li key={`${field.value}-${index}`}>
       <span><strong>{field.value}</strong><small>{field.data_type}{field.currency ? ` · ${field.currency}` : ''}</small></span>
-      <button className="settings-icon-button" type="button" disabled={saving} aria-label={`Remove ${field.value}`} onClick={() => void update(fields.filter((_, itemIndex) => itemIndex !== index))}><Trash2 /></button>
-    </div>)}</div> : <p className="settings-field-help">No custom fields configured.</p>}
-    <div className="settings-custom-field-add">
-      <input className="settings-input" value={name} maxLength={200} placeholder="Field name" aria-label="Custom field name" onChange={(event) => setName(event.target.value)} onKeyDown={(event) => {
+      <button className="btn btn-ghost btn-icon btn-32" type="button" disabled={saving} aria-label={`Remove ${field.value}`} onClick={() => void update(fields.filter((_, itemIndex) => itemIndex !== index))}><Trash2 /></button>
+    </li>)}</ul> : <p className="set-field-help">No custom fields yet.</p>}
+    <div className="set-inline-form">
+      <input className="input" value={name} maxLength={200} placeholder="Field name" aria-label="Custom field name" onChange={(event) => setName(event.target.value)} onKeyDown={(event) => {
         if (event.key === 'Enter') {
           event.preventDefault();
           void add();
         }
       }} />
-      <select className="settings-select" value={dataType} aria-label="Custom field type" onChange={(event) => setDataType(event.target.value as CustomFieldDefinition['data_type'])}>
+      <select className="select" value={dataType} aria-label="Custom field type" onChange={(event) => setDataType(event.target.value as CustomFieldDefinition['data_type'])}>
         <option value="string">Text</option>
         <option value="integer">Integer</option>
         <option value="float">Decimal</option>
@@ -62,8 +62,8 @@ export function CustomFieldsEditor({
         <option value="date">Date</option>
         <option value="monetary">Money</option>
       </select>
-      {dataType === 'monetary' ? <input className="settings-input" value={currency} maxLength={3} aria-label="Currency code" onChange={(event) => setCurrency(event.target.value)} /> : null}
-      <button className="settings-button" type="button" disabled={saving || !name.trim()} onClick={() => void add()}><Plus /> Add field</button>
+      {dataType === 'monetary' ? <input className="input set-currency" value={currency} maxLength={3} aria-label="Currency code" onChange={(event) => setCurrency(event.target.value)} /> : null}
+      <button className="btn btn-secondary" type="button" disabled={saving || !name.trim()} onClick={() => void add()}><Plus /> Add field</button>
     </div>
   </div>;
 }

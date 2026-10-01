@@ -1,401 +1,195 @@
-/* v3.5 shell styles. Uses the Paper & Pine tokens from globals.css. */
+/*
+ * App shell: a 260px sidebar on desktop, a 48px top bar with a drawer on phones.
+ * Built on the OpenAI tokens and the shared classes in foundation.css (.btn, .menu, .list-group-heading,
+ * .avatar, .meta). This file only adds what is specific to the shell. Class names avoid the
+ * legacy `.nav`, `.brand`, `.sidebar-foot` and `.sidebar-identity` families that globals.css still styles.
+ */
 
-/* Member avatars (shared component) */
+:root {
+  --sidebar-rail-width: 60px;
+}
+
+/* Member avatars (shared component): grey initials on the .avatar circle, with a hairline so they read on grey and white. */
 .member-avatar {
-  display: inline-grid;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 50%;
-  color: #fffdf7;
-  font-weight: 750;
-  letter-spacing: .01em;
-  line-height: 1;
+  border: 1px solid var(--color-border);
   user-select: none;
 }
 
-.member-avatar-stack {
-  display: inline-flex;
-  align-items: center;
-  flex: 0 0 auto;
-}
+/* ------------------------------------------------------------------- Layout */
 
-.member-avatar-stack .member-avatar {
-  box-shadow: 0 0 0 2px var(--tv-surface);
-}
-
-.member-avatar-stack .member-avatar + .member-avatar {
-  margin-left: -8px;
-}
-
-.member-avatar-more {
-  background: var(--tv-surface-3);
-  color: var(--tv-muted);
-}
-
-/* Household sidebar: a sticky, viewport-tall column. The ::before strip paints
-   the sidebar background down the whole page, however long the content is. */
 .shell {
+  --shell-sidebar: var(--sidebar-width);
   display: grid;
   grid-template-columns: var(--shell-sidebar) minmax(0, 1fr);
-  align-items: start;
+  min-height: 100dvh;
+  background: var(--color-surface);
   transition: grid-template-columns 160ms ease;
 }
 
-.shell::before {
-  content: "";
-  grid-column: 1;
-  grid-row: 1;
-  align-self: stretch;
-  border-right: 1px solid var(--tv-line);
-  background: rgba(238, 235, 222, .96);
-  box-shadow: 8px 0 30px rgba(46, 57, 40, .045);
+.shell.is-collapsed {
+  --shell-sidebar: var(--sidebar-rail-width);
 }
 
+/* The aside fills the grid column; the inner box sticks to the viewport so the sidebar stays put while the page scrolls. */
 .shell .sidebar {
-  position: sticky;
-  inset: 0 auto auto 0;
+  position: static;
+  inset: auto;
+  z-index: auto;
   grid-column: 1;
-  grid-row: 1;
+  width: auto;
+  height: auto;
+  padding: 0;
+  overflow: visible;
+  border-right: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-secondary);
+  transition: none;
+}
+
+.sidebar-inner {
+  position: sticky;
+  top: 0;
   display: flex;
   flex-direction: column;
-  width: auto;
   height: 100dvh;
-  border-right: 0;
-  background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
+  padding: 0 8px 8px;
+  overflow: hidden;
 }
 
 .shell .main {
   grid-column: 2;
-  grid-row: 1;
+  min-width: 0;
   margin-left: 0;
+  padding: 0;
+  transition: none;
 }
 
-.shell .sidebar .household-card {
+/* ------------------------------------------------- Sidebar head, rows, sections */
+
+.sidebar-head {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 10px 0 0;
-  border: 1px solid var(--tv-line);
-  border-radius: 10px;
-  padding: 7px 10px;
-  background: var(--tv-surface);
-  color: var(--tv-text);
-  transition: border-color 140ms ease;
+  justify-content: space-between;
+  gap: 8px;
+  height: 52px;
+  padding-left: 8px;
 }
 
-.shell .sidebar .household-card:hover {
-  border-color: var(--tv-line-strong);
-}
-
-.household-card-copy {
-  display: grid;
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
-  gap: 1px;
+  border-radius: var(--radius-md);
+  color: var(--color-text);
 }
 
-.household-card-copy strong,
-.household-card-copy small {
+.sidebar-brand img {
+  flex: none;
+  border-radius: 6px;
+}
+
+.sidebar-primary {
+  flex: none;
+  display: grid;
+  gap: 2px;
+}
+
+/* Ghost row: New chat, Needs you, Documents and the people list. No fill until hover; the open page gets the selected fill. */
+.sidebar-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.sidebar-row:hover {
+  background: var(--color-background-primary-ghost-hover);
+}
+
+.sidebar-row.is-active {
+  background: var(--color-background-primary-ghost-active);
+  font-weight: var(--font-weight-medium);
+}
+
+.sidebar-row > svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.sidebar-row-label {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.household-card-copy strong {
-  font-size: 12px;
-}
-
-.household-card-copy small {
-  color: var(--tv-muted);
-  font-size: 10px;
+/* Right-aligned count in secondary text (the .nav-badge .meta classes carry the colour; .is-danger-text turns it red for overdue). */
+.sidebar-row-count {
+  flex: none;
+  min-width: 0;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
 }
 
 .sidebar-scroll {
   flex: 1 1 auto;
   min-height: 0;
-  margin: 10px -4px 0;
-  padding: 0 4px;
-  overflow: hidden auto;
-  scrollbar-width: thin;
   display: grid;
   align-content: start;
-  gap: 10px;
-}
-
-.shell .sidebar .nav {
-  margin-top: 0;
-  gap: 2px;
-}
-
-.shell .sidebar .nav-entry > a {
-  min-height: 38px;
-}
-
-.shell .sidebar .sidebar-utility-links {
-  gap: 0;
-  padding-top: 6px;
-}
-
-.shell .sidebar .sidebar-utility-links a {
-  min-height: 32px;
-  padding: 5px 9px;
+  gap: 16px;
+  margin: 8px -8px 0;
+  padding: 0 8px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
 }
 
 .sidebar-section {
   display: grid;
-  gap: 4px;
+  gap: 2px;
 }
 
 .sidebar-section-title {
-  margin: 0 0 2px;
-  padding: 0 10px;
-  color: var(--tv-muted);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: .14em;
-  text-transform: uppercase;
-}
-
-.sidebar-people,
-.sidebar-channels {
-  display: grid;
-  gap: 2px;
   margin: 0;
-  padding: 0;
-  list-style: none;
+  padding: 0 8px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-text-xs-size);
+  line-height: var(--font-text-xs-line-height);
+  font-weight: var(--font-weight-medium);
 }
 
-.sidebar-people a,
-.sidebar-channels a,
-.sidebar-more-toggle {
-  display: flex;
-  min-height: 32px;
-  align-items: center;
-  gap: 10px;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 5px 10px;
-  color: var(--tv-muted);
-  font-size: 13px;
-  font-weight: 620;
-  white-space: nowrap;
-  transition: 140ms ease;
+.sidebar-note {
+  margin: 0;
+  padding: 4px 8px;
 }
 
-.sidebar-people a:hover,
-.sidebar-channels a:hover,
-.sidebar-more-toggle:hover {
-  border-color: color-mix(in srgb, var(--tv-line) 75%, transparent);
-  background: rgba(255, 253, 247, .65);
-  color: var(--tv-pine);
+/* Recency headings inside the sidebar are quieter than the section title above them. */
+.sidebar-section .list-group-heading,
+.mobile-sheet .list-group-heading {
+  padding: 12px 8px 4px;
+  color: var(--color-text-tertiary);
+  font-weight: var(--font-weight-normal);
 }
 
-.sidebar-people a.is-active {
-  border-color: color-mix(in srgb, var(--tv-pine) 15%, var(--tv-line));
-  background: var(--tv-pine);
-  color: #fffdf7;
-  box-shadow: 0 8px 20px rgba(25, 60, 44, .13);
-}
+/* ------------------------------------------------------------------- People */
 
-.sidebar-person-name {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.sidebar-person-name em {
-  margin-left: 5px;
-  color: var(--tv-muted);
-  font-size: 10px;
-  font-style: normal;
-  font-weight: 700;
-  opacity: .8;
-}
-
-.sidebar-people a.is-active .sidebar-person-name em,
-.sidebar-people a.is-active .sidebar-person-count {
-  color: color-mix(in srgb, #fffdf7 75%, transparent);
-}
-
-.sidebar-person-count {
-  margin-left: auto;
-  color: var(--tv-muted);
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  margin-left: auto;
-  border-radius: 50%;
-  background: var(--tv-line-strong);
-  flex: 0 0 8px;
-}
-
-.status-dot.is-connected {
-  background: var(--tv-success);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tv-success) 20%, transparent);
-}
-
-.status-dot.is-configured {
-  background: var(--tv-warning);
-}
-
-.status-dot.is-needs-setup {
-  border: 1.5px solid var(--tv-warning);
-  background: transparent;
-}
-
-.status-dot.is-error {
-  background: var(--tv-danger);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tv-danger) 18%, transparent);
-}
-
-.channel-state {
-  margin-left: auto;
-  color: var(--tv-muted);
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.channel-state + .status-dot {
-  margin-left: 0;
-}
-
-.sidebar-channel-static {
-  display: flex;
-  min-height: 32px;
-  align-items: center;
-  gap: 10px;
-  padding: 5px 10px;
-  color: var(--tv-muted);
-  font-size: 13px;
-  font-weight: 620;
-}
-
-.nav-badge-needs {
-  border-color: transparent;
-  background: var(--tv-accent);
-  color: var(--tv-pine);
-  font-size: 10px;
-}
-
-.nav-badge-needs.is-urgent {
-  background: var(--tv-danger);
-  color: #fffdf7;
-}
-
-.sidebar-more {
-  display: grid;
-  gap: 4px;
-}
-
-.sidebar-more-toggle {
-  width: 100%;
-  background: transparent;
-  cursor: pointer;
-  font-family: inherit;
-  text-align: left;
-}
-
-.sidebar-more-toggle .nav-icon {
-  transition: transform 140ms ease;
-  transform: rotate(-90deg);
-}
-
-.sidebar-more.is-open .sidebar-more-toggle .nav-icon {
-  transform: none;
-}
-
-.sidebar-more [hidden] {
-  display: none;
-}
-
-.shell .sidebar .sidebar-foot {
-  position: static;
-  flex: 0 0 auto;
-  margin-top: 8px;
-  gap: 6px;
-}
-
-.shell .sidebar .sidebar-identity {
-  grid-template-columns: 30px minmax(0, 1fr) auto;
-  margin-top: 4px;
-  padding: 7px 9px;
-}
-
-.sidebar-signout {
-  display: grid;
-  width: 28px;
-  height: 28px;
-  place-items: center;
-  border-radius: 8px;
-  color: var(--tv-muted);
-  transition: 140ms ease;
-}
-
-.sidebar-signout:hover {
-  background: var(--tv-pine-soft);
-  color: var(--tv-pine);
-}
-
-.sidebar-signout svg {
-  width: 15px;
-  height: 15px;
-}
-
-.sidebar-utility-links a.is-active {
-  background: var(--tv-pine);
-  color: #fffdf7;
-}
-
-/* Household card mark and the ChatGPT-style New chat action */
-.household-card-mark {
-  display: grid;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 9px;
-  background: var(--tv-pine-soft);
-  color: var(--tv-pine);
-}
-
-.household-card-mark svg {
-  width: 16px;
-  height: 16px;
-}
-
-.new-chat-button {
-  display: flex;
-  min-height: 40px;
-  align-items: center;
-  gap: 9px;
-  margin-top: 8px;
-  border: 1px solid var(--tv-pine);
-  border-radius: 10px;
-  padding: 8px 12px;
-  background: var(--tv-pine);
-  color: #fffdf7;
-  font-size: 13.5px;
-  font-weight: 700;
-  transition: 140ms ease;
-}
-
-.new-chat-button:hover {
-  background: color-mix(in srgb, var(--tv-pine) 88%, #000);
-  box-shadow: 0 8px 20px rgba(25, 60, 44, .16);
-}
-
-.new-chat-button svg {
-  width: 17px;
-  height: 17px;
-  flex: 0 0 auto;
-}
-
-/* People: one compact row of avatars, opened into the full list */
 .people-head-row {
   display: flex;
   align-items: center;
@@ -403,48 +197,43 @@
   gap: 8px;
 }
 
-.people-head-row .sidebar-section-title {
-  margin: 0;
-}
-
 .people-toggle {
   display: inline-flex;
-  min-height: 24px;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
+  min-height: 28px;
+  padding: 0 6px;
   border: 0;
-  border-radius: 6px;
-  padding: 2px 6px;
+  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--tv-muted);
-  cursor: pointer;
+  color: var(--color-text-secondary);
   font: inherit;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--font-text-xs-size);
+  cursor: pointer;
 }
 
 .people-toggle:hover {
-  background: rgba(255, 253, 247, .65);
-  color: var(--tv-pine);
+  background: var(--color-background-primary-ghost-hover);
+  color: var(--color-text);
 }
 
 .people-toggle svg {
-  width: 13px;
-  height: 13px;
-  transition: transform 140ms ease;
+  width: 14px;
+  height: 14px;
+  transition: transform 150ms ease;
 }
 
 .people-toggle[aria-expanded="true"] svg {
   transform: rotate(180deg);
 }
 
+/* One line of avatars; the gap leaves room for each count badge, which overhangs its avatar's top-right corner. */
 .people-row {
   display: flex;
   flex-wrap: wrap;
-  /* Room for each count badge, which sits outside its avatar's top-right corner. */
   gap: 12px;
   margin: 0;
-  padding: 2px 10px 4px;
+  padding: 8px 8px 4px;
   list-style: none;
 }
 
@@ -453,133 +242,304 @@
   display: none;
 }
 
+.sidebar-people {
+  display: grid;
+  gap: 2px;
+}
+
 .people-chip {
   position: relative;
   display: inline-grid;
   place-items: center;
   border-radius: 50%;
-  transition: transform 140ms ease, box-shadow 140ms ease;
 }
 
-.people-chip:hover {
-  transform: translateY(-1px);
-}
-
-.people-chip.is-you .member-avatar {
-  box-shadow: 0 0 0 2px var(--tv-bg), 0 0 0 3.5px var(--tv-pine);
-}
-
-.people-chip.is-active .member-avatar {
-  box-shadow: 0 0 0 2px var(--tv-bg), 0 0 0 3.5px var(--tv-accent);
+.people-chip.is-active .avatar {
+  border-color: var(--color-text);
 }
 
 .people-badge {
   position: absolute;
   top: -6px;
-  right: -10px;
+  right: -8px;
   display: grid;
-  min-width: 13px;
-  height: 14px;
+  min-width: 16px;
+  height: 16px;
   place-items: center;
-  border: 1.5px solid var(--tv-bg);
-  border-radius: 999px;
-  padding: 0 3px;
-  background: var(--tv-pine);
-  box-sizing: content-box;
-  color: #fffdf7;
-  font-size: 9.5px;
-  font-weight: 800;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  padding: 0 4px;
+  background: var(--color-surface);
+  box-sizing: border-box;
+  color: var(--color-text);
+  font-size: var(--font-text-xs-size);
+  font-weight: var(--font-weight-medium);
   line-height: 1;
 }
 
 .people-more {
-  width: 30px;
-  height: 30px;
-  border: 1px dashed var(--tv-line-strong);
-  background: var(--tv-surface);
-  color: var(--tv-muted);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-secondary);
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
-  font-weight: 750;
+  font-size: var(--font-text-xs-size);
+  font-weight: var(--font-weight-medium);
 }
 
 .people-more:hover {
-  border-color: var(--tv-pine);
-  color: var(--tv-pine);
+  border-color: var(--color-border-strong);
+  background: var(--color-background-primary-ghost-hover);
+  color: var(--color-text);
 }
 
-/* Collapsed rail: icons and avatars only */
-.shell.is-collapsed .sidebar .new-chat-button {
-  justify-content: center;
-  padding-inline: 0;
+/* -------------------------------------------------------------- Chat history */
+
+.chat-list {
+  display: grid;
+  gap: 1px;
 }
 
-.shell.is-collapsed .sidebar .people-row {
-  flex-direction: column;
+.chat-row {
+  position: relative;
+  display: flex;
   align-items: center;
-  padding-inline: 0;
+  border-radius: var(--radius-md);
 }
 
-.shell.is-collapsed .sidebar .people-more {
+.chat-row:hover {
+  background: var(--color-background-primary-ghost-hover);
+}
+
+.chat-row.is-active {
+  background: var(--color-background-primary-ghost-active);
+}
+
+.chat-row-link {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 8px;
+  border-radius: inherit;
+  color: var(--color-text);
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+
+.chat-row.is-active .chat-row-title {
+  font-weight: var(--font-weight-medium);
+}
+
+.chat-row-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The "..." button replaces the end of the title on hover or keyboard focus, and stays visible while its menu is open. */
+.chat-row-menu {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.chat-row:hover .chat-row-menu,
+.chat-row:focus-within .chat-row-menu,
+.chat-row-menu[aria-expanded="true"] {
+  opacity: 1;
+}
+
+.chat-row:hover .chat-row-link,
+.chat-row:focus-within .chat-row-link {
+  padding-right: 36px;
+}
+
+.chat-row.is-editing {
+  display: grid;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.chat-row.is-editing:hover {
+  background: transparent;
+}
+
+.chat-row-edit {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.chat-row-edit .input {
+  flex: 1 1 auto;
+}
+
+.chat-row-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 8px;
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+}
+
+.chat-row-confirm-text {
+  margin-right: auto;
+}
+
+.chat-row-error {
+  margin: 0;
+  padding: 0 8px;
+}
+
+@media (hover: none) {
+  .chat-row-menu {
+    opacity: 1;
+  }
+
+  .chat-row-link {
+    padding-right: 36px;
+  }
+}
+
+/* -------------------------------------------------------------- Account menu */
+
+.sidebar-account {
+  flex: none;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.account-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.account-trigger:hover,
+.account-trigger[aria-expanded="true"] {
+  background: var(--color-background-primary-ghost-hover);
+}
+
+.account-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: grid;
+}
+
+.account-text strong,
+.account-text .meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-text strong {
+  font-size: var(--font-text-sm-size);
+  line-height: var(--font-text-sm-line-height);
+  font-weight: var(--font-weight-medium);
+}
+
+.account-chevron {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--color-text-tertiary);
+}
+
+/* Menus open above the page, the drawer and the account row. */
+.shell-menu {
+  z-index: 90;
+  min-width: 232px;
+  max-height: var(--radix-dropdown-menu-content-available-height);
+  overflow-y: auto;
+  animation: shell-menu-in 120ms cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.shell-menu .nav-badge {
+  margin-left: auto;
+}
+
+@keyframes shell-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+/* ------------------------------------------------------------ Collapsed rail */
+
+.shell.is-collapsed .sidebar .shell-copy,
+.shell.is-collapsed .sidebar .people-head-row,
+.shell.is-collapsed .sidebar .people-more,
+.shell.is-collapsed .sidebar .sidebar-people,
+.shell.is-collapsed .sidebar .chat-history-section {
   display: none;
 }
 
+.shell.is-collapsed .sidebar-head {
+  justify-content: center;
+  padding-left: 0;
+}
+
+.shell.is-collapsed .sidebar .sidebar-row,
+.shell.is-collapsed .sidebar .account-trigger {
+  justify-content: center;
+  padding: 0;
+}
+
+.shell.is-collapsed .sidebar .sidebar-row-count {
+  position: absolute;
+  top: 0;
+  right: 2px;
+  margin: 0;
+  font-size: var(--font-text-xs-size);
+  line-height: 1;
+}
+
+.shell.is-collapsed .sidebar .people-row,
 .shell.is-collapsed .sidebar .people-row[hidden] {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 8px 0 4px;
 }
 
-.shell.is-collapsed .sidebar .people-section .sidebar-people {
-  display: none;
-}
+/* ------------------------------------------------------------ Phone chrome */
 
-.shell.is-collapsed .sidebar .sidebar-people a,
-.shell.is-collapsed .sidebar .sidebar-channels a,
-.shell.is-collapsed .sidebar .sidebar-more-toggle {
-  position: relative;
-  justify-content: center;
-  padding-inline: 6px;
-}
-
-.shell.is-collapsed .sidebar .status-dot {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  margin: 0;
-}
-
-.shell.is-collapsed .sidebar .sidebar-scroll {
-  gap: 10px;
-}
-
-.shell.is-collapsed .sidebar .sidebar-identity {
-  grid-template-columns: 1fr;
-  justify-items: center;
-  gap: 6px;
-  padding: 7px 0;
-}
-
-.shell.is-collapsed .sidebar .nav-badge-needs {
-  position: absolute;
-  top: 3px;
-  right: 2px;
-}
-
-/* Mobile chrome is hidden on desktop */
 .mobile-bar,
-.mobile-tabs,
 .mobile-sheet,
 .mobile-sheet-backdrop {
   display: none;
 }
 
-/* Below 900px the sidebar gives way to a compact top bar (52px), a fixed bottom
-   tab bar (60px plus the safe-area inset) and a menu sheet between them. The
-   two heights are published for pages that size themselves to the viewport. */
+/*
+ * Below 900px the sidebar becomes a 48px top bar (menu, title, new chat) and a left drawer with the
+ * same content. There is no bottom bar: --shell-bottom-bar stays published, as 0, for pages that size
+ * themselves between the bars (the chat page positions itself with both variables).
+ */
 @media (max-width: 900px) {
   :root {
-    --shell-top-bar: 52px;
-    --shell-bottom-bar: calc(60px + env(safe-area-inset-bottom, 0px));
+    --shell-top-bar: 48px;
+    --shell-bottom-bar: 0px;
   }
 
   .shell,
@@ -587,314 +547,102 @@
     display: block;
   }
 
-  .shell::before {
-    display: none;
-  }
-
   .shell .sidebar,
   .shell.is-collapsed .sidebar {
     display: none;
-  }
-
-  .shell .main {
-    padding-bottom: calc(var(--shell-bottom-bar) + 24px);
   }
 
   .mobile-bar {
     position: sticky;
     top: 0;
     z-index: 40;
-    display: flex;
-    height: var(--shell-top-bar);
-    align-items: center;
-    gap: 12px;
-    border-bottom: 1px solid var(--tv-line);
-    padding: 0 12px 0 16px;
-    background: rgba(238, 235, 222, .97);
-    backdrop-filter: blur(14px);
-  }
-
-  .mobile-bar-brand {
-    display: flex;
-    align-items: center;
-    gap: 9px;
-    margin-right: auto;
-    color: var(--tv-pine);
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 19px;
-    font-weight: 700;
-    letter-spacing: -.03em;
-  }
-
-  .mobile-bar-brand img {
-    border-radius: 7px;
-  }
-
-  .mobile-bar-menu {
     display: grid;
-    width: 38px;
-    height: 38px;
-    place-items: center;
-    border: 1px solid var(--tv-line);
-    border-radius: 9px;
-    background: var(--tv-surface);
-    color: var(--tv-pine);
-    cursor: pointer;
+    grid-template-columns: 44px minmax(0, 1fr) 44px;
+    align-items: center;
+    height: var(--shell-top-bar);
+    padding: 0 4px;
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: var(--color-surface);
   }
 
-  .mobile-bar-menu svg {
-    width: 18px;
-    height: 18px;
+  .mobile-bar .btn {
+    justify-self: center;
+  }
+
+  .mobile-bar-title {
+    margin: 0;
+    overflow: hidden;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .mobile-sheet-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 30;
+    z-index: 60;
     display: block;
-    border: 0;
-    background: rgba(23, 34, 24, .38);
+    background: var(--modal-backdrop-background);
   }
 
   .mobile-sheet {
     position: fixed;
-    top: var(--shell-top-bar);
-    right: 0;
-    bottom: var(--shell-bottom-bar);
-    left: 0;
-    z-index: 35;
-    display: grid;
-    align-content: start;
-    gap: 14px;
-    overflow-y: auto;
-    border-bottom: 1px solid var(--tv-line);
-    padding: 14px 14px 18px;
-    background: var(--tv-bg);
-    box-shadow: 0 18px 40px rgba(42, 54, 37, .18);
+    inset: 0 auto 0 0;
+    z-index: 61;
+    display: flex;
+    flex-direction: column;
+    width: min(85vw, 320px);
+    padding: env(safe-area-inset-top, 0px) 8px env(safe-area-inset-bottom, 0px);
+    background: var(--color-surface-secondary);
+    box-shadow: var(--shadow);
     overscroll-behavior: contain;
+    animation: shell-drawer-in 180ms cubic-bezier(0.19, 1, 0.22, 1);
   }
 
   .mobile-sheet[hidden] {
     display: none;
   }
 
-  .mobile-sheet section {
-    display: grid;
-    gap: 2px;
-  }
-
-  .mobile-sheet .sidebar-people a,
-  .mobile-sheet .sidebar-channels a {
-    min-height: 42px;
-  }
-
   .mobile-sheet:focus {
     outline: none;
   }
 
-  .mobile-sheet .sidebar-person-name,
-  .mobile-sheet .sidebar-person-count,
-  .mobile-sheet .sidebar-section-title,
-  .mobile-sheet .people-toggle,
-  .mobile-sheet .channel-state {
-    display: initial;
+  .mobile-sheet .sidebar-head {
+    height: 56px;
   }
 
-  .shell .mobile-sheet .people-toggle {
-    display: inline-flex;
-    min-height: 32px;
-    padding-inline: 10px;
+  .mobile-sheet .sidebar-row,
+  .mobile-sheet .chat-row-link {
+    min-height: var(--touch-target);
   }
 
-  .mobile-sheet .people-row {
-    gap: 16px;
-    padding: 6px 10px 8px;
-  }
-
-  .mobile-sheet .people-more {
-    width: 38px;
-    height: 38px;
-  }
-
-  .mobile-sheet .new-chat-button {
-    margin-top: 0;
-    min-height: 46px;
-  }
-
-  .mobile-sheet .channel-state {
-    margin-left: auto;
-  }
-
-  .mobile-sheet .sidebar-channel-static {
-    min-height: 42px;
-  }
-
-  .mobile-sheet .sidebar-person-count {
-    margin-left: auto;
-  }
-
-  .mobile-sheet-household {
-    display: grid;
-    gap: 2px;
-    margin: 0;
-    padding: 0 10px;
-  }
-
-  .mobile-sheet-household strong {
-    font-family: Georgia, "Times New Roman", serif;
-    font-size: 17px;
-  }
-
-  .mobile-sheet-household small {
-    color: var(--tv-muted);
-    font-size: 12px;
-  }
-
-  .mobile-tabs {
-    position: fixed;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 40;
-    display: grid;
-    height: var(--shell-bottom-bar);
-    grid-template-columns: repeat(4, 1fr);
-    border-top: 1px solid var(--tv-line);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: rgba(238, 235, 222, .97);
-    backdrop-filter: blur(14px);
-  }
-
-  .mobile-tabs a {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    color: var(--tv-muted);
-    font-size: 11px;
-    font-weight: 700;
-  }
-
-  .mobile-tabs a svg {
-    width: 21px;
-    height: 21px;
-    stroke-width: 1.8;
-  }
-
-  .mobile-tabs a.is-active {
-    color: var(--tv-pine);
-  }
-
-  .mobile-tabs a.is-active::before {
-    content: "";
-    position: absolute;
+  .mobile-sheet .chat-row-menu {
     top: 0;
-    width: 28px;
-    height: 3px;
-    border-radius: 0 0 3px 3px;
-    background: var(--tv-pine);
+    right: 0;
   }
 
-  .mobile-tabs .nav-badge {
-    position: absolute;
-    top: 6px;
-    left: calc(50% + 6px);
-    margin: 0;
+  .mobile-sheet .chat-row-link {
+    padding-right: var(--touch-target);
   }
 }
 
-/* People pages */
-.people-head {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  margin-bottom: 30px;
+@keyframes shell-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
 }
 
-.people-head h1 {
-  font-family: Georgia, "Times New Roman", serif;
-}
+@media (prefers-reduced-motion: reduce) {
+  .shell,
+  .sidebar-row,
+  .account-trigger,
+  .chat-row-menu,
+  .people-toggle svg {
+    transition: none;
+  }
 
-.people-head .lede {
-  margin-top: 8px;
-}
-
-.people-group {
-  margin-bottom: 28px;
-}
-
-.people-group-title {
-  display: flex;
-  font-family: inherit;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  font-size: 15px;
-}
-
-.people-group-title span {
-  border-radius: 999px;
-  background: var(--tv-surface-3);
-  padding: 2px 8px;
-  color: var(--tv-muted);
-  font-size: 11px;
-  font-weight: 750;
-}
-
-.people-group-title.is-overdue span {
-  background: color-mix(in srgb, var(--tv-danger) 14%, transparent);
-  color: var(--tv-danger);
-}
-
-.people-due-late {
-  color: var(--tv-danger);
-  font-weight: 650;
-}
-
-.people-card {
-  border: 1px dashed var(--tv-line);
-  border-radius: var(--tv-radius);
-  padding: 18px 20px;
-  background: color-mix(in srgb, var(--tv-surface) 70%, transparent);
-  color: var(--tv-muted);
-  font-size: 14px;
-}
-
-.people-card p {
-  margin: 0;
-}
-
-.people-approvals {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.people-approvals li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border: 1px solid var(--tv-line);
-  border-radius: var(--tv-radius);
-  padding: 12px 16px;
-  background: var(--tv-surface);
-  font-size: 14px;
-}
-
-/* Documents list on phones: the title links to the detail page, so the modified date and the
-   action buttons give way instead of pushing the table past the screen edge. */
-.documents-table .documents-col-date {
-  white-space: nowrap;
-}
-
-@media (max-width: 640px) {
-  .documents-table .documents-col-modified,
-  .documents-table .documents-col-actions {
-    display: none;
+  .shell-menu,
+  .mobile-sheet {
+    animation: none;
   }
 }

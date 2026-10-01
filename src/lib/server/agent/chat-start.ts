@@ -1,6 +1,7 @@
 import 'server-only';
 import * as actionSync from '../../../../services/actionSyncService';
 import { actionCenter } from '../workspace';
+import { zurichToday } from '@/components/inbox/dates';
 import {
   COMPANION_TOOL_ERRORS,
   classifyCompanionToolError
@@ -19,6 +20,8 @@ export type PaperlessState = 'ok' | 'unreachable' | 'access';
 export interface ChatStart {
   paperless: PaperlessState;
   suggestions: CompanionSuggestion[];
+  /** The open action with the earliest due date, for the line that links to Needs you. */
+  urgent: { title: string; dueAt: string; overdue: boolean } | null;
 }
 
 async function recentDocuments(householdId: string, memberId: string) {
@@ -50,8 +53,10 @@ async function recentDocuments(householdId: string, memberId: string) {
 }
 
 /**
- * What the empty chat needs: whether Paperless answers right now and starter
- * prompts built from the household's real next deadline and newest documents.
+ * What the empty chat needs: whether Paperless answers right now, starter
+ * prompts built from the household's real next deadline and newest documents,
+ * and that next deadline for the quiet line to Needs you. "Overdue" uses the
+ * household's Zurich calendar day, like the Needs you feed.
  */
 export async function loadChatStart(householdId: string, memberId: string): Promise<ChatStart> {
   const nextAction = actionCenter.listCases(householdId)
@@ -61,6 +66,9 @@ export async function loadChatStart(householdId: string, memberId: string): Prom
   const recent = await recentDocuments(householdId, memberId);
   return {
     paperless: recent.state,
-    suggestions: buildCompanionSuggestions({ nextAction, recentDocuments: recent.documents })
+    suggestions: buildCompanionSuggestions({ nextAction, recentDocuments: recent.documents }),
+    urgent: nextAction
+      ? { title: nextAction.title, dueAt: nextAction.dueAt, overdue: nextAction.dueAt.slice(0, 10) < zurichToday() }
+      : null
   };
 }

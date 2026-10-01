@@ -41,7 +41,11 @@ async function bundle() {
       contents: `import React from 'react';
         import { renderToStaticMarkup } from 'react-dom/server';
         import { Companion } from '@/components/companion';
-        export const render = (props) => renderToStaticMarkup(<Companion {...props} />);`,
+        import { CitationLink, CitationTitles } from '@/components/chat/citations';
+        export const render = (props) => renderToStaticMarkup(<Companion {...props} />);
+        export const renderCitation = (href, label, titles) => renderToStaticMarkup(
+          <CitationTitles.Provider value={new Map(titles)}><CitationLink href={href}>{label}</CitationLink></CitationTitles.Provider>
+        );`,
       resolveDir: root,
       sourcefile: 'entry.tsx',
       loader: 'tsx'
@@ -68,12 +72,13 @@ async function bundle() {
       }
     }]
   });
-  return require(out).render;
+  return require(out);
 }
 
 let render;
+let renderCitation;
 test.before(async () => {
-  render = await bundle();
+  ({ render, renderCitation } = await bundle());
 });
 
 const baseProps = {
@@ -81,16 +86,22 @@ const baseProps = {
   displayName: 'release-owner',
   initialMessages: [],
   initialApprovals: [],
-  initialSessions: [{ id: 's1', title: 'New conversation', message_count: 0, updated_at: '2026-10-01 10:00:00' }],
   canApprove: true,
   isOwner: true,
   approverNames: ['release-owner', 'Release Adult'],
   needsCount: 7,
-  start: { paperless: 'ok', suggestions: [
-    { kind: 'Action', icon: 'calendar', prompt: 'What is due soon in our open actions?', hint: 'Next: Pay rent, due 2026-10-03' },
-    { kind: 'Answer', icon: 'files', prompt: 'Show my newest documents.', hint: 'Latest: Hausrat renewal' }
-  ] },
-  renderedAt: Date.parse('2026-10-01T10:00:00Z')
+  start: {
+    paperless: 'ok',
+    suggestions: [
+      { kind: 'Action', icon: 'calendar', prompt: 'What is due soon in our open actions?', hint: 'Next: Pay rent, due 2026-10-03' },
+      { kind: 'Answer', icon: 'files', prompt: 'Show my newest documents.', hint: 'Latest: Hausrat renewal' },
+      { kind: 'Answer', icon: 'summary', prompt: 'Summarize document #6, “Hausrat renewal”.', hint: 'Reads the document and cites it as a source' },
+      { kind: 'Answer', icon: 'tags', prompt: 'Which tags do I have, and how many documents use each?', hint: 'Reads your Paperless tags' },
+      { kind: 'Action', icon: 'followup', prompt: 'Prepare a follow-up action for document #6.', hint: 'Drafts a task that waits for your approval' },
+      { kind: 'Approval', icon: 'tag-create', prompt: 'Create a Paperless tag named “To review”.', hint: 'Prepares a tag that waits for your approval' }
+    ],
+    urgent: { title: 'Pay rent', dueAt: '2026-10-03', overdue: false }
+  }
 };
 
 const activity = (extra = {}) => ({
@@ -112,28 +123,74 @@ const approval = (extra = {}) => ({
   ...extra
 });
 
-test('empty chat greets the member, shows the household count and only real starter prompts', () => {
+test('empty chat is a greeting, the composer and at most three real prompts', () => {
   globalThis.__chat = undefined;
   const html = render(baseProps);
-  assert.match(html, /Hello, release-owner\./);
-  assert.match(html, /7 things wait for you/);
-  assert.match(html, /<a class="chat-needs has-items" href="\/inbox"/);
-  assert.match(html, /<a class="chat-head-needs" href="\/inbox">/);
-  assert.match(html, /What is due soon in our open actions\?/);
-  assert.match(html, /Next: Pay rent, due 2026-10-03/);
+  assert.match(html, /<h1 class="type-greeting chat-greeting">What can I help with, release-owner\?<\/h1>/);
+  assert.match(html, /placeholder="Ask about your documents"/);
+  assert.match(html, /<button[^>]*aria-label="Send message"/);
+
+  // Prompts come from the real data, one per slot, with no kind labels or hints.
+  const pills = [...html.matchAll(/<button type="button" class="chat-suggestion"[^>]*><span>([^<]*)<\/span>/g)].map((match) => match[1]);
+  assert.deepEqual(pills, [
+    'What is due soon in our open actions?',
+    'Summarize document #6, “Hausrat renewal”.',
+    'Prepare a follow-up action for document #6.'
+  ]);
+  assert.doesNotMatch(html, /Next: Pay rent|Reads the document|Try asking|waits? for you|chat-eyebrow|chat-empty-lead|<mark/);
   assert.doesNotMatch(html, /sparkle/i);
   assert.doesNotMatch(html, /Ask Tagvico/);
-  assert.match(html, />New chat</);
-  assert.match(html, /<button[^>]*disabled=""[^>]*aria-label="New chat"/, 'an empty chat has nothing to leave');
-  assert.doesNotMatch(html, /chat-paperless-note/);
 
-  const down = render({ ...baseProps, needsCount: 0, start: { paperless: 'unreachable', suggestions: [] } });
-  assert.match(down, /Nothing waits for you/);
+  // One quiet line to Needs you: the most urgent item and the remaining count (urgent item included in the total).
+  assert.match(html, /<a class="chat-needs" href="\/inbox"><span class="chat-needs-title">Pay rent<\/span><span> is due 3 Oct\.<\/span><span> 6 more need you\.<\/span><\/a>/);
+  assert.doesNotMatch(html, /chat-head-needs/);
+
+  const overdue = render({ ...baseProps, needsCount: 1, start: { ...baseProps.start, urgent: { title: 'Pay rent', dueAt: '2026-08-15', overdue: true } } });
+  assert.match(overdue, /<span class="is-danger-text"> was due 15 Aug\.<\/span>/);
+  assert.doesNotMatch(overdue, /more need/, 'a single item has no remaining count');
+  const noDates = render({ ...baseProps, needsCount: 3, start: { ...baseProps.start, urgent: null } });
+  assert.match(noDates, /<a class="chat-needs" href="\/inbox"><span>3 things need you\.<\/span><\/a>/);
+
+  // The model picker sits at the top left, outside the composer, and the safety footnote appears once.
+  const head = html.slice(html.indexOf('<header class="chat-head">'), html.indexOf('</header>'));
+  assert.match(head, /aria-label="Choose model"/);
+  assert.doesNotMatch(html.slice(html.indexOf('<form class="chat-composer"')), /Choose model/);
+  assert.equal((html.match(/Tagvico can make mistakes\. Changes need your approval\./g) || []).length, 1);
+  assert.doesNotMatch(html, /aria-label="New chat"|aria-label="Chat history"|Enter to send/);
+
+  const down = render({ ...baseProps, needsCount: 0, start: { paperless: 'unreachable', suggestions: [], urgent: null } });
+  assert.doesNotMatch(down, /chat-needs|Nothing waits for you|chat-suggestion/);
   assert.match(down, /Paperless could not be reached/);
   assert.match(down, /href="\/settings\/paperless"/);
-  const member = render({ ...baseProps, isOwner: false, start: { paperless: 'access', suggestions: [] } });
+  const member = render({ ...baseProps, isOwner: false, start: { paperless: 'access', suggestions: [], urgent: null } });
   assert.match(member, /Paperless access is not set up for you/);
   assert.doesNotMatch(member, /Open Paperless settings/);
+  assert.doesNotMatch(html.slice(html.indexOf('<div class="chat-empty')), /chat-paperless-note/);
+
+  const welcome = render({ ...baseProps, showFirstRun: true });
+  assert.match(welcome, /Start with one real question\./);
+  assert.match(welcome, /Tagvico will wait for approval before changing anything/);
+});
+
+test('a conversation has no start page, keeps the composer and shows the footnote once', () => {
+  globalThis.__chat = undefined;
+  const html = render({ ...baseProps, initialMessages: conversation([], 'Hello there.') });
+  assert.doesNotMatch(html, /chat-empty|chat-starters|chat-suggestion|class="chat-needs/);
+  assert.match(html, /<form class="chat-composer"/);
+  assert.match(html, /<div class="chat-turn is-user">/);
+  assert.equal((html.match(/Tagvico can make mistakes/g) || []).length, 1);
+  assert.match(html, /aria-label="Copy answer"/);
+});
+
+test('inline citations are small source pills named after the document', () => {
+  assert.equal(
+    renderCitation('/documents/6', '1', [[6, 'Hausrat renewal']]),
+    '<a class="chat-cite" href="/documents/6" target="_blank" rel="noreferrer" title="Hausrat renewal">Hausrat renewal</a>'
+  );
+  assert.match(renderCitation('/documents/7', '2', []), /class="chat-cite"[^>]*>Source 2</);
+  // Ordinary links never become source pills and always open safely.
+  assert.doesNotMatch(renderCitation('https://example.com', 'docs', []), /chat-cite/);
+  assert.match(renderCitation('https://example.com', 'docs', []), /rel="noopener noreferrer"/);
 });
 
 test('answers cite only documents the tools returned and link to them with the real title', () => {
@@ -144,6 +201,7 @@ test('answers cite only documents the tools returned and link to them with the r
   assert.match(html, /\[1\]\(\/documents\/6\)/);
   assert.doesNotMatch(html, /doc:99|\/documents\/99/);
   assert.match(html, /<a href="\/documents\/6"[^>]*title="Hausrat renewal"><b>1<\/b><span>Hausrat renewal<\/span>/);
+  assert.match(html, /<p class="chat-sources-label">Sources<\/p>/);
   assert.match(html, /Searched 1 document/);
 });
 
@@ -158,6 +216,8 @@ test('a proposal sits inside the answer that prepared it and respects the member
   assert.equal((adult.match(/data-approval-id="ap-1"/g) || []).length, 1, 'the card must not also appear as a loose card');
   assert.match(adult, /Review renewal/);
   assert.doesNotMatch(adult.match(/<button[^>]*is-approve[^>]*>/)[0], /disabled/);
+  assert.doesNotMatch(adult, /Owners and adults can approve|Nothing changes until you decide|Only owners and adults can approve/, 'approvers see no permission sentence');
+  assert.equal((adult.match(/<button[^>]*is-(?:approve|reject)/g) || []).length, 2, 'two buttons at most');
 
   const member = render({ ...baseProps, canApprove: false, initialMessages: messages, initialApprovals: [approval()] });
   assert.match(member.match(/<button[^>]*is-approve[^>]*>/)[0], /disabled/);
@@ -181,7 +241,8 @@ test('decided proposals show what happened and where to look', () => {
   assert.match(done, /chat-approval is-executed/);
   assert.match(done, /Action created/);
   assert.match(done, /<a href="\/actions\/c1">Open<\/a>/);
-  assert.doesNotMatch(done, /is-approve/, 'a decided proposal has no buttons');
+  assert.doesNotMatch(done, /is-approve|is-reject/, 'a decided proposal has no buttons');
+  assert.doesNotMatch(done, /chat-approval-body/, 'a decided proposal collapses to one line');
 
   const failed = render({ ...baseProps, initialMessages: messages, initialApprovals: [approval({
     status: 'failed',

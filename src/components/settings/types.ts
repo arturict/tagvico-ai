@@ -153,6 +153,7 @@ export type SettingsSectionId =
   | 'paperless'
   | 'providers'
   | 'automation'
+  | 'channels'
   | 'tags'
   | 'people';
 

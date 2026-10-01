@@ -2,19 +2,7 @@
 
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
-import {
-  Ban,
-  CircleStop,
-  Gauge,
-  Play,
-  Plus,
-  RefreshCw,
-  RotateCcw,
-  ShieldCheck,
-  Trash2,
-  Undo2,
-  Wrench
-} from 'lucide-react';
+import { ArrowLeft, Play, RefreshCw, Trash2 } from 'lucide-react';
 import { fetchJson } from '@/lib/client/fetch-json';
 import { WorkspaceLoadError } from '@/components/workspace-load-error';
 
@@ -187,128 +175,145 @@ export function OperationsWorkspace() {
     }, `Processing finished for document ${id}.`);
   };
 
-  return <div className="page operations-page">
-    <header className="page-head operations-page-head">
-      <div><p className="eyebrow">Automation · Recovery</p><h1>Recovery</h1><p className="lede">Rescue weak OCR, resolve terminal failures and permanently skip documents that should never enter the scan queue.</p></div>
-      <div className="workspace-actions">
-        <Link className="button" href="/automation"><Gauge /> Automation overview</Link>
-        <button className="button danger" type="button" disabled={busy === 'stop'} onClick={() => void action('stop', async () => { await fetchJson('/api/scan/stop', { method: 'POST' }); }, 'Stop requested. Active work will return safely to the queue.')}><CircleStop /> Stop scan</button>
+  return <div className="page-column rec-page">
+    <Link className="btn btn-ghost btn-28 pg-back" href="/automation"><ArrowLeft aria-hidden="true" /> Overview</Link>
+    <header className="page-header pg-header">
+      <div className="page-header-text">
+        <h1 className="page-title">Recovery</h1>
+      </div>
+      <div className="page-actions pg-actions">
+        <button className="btn btn-danger btn-32" type="button" disabled={busy === 'stop'} onClick={() => void action('stop', async () => { await fetchJson('/api/scan/stop', { method: 'POST' }); }, 'Stop requested. Active work will return safely to the queue.')}>Stop scan</button>
       </div>
     </header>
 
-    <div className="workspace-notice" role="status">{notice}</div>
+    <p className="pg-status" role="status">{notice}</p>
 
-    {statusError ? <WorkspaceLoadError
-      title="Recovery status is unavailable"
-      message={statusError}
-      retrying={statusLoading}
-      onRetry={() => void loadStatus()}
-    /> : statusLoading && !status ? <div className="workspace-skeleton" aria-label="Loading recovery status">
-      {Array.from({ length: 4 }, (_, index) => <span key={index} />)}
-    </div> : <section className="signal-grid recovery-signal-grid" aria-label="Recovery status">
-      <Signal icon={<Wrench />} label="OCR rescue" value={status?.ocrEnabled ? 'Ready' : 'Disabled'} detail={status?.ocrEnabled ? `Provider: ${status.ocrProvider}` : 'Enable OCR in Settings'} active={Boolean(status?.ocrEnabled)} />
-      <Signal icon={<ShieldCheck />} label="Queue discipline" value="Durable" detail="Interrupted work returns after restart" active />
-      <Signal icon={<RotateCcw />} label="Terminal failures" value={failuresError ? 'Unavailable' : failuresLoading ? '…' : String(failures.length)} detail="Reset or move to the skip list" active={!failuresError && !failuresLoading && !failures.length} />
-      <Signal icon={<Ban />} label="Ignored documents" value={ignoredError ? 'Unavailable' : ignoredLoading ? '…' : String(ignored.length)} detail="Explicit permanent skip list" active={!ignoredError && !ignoredLoading && !ignored.length} />
-    </section>}
-
-    <section className="workspace-grid">
-      <article className="workspace-card workspace-span-7">
-        <div className="workspace-card-head">
-          <div><p className="eyebrow">OCR queue</p><h2>Documents awaiting rescue</h2></div>
-          <button className="icon-button" type="button" disabled={ocrLoading} aria-label="Refresh OCR queue" onClick={() => void loadOcr()}><RefreshCw /></button>
+    <section className="section rec-section" aria-labelledby="rec-ocr-title">
+      <div className="rec-section-head">
+        <div className="rec-section-text">
+          <h2 className="section-title" id="rec-ocr-title">OCR queue</h2>
+          {statusError ? null : statusLoading && !status ? <p className="pg-muted shimmer">Checking OCR…</p> : <p className="pg-muted">
+            {status?.ocrEnabled ? `OCR rescue is on (${status.ocrProvider}).` : 'OCR rescue is off. Turn it on in Settings.'}
+          </p>}
         </div>
-        <form className="operations-add" onSubmit={addOcrDocument}>
-          <label><span className="sr-only">Paperless document ID</span><input inputMode="numeric" value={ocrDocumentId} onChange={(event) => setOcrDocumentId(event.target.value)} placeholder="Paperless document ID" /></label>
-          <button className="button primary" type="submit" disabled={busy?.startsWith('add-ocr-')}><Plus /> Add to queue</button>
-        </form>
-        {ocrError ? <WorkspaceLoadError
-          title="OCR queue is unavailable"
-          message={ocrError}
-          retrying={ocrLoading}
-          onRetry={() => void loadOcr()}
-        /> : ocrLoading && !ocrRows.length ? <div className="workspace-skeleton" aria-label="Loading OCR queue">
-          {Array.from({ length: 3 }, (_, index) => <span key={index} />)}
-        </div> : <div className="workspace-table-wrap">
-          <table className="workspace-table">
-            <thead><tr><th>Document</th><th>Status</th><th>Attempts</th><th>Actions</th></tr></thead>
-            <tbody>{ocrRows.length ? ocrRows.map((row) => <tr key={row.document_id}>
-              <td><strong>#{row.document_id}</strong><small>{row.title || 'Untitled document'}</small></td>
-              <td><span className="status-pill">{row.status || 'queued'}</span></td>
-              <td>{row.attempts || 0}</td>
-              <td><div className="table-actions">
-                <button className="icon-button" type="button" aria-label={`Process document ${row.document_id}`} disabled={busy === `process-${row.document_id}`} onClick={() => void processDocument(row.document_id)}><Play /></button>
-                <button className="icon-button is-danger" type="button" aria-label={`Remove document ${row.document_id}`} disabled={busy === `remove-${row.document_id}`} onClick={() => void action(`remove-${row.document_id}`, async () => { await fetchJson(`/api/ocr/queue/${row.document_id}`, { method: 'DELETE' }); }, `Document ${row.document_id} was removed from the OCR queue.`)}><Trash2 /></button>
-              </div></td>
-            </tr>) : <tr><td colSpan={4}><div className="empty-compact">No OCR rescue work is queued.</div></td></tr>}</tbody>
-          </table>
-        </div>}
-      </article>
+        <button className="btn btn-ghost btn-32 btn-icon" type="button" disabled={ocrLoading} aria-label="Refresh OCR queue" title="Refresh" onClick={() => void loadOcr()}><RefreshCw aria-hidden="true" /></button>
+      </div>
+      {statusError ? <WorkspaceLoadError
+        title="Recovery status is unavailable"
+        message={statusError}
+        retrying={statusLoading}
+        onRetry={() => void loadStatus()}
+      /> : null}
+      <form className="rec-form" onSubmit={addOcrDocument}>
+        <label className="rec-field">
+          <span className="sr-only">Paperless document ID</span>
+          <input className="input input-32" inputMode="numeric" value={ocrDocumentId} onChange={(event) => setOcrDocumentId(event.target.value)} placeholder="Paperless document ID" />
+        </label>
+        <button className="btn btn-secondary btn-32" type="submit" disabled={busy?.startsWith('add-ocr-')}>Add to queue</button>
+      </form>
+      {ocrError ? <WorkspaceLoadError
+        title="OCR queue is unavailable"
+        message={ocrError}
+        retrying={ocrLoading}
+        onRetry={() => void loadOcr()}
+      /> : ocrLoading && !ocrRows.length ? <RowSkeleton label="Loading OCR queue" /> : ocrRows.length ? <ul className="list rec-list">
+        {ocrRows.map((row) => <li className="list-row" key={row.document_id}>
+          <div className="list-row-main">
+            <span className="list-row-title">{row.title || 'Untitled document'}</span>
+            <span className="list-row-meta">#{row.document_id} · {humanize(row.status || 'queued')} · {attempts(row.attempts)}</span>
+          </div>
+          <div className="list-row-actions">
+            <button className="btn btn-ghost btn-28 btn-icon" type="button" aria-label={`Process document ${row.document_id}`} title="Process now" disabled={busy === `process-${row.document_id}`} onClick={() => void processDocument(row.document_id)}><Play aria-hidden="true" /></button>
+            <button className="btn btn-ghost btn-28 btn-icon" type="button" aria-label={`Remove document ${row.document_id}`} title="Remove from queue" disabled={busy === `remove-${row.document_id}`} onClick={() => void action(`remove-${row.document_id}`, async () => { await fetchJson(`/api/ocr/queue/${row.document_id}`, { method: 'DELETE' }); }, `Document ${row.document_id} was removed from the OCR queue.`)}><Trash2 aria-hidden="true" /></button>
+          </div>
+        </li>)}
+      </ul> : <p className="pg-muted rec-empty">No documents are waiting for OCR.</p>}
+    </section>
 
-      <article className="workspace-card workspace-span-5" id="failed-documents">
-        <div className="workspace-card-head">
-          <div><p className="eyebrow">Permanently failed</p><h2>Needs operator attention</h2></div>
-          <button className="icon-button" type="button" disabled={failuresLoading} aria-label="Refresh failure queue" onClick={() => void loadFailures()}><RefreshCw /></button>
+    <section className="section rec-section" id="failed-documents" aria-labelledby="rec-failed-title">
+      <div className="rec-section-head">
+        <div className="rec-section-text">
+          <h2 className="section-title" id="rec-failed-title">Failed documents</h2>
         </div>
-        <div className="failure-list">
-          {failuresError ? <WorkspaceLoadError
-            title="Failure queue is unavailable"
-            message={failuresError}
-            retrying={failuresLoading}
-            onRetry={() => void loadFailures()}
-          /> : failuresLoading && !failures.length ? <div className="workspace-skeleton" aria-label="Loading failure queue">
-            {Array.from({ length: 3 }, (_, index) => <span key={index} />)}
-          </div> : failures.length ? failures.map((row) => <div key={row.document_id}>
-            <div><strong>#{row.document_id} · {row.title || 'Untitled document'}</strong><span>{row.failed_reason || 'No failure reason recorded'} · {row.attempts || 0} attempts</span></div>
-            <div className="recovery-row-actions">
-              <button className="button" type="button" disabled={busy === `reset-${row.document_id}`} onClick={() => void action(`reset-${row.document_id}`, async () => { await fetchJson(`/api/failures/${row.document_id}/reset`, { method: 'POST' }); }, `Document ${row.document_id} may be scanned again.`)}><RotateCcw /> Reset</button>
-              <button className="button danger" type="button" disabled={busy === `ignore-failed-${row.document_id}`} onClick={() => void action(`ignore-failed-${row.document_id}`, async () => { await fetchJson(`/api/failures/${row.document_id}/ignore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: row.failed_reason || 'Moved from permanently failed' }) }); }, `Document ${row.document_id} is now permanently ignored.`)}><Ban /> Ignore</button>
+        <button className="btn btn-ghost btn-32 btn-icon" type="button" disabled={failuresLoading} aria-label="Refresh failure queue" title="Refresh" onClick={() => void loadFailures()}><RefreshCw aria-hidden="true" /></button>
+      </div>
+      {failuresError ? <WorkspaceLoadError
+        title="Failure queue is unavailable"
+        message={failuresError}
+        retrying={failuresLoading}
+        onRetry={() => void loadFailures()}
+      /> : failuresLoading && !failures.length ? <RowSkeleton label="Loading failure queue" /> : failures.length ? <ul className="list rec-list">
+        {failures.map((row) => <li className="list-row" key={row.document_id}>
+          <div className="list-row-main">
+            <span className="list-row-title">{row.title || 'Untitled document'}</span>
+            <span className="list-row-meta">#{row.document_id} · {row.failed_reason || 'No reason recorded'} · {attempts(row.attempts)}</span>
+          </div>
+          <div className="list-row-actions">
+            <button className="btn btn-secondary btn-28" type="button" disabled={busy === `reset-${row.document_id}`} onClick={() => void action(`reset-${row.document_id}`, async () => { await fetchJson(`/api/failures/${row.document_id}/reset`, { method: 'POST' }); }, `Document ${row.document_id} may be scanned again.`)}>Reset</button>
+            <button className="btn btn-danger btn-28" type="button" disabled={busy === `ignore-failed-${row.document_id}`} onClick={() => void action(`ignore-failed-${row.document_id}`, async () => { await fetchJson(`/api/failures/${row.document_id}/ignore`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason: row.failed_reason || 'Moved from permanently failed' }) }); }, `Document ${row.document_id} is now permanently ignored.`)}>Ignore</button>
+          </div>
+        </li>)}
+      </ul> : <p className="pg-muted rec-empty">No failed documents.</p>}
+    </section>
+
+    <section className="section rec-section" id="ignored-documents" aria-labelledby="rec-ignored-title">
+      <div className="rec-section-head">
+        <div className="rec-section-text">
+          <h2 className="section-title" id="rec-ignored-title">Permanent skip list</h2>
+          <p className="pg-muted">Documents here stay out of every scan until you un-ignore them.</p>
+        </div>
+        <button className="btn btn-ghost btn-32 btn-icon" type="button" disabled={ignoredLoading} aria-label="Refresh ignored documents" title="Refresh" onClick={() => void loadIgnored()}><RefreshCw aria-hidden="true" /></button>
+      </div>
+      <form className="rec-form" onSubmit={addIgnoredDocument}>
+        <label className="rec-field is-id">
+          <span className="sr-only">Document ID</span>
+          <input className="input input-32" inputMode="numeric" value={ignoredDocumentId} onChange={(event) => setIgnoredDocumentId(event.target.value)} placeholder="Document ID" />
+        </label>
+        <label className="rec-field">
+          <span className="sr-only">Reason (optional)</span>
+          <input className="input input-32" value={ignoredReason} onChange={(event) => setIgnoredReason(event.target.value)} placeholder="Reason (optional)" />
+        </label>
+        <button className="btn btn-secondary btn-32" type="submit" disabled={busy?.startsWith('ignore-')}>Ignore document</button>
+      </form>
+      {ignoredError ? <WorkspaceLoadError
+        title="Ignored documents are unavailable"
+        message={ignoredError}
+        retrying={ignoredLoading}
+        onRetry={() => void loadIgnored()}
+      /> : ignoredLoading && !ignored.length ? <RowSkeleton label="Loading ignored documents" /> : ignored.length ? <ul className="list rec-list">
+        {ignored.map((row) => {
+          const since = row.ignored_at || row.updated_at;
+          return <li className="list-row" key={row.document_id}>
+            <div className="list-row-main">
+              <span className="list-row-title">{row.title || 'Untitled document'}</span>
+              <span className="list-row-meta">#{row.document_id} · {row.reason || 'No reason given'}</span>
             </div>
-          </div>) : <div className="empty"><h2>No terminal failures</h2><p>The automation queue is healthy.</p></div>}
-        </div>
-      </article>
-
-      <article className="workspace-card workspace-span-12" id="ignored-documents">
-        <div className="workspace-card-head">
-          <div><p className="eyebrow">Ignored documents</p><h2>Permanent skip list</h2><p className="workspace-muted">Encrypted, empty or otherwise unsuitable files stay out of both scheduled and manual scans until explicitly un-ignored.</p></div>
-          <button className="icon-button" type="button" disabled={ignoredLoading} aria-label="Refresh ignored documents" onClick={() => void loadIgnored()}><RefreshCw /></button>
-        </div>
-        <form className="operations-ignore-form" onSubmit={addIgnoredDocument}>
-          <label><span>Document ID</span><input inputMode="numeric" value={ignoredDocumentId} onChange={(event) => setIgnoredDocumentId(event.target.value)} placeholder="123" /></label>
-          <label><span>Reason (optional)</span><input value={ignoredReason} onChange={(event) => setIgnoredReason(event.target.value)} placeholder="Encrypted PDF, duplicate scan…" /></label>
-          <button className="button primary" type="submit" disabled={busy?.startsWith('ignore-')}><Ban /> Ignore document</button>
-        </form>
-        {ignoredError ? <WorkspaceLoadError
-          title="Ignored documents are unavailable"
-          message={ignoredError}
-          retrying={ignoredLoading}
-          onRetry={() => void loadIgnored()}
-        /> : ignoredLoading && !ignored.length ? <div className="workspace-skeleton" aria-label="Loading ignored documents">
-          {Array.from({ length: 3 }, (_, index) => <span key={index} />)}
-        </div> : <div className="workspace-table-wrap">
-          <table className="workspace-table">
-            <thead><tr><th>Document</th><th>Reason</th><th>Ignored since</th><th>Action</th></tr></thead>
-            <tbody>{ignored.length ? ignored.map((row) => <tr key={row.document_id}>
-              <td><strong>#{row.document_id}</strong><small>{row.title || 'Untitled document'}</small></td>
-              <td>{row.reason || 'No reason provided'}</td>
-              <td>{row.ignored_at || row.updated_at ? new Date(String(row.ignored_at || row.updated_at)).toLocaleString() : 'Unknown'}</td>
-              <td><button className="button" type="button" disabled={busy === `unignore-${row.document_id}`} onClick={() => void action(`unignore-${row.document_id}`, async () => { await fetchJson(`/api/ignored/${row.document_id}`, { method: 'DELETE' }); }, `Document ${row.document_id} was un-ignored and queued for a filter-bypassing rescan.`)}><Undo2 /> Un-ignore</button></td>
-            </tr>) : <tr><td colSpan={4}><div className="empty-compact">No documents are permanently ignored.</div></td></tr>}</tbody>
-          </table>
-        </div>}
-      </article>
+            <span className="list-row-trailing">{since ? <time dateTime={String(since)}>{new Date(String(since)).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</time> : null}</span>
+            <div className="list-row-actions">
+              <button className="btn btn-secondary btn-28" type="button" disabled={busy === `unignore-${row.document_id}`} onClick={() => void action(`unignore-${row.document_id}`, async () => { await fetchJson(`/api/ignored/${row.document_id}`, { method: 'DELETE' }); }, `Document ${row.document_id} was un-ignored and queued for a filter-bypassing rescan.`)}>Un-ignore</button>
+            </div>
+          </li>;
+        })}
+      </ul> : <p className="pg-muted rec-empty">No documents are ignored.</p>}
     </section>
   </div>;
 }
 
-function Signal({ icon, label, value, detail, active }: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  detail: string;
-  active: boolean;
-}) {
-  return <article className={`signal-card${active ? ' is-active' : ''}`}><div>{icon}</div><span>{label}</span><strong>{value}</strong><small>{detail}</small></article>;
+function RowSkeleton({ label }: { label: string }) {
+  return <div className="pg-skeleton-rows" aria-label={label}>
+    {Array.from({ length: 3 }, (_, index) => <div className="pg-skeleton-row" key={index}>
+      <span className="pg-skeleton-stack"><span className="pg-skeleton-bar is-title" /><span className="pg-skeleton-bar is-meta" /></span>
+    </div>)}
+  </div>;
+}
+
+function attempts(count?: number) {
+  const value = count || 0;
+  return `${value} attempt${value === 1 ? '' : 's'}`;
+}
+
+function humanize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, ' ');
 }
 
 function positiveInteger(value: string) {

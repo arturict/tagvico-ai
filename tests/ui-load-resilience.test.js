@@ -77,7 +77,7 @@ test('history renders empty results only after a successful load', () => {
 
   assert.match(history, /loadState === 'error' \? <WorkspaceLoadError/);
   assert.match(history, /loadState === 'loading' && !rows\.length/);
-  assert.match(history, /loadState === 'ready' \? <div className="empty"/);
+  assert.match(history, /loadState === 'ready' \? <div className="empty-state/);
   assert.doesNotMatch(history, /loadState === 'error' && !rows\.length/);
 });
 

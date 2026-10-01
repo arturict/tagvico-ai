@@ -65,38 +65,45 @@ export function ModelPicker({
     });
   };
 
+  const capabilities = (model: ModelDescriptor) => [
+    /(^|\/)gpt-6-luna$/i.test(model.id) ? 'Recommended' : '',
+    model.isDefault ? 'Runtime default' : '',
+    model.capabilities.includes('tools') ? 'Tools' : '',
+    model.capabilities.includes('vision') ? 'Vision' : '',
+    model.capabilities.includes('thinking') ? 'Thinking' : '',
+    ...model.options.map((option) => option.label),
+    model.contextWindow ? `${Math.round(model.contextWindow / 1000)}k context` : ''
+  ].filter(Boolean).join(' · ');
+
   return <Dialog.Root onOpenChange={(open) => {
     if (open && !models.length && !loading) void onRefresh();
     if (!open) setQuery('');
   }}>
     <Dialog.Trigger asChild>
-      <button className="settings-model-trigger" type="button">
-        <span className="settings-model-trigger-provider">
-          <ProviderIcon icon={provider?.icon || null} name={provider?.name || activeProviderId} />
-          <span>
-            <small>{provider?.name || activeProviderId}</small>
-            <strong>{activeModelId || 'Choose a model'}</strong>
-          </span>
+      <button className="set-model-trigger select" type="button">
+        <ProviderIcon icon={provider?.icon || null} name={provider?.name || activeProviderId} size={20} />
+        <span className="set-model-trigger-text">
+          <strong>{activeModelId || 'Choose a model'}</strong>
+          <small>{provider?.name || activeProviderId}</small>
         </span>
-        <span aria-hidden="true">⌄</span>
       </button>
     </Dialog.Trigger>
     <Dialog.Portal>
-      <Dialog.Overlay className="settings-dialog-overlay" />
-      <Dialog.Content className="settings-model-dialog" aria-describedby="model-picker-description">
-        <header className="settings-dialog-head">
+      <Dialog.Overlay className="dialog-backdrop" />
+      <Dialog.Content className="dialog is-wide set-model-dialog" aria-describedby="model-picker-description">
+        <header className="set-dialog-head">
           <div>
             <Dialog.Title>Provider and model</Dialog.Title>
             <Dialog.Description id="model-picker-description">
               Availability and capabilities come from the selected runtime.
             </Dialog.Description>
           </div>
-          <Dialog.Close className="settings-icon-button" aria-label="Close model picker">
+          <Dialog.Close className="btn btn-ghost btn-icon btn-32" aria-label="Close model picker">
             <X aria-hidden="true" />
           </Dialog.Close>
         </header>
-        <div className="settings-model-layout">
-          <nav className="settings-provider-rail" aria-label="AI providers">
+        <div className="set-model-layout">
+          <nav className="set-provider-rail" aria-label="AI providers">
             {providers.map((candidate) => <button
               key={candidate.instanceId}
               type="button"
@@ -104,58 +111,49 @@ export function ModelPicker({
               disabled={!candidate.available}
               onClick={() => void onProviderChange(candidate.instanceId)}
             >
-              <span className="settings-provider-label">
-                <ProviderIcon icon={candidate.icon} name={candidate.name} />
-                <span>{candidate.name}</span>
-              </span>
+              <ProviderIcon icon={candidate.icon} name={candidate.name} size={18} />
+              <span>{candidate.name}</span>
               {!candidate.available ? <small>Unavailable</small> : candidate.recommended ? <small>Recommended</small> : null}
             </button>)}
           </nav>
-          <div className="settings-model-results">
-            <div className="settings-model-toolbar">
-              <label className="settings-search">
+          <div className="set-model-results">
+            <div className="set-model-toolbar">
+              <label className="set-search">
                 <Search aria-hidden="true" />
                 <span className="sr-only">Search models</span>
                 <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search live models…" autoFocus />
               </label>
-              <button className="settings-icon-button" type="button" onClick={() => void onRefresh()} disabled={loading} aria-label="Refresh live models">
+              <button className="btn btn-ghost btn-icon btn-32" type="button" onClick={() => void onRefresh()} disabled={loading} aria-label="Refresh live models">
                 <RefreshCw className={loading ? 'is-spinning' : undefined} aria-hidden="true" />
               </button>
             </div>
-            <div className="settings-model-list">
-              {loading ? <div className="model-catalog-skeleton" aria-label="Loading the runtime catalog">
-                {Array.from({ length: 6 }, (_, index) => <span key={index}><i /><b /><small /></span>)}
+            <div className="set-model-list">
+              {loading ? <div className="set-model-skeleton" aria-label="Loading the runtime catalog">
+                {Array.from({ length: 6 }, (_, index) => <span key={index} />)}
               </div> : null}
-              {!loading && error ? <div className="settings-model-empty is-error">{error}</div> : null}
-              {!loading && !error && !visibleModels.length ? <div className="settings-model-empty">
+              {!loading && error ? <div className="set-model-empty is-error">{error}</div> : null}
+              {!loading && !error && !visibleModels.length ? <div className="set-model-empty">
                 {provider?.manualModelInput
                   ? 'No live models returned. Close this picker and enter a model ID manually.'
                   : 'The runtime returned no selectable models.'}
               </div> : null}
               {visibleModels.map((model) => {
                 const isFavorite = favorites.includes(favoriteKey(model.id));
-                return <div className="settings-model-row" key={model.id}>
+                const traits = capabilities(model);
+                return <div className="set-model-row" key={model.id}>
                   <Dialog.Close asChild>
-                    <button type="button" className="settings-model-choice" onClick={() => void onSelect(model)}>
-                      <span className="settings-model-copy">
+                    <button type="button" className="set-model-choice" onClick={() => void onSelect(model)}>
+                      <span className="set-model-copy">
                         <strong>{model.name}</strong>
                         <small>{model.id}</small>
-                        <span className="settings-capabilities">
-                          {/(^|\/)gpt-6-luna$/i.test(model.id) ? <span>Recommended</span> : null}
-                          {model.isDefault ? <span>Runtime default</span> : null}
-                          {model.capabilities.includes('tools') ? <span>Tools</span> : null}
-                          {model.capabilities.includes('vision') ? <span>Vision</span> : null}
-                          {model.capabilities.includes('thinking') ? <span>Thinking</span> : null}
-                          {model.options.map((option) => <span key={option.id}>{option.label}</span>)}
-                          {model.contextWindow ? <span>{Math.round(model.contextWindow / 1000)}k context</span> : null}
-                        </span>
+                        {traits ? <small className="set-model-capabilities">{traits}</small> : null}
                       </span>
                       {model.id === activeModelId ? <Check aria-label="Selected" /> : null}
                     </button>
                   </Dialog.Close>
                   <button
                     type="button"
-                    className={`settings-favorite${isFavorite ? ' is-active' : ''}`}
+                    className={`set-favorite${isFavorite ? ' is-active' : ''}`}
                     onClick={() => toggleFavorite(model.id)}
                     aria-label={isFavorite ? `Remove ${model.name} from favorites` : `Add ${model.name} to favorites`}
                   >
@@ -164,14 +162,9 @@ export function ModelPicker({
                 </div>;
               })}
             </div>
-            {provider?.suggestedModels.length ? <div className="settings-suggestions">
+            {provider?.suggestedModels.length ? <div className="set-suggestions">
               <h3>Curated suggestions</h3>
-              <p>Suggestions are not presented as account availability.</p>
-              <div>
-                {provider.suggestedModels.map((suggestion) => <span key={suggestion.id} title={suggestion.description}>
-                  {suggestion.name}
-                </span>)}
-              </div>
+              <p>{provider.suggestedModels.map((suggestion) => suggestion.name).join(', ')}. Not a statement about what your account can use.</p>
             </div> : null}
           </div>
         </div>
