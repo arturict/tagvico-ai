@@ -1,17 +1,17 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { Check, RotateCcw, Sparkles, UserPlus, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { MessageSquare } from 'lucide-react';
 import { MemberAvatar } from '@/components/member-avatar';
-import { addDays, dueChip, shortDate } from './dates';
+import { dueGroup, type DueGroup } from './dates';
 import type { InboxApproval, InboxCase, InboxData, InboxMember, InboxPriority } from './types';
+import { ApprovalCard, CaseCard, FlashMessage, ReviewCard, useWorkboard } from './workboard';
 
 type Filter = 'all' | 'mine' | 'done' | `member:${string}`;
-type GroupKey = 'overdue' | 'week' | 'later';
 
 const PRIORITY_RANK: Record<InboxPriority, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
-const GROUPS: Array<{ key: GroupKey; label: string }> = [
+const GROUPS: Array<{ key: DueGroup; label: string }> = [
   { key: 'overdue', label: 'Overdue' },
   { key: 'week', label: 'This week' },
   { key: 'later', label: 'Later' }
@@ -23,26 +23,32 @@ function compareCases(a: InboxCase, b: InboxCase) {
     || a.title.localeCompare(b.title);
 }
 
-async function request(url: string, method: string, body: unknown) {
-  const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
-  if (!response.ok) throw new Error(typeof payload.error === 'string' ? payload.error : 'The request failed');
-  return payload;
+/** The filter lives in the URL as ?for=mine, ?for=done or ?for=<member id>; no parameter means everyone. */
+function filterFromParam(value: string): Filter {
+  return value === 'mine' || value === 'done' ? value : value === 'all' ? 'all' : `member:${value}`;
+}
+
+function paramFromFilter(value: Filter) {
+  return value === 'all' ? '' : value.startsWith('member:') ? value.slice('member:'.length) : value;
 }
 
 export function InboxFeed({ data }: { data: InboxData }) {
   const { today, me, members, canMutate, canDecide } = data;
-  const [cases, setCases] = useState(data.cases);
-  const [approvals, setApprovals] = useState(data.approvals);
-  const [filter, setFilter] = useState<Filter>('all');
-  const [busy, setBusy] = useState<string | null>(null);
-  const [notice, setNotice] = useState('');
-  const [error, setError] = useState('');
-
   const memberById = useMemo(() => new Map(members.map((member) => [member.id, member])), [members]);
-  const weekEnd = addDays(today, 7);
+  const board = useWorkboard({ cases: data.cases, approvals: data.approvals, reviews: data.reviews }, memberById);
+  const { cases, approvals, reviews, busy, flash } = board;
+  const [filter, setFilterState] = useState<Filter>(() => filterFromParam(data.initialFilter));
+
   const others = members.filter((member) => member.id !== me.id);
   const showPeople = members.length > 1;
+
+  const setFilter = (value: Filter) => {
+    setFilterState(value);
+    const url = new URL(window.location.href);
+    const param = paramFromFilter(value);
+    if (param) url.searchParams.set('for', param); else url.searchParams.delete('for');
+    window.history.replaceState(window.history.state, '', `${url.pathname}${url.search}`);
+  };
 
   const matchesCase = (item: InboxCase, value: Filter) => {
     if (value === 'all') return true;
@@ -58,55 +64,21 @@ export function InboxFeed({ data }: { data: InboxData }) {
     const memberId = value === 'mine' ? me.id : value.slice('member:'.length);
     return item.requestedById === memberId || (memberId === me.id && canDecide);
   };
+  const matchesReview = (value: Filter) => value === 'all' || (value === 'mine' && canDecide);
 
-  const active = cases.filter((item) => item.status !== 'done');
+  const active = cases.filter((item) => item.status === 'suggested' || item.status === 'open' || item.status === 'waiting');
   const doneThisWeek = cases.filter((item) => item.status === 'done').sort((a, b) => (b.doneAt || '').localeCompare(a.doneAt || ''));
+  // Same definition as the sidebar badge: open cases plus pending approvals.
   const total = active.length + approvals.length;
   const count = (value: Filter) => value === 'done'
     ? doneThisWeek.length
-    : active.filter((item) => matchesCase(item, value)).length + approvals.filter((item) => matchesApproval(item, value)).length;
+    : active.filter((item) => matchesCase(item, value)).length
+      + approvals.filter((item) => matchesApproval(item, value)).length;
 
   const visibleCases = active.filter((item) => matchesCase(item, filter)).sort(compareCases);
   const visibleApprovals = approvals.filter((item) => matchesApproval(item, filter));
-  const grouped = GROUPS.map((group) => ({
-    ...group,
-    items: visibleCases.filter((item) => {
-      const key: GroupKey = item.dueAt && item.dueAt < today ? 'overdue' : item.dueAt && item.dueAt <= weekEnd ? 'week' : 'later';
-      return key === group.key;
-    })
-  }));
-
-  const patchCase = async (item: InboxCase, patch: { status?: string; assigneeMemberId?: string | null }, done: string) => {
-    setBusy(item.id); setError(''); setNotice('');
-    try {
-      const saved = await request(`/api/actions/${item.id}`, 'PATCH', patch);
-      const status = String(saved.status ?? item.status) as InboxCase['status'];
-      const assigneeId = saved.assigneeMemberId ? String(saved.assigneeMemberId) : null;
-      setCases((current) => current.map((entry) => entry.id === item.id
-        ? { ...entry, status, assigneeId, doneAt: status === 'done' ? today : null }
-        : entry));
-      setNotice(done);
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'The request failed');
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const decide = async (item: InboxApproval, decision: 'approved' | 'rejected') => {
-    setBusy(item.id); setError(''); setNotice('');
-    try {
-      const result = await request(`/api/approvals/${item.id}`, 'POST', { decision });
-      setApprovals((current) => current.filter((entry) => entry.id !== item.id));
-      if (decision === 'rejected') setNotice('Change rejected.');
-      else if (result.status === 'failed') setError('The change was approved but could not be applied. Ask Tagvico for details.');
-      else setNotice('Change approved and applied.');
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'The request failed');
-    } finally {
-      setBusy(null);
-    }
-  };
+  const visibleReviews = matchesReview(filter) ? reviews : [];
+  const grouped = GROUPS.map((group) => ({ ...group, items: visibleCases.filter((item) => dueGroup(item.dueAt, today) === group.key) }));
 
   const chips: Array<{ value: Filter; label: string; member?: InboxMember }> = [{ value: 'all', label: 'All' }];
   if (showPeople) {
@@ -116,10 +88,18 @@ export function InboxFeed({ data }: { data: InboxData }) {
   chips.push({ value: 'done', label: 'Done this week' });
 
   const filterMember = filter.startsWith('member:') ? memberById.get(filter.slice('member:'.length)) : undefined;
-  const nothingAtAll = total === 0 && doneThisWeek.length === 0;
   const empty = filter === 'done'
     ? doneThisWeek.length === 0
-    : visibleCases.length === 0 && visibleApprovals.length === 0;
+    : visibleCases.length === 0 && visibleApprovals.length === 0 && visibleReviews.length === 0;
+
+  const caseProps = (item: InboxCase) => ({
+    item,
+    today,
+    members,
+    memberById,
+    canMutate,
+    busy: busy.has(item.id)
+  });
 
   return <div className="inbox">
     <header className="inbox-head">
@@ -130,7 +110,7 @@ export function InboxFeed({ data }: { data: InboxData }) {
       </div>
       <div className="inbox-head-links">
         <Link className="inbox-link" href="/actions">All actions</Link>
-        <Link className="inbox-btn is-primary" href="/companion"><Sparkles size={15} aria-hidden="true" />Ask Tagvico</Link>
+        <Link className="inbox-btn is-primary" href="/companion"><MessageSquare size={15} aria-hidden="true" />Ask Tagvico</Link>
       </div>
     </header>
 
@@ -150,136 +130,52 @@ export function InboxFeed({ data }: { data: InboxData }) {
       </button>)}
     </div>
 
-    <div className="inbox-status" role="status" aria-live="polite">
-      {notice ? <p className="inbox-notice">{notice}</p> : null}
-      {error ? <p className="inbox-error">{error}</p> : null}
-    </div>
-
-    {data.reviewCount > 0 && filter !== 'done' ? <p className="inbox-review">
-      <Link href="/review">{data.reviewCount} {data.reviewCount === 1 ? 'suggestion is' : 'suggestions are'} waiting in the review queue</Link>
-    </p> : null}
+    <FlashMessage flash={flash} />
 
     {filter === 'done' ? <section className="inbox-group" aria-label="Done this week">
       <h2>Done this week <span>{doneThisWeek.length}</span></h2>
       <ul className="inbox-list">
-        {doneThisWeek.map((item) => <CaseCard key={item.id} item={item} today={today} members={members} memberById={memberById} canMutate={canMutate} busy={busy === item.id}
-          onReopen={() => patchCase(item, { status: 'open' }, 'Reopened.')} />)}
+        {doneThisWeek.map((item) => <CaseCard key={item.id} {...caseProps(item)}
+          onReopen={() => board.patchCase(item, { status: 'open' }, 'Reopened.')} />)}
       </ul>
     </section> : <>
-      {grouped.map((group) => group.items.length ? <section className="inbox-group" key={group.key} aria-label={group.label}>
-        <h2 className={group.key === 'overdue' ? 'is-overdue' : undefined}>{group.label} <span>{group.items.length}</span></h2>
-        <ul className="inbox-list">
-          {group.items.map((item) => <CaseCard key={item.id} item={item} today={today} members={members} memberById={memberById} canMutate={canMutate} busy={busy === item.id}
-            onDone={() => patchCase(item, { status: 'done' }, 'Marked as done.')}
-            onAccept={() => patchCase(item, { status: 'open' }, 'Suggestion accepted.')}
-            onAssign={(memberId) => patchCase(item, { assigneeMemberId: memberId }, memberId ? `Assigned to ${memberById.get(memberId)?.name || 'a member'}.` : 'Unassigned.')} />)}
-        </ul>
-      </section> : null)}
-
       {visibleApprovals.length ? <section className="inbox-group" aria-label="Waiting for approval">
         <h2>Waiting for approval <span>{visibleApprovals.length}</span></h2>
         <ul className="inbox-list">
-          {visibleApprovals.map((item) => <li key={item.id} className="inbox-card is-approval">
-            <div className="inbox-card-main">
-              <p className="inbox-card-title">{item.title}</p>
-              {item.detail ? <p className="inbox-card-summary">{item.detail}</p> : null}
-              <div className="inbox-card-meta">
-                <span className="inbox-chip-static">{item.meta}</span>
-                {item.requestedById && item.requestedByName ? <span className="inbox-person"><MemberAvatar name={item.requestedByName} memberId={item.requestedById} size={20} />Asked by {item.requestedByName}</span> : <span className="inbox-person">Proposed by Tagvico</span>}
-              </div>
-            </div>
-            <div className="inbox-card-actions">
-              {canDecide ? <>
-                <button type="button" className="inbox-btn is-primary" disabled={busy === item.id} onClick={() => decide(item, 'approved')}><Check size={15} aria-hidden="true" />Approve</button>
-                <button type="button" className="inbox-btn" disabled={busy === item.id} onClick={() => decide(item, 'rejected')}><X size={15} aria-hidden="true" />Reject</button>
-              </> : <span className="inbox-muted">An owner or adult decides</span>}
-            </div>
-          </li>)}
+          {visibleApprovals.map((item) => <ApprovalCard key={item.id} item={item} today={today} canDecide={canDecide} busy={busy.has(item.id)} onDecide={(decision) => board.decide(item, decision)} />)}
         </ul>
       </section> : null}
+
+      {visibleReviews.length ? <section className="inbox-group" aria-label="Suggestions to review">
+        <h2>Suggestions to review <span>{data.reviewTotal}</span></h2>
+        <ul className="inbox-list">
+          {visibleReviews.map((item) => <ReviewCard key={item.id} item={item} canDecide={canDecide} busy={busy.has(`review-${item.id}`)} onDecide={(action) => board.decideReview(item, action)} />)}
+        </ul>
+        {data.reviewTotal > reviews.length ? <p className="inbox-review"><Link href="/review">Open the review queue for {data.reviewTotal - reviews.length} more</Link></p> : null}
+      </section> : null}
+
+      {grouped.map((group) => group.items.length ? <section className="inbox-group" key={group.key} aria-label={group.label}>
+        <h2 className={group.key === 'overdue' ? 'is-overdue' : undefined}>{group.label} <span>{group.items.length}</span></h2>
+        <ul className="inbox-list">
+          {group.items.map((item) => <CaseCard key={item.id} {...caseProps(item)}
+            onDone={() => board.patchCase(item, { status: 'done' }, 'Marked as done.')}
+            onAccept={() => board.patchCase(item, { status: 'open' }, 'Suggestion accepted.')}
+            onDismiss={() => board.patchCase(item, { status: 'dismissed' }, 'Suggestion dismissed.')}
+            onAssign={(memberId) => board.assign(item, memberId)} />)}
+        </ul>
+      </section> : null)}
     </>}
 
     {empty ? <div className="inbox-empty">
-      {nothingAtAll || filter === 'all' ? <>
+      {filter === 'all' ? <>
         <h2>Nothing needs you right now</h2>
         <p>New letters that need a decision or a date will show up here. You can also ask Tagvico what is coming up.</p>
-        <Link className="inbox-btn is-primary" href="/companion"><Sparkles size={15} aria-hidden="true" />Ask Tagvico</Link>
+        <Link className="inbox-btn is-primary" href="/companion"><MessageSquare size={15} aria-hidden="true" />Ask Tagvico</Link>
       </> : <>
         <h2>{filter === 'done' ? 'Nothing finished this week yet' : filter === 'mine' ? 'Nothing is assigned to you' : `Nothing for ${filterMember?.name || 'this member'}`}</h2>
         <p>{filter === 'done' ? 'Finished actions from the last seven days appear here.' : 'Switch to All to see the rest of the household.'}</p>
         <button type="button" className="inbox-btn" onClick={() => setFilter('all')}>Show all</button>
       </>}
-    </div> : null}
-  </div>;
-}
-
-function CaseCard({ item, today, members, memberById, canMutate, busy, onDone, onAccept, onAssign, onReopen }: {
-  item: InboxCase;
-  today: string;
-  members: InboxMember[];
-  memberById: Map<string, InboxMember>;
-  canMutate: boolean;
-  busy: boolean;
-  onDone?: () => void;
-  onAccept?: () => void;
-  onAssign?: (memberId: string | null) => void;
-  onReopen?: () => void;
-}) {
-  const assignee = item.assigneeId ? memberById.get(item.assigneeId) : undefined;
-  const due = item.dueAt && item.status !== 'done' ? dueChip(item.dueAt, today) : null;
-  return <li className={`inbox-card${due?.tone === 'overdue' ? ' is-overdue' : ''}`}>
-    <div className="inbox-card-main">
-      <Link className="inbox-card-title" href={`/actions/${item.id}`}>{item.title}</Link>
-      {item.summary ? <p className="inbox-card-summary">{item.summary}</p> : null}
-      <div className="inbox-card-meta">
-        {due ? <span className={`inbox-chip-static is-${due.tone}`} title={item.dueAt ? shortDate(item.dueAt) : undefined}>{due.label}</span> : null}
-        {item.status === 'done' && item.doneAt ? <span className="inbox-chip-static">Done {shortDate(item.doneAt)}</span> : null}
-        {item.status === 'suggested' ? <span className="inbox-chip-static is-suggested">Suggested</span> : null}
-        {item.status === 'waiting' ? <span className="inbox-chip-static">Waiting</span> : null}
-        {item.priority === 'urgent' || item.priority === 'high' ? <span className={`inbox-chip-static is-${item.priority}`}>{item.priority === 'urgent' ? 'Urgent' : 'High priority'}</span> : null}
-        {assignee ? <span className="inbox-person"><MemberAvatar name={assignee.name} memberId={assignee.id} size={20} />{assignee.name}</span> : <span className="inbox-person is-unassigned">Unassigned</span>}
-        {item.documentId ? <span className="inbox-doc">Document #{item.documentId}</span> : null}
-      </div>
-    </div>
-    {canMutate ? <div className="inbox-card-actions">
-      {item.status === 'done' ? <button type="button" className="inbox-btn" disabled={busy} onClick={onReopen}><RotateCcw size={15} aria-hidden="true" />Reopen</button> : <>
-        {item.status === 'suggested' ? <button type="button" className="inbox-btn is-primary" disabled={busy} onClick={onAccept}><Check size={15} aria-hidden="true" />Accept</button> : null}
-        <button type="button" className={item.status === 'suggested' ? 'inbox-btn' : 'inbox-btn is-primary'} disabled={busy} onClick={onDone}><Check size={15} aria-hidden="true" />Done</button>
-        {members.length > 1 && onAssign ? <AssignMenu members={members} current={item.assigneeId} disabled={busy} onPick={onAssign} title={item.title} /> : null}
-      </>}
-    </div> : null}
-  </li>;
-}
-
-function AssignMenu({ members, current, disabled, onPick, title }: {
-  members: InboxMember[];
-  current: string | null;
-  disabled: boolean;
-  onPick: (memberId: string | null) => void;
-  title: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const close = (event: MouseEvent | KeyboardEvent) => {
-      if (event instanceof KeyboardEvent) { if (event.key === 'Escape') setOpen(false); return; }
-      if (root.current && !root.current.contains(event.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', close);
-    document.addEventListener('keydown', close);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', close); };
-  }, [open]);
-  const pick = (memberId: string | null) => { setOpen(false); if (memberId !== current) onPick(memberId); };
-  return <div className="inbox-assign" ref={root}>
-    <button type="button" className="inbox-btn" disabled={disabled} aria-haspopup="menu" aria-expanded={open} aria-label={`Assign “${title}”`} onClick={() => setOpen((value) => !value)}>
-      <UserPlus size={15} aria-hidden="true" />Assign
-    </button>
-    {open ? <div className="inbox-menu" role="menu">
-      {members.map((member) => <button key={member.id} type="button" role="menuitemradio" aria-checked={member.id === current} onClick={() => pick(member.id)}>
-        <MemberAvatar name={member.name} memberId={member.id} size={20} />{member.name}
-      </button>)}
-      <button type="button" role="menuitemradio" aria-checked={current === null} onClick={() => pick(null)}>Unassigned</button>
     </div> : null}
   </div>;
 }

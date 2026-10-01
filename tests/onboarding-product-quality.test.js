@@ -236,8 +236,9 @@ test('first success opens Ask Tagvico and research sources link to document view
   assert.match(companion, /Tagvico will wait for approval before changing anything/);
   assert.match(documentSource, /requireUser\(\)/);
   assert.match(documentSource, /getPaperlessDocument/);
-  assert.match(documentSource, /axios\.isAxiosError\(error\) && error\.response\?\.status === 404/);
-  assert.match(documentSource, /throw error/);
+  assert.match(documentSource, /axios\.isAxiosError\(error\) && \(error\.response\?\.status === 404 \|\| error\.response\?\.status === 403\)/);
+  assert.match(documentSource, /The document could not be loaded/);
+  assert.doesNotMatch(documentSource, /throw error/);
   assert.match(documentSource, /notFound\(\)/);
   assert.match(documentSource, /This view is read-only/);
 });

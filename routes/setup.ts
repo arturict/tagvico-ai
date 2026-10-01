@@ -5095,9 +5095,26 @@ router.post('/api/chatgpt/login', allowDuringSetup, chatgptLoginLimiter, (req: R
   catch (error) { res.status(502).json({ error: errorMessage(error) }); }
 });
 
+/**
+ * The sign-in service reports any address without the right state as "a
+ * different sign-in attempt". Text that is not an address at all deserves its
+ * own message, so it is told apart before the service sees it.
+ */
+function chatgptCallbackProblem(input: string): string | null {
+  const value = input.trim();
+  if (/^https?:/i.test(value)) {
+    try { new URL(value); } catch { return 'Paste the full address from the browser tab ChatGPT sent you to.'; }
+    return null;
+  }
+  return value.includes('=') ? null : 'Paste the full address from the browser tab ChatGPT sent you to.';
+}
+
 router.post('/api/chatgpt/login/:loginId/complete', allowDuringSetup, chatgptLoginLimiter, express.json({ limit: '16kb' }), async (req: Req, res: Res) => {
+  const callbackUrl = String(req.body?.callbackUrl || '');
+  const malformed = chatgptCallbackProblem(callbackUrl);
+  if (malformed) return res.status(400).json({ success: false, error: malformed });
   try {
-    const status = await chatgptPlanAuthService.completeLogin(req.params.loginId, String(req.body?.callbackUrl || ''));
+    const status = await chatgptPlanAuthService.completeLogin(req.params.loginId, callbackUrl);
     resetRuntimeServices();
     res.json({ success: true, ...status });
   } catch (error) {

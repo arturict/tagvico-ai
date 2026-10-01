@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, FileText, MessageSquareText } from 'lucide-react';
+import { ArrowLeft, ExternalLink, FileText, MessageCircle } from 'lucide-react';
 import axios from 'axios';
 import { requireUser } from '@/lib/server/auth';
 import { workspaceFor } from '@/lib/server/workspace';
+import { getPaperlessPublicUrl } from '@/lib/server/household-navigation';
 import * as actionSync from '@root/services/actionSyncService';
 
 export const dynamic = 'force-dynamic';
@@ -28,13 +29,33 @@ export default async function DocumentSourcePage({
   try {
     document = await actionSync.getPaperlessDocument(workspace.householdId, workspace.memberId, rawId);
   } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 404) notFound();
-    throw error;
+    // Paperless answers 404 for a missing document and 403 when the member's own account may not see it.
+    if (axios.isAxiosError(error) && (error.response?.status === 404 || error.response?.status === 403)) notFound();
+    return <div className="page document-source-page">
+      <section className="empty" role="alert">
+        <h2>The document could not be loaded</h2>
+        <p>Paperless did not answer. Check the connection in Settings and try again.</p>
+        <div className="workspace-actions">
+          <Link className="button" href="/documents"><ArrowLeft aria-hidden="true" /> All documents</Link>
+          <Link className="button" href="/settings/paperless">Paperless settings</Link>
+        </div>
+      </section>
+    </div>;
   }
 
   const title = String(document.title || `Document #${rawId}`);
   const content = String(document.content || '').trim();
-  const tagIds = Array.isArray(document.tags) ? document.tags.map(String) : [];
+  const tagIds = Array.isArray(document.tags) ? document.tags.map(Number).filter(Number.isSafeInteger) : [];
+  // Names come from the tag list; if it cannot be read the ids are shown instead.
+  const tagNames = new Map<number, string>();
+  if (tagIds.length) {
+    try {
+      for (const tag of await actionSync.listPaperlessTags(workspace.householdId, workspace.memberId, '', 200)) tagNames.set(tag.id, tag.name);
+    } catch {
+      // Falls back to ids.
+    }
+  }
+  const paperlessUrl = await getPaperlessPublicUrl();
 
   return <div className="page document-source-page">
     <header className="page-head">
@@ -45,7 +66,8 @@ export default async function DocumentSourcePage({
       </div>
       <div className="workspace-actions">
         <Link className="button" href="/documents"><ArrowLeft aria-hidden="true" /> Documents</Link>
-        <Link className="button primary" href="/companion"><MessageSquareText aria-hidden="true" /> Ask Tagvico</Link>
+        {paperlessUrl ? <a className="button" href={`${paperlessUrl}/documents/${rawId}/details`} target="_blank" rel="noopener noreferrer"><ExternalLink aria-hidden="true" /> Open in Paperless<span className="sr-only"> (new tab)</span></a> : null}
+        <Link className="button primary" href="/companion?new=1"><MessageCircle aria-hidden="true" /> Chat</Link>
       </div>
     </header>
 
@@ -68,7 +90,7 @@ export default async function DocumentSourcePage({
           <div><dt>Modified</dt><dd>{plain(document.modified)}</dd></div>
           <div><dt>Correspondent ID</dt><dd>{plain(document.correspondent)}</dd></div>
           <div><dt>Document type ID</dt><dd>{plain(document.document_type)}</dd></div>
-          <div><dt>Tag IDs</dt><dd>{tagIds.length ? tagIds.join(', ') : 'None'}</dd></div>
+          <div><dt>Tags</dt><dd>{tagIds.length ? tagIds.map((id) => tagNames.get(id) || `#${id}`).join(', ') : 'None'}</dd></div>
         </dl>
         <p className="workspace-muted">This view is read-only. It does not expose credentials or provider payloads.</p>
       </aside>

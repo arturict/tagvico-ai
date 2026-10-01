@@ -7,6 +7,33 @@ const USAGE_URL = 'https://chatgpt.com/settings/usage';
 
 type PendingLogin = { loginId: string; authorizeUrl: string };
 
+export const MALFORMED_ADDRESS = 'Paste the full address from the browser tab ChatGPT sent you to.';
+
+/**
+ * Cheap shape check before the address leaves the browser. The server still
+ * verifies the sign-in attempt itself; this only catches input that cannot be a
+ * ChatGPT callback, such as text that is not an address or lacks the sign-in code.
+ */
+export function callbackAddressProblem(input: string): string | null {
+  const value = input.trim();
+  if (!value) return 'Paste the address of the page ChatGPT opened.';
+  let params: URLSearchParams;
+  if (/^https?:/i.test(value)) {
+    try {
+      params = new URL(value).searchParams;
+    } catch {
+      return MALFORMED_ADDRESS;
+    }
+  } else if (value.includes('=')) {
+    params = new URLSearchParams(value.replace(/^[?#]/, ''));
+  } else {
+    return MALFORMED_ADDRESS;
+  }
+  if (!params.get('code') && !params.get('error')) return 'This address has no sign-in code. Copy the full address of the page ChatGPT opened.';
+  if (!params.get('state')) return 'This address has no sign-in state. Copy the full address of the page ChatGPT opened.';
+  return null;
+}
+
 /**
  * Sign in with ChatGPT for a server that the browser's 127.0.0.1 callback
  * cannot reach: ChatGPT sends the browser to a loopback address that does not
@@ -31,6 +58,7 @@ export function ChatGPTPlanSignIn({
   const [pending, setPending] = useState<PendingLogin | null>(null);
   const [callbackUrl, setCallbackUrl] = useState('');
   const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState('');
 
   const start = async () => {
     setBusy(true);
@@ -40,6 +68,7 @@ export function ChatGPTPlanSignIn({
       if (!response.ok || !body.authorizeUrl) throw new Error(body.error || 'Could not start ChatGPT sign-in.');
       setPending({ loginId: body.loginId, authorizeUrl: body.authorizeUrl });
       setCallbackUrl('');
+      setProblem('');
       window.open(body.authorizeUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       onError(error instanceof Error ? error.message : 'Could not start ChatGPT sign-in.');
@@ -50,6 +79,12 @@ export function ChatGPTPlanSignIn({
 
   const finish = async () => {
     if (!pending) return;
+    const shapeProblem = callbackAddressProblem(callbackUrl);
+    if (shapeProblem) {
+      setProblem(shapeProblem);
+      return;
+    }
+    setProblem('');
     setBusy(true);
     try {
       const response = await fetch(`${apiBase}/login/${encodeURIComponent(pending.loginId)}/complete`, {
@@ -64,7 +99,7 @@ export function ChatGPTPlanSignIn({
       setCallbackUrl('');
       await onConnected();
     } catch (error) {
-      onError(error instanceof Error ? error.message : 'Could not finish ChatGPT sign-in.');
+      setProblem(error instanceof Error ? error.message : 'Could not finish ChatGPT sign-in.');
     } finally {
       setBusy(false);
     }
@@ -74,6 +109,7 @@ export function ChatGPTPlanSignIn({
     const loginId = pending?.loginId;
     setPending(null);
     setCallbackUrl('');
+    setProblem('');
     if (loginId) await fetch(`${apiBase}/login/${encodeURIComponent(loginId)}/cancel`, { method: 'POST' }).catch(() => undefined);
   };
 
@@ -110,8 +146,10 @@ export function ChatGPTPlanSignIn({
           spellCheck={false}
           placeholder="http://127.0.0.1:1455/auth/callback?code=…"
           value={callbackUrl}
-          onChange={(event) => setCallbackUrl(event.target.value)}
+          aria-invalid={problem ? true : undefined}
+          onChange={(event) => { setCallbackUrl(event.target.value); setProblem(''); }}
         />
+        {problem ? <span className="settings-field-error" role="alert">{problem}</span> : null}
       </label>
       <div className="settings-action-cluster">
         <button className="settings-button" type="button" disabled={busy || !callbackUrl.trim()} onClick={() => void finish()}>

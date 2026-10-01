@@ -110,7 +110,7 @@ export function ReviewQueueWorkspace() {
 
     <div className="workspace-notice" role="status">
       {status || (!canMutate
-        ? 'Your workspace role is read-only. You can inspect suggestions, but cannot apply or reject them.'
+        ? 'Only owners and adults can apply or reject suggestions. You can still inspect them.'
         : reviewMode
           ? 'Review-first is active. Automatic writes wait here for approval.'
           : 'Automatic writes are active. Suggestions already in this queue still require a decision.')}

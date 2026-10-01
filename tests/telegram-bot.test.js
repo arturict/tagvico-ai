@@ -308,17 +308,19 @@ test('successful uploads classify only after the automatic metadata opt-in is en
 
 test('Compose passes every Telegram setting through with automatic metadata off by default', () => {
   const compose = fs.readFileSync(path.join(__dirname, '..', 'docker-compose.yml'), 'utf8');
+  // Settings-managed values pass through empty so Compose does not lock them in the UI;
+  // config/config.ts supplies the defaults (bot off, automatic metadata off, reminders on).
   const expected = {
-    TELEGRAM_BOT_ENABLED: 'no',
+    TELEGRAM_BOT_ENABLED: '',
     TELEGRAM_BOT_TOKEN: '',
-    TELEGRAM_USERS_JSON: '[]',
+    TELEGRAM_USERS_JSON: '',
     TELEGRAM_POLL_TIMEOUT_SECONDS: '30',
     TELEGRAM_UPLOAD_TIMEOUT_SECONDS: '180',
     TELEGRAM_MAX_DOCUMENTS: '8',
     TELEGRAM_HISTORY_TURNS: '6',
     TELEGRAM_MAX_FILE_BYTES: '20971520',
-    TELEGRAM_UPLOAD_AUTOMATIC_METADATA: 'no',
-    TELEGRAM_ACTION_REMINDERS: 'yes'
+    TELEGRAM_UPLOAD_AUTOMATIC_METADATA: '',
+    TELEGRAM_ACTION_REMINDERS: ''
   };
   for (const [name, fallback] of Object.entries(expected)) {
     assert.match(compose, new RegExp(`${name}: \\${'${'}${name}:-${fallback.replace(/[\\[\]]/g, '\\$&')}\\}`));

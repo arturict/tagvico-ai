@@ -56,6 +56,7 @@ import {
   collectDueReminders,
   formatReminderText,
   createDailyReminderTracker,
+  redactSecrets,
   ReminderRecipient,
   DueReminder,
   ChatTurn,
@@ -66,6 +67,8 @@ import { encryptSecret } from './secretBox';
 
 const config = require('../config/config');
 const AIServiceFactory = require('./aiServiceFactory');
+const channelStatusService = require('./channelStatusService');
+const settingsRuntimeSync = require('./settingsRuntimeSync');
 
 // ---------------------------------------------------------------------------
 // Types
@@ -175,6 +178,41 @@ class DiscordBotService {
   private readonly downloadLimiter = createUserRateLimiter({ windowMs: 60_000, max: 12 });
   private readonly reminderTracker = createDailyReminderTracker();
   private reminderTimer: ReturnType<typeof setInterval> | null = null;
+  // Settings saved in the web app change the .env file; the bot follows them
+  // without a restart by comparing a fingerprint of the values it depends on.
+  private appliedFingerprint = '';
+  private stopWatchingSettings: (() => void) | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private botToken = '';
+
+  private reportConnected(): void {
+    const tag = this.client?.user?.tag;
+    channelStatusService.reportChannel('discord', {
+      state: 'connected',
+      label: tag ? `Connected as ${tag}` : 'Connected',
+      fingerprint: this.appliedFingerprint
+    });
+  }
+
+  private reportError(label: string, error: unknown): void {
+    channelStatusService.reportChannel('discord', {
+      state: 'error',
+      label,
+      detail: redactSecrets(errorMessage(error), [this.botToken]),
+      fingerprint: this.appliedFingerprint
+    });
+  }
+
+  /**
+   * Re-reads the saved settings and restarts the bot only when something it
+   * depends on changed, so unrelated settings saves never interrupt it.
+   */
+  async reconfigure(): Promise<void> {
+    const next = channelStatusService.readChannelConfiguration('discord').fingerprint;
+    if (next === this.appliedFingerprint) return;
+    await this.stop();
+    this.start();
+  }
 
   /**
    * Send at most one proactive DM per case, linked user, and day for
@@ -216,8 +254,13 @@ class DiscordBotService {
   }
 
   start(): void {
+    if (!this.stopWatchingSettings) {
+      this.stopWatchingSettings = settingsRuntimeSync.onSettingsChange(() => this.reconfigure());
+    }
+    this.appliedFingerprint = channelStatusService.readChannelConfiguration('discord').fingerprint;
     if (config.discord.enabled !== 'yes' || this.running) return;
     const botToken = safeText(config.discord.botToken);
+    this.botToken = botToken;
     if (!botToken) {
       console.warn('[Discord] Bot is enabled but DISCORD_BOT_TOKEN is empty');
       return;
@@ -279,6 +322,7 @@ class DiscordBotService {
 
     this.client.on(Events.ClientReady, async (ready) => {
       console.log(`[Discord] Logged in as ${ready.user.tag} for ${this.users.size} allowlisted user(s)`);
+      this.reportConnected();
       await this.registerSlashCommands(botToken, ready.user.id).catch((error) =>
         console.warn(`[Discord] Slash command registration failed: ${errorMessage(error)}`)
       );
@@ -298,15 +342,26 @@ class DiscordBotService {
 
     this.client.on(Events.Error, (error) => {
       console.warn(`[Discord] Client error: ${errorMessage(error)}`);
+      this.reportError('Discord reported an error', error);
     });
+    this.client.on(Events.ShardDisconnect, (event) => {
+      this.reportError('Disconnected from Discord', `Gateway closed with code ${event.code}`);
+    });
+    this.client.on(Events.ShardResume, () => this.reportConnected());
 
     this.running = true;
     this.client.login(botToken).catch((error) => {
-      console.warn(`[Discord] Login failed: ${errorMessage(error)}`);
+      console.warn(`[Discord] Login failed: ${redactSecrets(errorMessage(error), [botToken])}`);
+      this.reportError('Discord rejected the login', error);
       this.running = false;
       this.client?.destroy();
       this.client = null;
     });
+    // Keeps the reported state fresh; a gateway that went quiet stops being "connected".
+    this.heartbeatTimer = setInterval(() => {
+      if (this.client?.isReady()) this.reportConnected();
+    }, 60_000);
+    this.heartbeatTimer.unref?.();
     if (config.discord.actionReminders === 'yes' && [...this.users.values()].some((user) => user.householdId && user.memberId)) {
       this.reminderTimer = setInterval(() => {
         void this.checkActionReminders().catch((error) => console.warn(`[Discord] Reminder pass failed: ${errorMessage(error)}`));
@@ -320,12 +375,20 @@ class DiscordBotService {
 
   async stop(): Promise<void> {
     this.running = false;
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
     if (this.reminderTimer) {
       clearInterval(this.reminderTimer);
       this.reminderTimer = null;
     }
     this.histories.clear();
     if (this.client) {
+      // Silence the old client first: its disconnect events must not be
+      // reported as a failure of the configuration that replaces it.
+      this.client.removeAllListeners();
+      this.client.on(Events.Error, () => {});
       try {
         await this.client.destroy();
       } catch {

@@ -1,11 +1,18 @@
 import 'server-only';
 import type { SessionUser } from './auth';
 import { actionCenter, workspaceFor } from './workspace';
-import documentModel from '@root/models/document';
+import { zurichToday } from '@/components/inbox/dates';
 import settingsV3Service from '@root/services/settingsV3Service';
 import { runtimeEnvironmentValue } from '@root/services/runtimeEnvironment';
+import channelStatusService from '@root/services/channelStatusService';
 
-export type ChannelState = 'connected' | 'needs-setup' | 'off';
+type ChannelStatus = ReturnType<typeof channelStatusService.getChannelStatuses>['telegram'];
+
+/** What the sidebar needs of a channel; the full report (tokens never included) lives in channelStatusService. */
+export interface NavigationChannel {
+  state: ChannelStatus['state'];
+  label: string;
+}
 
 export interface HouseholdNavigation {
   household: { name: string; kind: string };
@@ -13,40 +20,52 @@ export interface HouseholdNavigation {
   members: Array<{ id: string; displayName: string; role: string; openCount: number }>;
   needsYouCount: number;
   overdueCount: number;
-  channels: { telegram: ChannelState; discord: ChannelState };
+  channels: { telegram: NavigationChannel; discord: NavigationChannel };
+  /** Owners configure channels in Settings; other roles only see the status. */
+  canConfigureChannels: boolean;
   paperlessUrl: string | null;
 }
 
-const ACTIVE_CASE = `status IN ('suggested','open','waiting')`;
+// Same definition of "open" as the Needs you feed and the People pages.
+const ACTIVE_STATUSES = new Set(['suggested', 'open', 'waiting']);
 
-function truthy(value: string) {
-  return ['true', '1', 'yes'].includes(value.trim().toLowerCase());
-}
-
-// Only whether a token exists is reported; the value never leaves this module.
-function channelState(enabledKey: string, tokenKey: string): ChannelState {
-  if (!truthy(runtimeEnvironmentValue(enabledKey))) return 'off';
-  return runtimeEnvironmentValue(tokenKey) ? 'connected' : 'needs-setup';
-}
-
-async function paperlessUrl(): Promise<string | null> {
+// Link target for the browser. PAPERLESS_PUBLIC_URL (optional) is for installs where the
+// API address Tagvico uses is internal, for example a container hostname; otherwise the
+// configured Paperless address is the one Settings and document links already use.
+export async function getPaperlessPublicUrl(): Promise<string | null> {
+  const explicit = runtimeEnvironmentValue('PAPERLESS_PUBLIC_URL').replace(/\/+$/, '');
+  if (/^https?:\/\//i.test(explicit)) return explicit;
   try {
     const settings = await settingsV3Service.getSettings();
-    const url = String(settings.paperless.baseUrl || '').trim();
+    const url = String(settings.paperless.baseUrl || '').trim().replace(/\/+$/, '');
     return /^https?:\/\//i.test(url) ? url : null;
   } catch {
     return null;
   }
 }
 
+/**
+ * Everything the shell shows about the household, derived from the same rows as the
+ * Needs you feed (src/components/inbox/load-inbox.ts) and the People pages, so the
+ * badge and the per-person counts always equal what those pages list.
+ */
 export async function getHouseholdNavigation(user: SessionUser): Promise<HouseholdNavigation> {
   const workspace = workspaceFor(user);
-  const db = documentModel.getDatabase();
+  const today = zurichToday();
+
   const openByMember = new Map<string, number>();
-  for (const row of db.prepare(
-    `SELECT assignee_member_id AS id, COUNT(*) AS total FROM action_cases
-     WHERE household_id = ? AND ${ACTIVE_CASE} AND assignee_member_id IS NOT NULL GROUP BY assignee_member_id`
-  ).all(workspace.householdId) as Array<{ id: string; total: number }>) openByMember.set(row.id, Number(row.total));
+  let openCases = 0;
+  let overdueCases = 0;
+  for (const item of actionCenter.listCases(workspace.householdId) as Array<Record<string, unknown>>) {
+    if (!ACTIVE_STATUSES.has(String(item.status))) continue;
+    openCases += 1;
+    const dueDay = item.dueAt ? String(item.dueAt).slice(0, 10) : '';
+    if (dueDay && dueDay < today) overdueCases += 1;
+    if (item.assigneeMemberId) {
+      const assignee = String(item.assigneeMemberId);
+      openByMember.set(assignee, (openByMember.get(assignee) || 0) + 1);
+    }
+  }
 
   const members = (actionCenter.listMembers(workspace.householdId) as Array<Record<string, unknown>>).map((member) => ({
     id: String(member.id),
@@ -55,40 +74,22 @@ export async function getHouseholdNavigation(user: SessionUser): Promise<Househo
     openCount: openByMember.get(String(member.id)) || 0
   }));
 
-  const canDecide = ['owner', 'adult'].includes(workspace.role);
-  const pendingApprovals = canDecide
-    ? Number((db.prepare(`SELECT COUNT(*) AS total FROM agent_approvals WHERE household_id = ? AND status = 'pending'`)
-      .get(workspace.householdId) as { total: number }).total)
-    : 0;
-  // Household-wide, so it matches the urgent groups of the Needs you page:
-  // any assignee (or none) counts, not only the current member's cases.
-  const due = db.prepare(
-    `SELECT COUNT(*) AS total,
-       COALESCE(SUM(CASE WHEN date(due_at) < date('now') THEN 1 ELSE 0 END), 0) AS late
-     FROM action_cases
-     WHERE household_id = ? AND ${ACTIVE_CASE}
-       AND due_at IS NOT NULL AND date(due_at) <= date('now', '+7 days')`
-  ).get(workspace.householdId) as { total: number; late: number };
+  // The feed lists every pending approval to every role, so the badge counts them too.
+  const pendingApprovals = (actionCenter.listApprovals(workspace.householdId) as unknown[]).length;
 
-  let pendingReview = 0;
-  if (canDecide) {
-    try {
-      pendingReview = Number((db.prepare(`SELECT COUNT(*) AS total FROM review_suggestions WHERE status = 'pending'`).get() as { total: number }).total);
-    } catch {
-      // The review table only exists once review mode has staged a suggestion.
-    }
-  }
+  const channels = channelStatusService.getChannelStatuses();
 
   return {
     household: { name: workspace.name, kind: workspace.kind },
     currentMemberId: workspace.memberId,
     members,
-    needsYouCount: pendingApprovals + Number(due.total) + pendingReview,
-    overdueCount: Number(due.late),
+    needsYouCount: openCases + pendingApprovals,
+    overdueCount: overdueCases,
     channels: {
-      telegram: channelState('TELEGRAM_BOT_ENABLED', 'TELEGRAM_BOT_TOKEN'),
-      discord: channelState('DISCORD_BOT_ENABLED', 'DISCORD_BOT_TOKEN')
+      telegram: { state: channels.telegram.state, label: channels.telegram.label },
+      discord: { state: channels.discord.state, label: channels.discord.label }
     },
-    paperlessUrl: await paperlessUrl()
+    canConfigureChannels: workspace.role === 'owner',
+    paperlessUrl: await getPaperlessPublicUrl()
   };
 }

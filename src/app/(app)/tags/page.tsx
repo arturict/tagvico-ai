@@ -1,3 +1,6 @@
+import { redirect } from 'next/navigation';
+import { requireUser } from '@/lib/server/auth';
+import { workspaceFor } from '@/lib/server/workspace';
 import { TagUnification } from '@/components/settings/tag-unification';
 import type { SettingsResponse } from '@/components/settings/types';
 
@@ -8,6 +11,9 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Organize tags' };
 
 export default async function TagsPage() {
+  // The tag vocabulary is shared by the whole installation, so only the owner organizes it.
+  const user = await requireUser();
+  if (workspaceFor(user).role !== 'owner') redirect('/settings/people');
   const settings = await settingsV3Service.getSettings() as SettingsResponse;
 
   return <div className="page tag-organizer-page">

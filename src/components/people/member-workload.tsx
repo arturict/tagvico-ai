@@ -1,85 +1,124 @@
+'use client';
+
 import Link from 'next/link';
+import { useMemo } from 'react';
+import { MessageSquare } from 'lucide-react';
+import { MemberAvatar } from '@/components/member-avatar';
+import { dueGroup, shortDate, type DueGroup } from '@/components/inbox/dates';
+import type { InboxCase, InboxPriority } from '@/components/inbox/types';
+import { ApprovalCard, CaseCard, FlashMessage, useWorkboard } from '@/components/inbox/workboard';
+import type { PersonData } from './load-person';
 
-export interface WorkloadCase {
-  id: string;
-  title: string;
-  status: string;
-  priority: string;
-  dueAt: string | null;
-  paperlessDocumentId: number;
+const PRIORITY_RANK: Record<InboxPriority, number> = { urgent: 0, high: 1, normal: 2, low: 3 };
+const GROUPS: Array<{ key: DueGroup; label: string }> = [
+  { key: 'overdue', label: 'Overdue' },
+  { key: 'week', label: 'This week' },
+  { key: 'later', label: 'Later' }
+];
+const STATUS_LABEL: Record<string, string> = { approved: 'Approved', executed: 'Applied', rejected: 'Rejected', failed: 'Not applied' };
+
+function compareCases(a: InboxCase, b: InboxCase) {
+  return (a.dueAt || '9999-12-31').localeCompare(b.dueAt || '9999-12-31')
+    || PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority]
+    || a.title.localeCompare(b.title);
 }
 
-export interface WorkloadApproval {
-  id: string;
-  title: string;
-  status: string;
-  createdAt: string;
-}
+const ROLE_LABEL: Record<string, string> = { owner: 'Owner', adult: 'Adult', member: 'Member', viewer: 'Viewer' };
 
-const DAY_MS = 86_400_000;
+export function MemberWorkload({ data }: { data: PersonData }) {
+  const { member, today, members, canMutate, canDecide } = data;
+  const memberById = useMemo(() => new Map(members.map((entry) => [entry.id, entry])), [members]);
+  const board = useWorkboard({ cases: data.cases, approvals: data.pendingApprovals, reviews: [] }, memberById);
+  const { busy } = board;
 
-function dayNumber(value: string) {
-  return Math.floor(Date.parse(`${value.slice(0, 10)}T00:00:00Z`) / DAY_MS);
-}
+  // A case reassigned away from this person leaves their page at once; the sidebar follows through the shared event.
+  const mine = board.cases.filter((item) => item.assigneeId === member.id);
+  const open = mine.filter((item) => item.status === 'suggested' || item.status === 'open' || item.status === 'waiting').sort(compareCases);
+  const done = mine.filter((item) => item.status === 'done');
+  const grouped = GROUPS.map((group) => ({ ...group, items: open.filter((item) => dueGroup(item.dueAt, today) === group.key) }));
+  const overdue = grouped[0].items.length;
+  const thisWeek = grouped[1].items.length;
 
-function dueLabel(dueAt: string, today: number) {
-  const days = dayNumber(dueAt) - today;
-  const date = new Date(`${dueAt.slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-  if (days < 0) return `${date} · ${-days} ${days === -1 ? 'day' : 'days'} overdue`;
-  if (days === 0) return `${date} · today`;
-  if (days === 1) return `${date} · tomorrow`;
-  return `${date} · in ${days} days`;
-}
+  const caseProps = (item: InboxCase) => ({
+    item,
+    today,
+    members,
+    memberById,
+    canMutate,
+    busy: busy.has(item.id),
+    showAssignee: false
+  });
 
-export function groupCases(cases: WorkloadCase[], now = new Date()) {
-  const today = Math.floor(now.getTime() / DAY_MS);
-  const groups = { overdue: [] as WorkloadCase[], week: [] as WorkloadCase[], later: [] as WorkloadCase[] };
-  for (const item of cases) {
-    if (!item.dueAt) groups.later.push(item);
-    else if (dayNumber(item.dueAt) < today) groups.overdue.push(item);
-    else if (dayNumber(item.dueAt) <= today + 7) groups.week.push(item);
-    else groups.later.push(item);
-  }
-  const byDue = (a: WorkloadCase, b: WorkloadCase) => (a.dueAt || '9999').localeCompare(b.dueAt || '9999');
-  groups.overdue.sort(byDue); groups.week.sort(byDue); groups.later.sort(byDue);
-  return { groups, today };
-}
+  return <div className="inbox person">
+    <header className="person-head">
+      <MemberAvatar name={member.name} memberId={member.id} size={64} />
+      <div className="person-identity">
+        <p className="inbox-eyebrow">{data.householdName}</p>
+        <h1>{member.name}{data.isMe ? <span className="person-you">you</span> : null}</h1>
+        <p className="inbox-lede">{ROLE_LABEL[member.role] || member.role}{member.role === 'owner' || member.role === 'adult' ? ' · can approve changes' : ' · cannot approve changes'}</p>
+      </div>
+      <Link className="inbox-btn" href={`/inbox?for=${data.isMe ? 'mine' : member.id}`}>Open in Needs you</Link>
+    </header>
 
-export function MemberWorkload({ cases, approvals, name }: { cases: WorkloadCase[]; approvals: WorkloadApproval[]; name: string }) {
-  const { groups, today } = groupCases(cases);
-  const sections = [
-    { key: 'overdue', title: 'Overdue', items: groups.overdue },
-    { key: 'week', title: 'This week', items: groups.week },
-    { key: 'later', title: 'Later', items: groups.later }
-  ] as const;
-  return <>
-    {cases.length === 0
-      ? <section className="people-group"><div className="empty"><h2>Nothing open</h2><p>{name} has no open action cases.</p></div></section>
-      : sections.filter((section) => section.items.length > 0).map((section) => <section className="people-group" key={section.key} aria-labelledby={`people-${section.key}`}>
-        <h2 id={`people-${section.key}`} className={`people-group-title is-${section.key}`}>{section.title}<span>{section.items.length}</span></h2>
-        <div className="case-list">
-          {section.items.map((item) => <Link className="case" key={item.id} href={`/actions/${item.id}`}>
-            <div>
-              <div className="case-title"><span className={`pill ${item.status}`}>{item.status}</span><span>{item.title}</span></div>
-              <div className="case-meta">
-                <span>Paperless #{item.paperlessDocumentId}</span>
-                <span className={section.key === 'overdue' ? 'people-due-late' : undefined}>{item.dueAt ? dueLabel(item.dueAt, today) : 'No due date'}</span>
-              </div>
-            </div>
-            <span className={`pill ${item.priority}`}>{item.priority}</span>
-          </Link>)}
-        </div>
-      </section>)}
-    <section className="people-group" aria-labelledby="people-approvals">
-      <h2 id="people-approvals" className="people-group-title">Requested approvals<span>{approvals.length}</span></h2>
-      {approvals.length === 0
-        ? <div className="people-card"><p>{name} has not requested any changes yet.</p></div>
-        : <ul className="people-approvals">
-          {approvals.map((approval) => <li key={approval.id}>
-            <span>{approval.title}</span>
-            <span className={`pill ${approval.status === 'pending' ? 'suggested' : ''}`}>{approval.status === 'pending' ? 'waiting' : approval.status}</span>
+    <dl className="person-stats" aria-label={`${member.name}'s workload`}>
+      <div><dt>Open</dt><dd>{open.length}</dd></div>
+      <div className={overdue ? 'is-overdue' : undefined}><dt>Overdue</dt><dd>{overdue}</dd></div>
+      <div><dt>This week</dt><dd>{thisWeek}</dd></div>
+      <div><dt>Done this week</dt><dd>{done.length}</dd></div>
+    </dl>
+
+    <p className="person-access">
+      {member.paperlessConfigured
+        ? `Paperless access is set up${member.paperlessUserId ? ` for Paperless user #${member.paperlessUserId}` : ''}.`
+        : member.role === 'owner'
+          ? 'Uses the shared Paperless connection.'
+          : 'No personal Paperless token yet, so changes approved by this person cannot be written to Paperless.'}
+      {data.canEditAccess ? <> <Link href="/settings/people">{member.paperlessConfigured ? 'Manage access' : 'Set up access'}</Link></> : null}
+    </p>
+
+    {!canMutate ? <p className="inbox-muted">You have read-only household access.</p> : null}
+    <FlashMessage flash={board.flash} />
+
+    {open.length === 0 ? <div className="inbox-empty">
+      <h2>Nothing open</h2>
+      <p>{member.name} has no open actions. Assign one from Needs you or ask Tagvico what is coming up.</p>
+      <Link className="inbox-btn is-primary" href="/inbox"><MessageSquare size={15} aria-hidden="true" />Open Needs you</Link>
+    </div> : grouped.map((group) => group.items.length ? <section className="inbox-group" key={group.key} aria-label={group.label}>
+      <h2 className={group.key === 'overdue' ? 'is-overdue' : undefined}>{group.label} <span>{group.items.length}</span></h2>
+      <ul className="inbox-list">
+        {group.items.map((item) => <CaseCard key={item.id} {...caseProps(item)}
+          onDone={() => board.patchCase(item, { status: 'done' }, 'Marked as done.')}
+          onAccept={() => board.patchCase(item, { status: 'open' }, 'Suggestion accepted.')}
+          onDismiss={() => board.patchCase(item, { status: 'dismissed' }, 'Suggestion dismissed.')}
+          onAssign={(memberId) => board.assign(item, memberId)} />)}
+      </ul>
+    </section> : null)}
+
+    {board.approvals.length ? <section className="inbox-group" aria-label="Changes waiting for approval">
+      <h2>Waiting for approval <span>{board.approvals.length}</span></h2>
+      <ul className="inbox-list">
+        {board.approvals.map((item) => <ApprovalCard key={item.id} item={item} today={today} canDecide={canDecide} busy={busy.has(item.id)} onDecide={(decision) => board.decide(item, decision)} />)}
+      </ul>
+    </section> : null}
+
+    {done.length ? <section className="inbox-group" aria-label="Done this week">
+      <h2>Done this week <span>{done.length}</span></h2>
+      <ul className="inbox-list">
+        {done.map((item) => <CaseCard key={item.id} {...caseProps(item)} onReopen={() => board.patchCase(item, { status: 'open' }, 'Reopened.')} />)}
+      </ul>
+    </section> : null}
+
+    <section className="inbox-group" aria-label="Requested changes">
+      <h2>Requested changes <span>{data.history.length + board.approvals.length}</span></h2>
+      {data.history.length === 0 && board.approvals.length === 0
+        ? <p className="person-note">{member.name} has not asked Tagvico for any changes yet.</p>
+        : data.history.length === 0 ? null : <ul className="person-history">
+          {data.history.map((entry) => <li key={entry.id}>
+            <span className="person-history-title">{entry.title}</span>
+            <span className={`inbox-chip-static${entry.status === 'failed' ? ' is-overdue' : ''}`}>{STATUS_LABEL[entry.status] || entry.status}{entry.on ? ` · ${shortDate(entry.on)}` : ''}</span>
+            {entry.error ? <span className="person-history-error">{entry.error}</span> : null}
           </li>)}
         </ul>}
     </section>
-  </>;
+  </div>;
 }

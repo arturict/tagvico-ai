@@ -11,19 +11,24 @@ import {
 } from 'lucide-react';
 import { DraftField } from './draft-field';
 import { DraftTextarea } from './draft-textarea';
+import { ChannelSettings } from './channel-settings';
 import { ChatGPTPlanSignIn } from './chatgpt-plan-sign-in';
 import { CustomFieldsEditor } from './custom-fields-editor';
 import { HouseholdSettings, type HouseholdMember } from './household-settings';
 import { InlineStatus } from './inline-status';
 import { MfaSettings } from './mfa-settings';
 import { ModelPicker } from './model-picker';
+import { PaperlessConnection } from './paperless-connection';
 import { PaperlessDiscovery } from './paperless-discovery';
+import { idleAuth, providerAuthFromStatus, type ProviderAuth } from './provider-auth';
 import { ProviderPicker } from './provider-picker';
 import { settingsSectionTitles } from './sections';
 import { SettingSwitch } from './setting-switch';
 import { SettingsRow, SettingsSection } from './settings-section';
 import { TagGroupCard } from './tag-group-card';
 import type {
+  ChannelId,
+  ChannelSettingsView,
   ModelDescriptor,
   SettingsResponse,
   SettingsSectionId,
@@ -46,11 +51,12 @@ const descriptions: Record<SettingsSectionId, string> = {
   people: 'Household profiles, Paperless access, sign-in protection and outbound access.'
 };
 
+/** Provider errors can carry a pasted JSON body; show only the readable first line. */
+const plainError = (message: string) => message.split('\n')[0].replace(/:\s*[{[].*$/, '').slice(0, 220);
+
 /** The recommended default for filing; shown as such wherever a provider offers it. */
 const isRecommendedModel = (modelId: string) => /(^|\/)gpt-6-luna$/i.test(modelId);
 
-type ProviderAuth = { loading: boolean; authenticated: boolean; label: string };
-const idleAuth: ProviderAuth = { loading: false, authenticated: false, label: '' };
 
 type HouseholdProps = {
   currentMemberId: string;
@@ -61,13 +67,33 @@ type HouseholdProps = {
 
 type Toast = { kind: 'success' | 'error'; message: string } | null;
 
+/** Flattens a patch into the dotted field paths the API reports validation errors for. */
+function patchedFields(patch: Record<string, unknown>): string[] {
+  return Object.entries(patch).flatMap(([group, value]) => {
+    if (!value || typeof value !== 'object') return [group];
+    if (group === 'provider') {
+      const values = (value as { values?: Record<string, unknown> }).values || {};
+      return Object.keys(values).map((key) => `provider.${key}`);
+    }
+    return Object.keys(value).map((key) => `${group}.${key}`);
+  });
+}
+
+class FieldError extends Error {
+  constructor(message: string, readonly field?: string) {
+    super(message);
+  }
+}
+
 export function SettingsWorkspace({
   section,
   initialSettings,
+  channels,
   household
 }: {
   section: SettingsSectionId;
   initialSettings: SettingsResponse;
+  channels: Record<ChannelId, ChannelSettingsView> | null;
   household: HouseholdProps;
 }) {
   const [settings, setSettings] = useState(initialSettings);
@@ -77,6 +103,7 @@ export function SettingsWorkspace({
   const toastTimer = useRef<number | null>(null);
   const codexPollTimer = useRef<number | null>(null);
   const [toast, setToast] = useState<Toast>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [modelsByProvider, setModelsByProvider] = useState<Record<string, ModelDescriptor[]>>({});
   const [modelsLoading, setModelsLoading] = useState(false);
   const [modelsError, setModelsError] = useState('');
@@ -101,6 +128,8 @@ export function SettingsWorkspace({
     toastTimer.current = window.setTimeout(() => setToast(null), 5000);
   };
 
+  const errorFor = (field: string) => fieldErrors[field];
+
   const applyPatch = (patch: Record<string, unknown>, successMessage = 'Settings saved.') => {
     const operation = mutationQueue.current.then(async () => {
       const response = await fetch('/api/settings/v3', {
@@ -115,10 +144,15 @@ export function SettingsWorkspace({
           settingsRef.current = fresh;
           setSettings(fresh);
         }
-        throw new Error(body.error || 'Could not save settings.');
+        throw new FieldError(body.error || 'Could not save settings.', body.field);
       }
       settingsRef.current = body;
       setSettings(body);
+      setFieldErrors((current) => {
+        const next = { ...current };
+        for (const field of patchedFields(patch)) delete next[field];
+        return next;
+      });
       if (body?.automation?.writeMode) {
         window.dispatchEvent(new CustomEvent('tagvico:write-mode', {
           detail: { writeMode: body.automation.writeMode }
@@ -128,7 +162,13 @@ export function SettingsWorkspace({
       return body as SettingsResponse;
     });
     const handledOperation = operation.catch((error) => {
-      showMessage('error', error instanceof Error ? error.message : 'Could not save settings.');
+      const message = error instanceof Error ? error.message : 'Could not save settings.';
+      const field = error instanceof FieldError ? error.field : undefined;
+      // A value that belongs to one input is explained next to it; the rest go to the toast.
+      // Choosing a provider has no input of its own, so that one is always a toast.
+      const inline = field && !field.startsWith('ai.activeProvider') && patchedFields(patch).includes(field);
+      if (field && inline) setFieldErrors((current) => ({ ...current, [field]: message }));
+      else showMessage('error', message);
       return null;
     });
     mutationQueue.current = handledOperation;
@@ -172,7 +212,11 @@ export function SettingsWorkspace({
     if (['chatgpt', 'codex', 'copilot'].includes(instanceId)) {
       const models = await loadModels(instanceId);
       if (selectionId !== providerSelectionId.current) return;
-      const selectedModel = models.find((model) => model.id === settingsRef.current.ai.activeModelId)
+      // Keep the model already chosen for this provider; otherwise start with the
+      // lightest recommended tier (GPT-6 Luna) before the runtime's own default.
+      const keepCurrent = settingsRef.current.ai.activeProviderInstanceId === instanceId;
+      const selectedModel = (keepCurrent ? models.find((model) => model.id === settingsRef.current.ai.activeModelId) : undefined)
+        || models.find((model) => isRecommendedModel(model.id))
         || models.find((model) => model.isDefault)
         || models[0];
       if (!selectedModel) {
@@ -219,7 +263,7 @@ export function SettingsWorkspace({
       const providerName = settingsRef.current.ai.providers.find((provider) => provider.instanceId === instanceId)?.name;
       showMessage('success', `${providerName || instanceId} is reachable.`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Provider probe failed.';
+      const message = plainError(error instanceof Error ? error.message : 'Provider probe failed.');
       setProbeStatus(message);
       showMessage('error', message);
     }
@@ -284,15 +328,7 @@ export function SettingsWorkspace({
     try {
       const response = await fetch(`/api/${providerId}/status`, { cache: 'no-store' });
       const body = await response.json().catch(() => ({}));
-      const authenticated = providerId === 'chatgpt' ? body.planUsage === true : body.authenticated === true;
-      const plan = providerId === 'codex' && body.account?.planType ? ` · ${body.account.planType}` : '';
-      setAuth({
-        loading: false,
-        authenticated,
-        label: providerId === 'chatgpt'
-          ? String(body.account?.email || '')
-          : authenticated ? `Connected${plan}` : 'Not connected'
-      });
+      setAuth(providerAuthFromStatus(providerId, body));
     } catch {
       setAuth({ loading: false, authenticated: false, label: 'Status unavailable' });
     }
@@ -409,30 +445,8 @@ export function SettingsWorkspace({
   const content = (() => {
     if (section === 'paperless') {
       return <>
-        <SettingsSection title="Paperless connection" description="The token is write-only. Leaving the field empty retains the existing token.">
-          <SettingsRow title="Connection details" description="Use the base URL only; Tagvico adds API paths itself." stack>
-            <div className="settings-fields-grid">
-              <DraftField
-                label="Base URL"
-                type="url"
-                value={settings.paperless.baseUrl}
-                placeholder="http://paperless:8000"
-                onCommit={(baseUrl) => applyPatch({ paperless: { baseUrl } })}
-              />
-              <DraftField
-                label="Paperless username"
-                value={settings.paperless.username}
-                onCommit={(username) => applyPatch({ paperless: { username } })}
-              />
-              <DraftField
-                label="API token"
-                type="password"
-                value=""
-                configured={settings.paperless.token.configured}
-                onCommit={(token) => applyPatch({ paperless: { token } })}
-              />
-            </div>
-          </SettingsRow>
+        <SettingsSection title="Paperless connection" description="The token is write-only. Every save checks the connection with Paperless.">
+          <PaperlessConnection paperless={settings.paperless} applyPatch={applyPatch} errorFor={errorFor} />
         </SettingsSection>
         <SettingsSection
           title="Instance discovery"
@@ -531,6 +545,7 @@ export function SettingsWorkspace({
                   value={typeof stored === 'string' ? stored : ''}
                   configured={typeof stored === 'object' && stored.configured}
                   placeholder={field.placeholder}
+                  error={errorFor(`provider.${field.key}`)}
                   onCommit={async (value) => {
                     const saved = await applyPatch({
                       provider: { instanceId: configuredProvider.instanceId, values: { [field.key]: value } }
@@ -631,6 +646,7 @@ export function SettingsWorkspace({
                 description="Use this only when the provider has no catalog or a new model is not listed yet."
                 value={settings.ai.activeModelId}
                 placeholder="provider/model-id"
+                error={errorFor('ai.activeModelId')}
                 onCommit={(activeModelId) => applyPatch({ ai: { activeModelId } }, 'Model ID saved.')}
               /> : null}
             </> : null}
@@ -679,7 +695,8 @@ export function SettingsWorkspace({
           <DraftField
             label="Cron expression"
             value={settings.automation.scanInterval}
-            onCommit={(scanInterval) => applyPatch({ automation: { scanInterval } })}
+            error={errorFor('automation.scanInterval')}
+            onCommit={(scanInterval) => applyPatch({ automation: { scanInterval } }, 'Schedule saved.')}
           />
         </SettingsRow>
         <SettingsRow title="Automatic processing" description="Process new documents on the configured schedule.">
@@ -732,6 +749,7 @@ export function SettingsWorkspace({
           </div>
         </SettingsRow>
       </SettingsSection>
+      {channels ? <ChannelSettings channels={channels} onMessage={showMessage} /> : null}
       <SettingsSection title="Metadata behavior" description="Decide which existing information the model may reuse and which fields it may propose.">
         <SettingsRow title="Reuse existing metadata" description="Include existing tags, correspondent and document type as context instead of starting from an empty record.">
           <SettingSwitch
@@ -808,11 +826,17 @@ export function SettingsWorkspace({
               onCheckedChange={(controlled) => void applyPatch({ tags: { controlled } })}
             />
           </SettingsRow>
+          {settings.tags.controlled && settings.tags.vocabularySize === 0 ? <div className="settings-row">
+            <InlineStatus kind="error">
+              Controlled tagging is on, but no group is enabled, so the model cannot assign any tag. Enable a group below or turn controlled tagging off.
+            </InlineStatus>
+          </div> : null}
           <SettingsRow title="Maximum tags per document" description="Keep the filing result focused.">
             <DraftField
               label="Maximum"
               type="number"
               value={String(settings.tags.maximumPerDocument)}
+              error={errorFor('tags.maximumPerDocument')}
               onCommit={(value) => applyPatch({ tags: { maximumPerDocument: Number(value) } })}
             />
           </SettingsRow>
@@ -885,6 +909,7 @@ export function SettingsWorkspace({
               label="Processed tag name"
               value={settings.tags.processedTagName}
               disabled={!settings.tags.addProcessedTag}
+              error={errorFor('tags.processedTagName')}
               onCommit={(processedTagName) => applyPatch({ tags: { processedTagName } }, 'Processed tag name saved.')}
             />
           </SettingsRow>
@@ -932,6 +957,7 @@ export function SettingsWorkspace({
             type="password"
             value=""
             configured={settings.security.apiKey.configured}
+            error={errorFor('security.apiKey')}
             onCommit={(apiKey) => applyPatch({ security: { apiKey } })}
           />
         </SettingsRow>
@@ -946,14 +972,14 @@ export function SettingsWorkspace({
         </SettingsRow>
         <SettingsRow title="Request" description="URL, HTTP method and timeout for the controlled lookup." stack>
           <div className="settings-fields-grid">
-            <DraftField label="URL" type="url" value={settings.security.externalApiUrl} placeholder="https://api.example.com/lookup" onCommit={(externalApiUrl) => applyPatch({ security: { externalApiUrl } })} />
+            <DraftField label="URL" type="url" value={settings.security.externalApiUrl} placeholder="https://api.example.com/lookup" error={errorFor('security.externalApiUrl')} onCommit={(externalApiUrl) => applyPatch({ security: { externalApiUrl } })} />
             <label className="settings-field">
               <span className="settings-field-label">Method</span>
               <select className="settings-select" value={settings.security.externalApiMethod} onChange={(event) => void applyPatch({ security: { externalApiMethod: event.target.value } })}>
                 <option value="GET">GET</option><option value="POST">POST</option><option value="PUT">PUT</option>
               </select>
             </label>
-            <DraftField label="Timeout (ms)" type="number" value={String(settings.security.externalApiTimeout)} onCommit={(value) => applyPatch({ security: { externalApiTimeout: Number(value) } })} />
+            <DraftField label="Timeout (ms)" type="number" value={String(settings.security.externalApiTimeout)} error={errorFor('security.externalApiTimeout')} onCommit={(value) => applyPatch({ security: { externalApiTimeout: Number(value) } })} />
             <DraftField label="Response selector" value={settings.security.externalApiSelector} placeholder="result.invoice.vendor" onCommit={(externalApiSelector) => applyPatch({ security: { externalApiSelector } })} />
           </div>
         </SettingsRow>
@@ -965,6 +991,7 @@ export function SettingsWorkspace({
               rows={6}
               sensitive
               configured={settings.security.externalApiHeaders.configured}
+              error={errorFor('security.externalApiHeaders')}
               onCommit={(externalApiHeaders) => applyPatch({ security: { externalApiHeaders } })}
             />
             <DraftTextarea
@@ -973,13 +1000,14 @@ export function SettingsWorkspace({
               rows={6}
               sensitive
               configured={settings.security.externalApiBody.configured}
+              error={errorFor('security.externalApiBody')}
               onCommit={(externalApiBody) => applyPatch({ security: { externalApiBody } })}
             />
           </div>
         </SettingsRow>
       </SettingsSection>
       </> : null}
-      <SettingsSection title="Privacy" description="Telemetry is a minimal heartbeat without document content.">
+      {household.currentRole === 'owner' ? <SettingsSection title="Privacy" description="Telemetry is a minimal heartbeat without document content.">
         <SettingsRow title="Anonymous telemetry" description="Send a minimal, non-document heartbeat to help improve Tagvico.">
           <div className="settings-action-cluster">
             <SettingSwitch
@@ -993,7 +1021,7 @@ export function SettingsWorkspace({
               : null}
           </div>
         </SettingsRow>
-      </SettingsSection>
+      </SettingsSection> : null}
     </>;
   })();
 

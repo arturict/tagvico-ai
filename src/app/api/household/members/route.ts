@@ -1,2 +1,18 @@
-import { assertSameOrigin, apiError, ApiError, readJsonBody, requireApiUser } from '@/lib/server/auth'; import { actionCenter, workspaceFor } from '@/lib/server/workspace';
-export async function POST(request: Request) { try { await assertSameOrigin(request); const user = await requireApiUser(); const workspace = workspaceFor(user); if (workspace.role !== 'owner') throw new ApiError(403, 'Only the household owner can add members'); const { displayName, role } = await readJsonBody<Record<string, unknown>>(request); return Response.json(actionCenter.addHouseholdMember(workspace.householdId, String(displayName || ''), role as 'adult' | 'member' | 'viewer'), { status: 201 }); } catch (error) { return apiError(error); } }
+import { assertSameOrigin, readJsonBody, requireApiUser } from '@/lib/server/auth';
+import { workspaceFor } from '@/lib/server/workspace';
+import householdMembersService from '@root/services/householdMembersService';
+import { settingsErrorResponse } from '../../settings/error-response';
+
+export const dynamic = 'force-dynamic';
+
+export async function POST(request: Request) {
+  try {
+    await assertSameOrigin(request);
+    const workspace = workspaceFor(await requireApiUser());
+    const { displayName, role } = await readJsonBody<Record<string, unknown>>(request, 8 * 1024);
+    const member = householdMembersService.addMember(workspace.householdId, workspace.memberId, { displayName, role });
+    return Response.json(member, { status: 201, headers: { 'Cache-Control': 'no-store' } });
+  } catch (error) {
+    return settingsErrorResponse(error);
+  }
+}

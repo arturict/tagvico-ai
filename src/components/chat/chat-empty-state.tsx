@@ -1,53 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ArrowRight, CalendarClock, CheckSquare, FileSearch, Inbox, Receipt, Tags, type LucideIcon } from 'lucide-react';
+import { ArrowRight, CalendarClock, CheckSquare, CircleAlert, FileSearch, FileText, Inbox, Tag, Tags, type LucideIcon } from 'lucide-react';
+import type { CompanionSuggestion, CompanionSuggestionIcon } from '@root/services/companionResearchService';
+import { COMPANION_TOOL_ERRORS } from '@root/contracts/companion';
 
-export type SuggestionKind = 'Answer' | 'Action' | 'Approval';
-
-const suggestions: Array<{
-  kind: SuggestionKind;
-  icon: LucideIcon;
-  prompt: string;
-  hint: string;
-}> = [
-  {
-    kind: 'Answer',
-    icon: Receipt,
-    prompt: 'What must I pay this month?',
-    hint: 'Finds open invoices and reminders'
-  },
-  {
-    kind: 'Answer',
-    icon: CalendarClock,
-    prompt: 'When does the rental contract end?',
-    hint: 'Reads the contract and cites it'
-  },
-  {
-    kind: 'Answer',
-    icon: FileSearch,
-    prompt: 'Which documents are for the 2025 tax return?',
-    hint: 'Lists matching documents with sources'
-  },
-  {
-    kind: 'Action',
-    icon: CheckSquare,
-    prompt: 'Remind us before the next insurance renewal.',
-    hint: 'Prepares a task for you to review'
-  },
-  {
-    kind: 'Action',
-    icon: Inbox,
-    prompt: 'Which open actions or deadlines need my attention?',
-    hint: 'Reviews your household actions'
-  },
-  {
-    kind: 'Approval',
-    icon: Tags,
-    prompt: 'Clean up duplicate tags.',
-    hint: 'Proposes changes, waits for approval'
-  }
-];
+const icons: Record<CompanionSuggestionIcon, LucideIcon> = {
+  calendar: CalendarClock,
+  files: FileSearch,
+  summary: FileText,
+  tags: Tags,
+  followup: CheckSquare,
+  'tag-create': Tag
+};
 
 function partOfDay(hour: number) {
   if (hour >= 5 && hour < 12) return 'Good morning';
@@ -58,11 +23,17 @@ function partOfDay(hour: number) {
 export function ChatEmptyState({
   displayName,
   needsCount,
+  suggestions,
+  paperless,
+  canManageSettings,
   firstRun,
   onAsk
 }: {
   displayName: string;
   needsCount: number;
+  suggestions: CompanionSuggestion[];
+  paperless: 'ok' | 'unreachable' | 'access';
+  canManageSettings: boolean;
   firstRun?: { eyebrow: string; title: string; body: string } | null;
   onAsk: (prompt: string) => void;
 }) {
@@ -78,14 +49,14 @@ export function ChatEmptyState({
   }, []);
 
   return <div className={`chat-empty${firstRun ? ' is-first-run' : ''}`}>
-    <p className="chat-eyebrow">{firstRun ? firstRun.eyebrow : clock?.date || 'Ask Tagvico'}</p>
+    <p className="chat-eyebrow">{firstRun ? firstRun.eyebrow : clock?.date || 'Chat'}</p>
     {firstRun ? <h2>{firstRun.title}</h2> : <h2>
       {clock?.greeting || 'Hello'}, {displayName}.<br />
       What do you want to <mark>know</mark>?
     </h2>}
     <p className="chat-empty-lead">{firstRun
       ? firstRun.body
-      : 'Ask across your whole archive. Tagvico answers with sources, and turns anything that needs doing into a proposal you can approve.'}</p>
+      : 'Ask across your whole archive. Answers cite their sources, and anything that needs doing becomes a proposal you can approve.'}</p>
     {firstRun ? <ol className="chat-first-run-steps">
       <li><span>1</span><strong>Ask</strong><small>Start with one of the questions below.</small></li>
       <li><span>2</span><strong>Verify</strong><small>Open a numbered source to see the document.</small></li>
@@ -97,22 +68,33 @@ export function ChatEmptyState({
         <strong>{needsCount
           ? `${needsCount} ${needsCount === 1 ? 'thing waits' : 'things wait'} for you`
           : 'Nothing waits for you'}</strong>
-        <small>{needsCount ? 'Approve in chat or open the inbox' : 'Approvals and open actions appear in the inbox'}</small>
+        <small>{needsCount ? 'Open the inbox to see approvals, reviews and deadlines' : 'Approvals, reviews and deadlines appear in the inbox'}</small>
       </span>
       <ArrowRight aria-hidden="true" />
     </a>
+    {paperless !== 'ok' ? <p className="chat-paperless-note" role="status">
+      <CircleAlert aria-hidden="true" />
+      <span>
+        {paperless === 'access' ? COMPANION_TOOL_ERRORS.access : COMPANION_TOOL_ERRORS.unreachable}
+        {' '}Questions about documents will not work until this is fixed.
+        {canManageSettings ? <> <a href="/settings/paperless">Open Paperless settings</a></> : null}
+      </span>
+    </p> : null}
     <div className="chat-empty-label"><span>Try asking</span><small>Any language works. Tagvico answers in yours.</small></div>
     <div className="chat-suggestions">
-      {suggestions.map(({ kind, icon: Icon, prompt, hint }) => <button
-        type="button"
-        key={prompt}
-        className={`chat-suggestion is-${kind.toLowerCase()}`}
-        onClick={() => onAsk(prompt)}
-      >
-        <span className="chat-suggestion-kind"><Icon aria-hidden="true" />{kind}</span>
-        <strong>{prompt}</strong>
-        <small>{hint}</small>
-      </button>)}
+      {suggestions.map(({ kind, icon, prompt, hint }) => {
+        const Icon = icons[icon];
+        return <button
+          type="button"
+          key={prompt}
+          className={`chat-suggestion is-${kind.toLowerCase()}`}
+          onClick={() => onAsk(prompt)}
+        >
+          <span className="chat-suggestion-kind"><Icon aria-hidden="true" />{kind}</span>
+          <strong>{prompt}</strong>
+          <small>{hint}</small>
+        </button>;
+      })}
     </div>
   </div>;
 }

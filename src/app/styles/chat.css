@@ -986,8 +986,12 @@
   font-size: 13px;
 }
 
+.chat-notice {
+  flex-wrap: wrap;
+}
+
 .chat-notice span {
-  flex: 1;
+  flex: 1 1 200px;
   min-width: 0;
   overflow-wrap: anywhere;
 }
@@ -1160,6 +1164,169 @@
 .chat-composer .companion-model-error {
   max-width: 220px;
   margin: 0;
+}
+
+/* ---------- proposals inside an answer, decided states ---------- */
+
+.chat-proposals {
+  display: grid;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.chat-proposals .chat-approval {
+  width: 100%;
+  margin-left: 0;
+}
+
+.chat-approval.is-executed {
+  border-color: var(--tv-moss);
+}
+
+.chat-approval.is-executed > header {
+  background: var(--tv-moss);
+}
+
+.chat-approval.is-rejected {
+  border-color: var(--tv-line);
+}
+
+.chat-approval.is-rejected > header {
+  background: var(--tv-muted);
+}
+
+.chat-approval.is-failed {
+  border-color: #c9776d;
+}
+
+.chat-approval.is-failed > header {
+  background: #8c2f27;
+}
+
+.chat-approval-outcome {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border-top: 1px solid var(--tv-line);
+  padding: 11px 16px;
+  background: var(--tv-surface-2);
+  color: var(--tv-text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.chat-approval-outcome svg {
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  color: var(--tv-moss);
+}
+
+.chat-approval-outcome.is-failed svg {
+  color: #8c2f27;
+}
+
+.chat-approval-outcome p {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.chat-approval-outcome a {
+  flex: none;
+  color: var(--tv-pine);
+  font-weight: 700;
+}
+
+.chat-approval-error {
+  margin: 0;
+  border-top: 1px solid #e2aaa3;
+  padding: 9px 16px;
+  background: #f6dcd8;
+  color: #8c2f27;
+  font-size: 12.5px;
+}
+
+.chat-btn:disabled[title] {
+  cursor: not-allowed;
+}
+
+.chat-activity-error {
+  margin: 0;
+  color: #8c2f27;
+  font-size: 13px;
+}
+
+.chat-avatar img {
+  width: 20px;
+  height: 20px;
+  display: block;
+  object-fit: contain;
+}
+
+.chat-paperless-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: -8px 0 20px;
+  border: 1px solid #e2c98f;
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: #f6ead2;
+  color: #5d3d0a;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.chat-paperless-note svg {
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.chat-paperless-note a {
+  color: inherit;
+  font-weight: 700;
+}
+
+.chat-notice.is-calm {
+  border-color: #e2c98f;
+  background: #f6ead2;
+  color: #5d3d0a;
+}
+
+.chat-notice a.chat-notice-action,
+.chat-notice button.chat-notice-action {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 3px 11px;
+  color: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.chat-notice small {
+  flex: none;
+  font-size: 12.5px;
+}
+
+.chat-notice button.chat-notice-action svg {
+  width: 13px;
+  height: 13px;
+}
+
+.chat-chip.is-warning {
+  border-color: #e2c98f;
+  background: #f6ead2;
+  color: #5d3d0a;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 /* ---------- short screens: keep the whole empty state above the composer ---------- */

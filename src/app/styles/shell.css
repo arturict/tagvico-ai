@@ -239,8 +239,40 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--tv-success) 20%, transparent);
 }
 
-.status-dot.is-needs-setup {
+.status-dot.is-configured {
   background: var(--tv-warning);
+}
+
+.status-dot.is-needs-setup {
+  border: 1.5px solid var(--tv-warning);
+  background: transparent;
+}
+
+.status-dot.is-error {
+  background: var(--tv-danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tv-danger) 18%, transparent);
+}
+
+.channel-state {
+  margin-left: auto;
+  color: var(--tv-muted);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.channel-state + .status-dot {
+  margin-left: 0;
+}
+
+.sidebar-channel-static {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 10px;
+  color: var(--tv-muted);
+  font-size: 13px;
+  font-weight: 620;
 }
 
 .nav-badge-needs {
@@ -319,7 +351,187 @@
   color: #fffdf7;
 }
 
+/* Household card mark and the ChatGPT-style New chat action */
+.household-card-mark {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--tv-pine-soft);
+  color: var(--tv-pine);
+}
+
+.household-card-mark svg {
+  width: 16px;
+  height: 16px;
+}
+
+.new-chat-button {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 9px;
+  margin-top: 8px;
+  border: 1px solid var(--tv-pine);
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: var(--tv-pine);
+  color: #fffdf7;
+  font-size: 13.5px;
+  font-weight: 700;
+  transition: 140ms ease;
+}
+
+.new-chat-button:hover {
+  background: color-mix(in srgb, var(--tv-pine) 88%, #000);
+  box-shadow: 0 8px 20px rgba(25, 60, 44, .16);
+}
+
+.new-chat-button svg {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+/* People: one compact row of avatars, opened into the full list */
+.people-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.people-head-row .sidebar-section-title {
+  margin: 0;
+}
+
+.people-toggle {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 3px;
+  border: 0;
+  border-radius: 6px;
+  padding: 2px 6px;
+  background: transparent;
+  color: var(--tv-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.people-toggle:hover {
+  background: rgba(255, 253, 247, .65);
+  color: var(--tv-pine);
+}
+
+.people-toggle svg {
+  width: 13px;
+  height: 13px;
+  transition: transform 140ms ease;
+}
+
+.people-toggle[aria-expanded="true"] svg {
+  transform: rotate(180deg);
+}
+
+.people-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 2px 10px 4px;
+  list-style: none;
+}
+
+.people-row[hidden],
+.sidebar-people[hidden] {
+  display: none;
+}
+
+.people-chip {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 50%;
+  transition: transform 140ms ease, box-shadow 140ms ease;
+}
+
+.people-chip:hover {
+  transform: translateY(-1px);
+}
+
+.people-chip.is-you .member-avatar {
+  box-shadow: 0 0 0 2px var(--tv-bg), 0 0 0 3.5px var(--tv-pine);
+}
+
+.people-chip.is-active .member-avatar {
+  box-shadow: 0 0 0 2px var(--tv-bg), 0 0 0 3.5px var(--tv-accent);
+}
+
+.people-badge {
+  position: absolute;
+  top: -5px;
+  right: -6px;
+  display: grid;
+  min-width: 16px;
+  height: 16px;
+  place-items: center;
+  border: 2px solid var(--tv-bg);
+  border-radius: 999px;
+  padding: 0 3px;
+  background: var(--tv-pine);
+  box-sizing: content-box;
+  color: #fffdf7;
+  font-size: 9.5px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.people-more {
+  width: 30px;
+  height: 30px;
+  border: 1px dashed var(--tv-line-strong);
+  background: var(--tv-surface);
+  color: var(--tv-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.people-more:hover {
+  border-color: var(--tv-pine);
+  color: var(--tv-pine);
+}
+
 /* Collapsed rail: icons and avatars only */
+.shell.is-collapsed .sidebar .new-chat-button {
+  justify-content: center;
+  padding-inline: 0;
+}
+
+.shell.is-collapsed .sidebar .people-row {
+  flex-direction: column;
+  align-items: center;
+  padding-inline: 0;
+}
+
+.shell.is-collapsed .sidebar .people-more {
+  display: none;
+}
+
+.shell.is-collapsed .sidebar .people-row[hidden] {
+  display: flex;
+}
+
+.shell.is-collapsed .sidebar .people-section .sidebar-people {
+  display: none;
+}
+
 .shell.is-collapsed .sidebar .sidebar-people a,
 .shell.is-collapsed .sidebar .sidebar-channels a,
 .shell.is-collapsed .sidebar .sidebar-more-toggle {
@@ -475,10 +687,45 @@
     min-height: 42px;
   }
 
+  .mobile-sheet:focus {
+    outline: none;
+  }
+
   .mobile-sheet .sidebar-person-name,
   .mobile-sheet .sidebar-person-count,
-  .mobile-sheet .sidebar-section-title {
+  .mobile-sheet .sidebar-section-title,
+  .mobile-sheet .people-toggle,
+  .mobile-sheet .channel-state {
     display: initial;
+  }
+
+  .shell .mobile-sheet .people-toggle {
+    display: inline-flex;
+    min-height: 32px;
+    padding-inline: 10px;
+  }
+
+  .mobile-sheet .people-row {
+    gap: 12px;
+    padding: 6px 10px 8px;
+  }
+
+  .mobile-sheet .people-more {
+    width: 38px;
+    height: 38px;
+  }
+
+  .mobile-sheet .new-chat-button {
+    margin-top: 0;
+    min-height: 46px;
+  }
+
+  .mobile-sheet .channel-state {
+    margin-left: auto;
+  }
+
+  .mobile-sheet .sidebar-channel-static {
+    min-height: 42px;
   }
 
   .mobile-sheet .sidebar-person-count {

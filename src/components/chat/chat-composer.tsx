@@ -1,8 +1,8 @@
 'use client';
 
 import { FormEvent, KeyboardEvent, useEffect, useRef } from 'react';
-import { ArrowUp, FolderOpen, Square } from 'lucide-react';
-import { CompanionModelPicker } from '@/components/companion-model-picker';
+import { ArrowUp, Square } from 'lucide-react';
+import { ChatModelChip, type ModelChipState } from '@/components/chat/chat-model-chip';
 
 export function ChatComposer({
   sessionId,
@@ -10,14 +10,19 @@ export function ChatComposer({
   onChange,
   onSubmit,
   onStop,
-  isWorking
+  onModelState,
+  isWorking,
+  canSend
 }: {
   sessionId: string;
   value: string;
   onChange: (value: string) => void;
   onSubmit: (event: FormEvent) => void;
   onStop: () => void;
+  onModelState: (state: ModelChipState) => void;
   isWorking: boolean;
+  /** False while no model is ready, so a message could not be answered. */
+  canSend: boolean;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   useEffect(() => {
@@ -30,7 +35,7 @@ export function ChatComposer({
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
-      event.currentTarget.form?.requestSubmit();
+      if (!isWorking && canSend) event.currentTarget.form?.requestSubmit();
     }
   };
 
@@ -40,19 +45,16 @@ export function ChatComposer({
       value={value}
       onChange={(event) => onChange(event.target.value)}
       onKeyDown={handleKeyDown}
-      placeholder="Ask about your documents, or tell Tagvico what to do…"
+      placeholder="Ask about your documents or open actions"
       aria-label="Message"
       rows={1}
     />
     <div className="chat-composer-bar">
-      <span className="chat-chip" title="Tagvico searches every document in your archive">
-        <FolderOpen aria-hidden="true" />All documents
-      </span>
-      <CompanionModelPicker sessionId={sessionId} />
+      <ChatModelChip sessionId={sessionId} onState={onModelState} />
       <span className="chat-composer-hint">Enter to send · Shift+Enter for a new line</span>
       {isWorking ? <button className="chat-send is-stop" type="button" onClick={onStop} aria-label="Stop response">
         <Square aria-hidden="true" />
-      </button> : <button className="chat-send" type="submit" disabled={!value.trim()} aria-label="Send message">
+      </button> : <button className="chat-send" type="submit" disabled={!value.trim() || !canSend} aria-label="Send message">
         <ArrowUp aria-hidden="true" />
       </button>}
     </div>

@@ -1,6 +1,7 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   DefaultChatTransport,
@@ -19,16 +20,19 @@ import {
   Inbox,
   LoaderCircle,
   MessageSquarePlus,
-  RotateCcw,
-  ShieldCheck,
-  Sparkles,
-  X
+  ShieldCheck
 } from 'lucide-react';
 import {
+  NO_PROVIDER_MESSAGE,
+  companionDocumentIds,
   companionToolActivity,
+  groundCompanionCitations,
+  parseCompanionError,
   sanitizeCompanionText,
+  type CompanionApprovalView,
   type CompanionToolActivity as CompanionToolActivityModel
 } from '@root/contracts/companion';
+import type { CompanionSuggestion } from '@root/services/companionResearchService';
 import {
   Message,
   MessageAction,
@@ -40,7 +44,9 @@ import { ChatActivitySummary } from '@/components/chat/chat-activity-summary';
 import { ChatApprovalCard } from '@/components/chat/chat-approval-card';
 import { ChatComposer } from '@/components/chat/chat-composer';
 import { ChatEmptyState } from '@/components/chat/chat-empty-state';
+import { ChatErrorNotice } from '@/components/chat/chat-error-notice';
 import { ChatHistoryPanel } from '@/components/chat/chat-history-panel';
+import type { ModelChipState } from '@/components/chat/chat-model-chip';
 import {
   SourceChips,
   citationComponents,
@@ -49,13 +55,6 @@ import {
   linkCitations
 } from '@/components/chat/citations';
 
-type Approval = {
-  id: string;
-  action_type: string;
-  payload: Record<string, unknown>;
-  status: string;
-  session_id?: string | null;
-};
 type SessionSummary = {
   id: string;
   title: string;
@@ -63,70 +62,6 @@ type SessionSummary = {
   message_count?: number;
   updated_at: string;
 };
-
-function approvalValue(value: unknown) {
-  if (value === null) return 'None';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return 'Unable to display';
-  }
-}
-
-function approvalCopy(approval: Approval) {
-  const payload = approval.payload || {};
-  const patch = payload.patch && typeof payload.patch === 'object'
-    ? payload.patch as Record<string, unknown>
-    : {};
-  if (approval.action_type === 'paperless.tag.create') {
-    return {
-      title: `Create tag “${String(payload.name || 'New tag')}”`,
-      meta: 'Paperless tag',
-      details: [String(payload.reason || '')].filter(Boolean)
-    };
-  }
-  if (approval.action_type === 'paperless.tag.update') {
-    return {
-      title: `Update tag “${String(payload.tagName || `#${payload.tagId}`)}”`,
-      meta: `${Number(payload.documentCount) || 0} linked documents`,
-      details: [
-        ...Object.entries(patch).map(([key, value]) => `${key}: ${String(value)}`),
-        String(payload.reason || '')
-      ].filter(Boolean)
-    };
-  }
-  if (approval.action_type === 'paperless.tag.delete') {
-    return {
-      title: `Delete tag “${String(payload.tagName || `#${payload.tagId}`)}”`,
-      meta: `${Number(payload.documentCount) || 0} linked documents`,
-      details: [String(payload.reason || '')].filter(Boolean)
-    };
-  }
-  if (approval.action_type === 'paperless.patch') {
-    return {
-      title: `Update ${String(payload.documentTitle || `document #${payload.documentId}`)}`,
-      meta: `Document #${String(payload.documentId || '')}`,
-      details: [
-        ...Object.entries(patch).map(([key, value]) => `${key}: ${approvalValue(value)}`),
-        String(payload.reason || '')
-      ].filter(Boolean)
-    };
-  }
-  if (approval.action_type === 'action.create') {
-    return {
-      title: String(payload.title || 'New action'),
-      meta: payload.paperlessDocumentId ? `Document #${payload.paperlessDocumentId}` : 'Action',
-      details: [String(payload.summary || '')].filter(Boolean)
-    };
-  }
-  return {
-    title: 'Update an action',
-    meta: 'Action',
-    details: Object.keys(patch).length ? [`Fields: ${Object.keys(patch).join(', ')}`] : []
-  };
-}
 
 function relativeDate(value: string, renderedAt: number) {
   const normalized = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(?:\.\d+)?$/.test(value)
@@ -202,7 +137,7 @@ function activityFromPart(part: UIMessage['parts'][number]): CompanionToolActivi
     getToolName(part),
     part.state,
     'input' in part ? part.input : undefined,
-    'output' in part ? part.output : undefined
+    part.state === 'output-error' ? part.errorText : 'output' in part ? part.output : undefined
   );
 }
 
@@ -226,15 +161,23 @@ export function Companion({
   initialApprovals,
   initialSessions,
   canApprove,
+  isOwner,
+  approverNames,
+  needsCount: initialNeedsCount,
+  start,
   renderedAt,
   showFirstRun = false
 }: {
   sessionId: string;
   displayName: string;
   initialMessages: UIMessage[];
-  initialApprovals: Approval[];
+  initialApprovals: CompanionApprovalView[];
   initialSessions: SessionSummary[];
   canApprove: boolean;
+  isOwner: boolean;
+  approverNames: string[];
+  needsCount: number;
+  start: { paperless: 'ok' | 'unreachable' | 'access'; suggestions: CompanionSuggestion[] } | null;
   renderedAt: number;
   showFirstRun?: boolean;
 }) {
@@ -243,13 +186,19 @@ export function Companion({
   const [sessions, setSessions] = useState(initialSessions);
   const [input, setInput] = useState('');
   const [notice, setNotice] = useState('');
+  const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [decisionBusy, setDecisionBusy] = useState('');
   const [sessionBusy, setSessionBusy] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState('');
-  const [needsYou, setNeedsYou] = useState<number | null>(null);
+  const [needsCount, setNeedsCount] = useState(initialNeedsCount);
+  const [modelState, setModelState] = useState<ModelChipState>('loading');
   const [referenceTime, setReferenceTime] = useState(renderedAt);
   const endRef = useRef<HTMLDivElement>(null);
+  const transport = useMemo(
+    () => new DefaultChatTransport({ api: '/api/companion', body: { sessionId } }),
+    [sessionId]
+  );
   const {
     messages,
     sendMessage,
@@ -258,27 +207,20 @@ export function Companion({
     status,
     error,
     clearError
-  } = useChat({
-    id: sessionId,
-    messages: initialMessages,
-    transport: new DefaultChatTransport({ api: '/api/companion', body: { sessionId } })
-  });
+  } = useChat({ id: sessionId, messages: initialMessages, transport });
   const isWorking = status === 'streaming' || status === 'submitted';
   const currentSession = sessions.find((session) => session.id === sessionId);
-  const sessionApprovals = useMemo(
-    () => approvals.filter((approval) => approval.session_id === sessionId),
-    [approvals, sessionId]
-  );
-  // Pending approvals are always part of what waits for the member, so the
-  // household-wide count can never hide them.
-  const needsCount = Math.max(needsYou ?? 0, approvals.length);
-  const historyItems = sessions.map((session) => ({
-    id: session.id,
-    title: session.title,
-    preview: session.preview,
-    message_count: session.message_count,
-    when: relativeDate(session.updated_at, referenceTime)
-  }));
+  const chatError = useMemo(() => error ? parseCompanionError(error.message) : null, [error]);
+  const lastIsQuestion = messages.at(-1)?.role === 'user';
+  const historyItems = sessions
+    .filter((session) => session.id === sessionId || Number(session.message_count) > 0)
+    .map((session) => ({
+      id: session.id,
+      title: session.title === 'New conversation' ? 'New chat' : session.title,
+      preview: session.preview,
+      message_count: session.message_count,
+      when: relativeDate(session.updated_at, referenceTime)
+    }));
 
   useEffect(() => setSessions(initialSessions), [initialSessions]);
   useEffect(() => {
@@ -288,52 +230,70 @@ export function Companion({
   }, []);
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: isWorking ? 'smooth' : 'instant', block: 'end' });
-  }, [isWorking, messages]);
+  }, [isWorking, messages, approvals]);
 
-  const refreshApprovals = async () => {
+  const refreshApprovals = useCallback(async () => {
     try {
-      const response = await fetch('/api/approvals', { cache: 'no-store' });
+      const response = await fetch(`/api/companion/approvals?sessionId=${encodeURIComponent(sessionId)}`, { cache: 'no-store' });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || 'Could not refresh approvals');
+      if (!response.ok) throw new Error(body.error || 'Could not refresh proposals');
       setApprovals(Array.isArray(body.approvals) ? body.approvals : []);
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : 'Could not refresh approvals');
+      setNotice(cause instanceof Error ? cause.message : 'Could not refresh proposals');
     }
-  };
-  // The household summary is optional: without it the pending approvals
-  // this page already knows about are the count.
-  const refreshNeedsYou = async () => {
+  }, [sessionId]);
+  // The household-wide count is the one the sidebar shows; it changes when a
+  // proposal is decided or a new one is prepared.
+  const refreshNeedsYou = useCallback(async () => {
     try {
       const response = await fetch('/api/navigation/household', { cache: 'no-store' });
       if (!response.ok) return;
       const body = await response.json().catch(() => null) as { needsYouCount?: unknown } | null;
       const count = Number(body?.needsYouCount);
-      setNeedsYou(Number.isSafeInteger(count) && count >= 0 ? count : null);
+      if (Number.isSafeInteger(count) && count >= 0) setNeedsCount(count);
     } catch {
-      setNeedsYou(null);
+      // Keep the count from the page load.
     }
-  };
-  const refreshSessions = async () => {
+  }, []);
+  const refreshSessions = useCallback(async () => {
     try {
       const response = await fetch('/api/companion/sessions', { cache: 'no-store' });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || 'Could not refresh conversations');
+      if (!response.ok) throw new Error(body.error || 'Could not refresh chats');
       setSessions(Array.isArray(body.sessions) ? body.sessions : []);
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : 'Could not refresh conversations');
+      setNotice(cause instanceof Error ? cause.message : 'Could not refresh chats');
     }
-  };
+  }, []);
+
+  const wasWorking = useRef(false);
   useEffect(() => {
-    if (status === 'ready') {
-      void refreshApprovals();
-      void refreshSessions();
-      void refreshNeedsYou();
+    if (isWorking) {
+      wasWorking.current = true;
+      return;
     }
-  }, [status]);
+    if (!wasWorking.current) return;
+    wasWorking.current = false;
+    void refreshApprovals();
+    void refreshSessions();
+    void refreshNeedsYou();
+  }, [isWorking, refreshApprovals, refreshSessions, refreshNeedsYou]);
+
+  const activitiesOf = useCallback((message: UIMessage) => message.parts
+    .map(activityFromPart)
+    .filter((activity): activity is CompanionToolActivityModel => Boolean(activity)), []);
+  // Proposals this conversation made, in message order, so each card sits under the answer that prepared it.
+  const proposalIds = useMemo(() => messages.flatMap((message) => message.role === 'assistant'
+    ? activitiesOf(message).flatMap((activity) => activity.result?.approvalId ? [activity.result.approvalId] : [])
+    : []), [messages, activitiesOf]);
+  const missingProposal = proposalIds.find((id) => !approvals.some((approval) => approval.id === id)) || '';
+  useEffect(() => {
+    if (missingProposal) void refreshApprovals();
+  }, [missingProposal, refreshApprovals]);
 
   const submitText = (text: string) => {
     const normalized = text.trim();
-    if (!normalized || status !== 'ready') return;
+    if (!normalized || status !== 'ready' || modelState === 'none') return;
     setInput('');
     setNotice('');
     clearError();
@@ -345,6 +305,7 @@ export function Companion({
   };
   const decide = async (id: string, decision: 'approved' | 'rejected') => {
     setNotice('');
+    setCardErrors((current) => ({ ...current, [id]: '' }));
     setDecisionBusy(id);
     try {
       const response = await fetch(`/api/approvals/${id}`, {
@@ -353,30 +314,22 @@ export function Companion({
         body: JSON.stringify({ decision })
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || 'Could not decide approval');
+      if (!response.ok) throw new Error(body.error || 'Could not record the decision');
+    } catch (cause) {
+      setCardErrors((current) => ({
+        ...current,
+        [id]: cause instanceof Error ? cause.message : 'Could not record the decision'
+      }));
+    } finally {
+      // The server is the truth: a failed execution is stored on the approval, so refresh either way.
       await refreshApprovals();
       void refreshNeedsYou();
-    } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : 'Could not decide approval');
-    } finally {
       setDecisionBusy('');
     }
   };
-  const newChat = async () => {
-    setSessionBusy(true);
-    setNotice('');
-    try {
-      const response = await fetch('/api/companion/sessions', { method: 'POST' });
-      const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || 'Could not create a conversation');
-      setHistoryOpen(false);
-      router.push(`/companion?chat=${encodeURIComponent(body.sessionId)}`);
-      router.refresh();
-    } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : 'Could not create a conversation');
-    } finally {
-      setSessionBusy(false);
-    }
+  const newChat = () => {
+    setHistoryOpen(false);
+    router.push('/companion?new=1');
   };
   const openChat = (id: string) => {
     setHistoryOpen(false);
@@ -394,12 +347,11 @@ export function Companion({
         body: JSON.stringify({ title })
       });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || 'Could not rename the conversation');
+      if (!response.ok) throw new Error(body.error || 'Could not rename the chat');
       await refreshSessions();
-      router.refresh();
       return true;
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : 'Could not rename the conversation');
+      setNotice(cause instanceof Error ? cause.message : 'Could not rename the chat');
       return false;
     } finally {
       setSessionBusy(false);
@@ -411,18 +363,12 @@ export function Companion({
     try {
       const response = await fetch(`/api/companion/sessions/${encodeURIComponent(id)}`, { method: 'DELETE' });
       const body = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(body.error || 'Could not delete the conversation');
-      if (id === sessionId) {
-        const replacement = sessions.find((session) => session.id !== id);
-        if (replacement) router.push(`/companion?chat=${encodeURIComponent(replacement.id)}`);
-        else await newChat();
-      } else {
-        await refreshSessions();
-      }
-      router.refresh();
+      if (!response.ok) throw new Error(body.error || 'Could not delete the chat');
+      if (id === sessionId) newChat();
+      else await refreshSessions();
       return true;
     } catch (cause) {
-      setNotice(cause instanceof Error ? cause.message : 'Could not delete the conversation');
+      setNotice(cause instanceof Error ? cause.message : 'Could not delete the chat');
       return false;
     } finally {
       setSessionBusy(false);
@@ -442,6 +388,20 @@ export function Companion({
     }
   };
 
+  const renderApproval = (approval: CompanionApprovalView) => <ChatApprovalCard
+    key={approval.id}
+    approval={approval}
+    canApprove={canApprove}
+    approverNames={approverNames}
+    busy={decisionBusy === approval.id}
+    error={cardErrors[approval.id]}
+    onDecide={(decision) => void decide(approval.id, decision)}
+  />;
+
+  // Citations are only valid for documents a tool returned earlier in this
+  // conversation; `seen` grows with each message so a later answer can still
+  // cite a document found earlier.
+  const seenActivities: CompanionToolActivityModel[] = [];
   const renderMessage = (message: UIMessage, messageIndex: number) => {
     const texts = message.parts.flatMap((part) => part.type === 'text' ? [part.text] : []);
     if (message.role === 'user') {
@@ -451,15 +411,19 @@ export function Companion({
         </Message>
       </div>;
     }
-    const activities = message.parts
-      .map(activityFromPart)
-      .filter((activity): activity is CompanionToolActivityModel => Boolean(activity));
-    const answers = texts.map((text) => sanitizeCompanionText(text));
+    const activities = activitiesOf(message);
+    seenActivities.push(...activities);
+    const known = companionDocumentIds(seenActivities);
+    const answers = texts.map((text) => groundCompanionCitations(sanitizeCompanionText(text), known));
     if (!activities.length && !answers.some(Boolean)) return null;
     const isLast = messageIndex === messages.length - 1;
     const citations = citedDocumentIds(answers.join('\n\n'));
+    const proposals = activities.flatMap((activity) => {
+      const approval = approvals.find((candidate) => candidate.id === activity.result?.approvalId);
+      return approval ? [approval] : [];
+    });
     return <div className="chat-turn is-assistant" key={message.id}>
-      <span className="chat-avatar" aria-hidden="true"><Sparkles /></span>
+      <span className="chat-avatar" aria-hidden="true"><Image src="/tagvico-icon.png" alt="" width={20} height={20} /></span>
       <Message from="assistant">
         <MessageContent>
           <ChatActivitySummary activities={activities}>
@@ -472,19 +436,23 @@ export function Companion({
               isAnimating={isWorking && isLast}
             >{linkCitations(answer, citations)}</MessageResponse>
             : null)}
-          <SourceChips documents={citedDocuments(citations, activities)} />
+          <SourceChips documents={citedDocuments(citations, seenActivities)} />
         </MessageContent>
         {answers.some(Boolean) ? <MessageActions className="companion-message-actions">
           <MessageAction label="Copy answer" tooltip="Copy answer" onClick={() => void copyMessage(message)}>
             {copiedMessage === message.id ? <Check /> : <Clipboard />}
           </MessageAction>
-          {isLast && status === 'ready' ? <MessageAction label="Try again" tooltip="Try again" onClick={() => void regenerate()}>
-            <RotateCcw />
-          </MessageAction> : null}
         </MessageActions> : null}
+        {proposals.length ? <div className="chat-proposals">{proposals.map(renderApproval)}</div> : null}
       </Message>
     </div>;
   };
+
+  // Proposals created before cards were tied to messages still need a place.
+  const looseApprovals = approvals.filter((approval) => approval.status === 'pending' && !proposalIds.includes(approval.id));
+  const visibleError = chatError
+    || (notice ? { code: 'generic' as const, message: notice } : null)
+    || (modelState === 'none' ? { code: 'no-provider' as const, message: NO_PROVIDER_MESSAGE } : null);
 
   return <div className="chat-shell">
     <header className="chat-head">
@@ -496,8 +464,8 @@ export function Companion({
         aria-expanded={historyOpen}
       ><History aria-hidden="true" /><span>History</span></button>
       <div className="chat-head-title">
-        <strong>{currentSession?.title || 'New chat'}</strong>
-        <small>{isWorking ? 'Working with your selected model…' : 'Answers come from your documents'}</small>
+        <strong>{currentSession && currentSession.title !== 'New conversation' ? currentSession.title : 'New chat'}</strong>
+        <small>{isWorking ? 'Working…' : 'Answers cite your Paperless documents'}</small>
       </div>
       {needsCount ? <a className="chat-head-needs" href="/inbox">
         <Inbox aria-hidden="true" />{needsCount}<span> waiting</span>
@@ -505,9 +473,10 @@ export function Companion({
       <button
         className="chat-icon-btn is-accent"
         type="button"
-        onClick={() => void newChat()}
-        disabled={sessionBusy}
+        onClick={newChat}
+        disabled={sessionBusy || (!messages.length && !isWorking)}
         aria-label="New chat"
+        title="New chat"
       ><MessageSquarePlus aria-hidden="true" /></button>
       {historyOpen ? <ChatHistoryPanel
         sessions={historyItems}
@@ -515,7 +484,7 @@ export function Companion({
         busy={sessionBusy}
         onClose={() => setHistoryOpen(false)}
         onOpen={openChat}
-        onNew={() => void newChat()}
+        onNew={newChat}
         onRename={renameChat}
         onDelete={deleteChat}
       /> : null}
@@ -526,6 +495,9 @@ export function Companion({
         {!messages.length ? <ChatEmptyState
           displayName={displayName}
           needsCount={needsCount}
+          suggestions={start?.suggestions ?? []}
+          paperless={start?.paperless ?? 'ok'}
+          canManageSettings={isOwner}
           onAsk={submitText}
           firstRun={showFirstRun ? {
             eyebrow: 'Your first five minutes',
@@ -533,31 +505,28 @@ export function Companion({
             body: 'Your connections are ready. Ask a read-only question, open the cited Paperless source, then request an action. Tagvico will wait for approval before changing anything.'
           } : null}
         /> : messages.map(renderMessage)}
-        {status === 'submitted' ? <div className="chat-thinking"><LoaderCircle className="is-spinning" aria-hidden="true" /><span>Planning the right research steps…</span></div> : null}
-        {sessionApprovals.map((approval) => <ChatApprovalCard
-          key={approval.id}
-          copy={approvalCopy(approval)}
-          canApprove={canApprove}
-          busy={!!decisionBusy}
-          onDecide={(decision) => void decide(approval.id, decision)}
-        />)}
+        {status === 'submitted' ? <div className="chat-thinking"><LoaderCircle className="is-spinning" aria-hidden="true" /><span>Thinking…</span></div> : null}
+        {looseApprovals.map(renderApproval)}
         {messages.length ? <div ref={endRef} /> : null}
       </div>
     </div>
 
     <div className="chat-dock">
-      {(error || notice) ? <div className="chat-notice" role="alert">
-        <CircleAlert aria-hidden="true" />
-        <span>{error?.message || notice}</span>
-        <button type="button" onClick={() => { clearError(); setNotice(''); }} aria-label="Dismiss error"><X /></button>
-      </div> : null}
+      {visibleError ? <ChatErrorNotice
+        error={visibleError}
+        canManageSettings={isOwner}
+        onRetry={chatError && lastIsQuestion ? () => { clearError(); void regenerate(); } : undefined}
+        onDismiss={() => { clearError(); setNotice(''); }}
+      /> : null}
       <ChatComposer
         sessionId={sessionId}
         value={input}
         onChange={setInput}
         onSubmit={submit}
         onStop={() => void stop()}
+        onModelState={setModelState}
         isWorking={isWorking}
+        canSend={modelState !== 'none'}
       />
       <p className="chat-footnote"><ShieldCheck aria-hidden="true" />Tagvico answers from your Paperless archive and never changes anything without an approval.</p>
     </div>

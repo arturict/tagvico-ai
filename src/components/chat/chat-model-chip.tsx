@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Brain, Check, ChevronDown, ChevronRight, RefreshCw, Search, X } from 'lucide-react';
 import { Dialog } from 'radix-ui';
 import { ProviderIcon } from '@/components/provider-icon';
@@ -13,7 +13,20 @@ type CatalogResponse = CompanionModelCatalog & {
   selection: CompanionModelSelection | null;
 };
 
-export function CompanionModelPicker({ sessionId }: { sessionId: string }) {
+export type ModelChipState = 'loading' | 'ready' | 'none' | 'error';
+
+/**
+ * The model of this conversation, as a chip in the composer. The list is the
+ * verified catalog of the configured providers; a choice is stored on the
+ * conversation and used for the next message.
+ */
+export function ChatModelChip({
+  sessionId,
+  onState
+}: {
+  sessionId: string;
+  onState?: (state: ModelChipState) => void;
+}) {
   const [catalog, setCatalog] = useState<CompanionModelCatalog>({ providers: [], defaultSelection: null });
   const [selection, setSelection] = useState<CompanionModelSelection | null>(null);
   const [query, setQuery] = useState('');
@@ -22,33 +35,34 @@ export function CompanionModelPicker({ sessionId }: { sessionId: string }) {
   const [error, setError] = useState('');
   const [expandedProviders, setExpandedProviders] = useState<string[]>([]);
 
-  const load = async (refresh = false) => {
+  const load = useCallback(async (refresh = false) => {
     setLoading(true);
     setError('');
+    onState?.('loading');
     try {
       const response = await fetch(
         `/api/companion/models?sessionId=${encodeURIComponent(sessionId)}${refresh ? '&refresh=1' : ''}`,
         { cache: 'no-store' }
       );
       const body = await response.json().catch(() => ({})) as Partial<CatalogResponse> & { error?: string };
-      if (!response.ok) throw new Error(body.error || 'Could not load configured models');
-      setCatalog({
-        providers: Array.isArray(body.providers) ? body.providers : [],
-        defaultSelection: body.defaultSelection || null
-      });
-      setSelection(body.selection || body.defaultSelection || null);
+      if (!response.ok) throw new Error(body.error || 'Could not load the models');
+      const providers = Array.isArray(body.providers) ? body.providers : [];
       const selected = body.selection || body.defaultSelection || null;
+      setCatalog({ providers, defaultSelection: body.defaultSelection || null });
+      setSelection(selected);
       if (selected?.providerInstanceId) setExpandedProviders([selected.providerInstanceId]);
+      onState?.(selected ? 'ready' : 'none');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not load configured models');
+      setError(cause instanceof Error ? cause.message : 'Could not load the models');
+      onState?.('error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [sessionId, onState]);
 
   useEffect(() => {
     void load();
-  }, [sessionId]);
+  }, [load]);
 
   const selectedProvider = catalog.providers.find(
     (provider) => provider.instanceId === selection?.providerInstanceId
@@ -93,16 +107,19 @@ export function CompanionModelPicker({ sessionId }: { sessionId: string }) {
     }
   };
 
-  const setReasoningEffort = (reasoningEffort: string) => {
-    if (!selection) return;
-    void choose({ ...selection, reasoningEffort });
-  };
-
   const toggleProvider = (instanceId: string) => {
     setExpandedProviders((current) => current.includes(instanceId)
       ? current.filter((candidate) => candidate !== instanceId)
       : [...current, instanceId]);
   };
+
+  if (!loading && !catalog.providers.length) {
+    return <div className="companion-model-control">
+      {error
+        ? <button type="button" className="chat-chip is-warning" onClick={() => void load()}>{error} Retry</button>
+        : <a className="chat-chip is-warning" href="/settings/providers">Connect an AI model</a>}
+    </div>;
+  }
 
   return <div className="companion-model-control">
     <Dialog.Root onOpenChange={(open) => {
@@ -117,26 +134,26 @@ export function CompanionModelPicker({ sessionId }: { sessionId: string }) {
         <button
           className="companion-model-trigger"
           type="button"
-          disabled={loading || saving || !catalog.providers.length}
-          aria-label="Choose Companion model"
+          disabled={loading || saving}
+          aria-label="Choose model"
           title={selectedProvider ? `${selectedProvider.name} · ${selectedModel?.name || selection?.modelId || ''}` : undefined}
         >
           <ProviderIcon icon={selectedProvider?.icon || null} name={selectedProvider?.name || 'AI provider'} size={16} />
           <span>
-            <small>{selectedProvider?.name || (loading ? 'Loading models' : 'No verified provider')}</small>
-            <strong>{selectedModel?.name || selection?.modelId || 'Configure a model'}</strong>
+            <small>{selectedProvider?.name || (loading ? 'Loading models' : 'No model')}</small>
+            <strong>{selectedModel?.name || selection?.modelId || 'Choose a model'}</strong>
           </span>
           <ChevronDown aria-hidden="true" />
         </button>
       </Dialog.Trigger>
       <Dialog.Portal>
         <Dialog.Overlay className="settings-dialog-overlay" />
-        <Dialog.Content className="companion-model-dialog" aria-describedby="companion-model-description">
+        <Dialog.Content className="companion-model-dialog" aria-describedby="chat-model-description">
           <header className="settings-dialog-head">
             <div>
-              <Dialog.Title>Companion model</Dialog.Title>
-              <Dialog.Description id="companion-model-description">
-                Only configured providers whose live model catalog passed verification appear here.
+              <Dialog.Title>Model</Dialog.Title>
+              <Dialog.Description id="chat-model-description">
+                Used for the next message in this chat. Only models your connected providers list right now appear here.
               </Dialog.Description>
             </div>
             <Dialog.Close className="settings-icon-button" aria-label="Close model picker">
@@ -146,11 +163,11 @@ export function CompanionModelPicker({ sessionId }: { sessionId: string }) {
           <div className="companion-model-toolbar">
             <label className="settings-search">
               <Search aria-hidden="true" />
-              <span className="sr-only">Search configured models</span>
+              <span className="sr-only">Search models</span>
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Search configured models…"
+                placeholder="Search models"
                 autoFocus
               />
             </label>
@@ -159,68 +176,65 @@ export function CompanionModelPicker({ sessionId }: { sessionId: string }) {
               type="button"
               onClick={() => void load(true)}
               disabled={loading}
-              aria-label="Refresh verified models"
+              aria-label="Refresh models"
             >
               <RefreshCw className={loading ? 'is-spinning' : undefined} aria-hidden="true" />
             </button>
           </div>
           <div className="companion-model-list">
-            {loading ? <div className="model-catalog-skeleton" aria-label="Loading configured models">
+            {loading ? <div className="model-catalog-skeleton" aria-label="Loading models">
               {Array.from({ length: 5 }, (_, index) => <span key={index}><i /><b /><small /></span>)}
             </div> : null}
             {!loading && visibleProviders.map((provider) => {
               const expanded = Boolean(normalizedQuery) || expandedProviders.includes(provider.instanceId);
               return <section className={`companion-provider-group${expanded ? ' is-expanded' : ''}`} key={provider.instanceId}>
-              <button
-                type="button"
-                className="companion-provider-toggle"
-                onClick={() => toggleProvider(provider.instanceId)}
-                aria-expanded={expanded}
-              >
-                <ProviderIcon icon={provider.icon} name={provider.name} />
-                <span><strong>{provider.name}</strong><small>{provider.models.length} live model{provider.models.length === 1 ? '' : 's'}</small></span>
-                {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
-              </button>
-              {expanded ? <div className="companion-provider-models">{provider.models.map((model) => {
-                const selected = selection?.providerInstanceId === provider.instanceId
-                  && selection.modelId === model.id;
-                const modelReasoning = model.options.find(
-                  (option) => option.id === 'reasoningEffort' && option.type === 'select'
-                );
-                const defaultReasoning = modelReasoning?.type === 'select'
-                  ? modelReasoning.defaultValue || modelReasoning.values[0]?.id
-                  : undefined;
-                return <Dialog.Close asChild key={model.id}>
-                  <button
-                    type="button"
-                    className={selected ? 'is-selected' : undefined}
-                    onClick={() => void choose({
-                      providerInstanceId: provider.instanceId,
-                      modelId: model.id,
-                      ...(defaultReasoning ? { reasoningEffort: defaultReasoning } : {})
-                    })}
-                  >
-                    <span>
-                      <strong>{model.name}</strong>
-                      <small>{model.id}</small>
-                      <span className="settings-capabilities">
-                        {model.isDefault ? <span>Provider default</span> : null}
-                        {model.capabilities.includes('tools') ? <span>Tools</span> : null}
-                        {model.capabilities.includes('vision') ? <span>Vision</span> : null}
-                        {model.capabilities.includes('thinking') ? <span>Thinking</span> : null}
-                        {model.options.map((option) => <span key={option.id}>{option.label}</span>)}
+                <button
+                  type="button"
+                  className="companion-provider-toggle"
+                  onClick={() => toggleProvider(provider.instanceId)}
+                  aria-expanded={expanded}
+                >
+                  <ProviderIcon icon={provider.icon} name={provider.name} />
+                  <span><strong>{provider.name}</strong><small>{provider.models.length} model{provider.models.length === 1 ? '' : 's'}</small></span>
+                  {expanded ? <ChevronDown aria-hidden="true" /> : <ChevronRight aria-hidden="true" />}
+                </button>
+                {expanded ? <div className="companion-provider-models">{provider.models.map((model) => {
+                  const selected = selection?.providerInstanceId === provider.instanceId
+                    && selection.modelId === model.id;
+                  const modelReasoning = model.options.find(
+                    (option) => option.id === 'reasoningEffort' && option.type === 'select'
+                  );
+                  const defaultReasoning = modelReasoning?.type === 'select'
+                    ? modelReasoning.defaultValue || modelReasoning.values[0]?.id
+                    : undefined;
+                  return <Dialog.Close asChild key={model.id}>
+                    <button
+                      type="button"
+                      className={selected ? 'is-selected' : undefined}
+                      onClick={() => void choose({
+                        providerInstanceId: provider.instanceId,
+                        modelId: model.id,
+                        ...(defaultReasoning ? { reasoningEffort: defaultReasoning } : {})
+                      })}
+                    >
+                      <span>
+                        <strong>{model.name}</strong>
+                        <small>{model.id}</small>
+                        <span className="settings-capabilities">
+                          {model.isDefault ? <span>Default</span> : null}
+                          {model.capabilities.includes('tools') ? <span>Tools</span> : null}
+                          {model.capabilities.includes('vision') ? <span>Vision</span> : null}
+                          {model.capabilities.includes('thinking') ? <span>Thinking</span> : null}
+                        </span>
                       </span>
-                    </span>
-                    {selected ? <Check aria-label="Selected" /> : null}
-                  </button>
-                </Dialog.Close>;
-              })}</div> : null}
-            </section>;
+                      {selected ? <Check aria-label="Selected" /> : null}
+                    </button>
+                  </Dialog.Close>;
+                })}</div> : null}
+              </section>;
             })}
             {!loading && !visibleProviders.length ? <div className="settings-model-empty">
-              {normalizedQuery
-                ? 'No configured model matches your search.'
-                : 'No configured provider returned a verified live model catalog.'}
+              {normalizedQuery ? 'No model matches your search.' : 'No connected provider listed a model.'}
             </div> : null}
           </div>
         </Dialog.Content>
@@ -232,7 +246,7 @@ export function CompanionModelPicker({ sessionId }: { sessionId: string }) {
       <select
         value={selection?.reasoningEffort || reasoningOption.defaultValue || reasoningOption.values[0]?.id || ''}
         disabled={saving}
-        onChange={(event) => setReasoningEffort(event.target.value)}
+        onChange={(event) => selection && void choose({ ...selection, reasoningEffort: event.target.value })}
         title="Thinking effort"
       >
         {reasoningOption.values.map((value) => <option key={value.id} value={value.id}>{value.label}</option>)}

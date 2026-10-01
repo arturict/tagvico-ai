@@ -161,6 +161,9 @@ export function createCase(householdId: string, actorMemberId: string | null, in
   if (confidence !== null && (!Number.isFinite(confidence) || confidence < 0 || confidence > 1)) throw new Error('Confidence must be between 0 and 1');
   const caseId = id();
   return db.transaction(() => {
+    // One case per document; say so instead of surfacing the raw UNIQUE constraint.
+    const existing = db.prepare('SELECT title FROM action_cases WHERE household_id=? AND paperless_document_id=?').get(householdId, documentId) as { title: string } | undefined;
+    if (existing) throw new Error(`Document #${documentId} already has an action: “${existing.title}”. Open it instead of creating another.`);
     db.prepare(`INSERT INTO action_cases
       (id, household_id, paperless_document_id, title, summary, status, priority, due_at, assignee_member_id, source, confidence)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
@@ -355,7 +358,8 @@ export function setCompanionModelSelection(
 export function getSession(householdId: string, sessionId: string) {
   const session = db.prepare('SELECT * FROM companion_sessions WHERE id=? AND household_id=?').get(sessionId, householdId);
   if (!session) return null;
-  const messages = db.prepare('SELECT * FROM companion_messages WHERE session_id=? ORDER BY created_at LIMIT 200').all(sessionId) as Array<Record<string, unknown>>;
+  // Keep the newest 200 messages so long chats show their latest turns, then restore chronological order.
+  const messages = (db.prepare('SELECT * FROM companion_messages WHERE session_id=? ORDER BY created_at DESC, rowid DESC LIMIT 200').all(sessionId) as Array<Record<string, unknown>>).reverse();
   return { ...session, messages: messages.map((message) => ({ ...message, content: JSON.parse(String(message.content_json)) })) };
 }
 

@@ -14,8 +14,16 @@ export const settingsSectionIds: readonly SettingsSectionId[] = [
  */
 export const legacySettingsSections: Record<string, SettingsSectionId> = {
   general: 'people',
+  household: 'people',
   security: 'people',
-  diagnostics: 'paperless'
+  diagnostics: 'paperless',
+  ai: 'providers',
+  models: 'providers',
+  'ai-models': 'providers',
+  channels: 'automation',
+  telegram: 'automation',
+  discord: 'automation',
+  'tag-library': 'tags'
 };
 
 export const settingsSectionTitles: Record<SettingsSectionId, string> = {

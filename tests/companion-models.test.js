@@ -278,7 +278,17 @@ test('Companion UI renders safe tool traces without dumping raw model objects', 
   assert.match(source, /companionToolActivity\(/);
   assert.doesNotMatch(source, /JSON\.stringify\(part\.(input|output)/);
   assert.doesNotMatch(source, /<pre[^>]*>\s*\{part\.(input|output)/);
-  assert.match(source, /Object\.entries\(patch\)\.map\(\(\[key, value\]\) => `\$\{key\}: \$\{approvalValue\(value\)\}`\)/);
+  // Proposal cards render patch values through the shared contract, never as raw JSON dumps of the payload.
+  assert.deepEqual(companion.describeCompanionApproval('paperless.patch', {
+    documentId: 7,
+    documentTitle: 'Tax question',
+    patch: { title: 'Tax 2025', tags: [1, 2], correspondent: null },
+    reason: 'Clearer title'
+  }), {
+    title: 'Update Tax question',
+    meta: 'Document #7',
+    details: ['title: Tax 2025', 'tags: [1,2]', 'correspondent: None', 'Clearer title']
+  });
 });
 
 test('Companion message scrolling never returns a value as an effect cleanup', () => {
@@ -303,7 +313,7 @@ test('owner-only workspaces stay out of navigation for other household roles', (
 });
 
 test('model picker keeps the reasoning effort returned by the server', () => {
-  const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'companion-model-picker.tsx'), 'utf8');
+  const source = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'chat', 'chat-model-chip.tsx'), 'utf8');
   assert.match(source, /persisted\.reasoningEffort \? \{ reasoningEffort: persisted\.reasoningEffort \}/);
 });
 

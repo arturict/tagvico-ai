@@ -19,13 +19,15 @@ export function summarizeActivities(activities: CompanionToolActivity[]) {
     activity.result?.documents?.length ?? 0
   ), 0);
   const reads = done.filter((activity) => activity.toolName === 'get_document').length;
+  const counted = done.some((activity) => activity.toolName === 'count_documents');
   const tags = done.filter((activity) => ['list_tags', 'get_tag'].includes(activity.toolName)).length;
   const actions = done.filter((activity) => activity.toolName === 'list_actions').length;
   const proposals = done.filter((activity) => activity.toolName.startsWith('propose_')).length;
 
   const parts: string[] = [];
   if (searches.length) parts.push(`Searched ${plural(searched, 'document')}`);
-  if (reads) parts.push(`${parts.length ? 'read' : 'Read'} ${reads}`);
+  if (counted) parts.push(parts.length ? 'counted documents' : 'Counted documents');
+  if (reads) parts.push(`${parts.length ? 'read' : 'Read'} ${plural(reads, 'document')}`);
   if (tags) parts.push(`${parts.length ? 'read' : 'Read'} tags`);
   if (actions) parts.push(`${parts.length ? 'reviewed' : 'Reviewed'} actions`);
   if (proposals) parts.push(`${parts.length ? 'prepared' : 'Prepared'} ${plural(proposals, 'proposal')}`);
@@ -33,7 +35,8 @@ export function summarizeActivities(activities: CompanionToolActivity[]) {
   return {
     running: Boolean(running),
     failed: failed > 0,
-    text: running ? running.label : parts.join(' · ')
+    text: running ? running.label : parts.join(' · '),
+    failure: activities.find((activity) => activity.status === 'failed')?.detail || ''
   };
 }
 
@@ -48,13 +51,16 @@ export function ChatActivitySummary({
   const summary = summarizeActivities(activities);
   if (!summary.text) return null;
   const Icon = summary.running ? LoaderCircle : summary.failed ? CircleAlert : Search;
-  return <details className={`chat-activity${summary.failed ? ' is-failed' : ''}`}>
-    <summary>
-      <Icon className={summary.running ? 'is-spinning' : undefined} aria-hidden="true" />
-      <span>{summary.text}</span>
-      <i aria-hidden="true" />
-      <ChevronRight className="chat-activity-chevron" aria-hidden="true" />
-    </summary>
-    <div className="chat-activity-steps">{children}</div>
-  </details>;
+  return <>
+    <details className={`chat-activity${summary.failed ? ' is-failed' : ''}`}>
+      <summary>
+        <Icon className={summary.running ? 'is-spinning' : undefined} aria-hidden="true" />
+        <span>{summary.text}</span>
+        <i aria-hidden="true" />
+        <ChevronRight className="chat-activity-chevron" aria-hidden="true" />
+      </summary>
+      <div className="chat-activity-steps">{children}</div>
+    </details>
+    {summary.failure ? <p className="chat-activity-error" role="status">{summary.failure}</p> : null}
+  </>;
 }

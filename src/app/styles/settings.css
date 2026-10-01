@@ -383,3 +383,142 @@
     text-align: center;
   }
 }
+
+/* ---------- field feedback ---------- */
+
+.settings-field-error {
+  color: var(--tv-danger);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.settings-field-label small.settings-field-saved {
+  color: var(--tv-success);
+}
+
+.settings-input[aria-invalid="true"] {
+  border-color: var(--tv-danger);
+}
+
+/* ---------- channels (Telegram, Discord) ---------- */
+
+.channel-status {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+
+.channel-people {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--tv-line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.channel-people li {
+  display: grid;
+  grid-template-columns: minmax(120px, auto) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 14px;
+  font-size: 13px;
+}
+
+.channel-people li + li {
+  border-top: 1px solid var(--tv-line);
+}
+
+.channel-people code {
+  color: var(--tv-muted);
+  font-size: 12px;
+}
+
+.channel-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+/* ---------- household profiles ---------- */
+
+.household-member {
+  grid-template-columns: 34px minmax(0, 1fr) auto auto;
+}
+
+.household-member-name {
+  min-width: 0;
+}
+
+.household-member-name small {
+  color: var(--tv-muted);
+}
+
+.household-role {
+  min-width: 120px;
+}
+
+.household-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.household-rename {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.household-rename .settings-input {
+  flex: 1 1 180px;
+  min-width: 0;
+}
+
+@media (min-width: 1081px) {
+  .settings-access-form {
+    grid-template-columns: minmax(200px, 1fr) minmax(190px, 240px) auto auto;
+  }
+}
+
+.household-add-error,
+.household-role-help {
+  display: block;
+  padding: 0 24px 16px;
+}
+
+@media (max-width: 760px) {
+  .channel-people li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .channel-people li code {
+    grid-column: 1 / -1;
+  }
+
+  .channel-add {
+    grid-template-columns: 1fr;
+  }
+
+  .household-member {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .household-member > .settings-badge,
+  .household-member > .household-role,
+  .household-member > .household-actions {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .household-actions {
+    justify-content: flex-start;
+  }
+
+}

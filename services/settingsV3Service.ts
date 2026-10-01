@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { ZodError } from 'zod';
 import fs from 'node:fs';
 import path from 'node:path';
 import { settingsV3PatchSchema, type SettingsV3Patch } from '../contracts/provider';
@@ -13,6 +14,7 @@ import setupService from './setupService';
 const providerRegistryModule = require('./providerRegistry');
 const providerRegistry = providerRegistryModule.default || providerRegistryModule;
 const tagGroupService = require('./tagGroupService');
+const cron = require('node-cron');
 const runtimeConfig = require('../config/config');
 const retiredProviderIds = new Set(['anthropic', 'azure']);
 const externallyManagedEnvironmentKeys = new Set<string>(
@@ -30,6 +32,7 @@ const sectionEnvironmentKeys = [
   'AI_REASONING_EFFORT',
   'PAPERLESS_API_URL',
   'PAPERLESS_API_TOKEN',
+  'PAPERLESS_PUBLIC_URL',
   'PAPERLESS_USERNAME',
   'SCAN_INTERVAL',
   'DISABLE_AUTOMATIC_PROCESSING',
@@ -275,6 +278,7 @@ async function getSettings() {
     },
     paperless: {
       baseUrl: publicUrl(String(effective.PAPERLESS_API_URL || '').replace(/\/api\/?$/i, '')),
+      publicUrl: publicUrl(effective.PAPERLESS_PUBLIC_URL),
       username: String(effective.PAPERLESS_USERNAME || ''),
       token: { configured: Boolean(effective.PAPERLESS_API_TOKEN) }
     },
@@ -360,6 +364,14 @@ export class RevisionConflictError extends Error {
   status = 409;
 }
 
+/** A well-formed request whose value is not acceptable; `field` is the dotted path inside the patch. */
+export class SettingsValidationError extends Error {
+  status = 400;
+  constructor(message: string, readonly field?: string) {
+    super(message);
+  }
+}
+
 function applySectionPatch(parsed: SettingsV3Patch, effective: Environment): Record<string, string> {
   const patch: Record<string, string> = {};
   const payload = parsed.patch;
@@ -370,20 +382,47 @@ function applySectionPatch(parsed: SettingsV3Patch, effective: Environment): Rec
     if (payload.paperless.baseUrl !== undefined) {
       patch.PAPERLESS_API_URL = paperlessApiUrl(payload.paperless.baseUrl);
     }
+    if (payload.paperless.publicUrl !== undefined) {
+      patch.PAPERLESS_PUBLIC_URL = payload.paperless.publicUrl.replace(/\/+$/, '');
+    }
     if (payload.paperless.username !== undefined) patch.PAPERLESS_USERNAME = payload.paperless.username;
     if (payload.paperless.token?.trim()) patch.PAPERLESS_API_TOKEN = payload.paperless.token.trim();
   }
   if (payload.provider) {
-    Object.assign(
-      patch,
-      providerRegistry.providerValuesToEnvironment(payload.provider.instanceId, payload.provider.values)
-    );
+    try {
+      Object.assign(
+        patch,
+        providerRegistry.providerValuesToEnvironment(payload.provider.instanceId, payload.provider.values)
+      );
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const issue = error.issues[0];
+        throw new SettingsValidationError(
+          issue.message === 'Invalid url' ? 'Enter a full http:// or https:// address.' : issue.message,
+          `provider.${issue.path.join('.')}`
+        );
+      }
+      throw error;
+    }
   }
   if (payload.ai) {
     const activeId = payload.ai.activeProviderInstanceId || patch.AI_PROVIDER || effective.AI_PROVIDER || 'openrouter';
     const definition = providerRegistry.getProviderDefinition(activeId);
     if (!definition) throw new Error(`Provider instance "${activeId}" is not available in this build.`);
     if (payload.ai.activeProviderInstanceId) {
+      const switching = activeId !== String(effective.AI_PROVIDER || '').trim();
+      const candidate = { ...effective, ...patch };
+      const missing = switching
+        ? (definition.fields as Array<{ required: boolean; secret: boolean; label: string; environmentKey: string; legacyEnvironmentKeys?: string[] }>)
+          .find((field) => field.required && field.secret
+            && !providerRegistry.environmentValue(candidate, field.environmentKey, field.legacyEnvironmentKeys))
+        : undefined;
+      if (missing) {
+        throw new SettingsValidationError(
+          `${definition.name} needs its ${missing.label.toLowerCase()} before it can be used. Save it in the provider settings first.`,
+          'ai.activeProviderInstanceId'
+        );
+      }
       patch.AI_PROVIDER = activeId;
       patch.COMPANION_PROVIDER = activeId;
       patch[UI_MANAGED_AI_SELECTION_KEY] = 'yes';
@@ -399,7 +438,15 @@ function applySectionPatch(parsed: SettingsV3Patch, effective: Environment): Rec
     }
   }
   if (payload.automation) {
-    if (payload.automation.scanInterval !== undefined) patch.SCAN_INTERVAL = payload.automation.scanInterval;
+    if (payload.automation.scanInterval !== undefined) {
+      if (!cron.validate(payload.automation.scanInterval)) {
+        throw new SettingsValidationError(
+          'This is not a valid cron expression. Five fields, for example */30 * * * * for every 30 minutes.',
+          'automation.scanInterval'
+        );
+      }
+      patch.SCAN_INTERVAL = payload.automation.scanInterval;
+    }
     if (payload.automation.automaticProcessing !== undefined) {
       patch.DISABLE_AUTOMATIC_PROCESSING = flag(!payload.automation.automaticProcessing);
     }
@@ -503,6 +550,7 @@ async function patchSettings(input: unknown) {
 
 const settingsV3Service = {
   RevisionConflictError,
+  SettingsValidationError,
   getSettings,
   getEffectiveProviderEnvironment,
   patchSettings,

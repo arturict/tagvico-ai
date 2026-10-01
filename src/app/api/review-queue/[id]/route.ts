@@ -16,6 +16,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     await assertSameOrigin(request);
     const user = await requireApiUser();
     assertCanMutateWorkspace(workspaceFor(user).role);
+    // Applying a suggestion writes to Paperless, so it follows the same rule as approvals.
+    if (!['owner', 'adult'].includes(workspaceFor(user).role)) {
+      throw new ApiError(403, 'Only an owner or adult can apply or reject suggestions');
+    }
     const { id: rawId } = await context.params;
     const id = Number(rawId);
     if (!Number.isSafeInteger(id) || id <= 0) {

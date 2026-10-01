@@ -1,13 +1,15 @@
 import { notFound, redirect } from 'next/navigation';
 import { requireUser } from '@/lib/server/auth';
-import { actionCenter, workspaceFor } from '@/lib/server/workspace';
+import { workspaceFor } from '@/lib/server/workspace';
+import channelSettingsService from '@root/services/channelSettingsService';
+import householdMembersService from '@root/services/householdMembersService';
 import { SettingsWorkspace } from '@/components/settings/settings-workspace';
 import {
   isSettingsSectionId,
   legacySettingsSections,
   settingsSectionTitles
 } from '@/components/settings/sections';
-import type { SettingsResponse } from '@/components/settings/types';
+import type { ChannelSettingsView, SettingsResponse } from '@/components/settings/types';
 
 const settingsV3Module = require('@root/services/settingsV3Service');
 const settingsV3Service = settingsV3Module.default || settingsV3Module;
@@ -31,10 +33,17 @@ export default async function SettingsSectionPage({
   if (!isSettingsSectionId(section)) notFound();
   if (workspace.role !== 'owner' && section !== 'people') redirect('/settings/people');
   const initialSettings = await settingsV3Service.getSettings() as SettingsResponse;
-  const members = actionCenter.listMembers(workspace.householdId);
+  const members = householdMembersService.listMembers(workspace.householdId);
+  const channels = section === 'automation'
+    ? {
+        telegram: channelSettingsService.getChannelSettings('telegram', workspace.householdId),
+        discord: channelSettingsService.getChannelSettings('discord', workspace.householdId)
+      } as Record<'telegram' | 'discord', ChannelSettingsView>
+    : null;
   return <SettingsWorkspace
     section={section}
     initialSettings={JSON.parse(JSON.stringify(initialSettings))}
+    channels={channels ? JSON.parse(JSON.stringify(channels)) : null}
     household={{
       currentMemberId: workspace.memberId,
       currentRole: workspace.role,
