@@ -441,7 +441,8 @@
 .people-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  /* Room for each count badge, which sits outside its avatar's top-right corner. */
+  gap: 12px;
   margin: 0;
   padding: 2px 10px 4px;
   list-style: none;
@@ -474,13 +475,13 @@
 
 .people-badge {
   position: absolute;
-  top: -5px;
-  right: -6px;
+  top: -6px;
+  right: -10px;
   display: grid;
-  min-width: 16px;
-  height: 16px;
+  min-width: 13px;
+  height: 14px;
   place-items: center;
-  border: 2px solid var(--tv-bg);
+  border: 1.5px solid var(--tv-bg);
   border-radius: 999px;
   padding: 0 3px;
   background: var(--tv-pine);
@@ -706,7 +707,7 @@
   }
 
   .mobile-sheet .people-row {
-    gap: 12px;
+    gap: 16px;
     padding: 6px 10px 8px;
   }
 

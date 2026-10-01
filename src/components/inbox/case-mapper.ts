@@ -32,6 +32,6 @@ export function caseFromRow(row: Row): InboxCase {
     amount: extractAmount(title, summary),
     stepCount: steps ? steps.length : Number(row.step_count) || 0,
     doneStepCount: steps ? steps.filter((step) => step.status === 'done').length : Number(row.completed_step_count) || 0,
-    doneAt: status === 'done' ? zurichDateOf(String(row.updatedAt ?? row.updated_at ?? '')) : null
+    doneAt: status === 'done' ? zurichDateOf(String(row.doneAt ?? row.done_at ?? row.updatedAt ?? row.updated_at ?? '')) : null
   };
 }

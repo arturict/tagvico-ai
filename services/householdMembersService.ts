@@ -104,7 +104,7 @@ function publicMember(householdId: string, memberId: string) {
 export function addMember(householdId: string, actorMemberId: string, input: { displayName: unknown; role: unknown }) {
   assertOwner(householdId, actorMemberId);
   const name = cleanName(input.displayName);
-  const role = assertRole(input.role ?? 'adult');
+  const role = assertRole(input.role ?? 'member');
   assertNameFree(householdId, name);
   const created = actionCenter.addHouseholdMember(householdId, name, role) as { id: string };
   return publicMember(householdId, created.id);
@@ -133,8 +133,7 @@ export function updateMember(
   return publicMember(householdId, memberId);
 }
 
-/** Returns the removed profile's name so callers can confirm it to the user. */
-export function removeMember(householdId: string, actorMemberId: string, memberId: string): { id: string; displayName: string } {
+function assertRemovable(householdId: string, actorMemberId: string, memberId: string): MemberRow {
   assertOwner(householdId, actorMemberId);
   const member = targetMember(householdId, memberId);
   if (member.role === 'owner' || member.id === actorMemberId) {
@@ -143,6 +142,12 @@ export function removeMember(householdId: string, actorMemberId: string, memberI
   if (member.user_id !== null) {
     throw new HouseholdMemberError('This person has a Tagvico sign-in, so their profile stays. Remove their account first.', 400);
   }
+  return member;
+}
+
+/** Returns the removed profile's name so callers can confirm it to the user. */
+export function removeMember(householdId: string, actorMemberId: string, memberId: string): { id: string; displayName: string } {
+  const member = assertRemovable(householdId, actorMemberId, memberId);
   const database = db();
   database.transaction(() => {
     database.prepare(
@@ -156,12 +161,40 @@ export function removeMember(householdId: string, actorMemberId: string, memberI
   return { id: memberId, displayName: member.display_name };
 }
 
+/**
+ * Removes a profile only after it is off the channel allowlists. The allowlist
+ * is outside the database and can fail (for example when the environment locks
+ * the users setting), so it goes first: a failure refuses the removal and
+ * leaves the household untouched, instead of leaving a removed person who can
+ * still message the bot. If the database step fails afterwards, the profile is
+ * merely off the allowlists and the owner can retry.
+ */
+export async function removeMemberAndChannelAccess(
+  householdId: string,
+  actorMemberId: string,
+  memberId: string,
+  removeFromChannels: (memberId: string) => Promise<void>
+): Promise<{ id: string; displayName: string }> {
+  assertRemovable(householdId, actorMemberId, memberId);
+  try {
+    await removeFromChannels(memberId);
+  } catch (error) {
+    const reason = error instanceof Error && error.message ? ` (${error.message})` : '';
+    throw new HouseholdMemberError(
+      `The profile was not removed because its Telegram or Discord access could not be revoked${reason}. Fix the channel settings and try again.`,
+      409
+    );
+  }
+  return removeMember(householdId, actorMemberId, memberId);
+}
+
 const householdMembersService = {
   HouseholdMemberError,
   listMembers,
   addMember,
   updateMember,
-  removeMember
+  removeMember,
+  removeMemberAndChannelAccess
 };
 
 export default householdMembersService;

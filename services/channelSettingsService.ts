@@ -267,6 +267,31 @@ export async function updateChannelSettings(
 }
 
 /**
+ * The installation Paperless token changed: entries that act with it (the
+ * owner's profile has no token of its own) are copied again. Entries with a
+ * profile token or a custom token are not touched.
+ */
+export async function refreshInstallationCredentials(): Promise<void> {
+  const installation = installationPaperlessToken();
+  if (!installation) return;
+  const patch: Record<string, string> = {};
+  for (const channel of ['telegram', 'discord'] as const) {
+    let changed = false;
+    const next = rawUsers(channel).map((entry) => {
+      const memberId = entryMemberId(entry);
+      const householdId = String(entry.householdId ?? entry.household_id ?? '');
+      if (!memberId || !householdId) return entry;
+      const credential = memberCredential(householdId, memberId);
+      if (credential?.source !== 'installation' || entry.paperlessToken === credential.token) return entry;
+      changed = true;
+      return { ...entry, paperlessToken: credential.token };
+    });
+    if (changed) patch[CHANNEL_ENVIRONMENT[channel].users] = JSON.stringify(next);
+  }
+  if (Object.keys(patch).length) await setupService.savePartialConfig(patch);
+}
+
+/**
  * A profile's Paperless token changed or was removed: copy it into the
  * allowlist entries of that person so the bots keep acting with the right
  * permissions. Entries whose profile no longer has a token are dropped.
@@ -351,6 +376,7 @@ const channelSettingsService = {
   getChannelSettings,
   updateChannelSettings,
   refreshMemberCredentials,
+  refreshInstallationCredentials,
   removeMemberFromChannels,
   testChannel
 };

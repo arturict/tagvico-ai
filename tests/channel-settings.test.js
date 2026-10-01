@@ -207,6 +207,35 @@ test('a profile token change or removal reaches the allowlists', () => {
   assert.equal(result.status, 0, result.stderr);
 });
 
+test('rotating the installation Paperless token reaches the owner entries and nobody else', () => {
+  const result = runFixture(preamble + `
+    (async () => {
+      const settingsV3 = require(dist + '/services/settingsV3Service.js');
+      actions.setPaperlessToken(household, sandra.id, secretBox.encryptSecret('sandra-paperless-token'), 7);
+      await channels.updateChannelSettings('telegram', household, { botToken: TOKEN, allowed: [
+        { externalId: '1001', memberId: workspace.member_id }, { externalId: '1002', memberId: sandra.id }
+      ] });
+      await channels.updateChannelSettings('discord', household, { allowed: [{ externalId: '${DISCORD_USER_ID}', memberId: workspace.member_id }] });
+      const tokens = async (key) => JSON.parse((await setupService.loadConfig())[key]).map((entry) => entry.paperlessToken);
+      assert.deepEqual(await tokens('TELEGRAM_USERS_JSON'), ['installation-paperless-token', 'sandra-paperless-token']);
+
+      const before = await settingsV3.getSettings();
+      const saved = await settingsV3.patchSettings({ revision: before.revision, patch: { paperless: { token: 'rotated-paperless-token' } } });
+      assert.equal(JSON.stringify(saved).includes('rotated-paperless-token'), false, 'the token never appears in the response');
+
+      assert.deepEqual(await tokens('TELEGRAM_USERS_JSON'), ['rotated-paperless-token', 'sandra-paperless-token']);
+      assert.deepEqual(await tokens('DISCORD_USERS_JSON'), ['rotated-paperless-token']);
+      assert.equal(JSON.stringify(channels.getChannelSettings('telegram', household)).includes('rotated-paperless-token'), false);
+
+      // A save that leaves the token empty keeps everything as it is.
+      const again = await settingsV3.patchSettings({ revision: saved.revision, patch: { paperless: { token: '' } } });
+      assert.deepEqual(await tokens('TELEGRAM_USERS_JSON'), ['rotated-paperless-token', 'sandra-paperless-token']);
+      assert.ok(again.revision);
+    })().catch((error) => { console.error(error); process.exit(1); });
+  `);
+  assert.equal(result.status, 0, result.stderr);
+});
+
 test('entries configured outside Settings survive an allowlist edit', () => {
   const result = runFixture(preamble + `
     (async () => {

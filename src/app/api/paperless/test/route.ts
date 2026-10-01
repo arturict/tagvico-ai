@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { assertSameOrigin, ApiError, readJsonBody, requireApiUser } from '@/lib/server/auth';
 import { workspaceFor } from '@/lib/server/workspace';
 import { backendBearerHeaders } from '@root/services/backendProxyAuth';
+import paperlessIdentityService from '@root/services/paperlessIdentityService';
 import { getEffectiveProviderEnvironment } from '@root/services/settingsV3Service';
 import { settingsErrorResponse } from '../../settings/error-response';
 
@@ -24,9 +25,10 @@ interface ProbeResult {
 }
 
 /**
- * Tests a Paperless address and token without saving them. A missing value
- * falls back to the saved one on the server, so the stored token is checked
- * without ever being sent to the browser.
+ * Tests a Paperless address and token without saving them. A missing address
+ * falls back to the saved one. The saved token is used only when the tested
+ * address is the saved address, so it is checked without ever being sent to
+ * the browser or to a host the owner typed.
  */
 export async function POST(request: Request) {
   try {
@@ -38,7 +40,10 @@ export async function POST(request: Request) {
     const body = requestSchema.parse(await readJsonBody(request, 16 * 1024));
     const saved = await getEffectiveProviderEnvironment();
     const baseUrl = (body.baseUrl || String(saved.PAPERLESS_API_URL || '')).replace(/\/+$/, '').replace(/\/api$/i, '');
-    const token = body.token?.trim() || String(saved.PAPERLESS_API_TOKEN || '');
+    const token = paperlessIdentityService.tokenForProbe(body.token, baseUrl, {
+      url: String(saved.PAPERLESS_API_URL || ''),
+      token: String(saved.PAPERLESS_API_TOKEN || '')
+    });
     if (!baseUrl) return Response.json({ ok: false, message: 'Enter the Paperless address first.', field: 'paperless.baseUrl' });
     try {
       const parsed = new URL(baseUrl);
@@ -46,7 +51,7 @@ export async function POST(request: Request) {
     } catch {
       return Response.json({ ok: false, message: 'Enter a full http:// or https:// address without embedded credentials.', field: 'paperless.baseUrl' });
     }
-    if (!token) return Response.json({ ok: false, message: 'Enter an API token first.', field: 'paperless.token' });
+    if (!token) return Response.json({ ok: false, message: 'Enter an API token to test this address.', field: 'paperless.token' });
 
     const backend = process.env.TAGVICO_BACKEND_URL || 'http://127.0.0.1:3001';
     const response = await fetch(`${backend}/api/paperless/probe`, {

@@ -27,11 +27,12 @@ export function memberInitials(name: string) {
   return `${first}${last}`.toUpperCase();
 }
 
+// Every avatar sits next to the member's name or inside a control that carries an accessible
+// label, so the initials are decorative; announcing them would read the name twice.
 export function MemberAvatar({ name, memberId, size = 28 }: { name: string; memberId: string; size?: number }) {
   return <span
     className="member-avatar"
-    role="img"
-    aria-label={name}
+    aria-hidden="true"
     title={name}
     style={{ width: size, height: size, fontSize: Math.max(10, Math.round(size * 0.4)), background: memberColor(memberId) }}
   >{memberInitials(name)}</span>;

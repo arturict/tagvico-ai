@@ -31,8 +31,12 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     await assertSameOrigin(request);
     const workspace = workspaceFor(await requireApiUser());
     const { id } = await params;
-    const removed = householdMembersService.removeMember(workspace.householdId, workspace.memberId, id);
-    await channelSettingsService.removeMemberFromChannels(workspace.householdId, id);
+    const removed = await householdMembersService.removeMemberAndChannelAccess(
+      workspace.householdId,
+      workspace.memberId,
+      id,
+      (memberId) => channelSettingsService.removeMemberFromChannels(workspace.householdId, memberId)
+    );
     return Response.json({ ok: true, ...removed }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return settingsErrorResponse(error);

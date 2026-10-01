@@ -73,6 +73,17 @@ function assertAssignee(householdId: string, memberId: string | null | undefined
   return memberId;
 }
 
+/**
+ * When a case last moved to "done", read from the event log so later edits and
+ * background syncs (which touch updated_at) do not move a finished case. Cases
+ * created as done have no status-change event; for them updated_at is the
+ * fallback, and markSynced no longer bumps it.
+ */
+const DONE_AT_SQL = `COALESCE((
+  SELECT MAX(e.created_at) FROM action_events e
+  WHERE e.case_id = ac.id AND e.event_type = 'case.updated' AND json_extract(e.payload_json, '$.status') = 'done'
+), ac.updated_at)`;
+
 function parseRow(row: Record<string, unknown>): Record<string, any> {
   return {
     ...row,
@@ -82,6 +93,7 @@ function parseRow(row: Record<string, unknown>): Record<string, any> {
     dueAt: row.due_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    doneAt: row.done_at ?? null,
     lastSyncedAt: row.last_synced_at,
     syncStatus: row.sync_status,
     syncError: row.sync_error
@@ -125,6 +137,7 @@ export function listCases(householdId: string, filters: { status?: string; assig
   if (filters.assignee) { clauses.push('ac.assignee_member_id = ?'); values.push(filters.assignee); }
   const rows = db.prepare(`
     SELECT ac.*, hm.display_name AS assignee_name,
+      CASE WHEN ac.status = 'done' THEN ${DONE_AT_SQL} END AS done_at,
       (SELECT COUNT(*) FROM action_steps s WHERE s.case_id = ac.id) AS step_count,
       (SELECT COUNT(*) FROM action_steps s WHERE s.case_id = ac.id AND s.status = 'done') AS completed_step_count
     FROM action_cases ac LEFT JOIN household_members hm ON hm.id = ac.assignee_member_id
@@ -137,7 +150,7 @@ export function listCases(householdId: string, filters: { status?: string; assig
 }
 
 export function getCase(householdId: string, caseId: string): Record<string, any> | null {
-  const row = db.prepare(`SELECT ac.*, hm.display_name AS assignee_name FROM action_cases ac LEFT JOIN household_members hm ON hm.id = ac.assignee_member_id WHERE ac.id = ? AND ac.household_id = ?`).get(caseId, householdId) as Record<string, unknown> | undefined;
+  const row = db.prepare(`SELECT ac.*, hm.display_name AS assignee_name, CASE WHEN ac.status = 'done' THEN ${DONE_AT_SQL} END AS done_at FROM action_cases ac LEFT JOIN household_members hm ON hm.id = ac.assignee_member_id WHERE ac.id = ? AND ac.household_id = ?`).get(caseId, householdId) as Record<string, unknown> | undefined;
   if (!row) return null;
   const steps = db.prepare('SELECT * FROM action_steps WHERE case_id = ? ORDER BY position, created_at').all(caseId);
   const events = db.prepare('SELECT * FROM action_events WHERE case_id = ? ORDER BY created_at DESC LIMIT 100').all(caseId) as Array<Record<string, unknown>>;
@@ -431,8 +444,9 @@ export function getMemberSecretRecord(householdId: string, memberId: string) {
   return db.prepare('SELECT * FROM household_members WHERE id=? AND household_id=? AND active=1').get(memberId, householdId) as Record<string, unknown> | undefined;
 }
 
+/** Sync bookkeeping only: updated_at stays, because it records user-visible edits. */
 export function markSynced(householdId: string, caseId: string, fingerprint: string | null, error?: string) {
-  db.prepare(`UPDATE action_cases SET paperless_fingerprint=?, sync_status=?, sync_error=?, last_synced_at=CURRENT_TIMESTAMP, updated_at=CURRENT_TIMESTAMP WHERE id=? AND household_id=?`)
+  db.prepare(`UPDATE action_cases SET paperless_fingerprint=?, sync_status=?, sync_error=?, last_synced_at=CURRENT_TIMESTAMP WHERE id=? AND household_id=?`)
     .run(fingerprint, error ? 'error' : 'synced', error || null, caseId, householdId);
 }
 

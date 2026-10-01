@@ -159,3 +159,72 @@ test('only owners and adults decide approvals, and a decision is final', () => {
   fs.rmSync(cwd, { recursive: true, force: true });
   assert.equal(result.status, 0, result.stderr || result.stdout);
 });
+
+test('a done case keeps its done day through edits and scheduled Paperless syncs', () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'tagvico-done-at-test-'));
+  const script = `
+    const documentModel = require(${JSON.stringify(path.join(root, 'dist/models/document.js'))});
+    const actions = require(${JSON.stringify(path.join(root, 'dist/models/actionCenter.js'))});
+    const db = documentModel.getDatabase();
+    const userId = Number(db.prepare('INSERT INTO users (username, password) VALUES (?, ?)').run('owner', 'hash').lastInsertRowid);
+    const workspace = actions.ensureWorkspaceForUser(userId, 'owner');
+    const finished = actions.createCase(workspace.id, workspace.member_id, { paperlessDocumentId: 1, title: 'Pay bill' });
+    actions.updateCase(workspace.id, finished.id, workspace.member_id, { status: 'done' });
+    // Imported as done: no status-change event exists, so updated_at is the only evidence.
+    const imported = actions.createCase(workspace.id, workspace.member_id, { paperlessDocumentId: 2, title: 'Old slip', status: 'done' });
+    // Finished fourteen days ago.
+    const longAgo = '2026-09-17 09:00:00';
+    db.prepare('UPDATE action_events SET created_at = ? WHERE case_id = ?').run(longAgo, finished.id);
+    db.prepare('UPDATE action_cases SET created_at = ?, updated_at = ? WHERE id IN (?, ?)').run(longAgo, longAgo, finished.id, imported.id);
+    // Scheduled passes only touch sync bookkeeping; a later edit touches updated_at.
+    actions.markSynced(workspace.id, finished.id, 'fingerprint');
+    actions.markSynced(workspace.id, imported.id, 'fingerprint');
+    actions.updateCase(workspace.id, finished.id, workspace.member_id, { title: 'Pay bill (paid by card)' });
+    const rows = actions.listCases(workspace.id);
+    const single = actions.getCase(workspace.id, finished.id);
+    const updatedAt = (id) => db.prepare('SELECT updated_at FROM action_cases WHERE id = ?').get(id).updated_at;
+    const output = {
+      rows: rows.map((row) => ({ id: row.id, title: row.title, status: row.status, doneAt: row.doneAt, updatedAt: row.updatedAt, updated_at: row.updated_at })),
+      single: { status: single.status, doneAt: single.doneAt, updatedAt: single.updatedAt },
+      importedUpdatedAt: updatedAt(imported.id),
+      syncOnlyKeepsUpdatedAt: (() => {
+        const before = updatedAt(imported.id);
+        actions.markSynced(workspace.id, imported.id, 'other');
+        return before === updatedAt(imported.id);
+      })()
+    };
+    // Reopened and finished again moves the day.
+    actions.updateCase(workspace.id, finished.id, workspace.member_id, { status: 'open' });
+    output.reopenedDoneAt = actions.getCase(workspace.id, finished.id).doneAt;
+    process.stdout.write('<<' + JSON.stringify(output) + '>>');
+    documentModel.closeDatabase().then(() => process.exit(0));
+  `;
+  const result = spawnSync(process.execPath, ['-e', script], {
+    cwd,
+    encoding: 'utf8',
+    env: { ...process.env, JWT_SECRET: 'test-secret-that-is-long-enough-for-workload', TAGVICO_DATA_DIR: path.join(cwd, 'data') },
+    timeout: 30_000
+  });
+  fs.rmSync(cwd, { recursive: true, force: true });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const output = JSON.parse(result.stdout.slice(result.stdout.indexOf('<<') + 2, result.stdout.lastIndexOf('>>')));
+
+  const mapperSource = fs.readFileSync(path.join(root, 'src/components/inbox/case-mapper.ts'), 'utf8');
+  const { outputText } = ts.transpileModule(mapperSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } });
+  const mapperModule = { exports: {} };
+  new Function('module', 'exports', 'require', outputText)(mapperModule, mapperModule.exports, () => loadDates());
+  const { caseFromRow } = mapperModule.exports;
+
+  // The week cut-off the feed applies (src/components/inbox/load-inbox.ts) must not keep them in "Done this week".
+  const weekAgo = loadDates().addDays(loadDates().zurichToday(new Date('2026-10-01T12:00:00Z')), -7);
+  const mapped = output.rows.map((row) => caseFromRow(row));
+  const paid = mapped.find((item) => item.title.startsWith('Pay bill'));
+  const imported = mapped.find((item) => item.title === 'Old slip');
+  assert.equal(paid.doneAt, '2026-09-17', 'edits and sync passes do not move the done day');
+  assert.ok(paid.doneAt < weekAgo, 'the case has left Done this week');
+  assert.equal(imported.doneAt, '2026-09-17', 'a case created as done falls back to its last real change');
+  assert.equal(output.syncOnlyKeepsUpdatedAt, true);
+  assert.equal(output.importedUpdatedAt, '2026-09-17 09:00:00');
+  assert.equal(caseFromRow(output.single).doneAt, '2026-09-17', 'the single-case API row agrees with the list');
+  assert.equal(output.reopenedDoneAt, null, 'a reopened case has no done day');
+});

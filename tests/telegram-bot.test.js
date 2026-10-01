@@ -326,3 +326,50 @@ test('Compose passes every Telegram setting through with automatic metadata off 
     assert.match(compose, new RegExp(`${name}: \\${'${'}${name}:-${fallback.replace(/[\\[\]]/g, '\\$&')}\\}`));
   }
 });
+
+test('a new bot token starts polling from offset 0 while a restart with the same token keeps its offset', async () => {
+  const service = new telegramBot.TelegramBotService();
+  const original = { ...config.telegram };
+  const offsets = [];
+  let firstPollOfRun = true;
+  service.stopWatchingSettings = () => {};
+  service.handleUpdate = async () => {};
+  service.identifyBot = async () => {};
+  service.call = async (method, body, signal) => {
+    if (method !== 'getUpdates') return undefined;
+    offsets.push(body.offset);
+    if (firstPollOfRun) {
+      firstPollOfRun = false;
+      return [{ update_id: 900 }];
+    }
+    // Long poll: stay open until stop() aborts it.
+    await new Promise((resolve) => signal.addEventListener('abort', resolve, { once: true }));
+    throw new Error('aborted');
+  };
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 20));
+  const restartWith = async (botToken) => {
+    config.telegram.botToken = botToken;
+    firstPollOfRun = true;
+    service.start();
+    await settle();
+    await service.stop();
+  };
+  try {
+    config.telegram.enabled = 'yes';
+    config.telegram.usersJson = JSON.stringify([{ telegramId: '123', paperlessToken: 'alice-token', paperlessUrl: 'http://paperless:8000/api' }]);
+    config.telegram.actionReminders = 'no';
+    await restartWith('111111111:' + 'A'.repeat(35));
+    assert.deepEqual(offsets, [0, 901]);
+
+    offsets.length = 0;
+    await restartWith('111111111:' + 'A'.repeat(35));
+    assert.equal(offsets[0], 901, 'the same bot continues after the last handled update');
+
+    offsets.length = 0;
+    await restartWith('222222222:' + 'B'.repeat(35));
+    assert.equal(offsets[0], 0, 'a different bot must not inherit the old offset');
+  } finally {
+    await service.stop();
+    Object.assign(config.telegram, original);
+  }
+});

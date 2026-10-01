@@ -1,4 +1,5 @@
 import axios from 'axios';
+import crypto from 'node:crypto';
 import { TelegramPaperlessClient, TelegramPaperlessDocument } from './telegramPaperlessClient';
 import { encryptSecret } from './secretBox';
 import {
@@ -116,6 +117,10 @@ class TelegramBotService {
   private users = new Map<string, TelegramUserConfig>();
   private running = false;
   private offset = 0;
+  // Update ids belong to one bot. The offset is kept across stop()/start() for
+  // the same bot and dropped when the token changes, so a new bot's first
+  // updates (whose ids may be lower) are not skipped.
+  private offsetTokenHash = '';
   private pollingController: AbortController | null = null;
   private loopPromise: Promise<void> | null = null;
   private botToken = '';
@@ -257,6 +262,11 @@ class TelegramBotService {
         continue;
       }
       actionCenter.setPaperlessToken(user.householdId, user.memberId, encryptSecret(user.paperlessToken));
+    }
+    const tokenHash = crypto.createHash('sha256').update(this.botToken).digest('hex');
+    if (tokenHash !== this.offsetTokenHash) {
+      this.offset = 0;
+      this.offsetTokenHash = tokenHash;
     }
     this.apiBase = `https://api.telegram.org/bot${this.botToken}`;
     this.running = true;

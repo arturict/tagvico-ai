@@ -32,7 +32,11 @@ export default async function SettingsSectionPage({
   if (Object.hasOwn(legacySettingsSections, section)) redirect(`/settings/${legacySettingsSections[section]}`);
   if (!isSettingsSectionId(section)) notFound();
   if (workspace.role !== 'owner' && section !== 'people') redirect('/settings/people');
-  const initialSettings = await settingsV3Service.getSettings() as SettingsResponse;
+  // Installation settings carry prompts, owner profiles and provider
+  // configuration, so only the owner's page ever fetches or serialises them.
+  const initialSettings = workspace.role === 'owner'
+    ? await settingsV3Service.getSettings() as SettingsResponse
+    : null;
   const members = householdMembersService.listMembers(workspace.householdId);
   const channels = section === 'automation'
     ? {
@@ -42,7 +46,7 @@ export default async function SettingsSectionPage({
     : null;
   return <SettingsWorkspace
     section={section}
-    initialSettings={JSON.parse(JSON.stringify(initialSettings))}
+    initialSettings={initialSettings ? JSON.parse(JSON.stringify(initialSettings)) : null}
     channels={channels ? JSON.parse(JSON.stringify(channels)) : null}
     household={{
       currentMemberId: workspace.memberId,

@@ -85,7 +85,67 @@ class FieldError extends Error {
   }
 }
 
+/**
+ * Installation settings (prompts, owner profiles, provider configuration)
+ * only reach the browser of the owner. Everyone else gets the household
+ * section, which runs on the household props alone.
+ */
 export function SettingsWorkspace({
+  section,
+  initialSettings,
+  channels,
+  household
+}: {
+  section: SettingsSectionId;
+  initialSettings: SettingsResponse | null;
+  channels: Record<ChannelId, ChannelSettingsView> | null;
+  household: HouseholdProps;
+}) {
+  if (!initialSettings) return <MemberSettingsPage household={household} />;
+  return <OwnerSettingsWorkspace
+    section={section}
+    initialSettings={initialSettings}
+    channels={channels}
+    household={household}
+  />;
+}
+
+function MemberSettingsPage({ household }: { household: HouseholdProps }) {
+  const [toast, setToast] = useState<Toast>(null);
+  const toastTimer = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+  }, []);
+  const showMessage = (kind: 'success' | 'error', message: string) => {
+    setToast({ kind, message });
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 5000);
+  };
+  return <div className="settings-page">
+    <header className="settings-page-head">
+      <div>
+        <h1>{settingsSectionTitles.people}</h1>
+        <p>{descriptions.people}</p>
+      </div>
+    </header>
+    <div className="settings-layout">
+      <div className="settings-side">
+        <nav className="settings-nav" aria-label="Settings sections">
+          <Link href="/settings/people" className="is-active" aria-current="page">
+            <UsersRound aria-hidden="true" />
+            <span>{settingsSectionTitles.people}</span>
+          </Link>
+        </nav>
+      </div>
+      <div className="settings-content"><HouseholdSettings {...household} onMessage={showMessage} /></div>
+    </div>
+    {toast ? <div className={`settings-toast is-${toast.kind}`} role={toast.kind === 'error' ? 'alert' : 'status'}>
+      {toast.message}
+    </div> : null}
+  </div>;
+}
+
+function OwnerSettingsWorkspace({
   section,
   initialSettings,
   channels,

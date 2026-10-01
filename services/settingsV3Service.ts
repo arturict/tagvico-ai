@@ -8,6 +8,7 @@ import {
   applyPersistedAiSelection,
   UI_MANAGED_AI_SELECTION_KEY
 } from './managedAiSelection';
+import channelSettingsService from './channelSettingsService';
 import providerDiscoveryService from './providerDiscoveryService';
 import setupService from './setupService';
 
@@ -544,6 +545,8 @@ async function patchSettings(input: unknown) {
         }
       }
     });
+    // The owner's bot entries hold a copy of the installation token.
+    if (patch.PAPERLESS_API_TOKEN) await channelSettingsService.refreshInstallationCredentials();
   }
   return getSettings();
 }

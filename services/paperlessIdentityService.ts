@@ -78,6 +78,36 @@ export async function listPaperlessUsers(url: string, token: string): Promise<Pa
   }
 }
 
-const paperlessIdentityService = { checkPaperlessToken, listPaperlessUsers };
+function instanceKey(url: string): string | null {
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(trimmed);
+    if (!['http:', 'https:'].includes(parsed.protocol)) return null;
+    const path = parsed.pathname.replace(/\/+$/, '').replace(/\/api$/i, '');
+    return `${parsed.protocol}//${parsed.host.toLowerCase()}${path}`;
+  } catch {
+    return null;
+  }
+}
+
+/** Whether two addresses point at the same Paperless instance, ignoring case, a trailing slash and /api. */
+export function samePaperlessInstance(first: string, second: string): boolean {
+  const left = instanceKey(first);
+  return left !== null && left === instanceKey(second);
+}
+
+/**
+ * The token a connection test may use. A token typed into the request always
+ * wins. The saved token is only used for the saved address, so an owner (or a
+ * hijacked owner session) cannot make Tagvico send it to a host of their choice.
+ */
+export function tokenForProbe(requestToken: string | undefined, testedUrl: string, saved: { url: string; token: string }): string {
+  const typed = (requestToken || '').trim();
+  if (typed) return typed;
+  return samePaperlessInstance(testedUrl, saved.url) ? saved.token : '';
+}
+
+const paperlessIdentityService = { checkPaperlessToken, listPaperlessUsers, samePaperlessInstance, tokenForProbe };
 export default paperlessIdentityService;
 module.exports = paperlessIdentityService;

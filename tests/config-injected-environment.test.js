@@ -35,3 +35,27 @@ test('a second copy of the config module keeps the startup set of injected keys'
   assert.equal(output.dockerKey, true);
   fs.rmSync(dataDir, { recursive: true, force: true });
 });
+
+// Compose passes optional settings as empty strings; those must not hide values saved in Settings.
+test('empty Compose placeholders do not shadow saved channel settings', () => {
+  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'tagvico-injected-'));
+  fs.writeFileSync(path.join(dataDir, '.env'), 'TELEGRAM_BOT_ENABLED=yes\nTELEGRAM_BOT_TOKEN=123456:synthetic-token\n');
+  const script = `
+    const config = require('./dist/config/config');
+    console.log(JSON.stringify({
+      enabled: config.telegram.enabled,
+      tokenSet: Boolean(config.telegram.botToken),
+      injected: config.injectedEnvironment.has('TELEGRAM_BOT_ENABLED'),
+      hostWins: process.env.DISCORD_BOT_ENABLED
+    }));`;
+  const env = { ...process.env, TAGVICO_DATA_DIR: dataDir, TELEGRAM_BOT_ENABLED: '', TELEGRAM_BOT_TOKEN: '', DISCORD_BOT_ENABLED: 'no' };
+  fs.appendFileSync(path.join(dataDir, '.env'), 'DISCORD_BOT_ENABLED=yes\n');
+  const result = spawnSync(process.execPath, ['-e', script], { cwd: root, env, encoding: 'utf8' });
+  assert.equal(result.status, 0, result.stderr);
+  const output = JSON.parse(result.stdout.trim().split('\n').pop());
+  assert.equal(output.enabled, 'yes');
+  assert.equal(output.tokenSet, true);
+  assert.equal(output.injected, false);
+  assert.equal(output.hostWins, 'no', 'a non-empty host value still wins over the saved one');
+  fs.rmSync(dataDir, { recursive: true, force: true });
+});
