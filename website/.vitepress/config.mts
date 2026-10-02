@@ -60,6 +60,7 @@ export default defineConfig({
           { text: 'Overview', link: '/' },
           { text: 'Release notes', link: '/release-notes' },
           { text: 'Installation', link: '/installation' },
+          ...(version === 'v3' ? [{ text: 'Setup feedback kit', link: '/setup-feedback' }] : []),
           { text: 'Upgrading', link: '/upgrading' },
           { text: 'Removing Tagvico', link: '/removing' },
         ],

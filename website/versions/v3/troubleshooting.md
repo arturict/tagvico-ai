@@ -15,12 +15,43 @@ health check, and returns `503` on an explicit failure. An `unknown` provider
 result is not a successful connection test; use the **Test connection** actions
 in Settings to verify Paperless and the selected provider.
 
+## Startup and network checks
+
+Before setup, `/health` should return HTTP `200`, `status: "healthy"`,
+`version: "3.5.0"` and `configured: false`. After setup, expect
+`configured: true`. `/api/health` can report an unconfigured provider before
+setup; use `/health` as the startup check.
+
+If port 8080 does not answer, check each layer in order:
+
+1. Run `docker compose config --quiet` to validate the file and interpolation.
+2. Run `docker compose ps -a`. If the service exited or restarts repeatedly,
+   inspect `docker compose logs --tail=100 tagvico-ai` locally.
+3. Test the container directly, bypassing the host port and any reverse proxy:
+
+   ```bash
+   docker compose exec -T tagvico-ai curl --fail --show-error http://127.0.0.1:3000/health
+   ```
+
+4. If the internal check works, run `docker compose port tagvico-ai 3000`
+   and test the published address from the Docker host. A default loopback
+   binding is reachable only on that host. For a remote browser, follow the
+   [remote-server setup instructions](./installation#remote-server-or-nas).
+
+Do not share `docker inspect` or the output of `docker compose config` without
+`--quiet`; both can expose environment credentials. Logs and health responses
+also need review before sharing.
+
 ## Setup returns 403
 
 Remote setup is disabled by default. When the browser is not running on the
-same machine as Tagvico, temporarily set `ALLOW_REMOTE_SETUP=yes`, recreate the
-container, and complete setup. Remove the setting afterward and recreate the
-container again.
+same machine as Tagvico, put `ALLOW_REMOTE_SETUP=yes` in `.env` beside the
+Compose file and make sure the service's `environment` section includes
+`ALLOW_REMOTE_SETUP: "${ALLOW_REMOTE_SETUP:-no}"`. A `.env` value alone does
+not automatically reach the container. Recreate the container with
+`docker compose up -d` and complete setup. Remove the temporary flag afterward
+and recreate it again. See [Remote server or NAS](./installation#remote-server-or-nas)
+for the matching port binding.
 
 ## Paperless connection fails
 
@@ -29,7 +60,39 @@ container again.
 - From a container, `localhost` refers to that container—not the Docker host.
   Use a shared Compose network and the Paperless service name, or a reachable
   host address.
-- Test the exact URL from the Docker host before changing Tagvico settings.
+- Check connectivity from inside Tagvico, because a successful host-side
+  request does not prove container access. This command requests no documents
+  and sends no token; replace the example URL with your Paperless base URL:
+
+  ```bash
+  docker compose exec -T tagvico-ai curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' --connect-timeout 5 --max-time 10 http://paperless-ngx:8000/api/
+  ```
+
+  HTTP `401` or `403` is expected from a protected endpoint without a token
+  and confirms network access only. `000` with a curl error means DNS,
+  connection or TLS failed. An HTML login redirect may be your proxy rather
+  than Paperless. Finish with Tagvico's **Test connection** to check the token
+  and API permissions.
+- Service names resolve only on a shared Docker network. For separate Compose
+  projects, find the network used by Paperless with `docker network ls`, then
+  add it to the Tagvico Compose file. Replace `paperless_default` with the
+  actual existing network name:
+
+  ```yaml
+  services:
+    tagvico-ai:
+      networks:
+        - paperless
+
+  networks:
+    paperless:
+      external: true
+      name: paperless_default
+  ```
+
+  Merge these keys into the [installation example](./installation), keeping
+  its image, volume, environment and ports. Recreate Tagvico afterward. This
+  does not publish Paperless to the internet or start a second Paperless stack.
 
 ## Provider health is degraded
 

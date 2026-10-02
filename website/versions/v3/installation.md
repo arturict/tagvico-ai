@@ -1,12 +1,17 @@
 # Install Tagvico v3
 
-You need Docker Compose, a running Paperless-ngx installation, its base URL,
-and a Paperless API token. Tagvico runs as one container and stores its local
-configuration, admin account, history, and queues in a persistent volume.
+You need Docker Engine or Docker Desktop with the Compose v2 plugin, a running
+Paperless-ngx 2.16.0 or newer installation, its base URL, and a Paperless API
+token. Check `docker version` and `docker compose version` before starting.
+Tagvico runs as one container and stores its local configuration, admin account,
+history, and queues in a persistent volume.
 
 ## 1. Create the Compose file
 
-Create a new directory and save this as `docker-compose.yml`:
+Create a new directory and save this as `docker-compose.yml`. This installs
+Tagvico alongside your existing Paperless. The repository-root Compose file is
+a source-build test stack that also starts Paperless, Postgres and Redis; use
+the release-image example below for a clean install.
 
 ```yaml
 services:
@@ -23,6 +28,7 @@ services:
     environment:
       TAGVICO_AI_PORT: "3000"
       TAGVICO_AI_BIND_ADDRESS: "${TAGVICO_AI_BIND_ADDRESS:-127.0.0.1}"
+      ALLOW_REMOTE_SETUP: "${ALLOW_REMOTE_SETUP:-no}"
       TAGVICO_TELEMETRY_ENDPOINT: "${TAGVICO_TELEMETRY_ENDPOINT:-https://telemetry.tagvico.arturf.ch/v1/heartbeat}"
     volumes:
       - tagvico_ai_data:/app/data
@@ -37,32 +43,37 @@ production install because it makes upgrades and rollback ambiguous.
 ## 2. Start and check the container
 
 ```bash
+docker compose config --quiet
+docker compose pull
 docker compose up -d
 docker compose ps
-curl http://localhost:8080/health
+curl --fail --show-error http://localhost:8080/health
 ```
 
 Open `http://localhost:8080/setup` on the Docker host after the health check
-succeeds.
+succeeds. Expect HTTP `200`, `status: "healthy"`, `version: "3.5.0"`
+and `configured: false` before setup. A container can be running while the
+application is still starting. If the check fails, follow
+[Startup and network checks](./troubleshooting#startup-and-network-checks).
 
 ### Remote server or NAS
 
 The secure default publishes Tagvico only on loopback and accepts initial setup
 only from the same host. To finish setup from another device on a trusted LAN,
-set both values before starting the container:
+create a `.env` file beside `docker-compose.yml` with both values before
+starting the container. The Compose example above passes them into Tagvico:
 
 ```dotenv
 TAGVICO_AI_BIND_ADDRESS=0.0.0.0
 ALLOW_REMOTE_SETUP=yes
 ```
 
-Keep port `8080` behind the server firewall. After setup succeeds, remove
-`ALLOW_REMOTE_SETUP` and run `docker compose up -d` again. Keep the bind-address
+Run `docker compose config --quiet` and `docker compose up -d`, then open
+`http://<server-LAN-address>:8080/setup` on the trusted device. Keep port `8080`
+behind the server firewall. After setup succeeds, remove `ALLOW_REMOTE_SETUP`
+from `.env` and run `docker compose up -d` again. Keep the bind-address
 override only when the signed-in Tagvico application must remain reachable from
 the LAN.
-
-This sanitized capture shows the local admin sign-in presented after setup. It
-contains no credentials, private hostnames, document data, or account details.
 
 The same container also serves the documentation bundled with that release.
 Open `http://localhost:8080/docs/` or the `/documentation` alias. The docs do
@@ -102,8 +113,17 @@ Use the **Test connection** actions in Settings after authentication and before
 processing documents.
 
 If Paperless runs on the Docker host, use `host.docker.internal` on Docker
-Desktop or the host's LAN address on Linux. If both containers share a Docker
-network, use the Paperless Compose service name.
+Desktop or a host LAN address reachable from containers on Linux. If both
+containers share a Docker network, use the Paperless Compose service name.
+Different Compose projects have separate default networks, so a service name
+will not resolve until you explicitly attach Tagvico to the Paperless network.
+See [Paperless connection fails](./troubleshooting#paperless-connection-fails).
+
+After setup, `/health` should report `configured: true`. Run
+`docker compose restart tagvico-ai`, sign in again, and confirm your settings
+remain. A restart keeps the named volume; `docker compose down -v` deletes it.
+Use the [setup feedback kit](./setup-feedback) for a controlled first-use check
+and a short report.
 
 ::: tip Safer first run
 Use **Review first**, enable only a small controlled tag vocabulary, and test
