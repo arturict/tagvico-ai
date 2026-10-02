@@ -149,6 +149,7 @@ services:
     environment:
       TAGVICO_AI_PORT: "3000"
       TAGVICO_AI_BIND_ADDRESS: "${TAGVICO_AI_BIND_ADDRESS:-127.0.0.1}"
+      ALLOW_REMOTE_SETUP: "${ALLOW_REMOTE_SETUP:-no}"
       TAGVICO_TELEMETRY_ENDPOINT: "${TAGVICO_TELEMETRY_ENDPOINT:-https://telemetry.tagvico.arturf.ch/v1/heartbeat}"
     volumes:
       - tagvico_ai_data:/app/data
@@ -162,19 +163,26 @@ container is ready first, run:
 
 ```bash
 docker compose ps
-curl http://localhost:8080/health
+curl --fail --show-error http://localhost:8080/health
 ```
 
 The release-matched documentation is bundled into the same image at
 **<http://localhost:8080/docs>**; `/documentation` is an alias. It does not
 require the separately hosted documentation site.
 
-For a headless NAS or server, explicitly set
-`TAGVICO_AI_BIND_ADDRESS=0.0.0.0` and `ALLOW_REMOTE_SETUP=yes` only while
-completing setup from a trusted LAN browser. Keep port `8080` behind the host
-firewall. After setup succeeds, remove `ALLOW_REMOTE_SETUP` and recreate the
+For a headless NAS or server, create `.env` beside this Compose file with
+`TAGVICO_AI_BIND_ADDRESS=0.0.0.0` and `ALLOW_REMOTE_SETUP=yes`, then run
+`docker compose up -d` and open `http://<server-LAN-address>:8080/setup`.
+Use the remote setup flag only while completing setup from a trusted LAN
+browser. Keep port `8080` behind the host firewall. After setup succeeds, remove `ALLOW_REMOTE_SETUP` and recreate the
 container. Keep the bind-address override only when the signed-in application
 must remain reachable from the LAN.
+
+Follow the [complete clean-install guide](website/versions/v3/installation.md)
+for readiness checks and container networking. The repository-root Compose
+file is a source-build test stack with its own Paperless, Postgres and Redis.
+For a first-use check and a redacted report, use the
+[setup feedback kit](website/versions/v3/setup-feedback.md).
 
 ### Setup in four steps
 

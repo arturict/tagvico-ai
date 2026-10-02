@@ -12,6 +12,7 @@ const docsOrigin = String(process.env.TAGVICO_DOCS_ORIGIN || '').replace(/\/+$/,
 const pageDescriptions = {
   'index.md': 'What Tagvico AI does, its operating modes, and where to start.',
   'installation.md': 'Install the current Tagvico release with Docker Compose or docker run and complete guided setup.',
+  'setup-feedback.md': 'Check a fresh installation with a synthetic document and record five independent setup results.',
   'upgrading.md': 'Back up, upgrade, validate, and roll back a Tagvico installation safely.',
   'removing.md': 'Remove the container, optionally delete local data, and revoke credentials.',
   'features.md': 'Review filing, Action Center, Companion approvals, household access, OCR, and model discovery.',
