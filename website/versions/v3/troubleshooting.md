@@ -118,11 +118,10 @@ Docker. With Ollama in Docker, attach both containers to one network and use
 the Ollama container name, for example `http://ollama:11434`.
 
 Tagvico 3.5.0 can reject a local model during setup with "The selected model
-could not complete a test request" although the model supports tools. Two
-causes were found on 2026-10-04: the check gives up after 15 seconds while
-Ollama is still loading the model on a slow host, and reasoning models such as
-Qwen 3.5 spend the check's small token budget on thinking. Fixes are on the
-main branch for the next release. Until then, run the model once with
+could not complete a test request" although the model supports tools. The
+check gives up after 15 seconds while Ollama is still loading the model on a
+slow host, and reasoning models such as Qwen 3.5 spend the check's small token
+budget on thinking. Both are fixed for the next release. Until then, run the model once with
 `ollama run <model> "hi"` immediately before the check so it is loaded, and
 pick a model whose `ollama show <model>` capabilities list `tools` but not
 `thinking`.

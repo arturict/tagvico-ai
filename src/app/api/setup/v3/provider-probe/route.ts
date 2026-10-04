@@ -115,7 +115,7 @@ export async function POST(request: Request) {
         if (!valid) {
           throw new ApiError(
             400,
-            `The selected model could not complete a test request. Check the model ID, credentials, and runtime URL.${loopbackHint(definition.fields, values)}`
+            `The selected model could not complete a test request. Check the model ID, credentials, and runtime URL.${discoveryError ? loopbackHint(definition.fields, values) : ''}`
           );
         }
       } else {

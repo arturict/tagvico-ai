@@ -5,9 +5,15 @@ const { describePaperlessConnectionError, isLoopbackUrl } = require('../dist/ser
 test('a loopback Paperless address explains that it points at the Tagvico container', () => {
   for (const url of ['http://localhost:8000', 'http://127.0.0.1:8000', 'http://[::1]:8000']) {
     const message = describePaperlessConnectionError('ECONNREFUSED', url);
-    assert.match(message, /Tagvico container itself/);
+    assert.match(message, /If Tagvico runs in Docker, .* is the Tagvico container itself/);
     assert.match(message, /ECONNREFUSED/, 'the raw code stays visible for troubleshooting');
   }
+});
+
+test('a certificate error on localhost is explained as a certificate error', () => {
+  const message = describePaperlessConnectionError('DEPTH_ZERO_SELF_SIGNED_CERT', 'https://localhost:8000');
+  assert.match(message, /certificate/);
+  assert.doesNotMatch(message, /Tagvico container/);
 });
 
 test('an unresolved name distinguishes host.docker.internal from a Compose service name', () => {

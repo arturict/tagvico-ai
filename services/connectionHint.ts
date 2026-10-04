@@ -28,6 +28,8 @@ export function isLoopbackUrl(url: string): boolean {
   return isLoopback(hostnameOf(url));
 }
 
+const LOOPBACK_CONNECTION_CODES = new Set(['ECONNREFUSED', 'ECONNABORTED', 'ETIMEDOUT', 'EHOSTUNREACH']);
+
 const TLS_CODES = new Set([
   'DEPTH_ZERO_SELF_SIGNED_CERT',
   'SELF_SIGNED_CERT_IN_CHAIN',
@@ -41,9 +43,11 @@ const TLS_CODES = new Set([
 export function describePaperlessConnectionError(code: string, url: string): string {
   const hostname = hostnameOf(url);
 
-  if (isLoopback(hostname)) {
-    return `${hostname} points at the Tagvico container itself, not at the Docker host (${code}). ` +
-      'Use the Paperless service name on a shared Docker network, or an address of the Docker host that containers can reach.';
+  // Only a failed connection says anything about where the address leads; a
+  // TLS or reset error on localhost is a real answer from a real server.
+  if (isLoopback(hostname) && LOOPBACK_CONNECTION_CODES.has(code)) {
+    return `Nothing answered at ${hostname} (${code}). If Tagvico runs in Docker, ${hostname} is the Tagvico container itself, not the Docker host: ` +
+      'use the Paperless service name on a shared Docker network, or an address of the Docker host that containers can reach.';
   }
 
   switch (code) {
