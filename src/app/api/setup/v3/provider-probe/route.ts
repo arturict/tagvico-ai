@@ -5,6 +5,7 @@ import { providerInstanceIdSchema, type ModelDescriptor } from '@root/contracts/
 import { supportsCompanionModel } from '@root/services/companionModelService';
 import providerDiscoveryService from '@root/services/providerDiscoveryService';
 import validateProviderSetupModel from '@root/services/providerSetupValidation';
+import { isLoopbackUrl } from '@root/services/connectionHint';
 
 const providerRegistryModule = require('@root/services/providerRegistry');
 const providerRegistry = providerRegistryModule.default || providerRegistryModule;
@@ -42,6 +43,21 @@ function safeDiscoveryError(error: unknown) {
   return status
     ? `The runtime returned ${status}. Check its URL, credentials, and model API compatibility.`
     : 'The runtime could not be reached. Check its URL, credentials, and network access.';
+}
+
+// A runtime URL such as the prefilled http://localhost:11434 fails in Docker
+// because localhost is the Tagvico container. Say so instead of a generic error.
+function loopbackHint(
+  fields: Array<{ key: string; type: string }>,
+  values: Record<string, string>
+) {
+  const loopback = fields
+    .filter((field) => field.type === 'url')
+    .map((field) => values[field.key])
+    .find((value) => value && isLoopbackUrl(value));
+  return loopback
+    ? ` If Tagvico runs in Docker, ${loopback} points at the Tagvico container itself; use the runtime's container name on a shared Docker network or a host address containers can reach.`
+    : '';
 }
 
 function acquireProbeAdmission() {
@@ -99,7 +115,7 @@ export async function POST(request: Request) {
         if (!valid) {
           throw new ApiError(
             400,
-            'The selected model could not complete a test request. Check the model ID, credentials, and runtime URL.'
+            `The selected model could not complete a test request. Check the model ID, credentials, and runtime URL.${discoveryError ? loopbackHint(definition.fields, values) : ''}`
           );
         }
       } else {
@@ -131,7 +147,7 @@ export async function POST(request: Request) {
       const hint = definition.manualModelInput
         ? ' You can enter a model ID manually and check it directly.'
         : '';
-      throw new ApiError(400, `${safeDiscoveryError(discoveryError)}${hint}`);
+      throw new ApiError(400, `${safeDiscoveryError(discoveryError)}${loopbackHint(definition.fields, values)}${hint}`);
     } else if (!models.length) {
       const message = definition.manualModelInput
         ? 'The runtime returned no models. Enter a model ID manually and check it directly.'

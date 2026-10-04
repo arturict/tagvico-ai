@@ -40,6 +40,36 @@ volumes:
 Pin the exact v3 tag you intend to run. Do not use `latest` for a
 production install because it makes upgrades and rollback ambiguous.
 
+### Paperless runs in Docker on the same host
+
+This is the most common setup, and the one where `localhost` does not work:
+inside the Tagvico container, `localhost` is Tagvico itself. Attach Tagvico to
+the Docker network of your Paperless stack instead. Find its name with
+`docker network ls` (Compose names it `<paperless-project>_default`, for
+example `paperless_default`), then add these keys to the file above:
+
+```yaml
+services:
+  tagvico-ai:
+    # keep image, ports, environment and volumes from above
+    networks:
+      - paperless
+
+networks:
+  paperless:
+    external: true
+    name: paperless_default
+```
+
+In setup, the Paperless base URL is then the Paperless service name and its
+container port, usually `http://webserver:8000` (the service name in the
+official Paperless Compose files) or `http://paperless-ngx:8000`. **Scan for
+Paperless** finds it on the shared network. This keeps Paperless private and
+does not change your Paperless stack.
+
+If Paperless is not in Docker, or runs on another machine, use an address of
+that machine that the Tagvico container can reach, such as its LAN address.
+
 ## 2. Start and check the container
 
 ```bash
@@ -47,7 +77,8 @@ docker compose config --quiet
 docker compose pull
 docker compose up -d
 docker compose ps
-curl --fail --show-error http://localhost:8080/health
+# The first start takes a few seconds; retry for up to a minute.
+for i in $(seq 1 30); do curl --fail --silent --show-error http://localhost:8080/health && break; sleep 2; done
 ```
 
 Open `http://localhost:8080/setup` on the Docker host after the health check
@@ -84,7 +115,8 @@ the image you pinned even when the public website changes.
 
 1. Enter the Paperless base URL without `/api`, or use **Scan for Paperless**
    to search the attached networks and fill the field from a found
-   installation. Then paste a Paperless API token. Setup checks the connection
+   installation. The scan lists every Paperless it can reach, so confirm the
+   address is yours. Then paste a Paperless API token. Setup checks the connection
    and the read permissions Tagvico needs before continuing.
 2. Choose a [model provider](./providers). **ChatGPT plan** is listed first and
    lets a ChatGPT Plus or Pro plan pay for filing and chat with **Continue with
@@ -112,12 +144,15 @@ and may report health as unknown rather than making a billable test request.
 Use the **Test connection** actions in Settings after authentication and before
 processing documents.
 
-If Paperless runs on the Docker host, use `host.docker.internal` on Docker
-Desktop or a host LAN address reachable from containers on Linux. If both
-containers share a Docker network, use the Paperless Compose service name.
-Different Compose projects have separate default networks, so a service name
-will not resolve until you explicitly attach Tagvico to the Paperless network.
-See [Paperless connection fails](./troubleshooting#paperless-connection-fails).
+If the Paperless check fails, the error code points at the cause:
+`ECONNREFUSED` for `localhost` or `127.0.0.1` means the address points at the
+Tagvico container itself; `ENOTFOUND` means the name does not resolve from the
+container, for example a service name on another Docker network or
+`host.docker.internal` on Linux. See
+[Paperless in Docker on the same host](#paperless-runs-in-docker-on-the-same-host)
+and [Paperless connection fails](./troubleshooting#paperless-connection-fails).
+On Docker Desktop, `host.docker.internal` reaches a Paperless that is published
+on the host.
 
 After setup, `/health` should report `configured: true`. Run
 `docker compose restart tagvico-ai`, sign in again, and confirm your settings

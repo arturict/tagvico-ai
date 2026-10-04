@@ -34,6 +34,7 @@ const router = express.Router();
 const os = require('node:os');
 const axios = require('axios');
 const { PAPERLESS_ACCEPT, PAPERLESS_API_VERSION, MINIMUM_PAPERLESS_VERSION } = require('../services/paperlessApi');
+const { describePaperlessConnectionError } = require('../services/connectionHint');
 const setupService = require('../services/setupService.js');
 const paperlessService = require('../services/paperlessService.js');
 const { loadThumbnail, normalizeDocumentId } = require('../services/thumbnailHelper');
@@ -114,6 +115,10 @@ const errorCode = (error: unknown): string | undefined => {
   if (typeof error !== 'object' || error === null || !('code' in error)) return undefined;
   const code = error.code;
   return typeof code === 'string' ? code : undefined;
+};
+const paperlessConnectionError = (error: unknown, url: string): string => {
+  const code = errorCode(error);
+  return code ? describePaperlessConnectionError(code, url) : errorMessage(error);
 };
 const firstString = (value: RequestValue | string | string[]): string | undefined =>
   typeof value === 'string' ? value : Array.isArray(value) && typeof value[0] === 'string' ? value[0] : undefined;
@@ -1519,7 +1524,7 @@ router.post('/api/scan/now', async (req: Req, res: Res) => {
   try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
-      console.log(`Setup not completed. Visit http://your-machine-ip:${resolveEnv('TAGVICO_AI_PORT', 'ARCHIVISTA_AI_PORT') || 3000}/setup to complete setup.`);
+      console.log('Setup not completed. Open /setup on the published Tagvico address, for example http://localhost:8080/setup with the documented Compose file.');
       return res.status(409).json({ error: 'Setup is not complete' });
     }
 
@@ -2639,7 +2644,7 @@ async function probePaperlessInstance(baseUrl: string, timeout = 2500, token = '
       requiresAuth
     };
   } catch (error) {
-    return { url, ok: false, error: errorCode(error) || errorMessage(error) };
+    return { url, ok: false, error: paperlessConnectionError(error, url) };
   }
 }
 
@@ -2735,7 +2740,7 @@ async function validatePaperlessTokenPermissions(baseUrl: string, token: string,
         return { success: false, message: `Token check failed at /api/${endpoint}/ with HTTP ${response.status}.` };
       }
     } catch (error) {
-      return { success: false, message: `Token check failed at /api/${endpoint}/: ${errorCode(error) || errorMessage(error)}` };
+      return { success: false, message: `Token check failed at /api/${endpoint}/: ${paperlessConnectionError(error, baseUrl)}` };
     }
   }
 
@@ -2950,7 +2955,7 @@ async function processQueue(customPrompt?: string) {
   try {
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
-      console.log(`Setup not completed. Visit http://your-machine-ip:${resolveEnv('TAGVICO_AI_PORT', 'ARCHIVISTA_AI_PORT') || 3000}/setup to complete setup.`);
+      console.log('Setup not completed. Open /setup on the published Tagvico address, for example http://localhost:8080/setup with the documented Compose file.');
       return;
     }
 

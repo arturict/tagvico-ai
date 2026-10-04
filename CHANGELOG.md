@@ -1,5 +1,33 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **Ollama setup check.** The setup check for a local or cloud Ollama model now
+  sends `think: false`, so reasoning models such as Qwen 3.5 answer with the
+  test tool call instead of spending the token budget on thinking. The check
+  also waits up to two minutes, enough for a cold model load on a CPU-only
+  host, instead of 15 seconds.
+- **Actionable connection errors in setup.** A failed Paperless check no longer
+  shows only a code such as `ECONNREFUSED`. It explains that `localhost`
+  inside the container is Tagvico itself, that `host.docker.internal` needs
+  `host-gateway` on Linux, that a Compose service name needs a shared network,
+  and what timeouts and certificate errors usually mean. The model provider
+  check gives the same `localhost` explanation for runtime URLs such as the
+  prefilled Ollama address.
+- The startup log no longer tells you to open setup on the internal port 3001.
+
+### Documentation
+
+- The installation guide has a step for the most common setup, Paperless in
+  Docker on the same host, with the shared-network snippet, a health check
+  that retries while the container starts, and a note that **Scan for
+  Paperless** can list other instances on the network.
+- Troubleshooting explains the connection error codes, the Ollama `localhost`
+  default in Docker and the 3.5.0 Ollama setup-check issue, and uses a
+  Paperless endpoint that answers `401` for the network check.
+
 ## 3.5.0 - 2026-10-01
 
 ### Added

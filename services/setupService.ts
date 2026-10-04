@@ -12,6 +12,10 @@ const { normalizeProvider } = require('./providerCatalogService');
 
 type SetupConfig = Record<string, string>;
 const SETUP_VALIDATION_TIMEOUT_MS = 15_000;
+// A local Ollama loads the model into memory on the first request after it
+// was pulled or idled out. On CPU-only hosts that alone can take far longer
+// than a hosted API call, so the setup check must not fail on a cold start.
+const OLLAMA_SETUP_VALIDATION_TIMEOUT_MS = 120_000;
 const SETUP_TOOL_NAME = 'confirm_tagvico_tool_support';
 const SETUP_TOOL_REASONING_TOKEN_BUDGET = 2048;
 const SETUP_TOOL_STANDARD_TOKEN_BUDGET = 64;
@@ -307,9 +311,12 @@ class SetupService {
           }
         }],
         stream: false,
+        // Reasoning models such as Qwen 3.5 otherwise spend the whole token
+        // budget in Ollama's `thinking` field and never emit the tool call.
+        think: false,
         options: { num_predict: 32 }
       }, {
-        timeout: SETUP_VALIDATION_TIMEOUT_MS,
+        timeout: OLLAMA_SETUP_VALIDATION_TIMEOUT_MS,
         headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : undefined
       });
       return Boolean(response.data?.message?.tool_calls?.some(

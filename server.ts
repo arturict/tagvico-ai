@@ -780,8 +780,7 @@ async function startScanning() {
 
     const isConfigured = await setupService.isConfigured();
     if (!isConfigured) {
-      const port = resolveEnv('TAGVICO_AI_PORT', 'ARCHIVISTA_AI_PORT') || 3000;
-      console.log(`Setup not completed. Visit http://your-machine-ip:${port}/setup to complete setup.`);
+      console.log('Setup not completed. Open /setup on the published Tagvico address, for example http://localhost:8080/setup with the documented Compose file.');
       return;
     }
 

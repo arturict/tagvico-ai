@@ -42,7 +42,8 @@ test('Ollama setup accepts only a verified tool call from the selected model', a
   assert.equal(captured[1].tools[0].function.name, 'confirm_tagvico_tool_support');
   assert.equal(captured[1].tools[0].function.parameters.additionalProperties, false);
   assert.equal(captured[1].stream, false);
-  assert.equal(captured[2].timeout, 15_000);
+  assert.equal(captured[1].think, false, 'reasoning models must answer with the tool call, not thinking');
+  assert.ok(captured[2].timeout >= 60_000, 'a cold local model load must not fail setup');
   assert.equal(captured[2].headers.Authorization, 'Bearer cloud-token');
 
   axios.post = async () => ({
