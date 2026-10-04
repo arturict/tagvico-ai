@@ -77,7 +77,7 @@ export async function POST(request: Request) {
       ok: false,
       field: instance?.requiresAuth ? 'paperless.token' : 'paperless.baseUrl',
       message: unreachable
-        ? `Could not reach Paperless at ${baseUrl}${detail ? ` (${detail})` : ''}. Check the address from the Tagvico server.`
+        ? `Could not reach Paperless at ${baseUrl}. ${detail || 'Check the address from the Tagvico server.'}`
         : detail || 'Paperless did not accept this token.'
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {

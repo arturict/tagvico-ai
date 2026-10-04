@@ -56,6 +56,14 @@ for the matching port binding.
 ## Paperless connection fails
 
 - Use the Paperless base URL without `/api`.
+- Read the error code in the message. `ECONNREFUSED` on `localhost` or
+  `127.0.0.1`: that address is the Tagvico container. `ENOTFOUND`: the name
+  does not resolve from the container; on Linux `host.docker.internal` needs
+  `extra_hosts: ["host.docker.internal:host-gateway"]` on the Tagvico service.
+  `ECONNABORTED` or `ETIMEDOUT`: a firewall, another network, or Paperless
+  published only on the host loopback address. Certificate codes such as
+  `DEPTH_ZERO_SELF_SIGNED_CERT`: the container does not trust the TLS
+  certificate.
 - Verify the API token in Paperless and use a dedicated token where possible.
 - From a container, `localhost` refers to that container—not the Docker host.
   Use a shared Compose network and the Paperless service name, or a reachable
@@ -65,11 +73,12 @@ for the matching port binding.
   and sends no token; replace the example URL with your Paperless base URL:
 
   ```bash
-  docker compose exec -T tagvico-ai curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' --connect-timeout 5 --max-time 10 http://paperless-ngx:8000/api/
+  docker compose exec -T tagvico-ai curl --silent --show-error --output /dev/null --write-out '%{http_code}\n' --connect-timeout 5 --max-time 10 http://paperless-ngx:8000/api/documents/
   ```
 
-  HTTP `401` or `403` is expected from a protected endpoint without a token
-  and confirms network access only. `000` with a curl error means DNS,
+  HTTP `401` or `403` is expected from this protected endpoint without a token
+  and confirms network access only. The bare `/api/` path answers `302` on
+  current Paperless releases, which also proves the network path. `000` with a curl error means DNS,
   connection or TLS failed. An HTML login redirect may be your proxy rather
   than Paperless. Finish with Tagvico's **Test connection** to check the token
   and API permissions.
@@ -104,6 +113,19 @@ and may change independently of Tagvico.
 For a local Ollama endpoint, confirm the model is pulled and that Ollama listens
 on an address reachable from the Tagvico container. An endpoint bound only to
 the host loopback interface is not normally reachable from another container.
+The prefilled `http://localhost:11434` only works when Tagvico runs outside
+Docker. With Ollama in Docker, attach both containers to one network and use
+the Ollama container name, for example `http://ollama:11434`.
+
+Tagvico 3.5.0 can reject a local model during setup with "The selected model
+could not complete a test request" although the model supports tools. Two
+causes were found on 2026-10-04: the check gives up after 15 seconds while
+Ollama is still loading the model on a slow host, and reasoning models such as
+Qwen 3.5 spend the check's small token budget on thinking. Fixes are on the
+main branch for the next release. Until then, run the model once with
+`ollama run <model> "hi"` immediately before the check so it is loaded, and
+pick a model whose `ollama show <model>` capabilities list `tools` but not
+`thinking`.
 
 ## Documents are not processing
 
