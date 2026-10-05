@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchJson } from '@/lib/client/fetch-json';
+import { keepIfUnchanged } from '@/lib/utils';
 import { SESSIONS_CHANGED_EVENT, parseSessions, type ChatSession } from './chat-sessions';
 
 const SESSIONS_URL = '/api/companion/sessions';
@@ -25,7 +26,7 @@ export function useChatSessions(initial: ChatSession[], refreshKey: string) {
     try {
       const body = await fetchJson<{ sessions?: unknown }>(SESSIONS_URL, { cache: 'no-store' });
       if (request !== latestRequest.current) return;
-      setSessions(parseSessions(body.sessions));
+      setSessions(keepIfUnchanged(parseSessions(body.sessions)));
       setFailed(false);
     } catch {
       // Keep the rows already shown; the list only says so when it has nothing to show.
