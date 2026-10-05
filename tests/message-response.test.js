@@ -58,6 +58,9 @@ test('a reply loads only the plugins its content uses', () => {
   assert.equal(response.pluginKey('```mermaid\ngraph TD; A-->B\n```'), 'code,mermaid');
   assert.equal(response.pluginKey('$$\nE = mc^2\n$$'), 'math');
   assert.equal(response.pluginKey('重要な書類です。'), 'cjk');
+  assert.equal(response.pluginKey('1. Step\n\n   ```bash\n   ls\n   ```'), 'code');
+  assert.equal(response.pluginKey('> ```mermaid\n> graph TD; A-->B\n> ```'), 'code,mermaid');
+  assert.equal(response.pluginKey('Run:\n\n    npm test'), 'code');
 });
 
 test('the server renders the finished Markdown, not the plain-text fallback', async () => {

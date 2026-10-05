@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { MessageResponse } from '@/components/ai-elements/message';
+import { MessageResponse, preloadMessageResponse } from '@/components/ai-elements/message';
 import type {
   ModelDescriptor,
   TagUnificationSuggestion
@@ -99,6 +99,8 @@ export function TagUnification({
   };
 
   useEffect(() => {
+    // The suggestions render as Markdown; load the renderer while they are fetched.
+    preloadMessageResponse();
     void refresh();
   }, []);
 

@@ -20,14 +20,15 @@ const pluginLoaders = {
 
 type PluginName = keyof typeof pluginLoaders;
 
-// The same content tests the plugins themselves react to: fenced code blocks,
-// `mermaid` fences, `$$` math (single-dollar math is off in @streamdown/math)
-// and Chinese, Japanese or Korean script.
+// The content the plugins react to: code blocks (fenced, also inside lists and
+// quotes, or indented), `mermaid` fences, `$$` math (single-dollar math is off
+// in @streamdown/math) and Chinese, Japanese or Korean script. A false positive
+// only loads a plugin the reply did not need.
 const pluginPatterns: Array<[PluginName, RegExp]> = [
-  ["code", /(^|\n) {0,3}(`{3,}|~{3,})/],
+  ["code", /(^|\n)[ \t>]*(`{3,}|~{3,})|(^|\n)( {4,}|\t)\S/],
   ["math", /\$\$/],
-  ["mermaid", /(^|\n) {0,3}(`{3,}|~{3,})\s*mermaid\b/i],
-  ["cjk", /[\u3000-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uff00-\uffef]/],
+  ["mermaid", /(^|\n)[ \t>]*(`{3,}|~{3,})[ \t]*mermaid\b/i],
+  ["cjk", /[\u1100-\u11ff\u2e80-\u2fdf\u3000-\u303f\u3040-\u30ff\u3100-\u31ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uffef]|[\ud840-\ud87f][\udc00-\udfff]/],
 ];
 
 /** The plugins a reply needs, as a stable key such as "code,mermaid". */
@@ -39,33 +40,60 @@ export function pluginKey(markdown: unknown) {
     .join(",");
 }
 
-type Renderer = LazyExoticComponent<ComponentType<MessageResponseProps>>;
-const renderers = new Map<string, Renderer>();
+type RendererComponent = ComponentType<MessageResponseProps>;
 
-// One lazy component per plugin combination, so the server render and the
-// hydrating client wait for the same modules and produce the same markup.
-function rendererFor(key: string): Renderer {
-  const cached = renderers.get(key);
-  if (cached) return cached;
+function PlainText({ className, children }: MessageResponseProps) {
+  return <div className={cn(className, "whitespace-pre-wrap")}>{children}</div>;
+}
+
+// Renderers whose modules finished loading render without suspending, so a
+// reply mounted later (a new answer, another chat) never flashes plain text.
+const loaded = new Map<string, RendererComponent>();
+const loading = new Map<string, Promise<RendererComponent>>();
+
+function loadRenderer(key: string): Promise<RendererComponent> {
+  const pending = loading.get(key);
+  if (pending) return pending;
   const names = key ? (key.split(",") as PluginName[]) : [];
-  const renderer = lazy(async () => {
-    const [{ Streamdown: Markdown }, ...plugins] = await Promise.all([
-      import("streamdown"),
-      ...names.map((name) => pluginLoaders[name]()),
-    ]);
+  const promise = Promise.all([
+    import("streamdown"),
+    ...names.map((name) => pluginLoaders[name]()),
+  ]).then(([{ Streamdown: Markdown }, ...plugins]) => {
     const config = Object.fromEntries(names.map((name, index) => [name, plugins[index]]));
     function StreamdownWithPlugins(props: MessageResponseProps) {
       return <Markdown plugins={config} {...props} />;
     }
-    return { default: StreamdownWithPlugins };
+    loaded.set(key, StreamdownWithPlugins);
+    return StreamdownWithPlugins;
   });
-  renderers.set(key, renderer);
+  loading.set(key, promise);
+  // A chunk can fail to load, for example after an update replaced the files
+  // an open tab refers to. The next reply then tries again.
+  promise.catch(() => loading.delete(key));
+  return promise;
+}
+
+// One lazy component per plugin combination, so the server render and the
+// hydrating client wait for the same modules and produce the same markup.
+const lazyRenderers = new Map<string, LazyExoticComponent<RendererComponent>>();
+
+function lazyRenderer(key: string) {
+  const cached = lazyRenderers.get(key);
+  if (cached) return cached;
+  const renderer = lazy<RendererComponent>(() => loadRenderer(key).then(
+    (component): { default: RendererComponent } => ({ default: component }),
+    () => {
+      lazyRenderers.delete(key);
+      return { default: PlainText };
+    }
+  ));
+  lazyRenderers.set(key, renderer);
   return renderer;
 }
 
-/** Starts loading the renderer before the first reply arrives, for example when the user starts typing. */
+/** Starts loading the renderer before it is needed, for example when the user starts typing. */
 export function preloadMessageResponse() {
-  void import("streamdown");
+  loadRenderer("").catch(() => undefined);
 }
 
 export const MessageResponse = memo(
@@ -73,10 +101,12 @@ export const MessageResponse = memo(
     // While a streaming reply gains a plugin (say, its first code fence), the
     // deferred key keeps the current renderer on screen until the new one loaded.
     const key = useDeferredValue(pluginKey(props.children));
-    const Renderer = rendererFor(key);
+    // A lazy wrapper renders synchronously once resolved; preferring it keeps
+    // the component type stable, so a mounted reply never remounts Streamdown.
+    const Renderer = lazyRenderers.get(key) ?? loaded.get(key) ?? lazyRenderer(key);
     const classes = cn("size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0", className);
     return (
-      <Suspense fallback={<div className={cn(classes, "whitespace-pre-wrap")}>{props.children}</div>}>
+      <Suspense fallback={<PlainText className={classes} {...props} />}>
         <Renderer className={classes} {...props} />
       </Suspense>
     );

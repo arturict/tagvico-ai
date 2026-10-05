@@ -11,7 +11,7 @@ const esbuild = require('esbuild');
 const root = path.resolve(__dirname, '..');
 
 const virtual = {
-  'next/navigation': 'export const useRouter = () => ({ push() {}, refresh() {} });',
+  'next/navigation': 'export const useRouter = () => ({ push() {}, refresh() {} }); export const useSearchParams = () => new URLSearchParams();',
   'next/image': "import React from 'react'; export default function Image(props) { return React.createElement('img', { src: props.src, alt: props.alt }); }",
   '@ai-sdk/react': `export function useChat(options) {
     const override = globalThis.__chat || {};

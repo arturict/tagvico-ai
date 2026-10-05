@@ -8,6 +8,7 @@ import {
   type UIMessage
 } from 'ai';
 import { useChat } from '@ai-sdk/react';
+import { useSearchParams } from 'next/navigation';
 import { ArrowDown, Check, Clipboard } from 'lucide-react';
 import {
   NO_PROVIDER_MESSAGE,
@@ -146,9 +147,12 @@ export function Companion({
 }) {
   const [approvals, setApprovals] = useState(initialApprovals);
   const [input, setInput] = useDraft(sessionId);
+  // Read from the router, not only from props: "New chat" can land on the same
+  // empty conversation, so the props stay equal while the address says ?new=1.
+  const addressChat = useSearchParams().get('chat');
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('chat') !== sessionId) window.history.replaceState(null, '', sessionUrl);
-  }, [sessionId, sessionUrl]);
+    if (addressChat !== sessionId) window.history.replaceState(null, '', sessionUrl);
+  }, [addressChat, sessionId, sessionUrl]);
   const [notice, setNotice] = useState('');
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [decisionBusy, setDecisionBusy] = useState('');
