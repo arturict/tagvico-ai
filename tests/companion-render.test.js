@@ -27,6 +27,7 @@ const virtual = {
     export const Message = ({ from, children }) => h('div', { className: 'group ' + (from === 'user' ? 'is-user' : 'is-assistant') }, children);
     export const MessageContent = ({ children }) => h('div', null, children);
     export const MessageResponse = ({ children }) => h('div', { 'data-markdown': true }, children);
+    export const preloadMessageResponse = () => {};
     export const MessageActions = ({ children }) => h('div', null, children);
     export const MessageAction = ({ children, label }) => h('button', { 'aria-label': label }, children);`
 };

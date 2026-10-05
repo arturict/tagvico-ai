@@ -1,4 +1,3 @@
-import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/server/auth';
 import { actionCenter, workspaceFor } from '@/lib/server/workspace';
 import { getHouseholdNavigation } from '@/lib/server/household-navigation';
@@ -32,15 +31,17 @@ export default async function CompanionPage({
   const requestedSession = requestedSessionId
     ? actionCenter.getSession(workspace.householdId, requestedSessionId) as { member_id?: unknown } | null
     : null;
-  if (!requestedSession || requestedSession.member_id !== workspace.memberId) {
-    // The start page and "New chat" open an empty conversation: the newest
-    // one when it is still empty, otherwise a fresh one. The address then
-    // names the conversation, so a reload keeps it.
-    const newest = sessions[0];
-    const reusable = newest && Number(newest.message_count) === 0 ? newest.id : null;
-    redirect(chatUrl(reusable || actionCenter.createSession(workspace.householdId, workspace.memberId, 'web'), welcome));
-  }
-  const sessionId = requestedSessionId;
+  // The start page and "New chat" open an empty conversation: the newest one
+  // when it is still empty, otherwise a fresh one. It renders right away and
+  // the browser then puts its address in the URL, so a reload keeps it. A
+  // server redirect here would arrive after streaming began and make the
+  // browser load and start the whole page a second time.
+  const newest = sessions[0];
+  const sessionId = requestedSession && requestedSession.member_id === workspace.memberId
+    ? requestedSessionId
+    : newest && Number(newest.message_count) === 0
+      ? newest.id
+      : actionCenter.createSession(workspace.householdId, workspace.memberId, 'web');
   const session = actionCenter.getSession(workspace.householdId, sessionId) as {
     messages?: Array<{
       id: string;
@@ -87,6 +88,7 @@ export default async function CompanionPage({
   return <Companion
     key={sessionId}
     sessionId={sessionId}
+    sessionUrl={chatUrl(sessionId, welcome)}
     displayName={displayName}
     initialMessages={initialMessages}
     initialApprovals={listSessionApprovals(workspace.householdId, sessionId)}
