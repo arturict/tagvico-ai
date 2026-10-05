@@ -7,6 +7,11 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['better-sqlite3'],
   async redirects() {
     return [
+      // The start page is the chat. A page that redirected would answer only after
+      // the loading state started streaming, so the browser would load the app
+      // shell first and follow a client-side redirect. /companion still sends
+      // installs without setup to /setup and signed-out visitors to /login.
+      { source: '/', destination: '/companion', permanent: false },
       { source: '/automation/settings', destination: '/settings/automation', permanent: true },
       { source: '/documentation', destination: '/docs', permanent: true },
       { source: '/documentation/:path*', destination: '/docs/:path*', permanent: true }

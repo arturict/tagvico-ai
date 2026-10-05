@@ -8,6 +8,7 @@ import {
   Activity, LayoutDashboard, Menu, PanelLeftClose, PanelLeftOpen, Stamp, SquarePen, Tags, X
 } from 'lucide-react';
 import { fetchJson } from '@/lib/client/fetch-json';
+import { keepIfUnchanged } from '@/lib/utils';
 import type { HouseholdNavigation } from '@/lib/server/household-navigation';
 import { SidebarContent, type SidebarModel } from '@/components/shell/sidebar-content';
 import { listedSessions, type ChatSession } from '@/components/shell/chat-sessions';
@@ -131,10 +132,10 @@ export function AppNavigationShell({ children, username, workspaceRole, initialW
     const loadCounts = async () => {
       try {
         const counts = await fetchJson<{ failed?: number; ignored?: number }>('/api/navigation/counts');
-        if (active) setRecoveryCounts({
+        if (active) setRecoveryCounts(keepIfUnchanged({
           failed: Number(counts.failed) || 0,
           ignored: Number(counts.ignored) || 0
-        });
+        }));
       } catch {
         // Navigation remains usable when recovery metrics are temporarily unavailable.
       }
@@ -142,7 +143,7 @@ export function AppNavigationShell({ children, username, workspaceRole, initialW
     const loadHousehold = async () => {
       try {
         const next = await fetchJson<HouseholdNavigation>('/api/navigation/household');
-        if (active) setHousehold(next);
+        if (active) setHousehold(keepIfUnchanged<HouseholdNavigation | undefined>(next));
       } catch {
         // The last known household state stays visible when a refresh fails.
       }

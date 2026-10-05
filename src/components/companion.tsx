@@ -8,6 +8,7 @@ import {
   type UIMessage
 } from 'ai';
 import { useChat } from '@ai-sdk/react';
+import { useSearchParams } from 'next/navigation';
 import { ArrowDown, Check, Clipboard } from 'lucide-react';
 import {
   NO_PROVIDER_MESSAGE,
@@ -25,7 +26,8 @@ import {
   MessageAction,
   MessageActions,
   MessageContent,
-  MessageResponse
+  MessageResponse,
+  preloadMessageResponse
 } from '@/components/ai-elements/message';
 import { ChatActivitySummary } from '@/components/chat/chat-activity-summary';
 import { ChatApprovalCard } from '@/components/chat/chat-approval-card';
@@ -112,6 +114,7 @@ function storedActivity(part: UIMessage['parts'][number]): CompanionToolActivity
 
 export function Companion({
   sessionId,
+  sessionUrl,
   displayName,
   initialMessages,
   initialApprovals,
@@ -124,6 +127,8 @@ export function Companion({
   showFirstRun = false
 }: {
   sessionId: string;
+  /** The address that names this conversation; the browser shows it after the start page or "New chat". */
+  sessionUrl: string;
   displayName: string;
   initialMessages: UIMessage[];
   initialApprovals: CompanionApprovalView[];
@@ -142,6 +147,12 @@ export function Companion({
 }) {
   const [approvals, setApprovals] = useState(initialApprovals);
   const [input, setInput] = useDraft(sessionId);
+  // Read from the router, not only from props: "New chat" can land on the same
+  // empty conversation, so the props stay equal while the address says ?new=1.
+  const addressChat = useSearchParams().get('chat');
+  useEffect(() => {
+    if (addressChat !== sessionId) window.history.replaceState(null, '', sessionUrl);
+  }, [addressChat, sessionId, sessionUrl]);
   const [notice, setNotice] = useState('');
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
   const [decisionBusy, setDecisionBusy] = useState('');
@@ -268,6 +279,7 @@ export function Companion({
   const submitText = (text: string) => {
     const normalized = text.trim();
     if (!normalized || status !== 'ready' || modelState === 'none') return;
+    preloadMessageResponse();
     setInput('');
     setNotice('');
     clearError();
@@ -444,7 +456,7 @@ export function Companion({
         /> : null}
         <ChatComposer
           value={input}
-          onChange={setInput}
+          onChange={(value) => { preloadMessageResponse(); setInput(value); }}
           onSubmit={submit}
           onStop={() => void stop()}
           isWorking={isWorking}

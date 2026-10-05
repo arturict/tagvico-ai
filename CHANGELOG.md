@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### Performance
+
+- **The chat opens about twice as fast.** Opening Tagvico or the chat no
+  longer loads the whole app twice: `/` is now a plain redirect, and the start
+  chat renders at once instead of redirecting to its own address after the
+  page had started loading. On a throttled mobile profile the start chat's
+  Total Blocking Time fell by about two thirds and its Largest Contentful Paint
+  by about half.
+- **Less JavaScript in the chat.** The Markdown renderer loads with the first
+  reply, and diagrams (Mermaid), formulas (KaTeX), code highlighting (Shiki)
+  and the CJK plugin load only for a reply that uses them. The start chat ships
+  328 KB of compressed JavaScript instead of 781 KB.
+- The sidebar no longer re-renders when its periodic refresh returns the same
+  chats, counts and household.
+
 ### Fixed
 
 - **Ollama setup check.** The setup check for a local or cloud Ollama model now

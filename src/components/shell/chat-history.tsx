@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRef, useState } from 'react';
 import { Check, Ellipsis, Pencil, Trash2, X } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
+import { preloadMessageResponse } from '@/components/ai-elements/message-response';
 import { chatTitle, groupSessions, type ChatSession } from './chat-sessions';
 
 function errorMessage(error: unknown, fallback: string) {
@@ -87,7 +88,7 @@ function ChatRow({ session, active, onRename, onDelete }: {
   }
 
   return <li className={`chat-row${active ? ' is-active' : ''}`}>
-    <Link href={`/companion?chat=${encodeURIComponent(session.id)}`} className="chat-row-link" aria-current={active ? 'page' : undefined} title={title}>
+    <Link href={`/companion?chat=${encodeURIComponent(session.id)}`} className="chat-row-link" aria-current={active ? 'page' : undefined} title={title} onPointerEnter={preloadMessageResponse} onFocus={preloadMessageResponse} onTouchStart={preloadMessageResponse}>
       <span className="chat-row-title">{title}</span>
     </Link>
     <DropdownMenu.Root>
