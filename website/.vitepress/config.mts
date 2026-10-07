@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitepress';
-import { readdirSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 
 const version = process.env.TAGVICO_DOCS_VERSION || 'v2';
@@ -58,7 +58,9 @@ export default defineConfig({
         text: `${displayVersion(version)} Guide`,
         items: [
           { text: 'Overview', link: '/' },
-          { text: 'Release notes', link: '/release-notes' },
+          ...(existsSync(path.join(versionsRoot, version, 'release-notes.md'))
+            ? [{ text: 'Release notes', link: '/release-notes' }]
+            : []),
           { text: 'Installation', link: '/installation' },
           ...(version === 'v3' ? [{ text: 'Setup feedback kit', link: '/setup-feedback' }] : []),
           { text: 'Upgrading', link: '/upgrading' },
