@@ -57,36 +57,42 @@ jobs:
           fi
           echo "run_full=$run_full" >> "$GITHUB_OUTPUT"
 
+      # Reads the pnpm version from package.json "packageManager"; it must run
+      # before setup-node so the pnpm store cache can be resolved.
+      - name: Set up pnpm
+        if: steps.changes.outputs.run_full == 'true'
+        uses: pnpm/action-setup@v6
+
       - name: Set up Node
         if: steps.changes.outputs.run_full == 'true' && github.event_name != 'push'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      # PR caches are branch-scoped. A single Tagvico npm cache is currently
-      # about 697 MB, so only the default branch writes this cache.
-      - name: Set up Node with default-branch npm cache
+      # PR caches are branch-scoped. A single Tagvico npm cache was about
+      # 697 MB, so only the default branch writes the pnpm store cache.
+      - name: Set up Node with default-branch pnpm cache
         if: steps.changes.outputs.run_full == 'true' && github.event_name == 'push'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install locked dependencies
         if: steps.changes.outputs.run_full == 'true'
-        run: npm ci --no-audit --fund=false
+        run: pnpm install --frozen-lockfile
 
       - name: Run quality checks and unit tests
         if: steps.changes.outputs.run_full == 'true'
-        run: npm test
+        run: pnpm test
 
       - name: Build versioned documentation
         if: steps.changes.outputs.run_full == 'true'
-        run: npm run docs:build
+        run: pnpm docs:build
 
       - name: Audit production dependencies
         if: steps.changes.outputs.run_full == 'true'
-        run: npm audit --omit=dev --audit-level=high
+        run: pnpm audit --prod --audit-level high
 
       - name: Check compiled server syntax
         if: steps.changes.outputs.run_full == 'true'

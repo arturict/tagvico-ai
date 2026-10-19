@@ -89,7 +89,7 @@ test('dashboard loads an available ECharts 5 build', () => {
 });
 
 test('lockfile includes Linux native subscription runtimes for Docker', () => {
-  const lock = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package-lock.json'), 'utf8'));
-  assert.ok(lock.packages['node_modules/@openai/codex-linux-x64']);
-  assert.ok(lock.packages['node_modules/@github/copilot-linux-x64']);
+  const lock = fs.readFileSync(path.join(__dirname, '..', 'pnpm-lock.yaml'), 'utf8');
+  assert.match(lock, /^ {2}'@openai\/codex@[^']+-linux-x64':$/m);
+  assert.match(lock, /^ {2}'@github\/copilot-linux-x64@[^']+':$/m);
 });

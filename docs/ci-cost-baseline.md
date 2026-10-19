@@ -38,9 +38,9 @@ per-repository allowance. See
   `quality` check. Only a small allowlist of non-product repository metadata
   skips Node setup and the full test suite. The workflow itself still runs so
   branch protection receives a successful `quality` result.
-- Pull requests do not write npm caches. A branch-scoped npm cache was about
-  697 MB, while a warm cache saved only tens of seconds. Pushes to `main`
-  retain one useful default-branch cache.
+- Pull requests do not write package caches. A branch-scoped npm cache was
+  about 697 MB, while a warm cache saved only tens of seconds. Pushes to `main`
+  retain one useful default-branch pnpm store cache.
 - Every release still builds and publishes `linux/amd64` and `linux/arm64`.
   The architecture-independent TypeScript, Next.js, and versioned docs build
   runs once on `BUILDPLATFORM`. Production dependencies run on each

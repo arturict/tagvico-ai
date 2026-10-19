@@ -122,7 +122,7 @@ if (command === 'build') {
 } else if (command === 'new-major') {
   const major = Number(requestedVersion);
   if (!Number.isInteger(major) || major < 2) {
-    console.error('Usage: npm run docs:new-major -- <major-number>');
+    console.error('Usage: pnpm docs:new-major <major-number>');
     process.exit(1);
   }
   const target = `v${major}`;
@@ -138,7 +138,7 @@ if (command === 'build') {
   }
   mkdirSync(versionsRoot, { recursive: true });
   cpSync(path.join(versionsRoot, source), targetPath, { recursive: true });
-  console.log(`Created ${target} from ${source}. Update it, then run npm run docs:build.`);
+  console.log(`Created ${target} from ${source}. Update it, then run pnpm docs:build.`);
 } else {
   console.error(`Unknown documentation command: ${command}`);
   process.exit(1);

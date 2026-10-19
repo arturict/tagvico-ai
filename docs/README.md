@@ -18,10 +18,10 @@ directory and served by Coolify at `https://tagvico.arturf.ch/docs/`.
 
 `index.html` is intentionally a single self-contained file with no build step. Edit the markup in place, keep the inline CSS variables in `:root` consistent, and verify the copy buttons still work after changes.
 
-Edit versioned docs in `website/versions/v<major>/`. Use `npm run docs:dev` for
-the v2 authoring server and `npm run docs:build` to rebuild the current site and
+Edit versioned docs in `website/versions/v<major>/`. Use `pnpm docs:dev` for
+the v2 authoring server and `pnpm docs:build` to rebuild the current site and
 all major-version archives. Create a snapshot with
-`npm run docs:new-major -- 3` before starting v3 documentation. The latest
+`pnpm docs:new-major 3` before starting v3 documentation. The latest
 major is built at `/docs/`; immutable archives are built at `/docs/v<major>/`.
 
 ## Updating screenshots

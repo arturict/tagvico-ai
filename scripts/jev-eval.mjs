@@ -1,6 +1,6 @@
 // Feasibility benchmark: can TypeSafe's Jev (a non-generative decision model) file
 // Paperless-style documents from closed vocabularies? Synthetic documents only.
-// Usage: npm run build:backend && TYPESAFE_API_KEY=... node scripts/jev-eval.mjs [--json]
+// Usage: pnpm build:backend && TYPESAFE_API_KEY=... node scripts/jev-eval.mjs [--json]
 if (!process.env.TYPESAFE_API_KEY) throw new Error('TYPESAFE_API_KEY is not set');
 const PRICE_PER_MTOK = 0.042;
 

@@ -421,15 +421,15 @@ If Tagvico saves you filing time, [star it on GitHub](https://github.com/arturic
 ```bash
 git clone https://github.com/arturict/tagvico-ai.git
 cd tagvico-ai
-npm ci
-npm run dev        # web process on 3000
-npm run dev:backend # second terminal, internal backend on 3001
-npm run typecheck
-npm run lint
-npm test
+pnpm install --frozen-lockfile
+pnpm dev            # web process on 3000
+pnpm dev:backend    # second terminal, internal backend on 3001
+pnpm typecheck
+pnpm lint
+pnpm test
 ```
 
-The development server listens on `http://localhost:3000`. The application source is fully typed with strict TypeScript checks; `npm run typecheck` rejects new type debt.
+The development server listens on `http://localhost:3000`. The application source is fully typed with strict TypeScript checks; `pnpm typecheck` rejects new type debt.
 
 ## Contributing
 

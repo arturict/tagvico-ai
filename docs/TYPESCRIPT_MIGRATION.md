@@ -8,19 +8,19 @@ the complete runtime before performing a compiled-server smoke test.
 ## Runtime and build
 
 ```bash
-npm run typecheck
-npm run build
-npm start
+pnpm typecheck
+pnpm build
+pnpm start
 ```
 
-`npm run build` writes CommonJS output to `dist/`; `npm start` and the PM2
+`pnpm build` writes CommonJS output to `dist/`; `pnpm start` and the PM2
 configuration run `dist/server.js`. Static files and views remain in `public/`
 and `views/` and are loaded from the project root.
 
 The file-format migration is complete, but strict typing is still in progress.
 Modules without a suppression are checked with TypeScript's `strict` mode.
 Legacy modules that still need structural typing carry a clearly marked
-`@ts-nocheck` directive. `npm run check:type-debt` prevents that suppression
+`@ts-nocheck` directive. `pnpm check:type-debt` prevents that suppression
 count from increasing; each typing change should reduce it.
 
 ## JavaScript that remains

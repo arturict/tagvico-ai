@@ -66,12 +66,12 @@ propagates Agy's exit status. Verify availability with:
 Before every release, review and update the documentation source in
 `website/versions/v<major>/`, including installation, upgrade, removal,
 features, provider support, privacy notes, and screenshots. Run
-`npm run docs:build` and verify the generated, ignored `docs-site/` output. The
+`pnpm docs:build` and verify the generated, ignored `docs-site/` output. The
 Coolify docs resource builds that output in its container and serves it at
 `https://tagvico.arturf.ch/docs/`.
 
 Before the first release of a new major version, run
-`npm run docs:new-major -- <major>` to snapshot the previous major's source.
+`pnpm docs:new-major <major>` to snapshot the previous major's source.
 Update the new version only; do not rewrite older version directories except to
 fix a dangerous or broken instruction. Rebuild every version so each version
 selector can link to all available majors.

@@ -13,15 +13,19 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
-RUN npm ci --no-audit --fund=false
+# The corepack bundled with Node 22.13 predates npm's 2025 signing-key
+# rotation and rejects current pnpm releases, so update it before enabling.
+# Corepack then installs the pnpm version pinned in package.json.
+RUN npm install -g corepack@0.35.0 && corepack enable
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-RUN npm run build && \
-    npm run docs:build && \
+RUN pnpm build && \
+    pnpm docs:build && \
     node -e 'const fs=require("node:fs");const major="v"+require("./package.json").version.split(".")[0];for(const file of ["docs-site/index.html","docs-site/"+major+"/index.html"]){if(!fs.existsSync(file))throw new Error("Missing bundled docs: "+file)}' && \
     rm -rf .next/cache && \
-    rm -rf node_modules && \
-    npm cache clean --force
+    rm -rf node_modules "$(pnpm store path)"
 
 FROM node:22.13-slim AS production-dependencies
 
@@ -35,9 +39,11 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
-RUN npm ci --omit=dev --no-audit --fund=false && \
-    npm cache clean --force
+RUN npm install -g corepack@0.35.0 && corepack enable
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod && \
+    rm -rf "$(pnpm store path)"
 
 FROM node:22.13-slim AS runtime
 
@@ -51,7 +57,7 @@ RUN apt-get update && \
 
 COPY --from=production-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/package-lock.json ./package-lock.json
+COPY --from=build /app/pnpm-lock.yaml ./pnpm-lock.yaml
 COPY --from=build /app/next.config.ts ./next.config.ts
 COPY --from=build /app/dist ./dist
 # swagger-jsdoc reads these TypeScript sources when the backend starts.

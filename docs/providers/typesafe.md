@@ -155,7 +155,7 @@ is noisier, and results vary slightly between runs. Test 20 to 50 of your own
 documents in **Review first** before enabling automatic writes. Reproduce with:
 
 ```bash
-npm run build:backend
+pnpm build:backend
 TYPESAFE_API_KEY=... node scripts/jev-eval.mjs
 ```
 
