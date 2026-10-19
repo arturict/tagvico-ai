@@ -5,6 +5,7 @@
   "engines": {
     "node": "^20.19.0 || ^22.13.0 || ^24.0.0"
   },
+  "packageManager": "pnpm@10.34.7",
   "main": "dist/server.js",
   "scripts": {
     "start": "node scripts/start-production.js",
@@ -13,15 +14,15 @@
     "auth:copilot": "node scripts/copilot-login.js",
     "benchmark:ollama": "node scripts/benchmark-ollama-models.mjs",
     "dev": "next dev -p 3000",
-    "dev:backend": "npm run build:backend && set TAGVICO_AI_PORT=3001&& nodemon --watch services --watch routes --watch models --watch config --watch server.ts --ext ts,json --exec \"npm run build:backend && node dist/server.js\"",
-    "build": "npm run build:backend && npm run build:web",
+    "dev:backend": "pnpm run build:backend && set TAGVICO_AI_PORT=3001&& nodemon --watch services --watch routes --watch models --watch config --watch server.ts --ext ts,json --exec \"pnpm run build:backend && node dist/server.js\"",
+    "build": "pnpm run build:backend && pnpm run build:web",
     "build:backend": "tsc -p tsconfig.backend.json",
     "build:web": "node scripts/build-web.js",
-    "test": "npm run check && npm run test:unit",
-    "test:unit": "npm run build && node scripts/run-tests.js",
+    "test": "pnpm run check && pnpm run test:unit",
+    "test:unit": "pnpm run build && node scripts/run-tests.js",
     "test:release-acceptance": "node scripts/release-acceptance.mjs",
     "test:release-acceptance:local": "node scripts/run-release-acceptance-local.mjs",
-    "check": "npm run typecheck && npm run lint && npm run check:type-debt && npm run check:branding && npm run check:ejs && npm run check:browser && npm run check:settings-architecture",
+    "check": "pnpm run typecheck && pnpm run lint && pnpm run check:type-debt && pnpm run check:branding && pnpm run check:ejs && pnpm run check:browser && pnpm run check:settings-architecture",
     "check:browser": "node --check public/js/app-shell.js",
     "check:settings-architecture": "node scripts/check-settings-architecture.js",
     "docs:build": "node scripts/docs.mjs build",
@@ -31,7 +32,7 @@
     "check:branding": "node scripts/check-brand-debt.js",
     "check:ejs": "node scripts/check-ejs.js",
     "check:type-debt": "node scripts/check-type-debt.js",
-    "typecheck": "npm run typecheck:backend && npm run typecheck:web",
+    "typecheck": "pnpm run typecheck:backend && pnpm run typecheck:web",
     "typecheck:backend": "tsc -p tsconfig.backend.json --noEmit",
     "typecheck:web": "tsc -p tsconfig.json --noEmit",
     "lint": "eslint eslint.config.mjs"
@@ -65,7 +66,9 @@
     "@ai-sdk/openai-compatible": "2.0.62",
     "@ai-sdk/react": "3.0.232",
     "@anthropic-ai/sdk": "^0.109.0",
+    "@github/copilot": "^1.0.69",
     "@github/copilot-sdk": "^1.0.6",
+    "@openai/codex": "0.144.1",
     "@openai/codex-sdk": "^0.144.1",
     "@streamdown/cjk": "^1.0.3",
     "@streamdown/code": "^1.1.1",
@@ -112,6 +115,7 @@
     "@types/node": "^22.13.10",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "esbuild": "^0.25.12",
     "eslint": "^9.22.0",
     "eslint-config-next": "16.2.11",
     "eslint-config-prettier": "^10.1.1",
@@ -120,6 +124,7 @@
     "nodemon": "^3.1.9",
     "postcss": "8.5.25",
     "prettier": "^3.5.3",
+    "sharp": "0.35.5",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.62.1",
     "vitepress": "^1.6.4"
@@ -127,18 +132,19 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@scarf/scarf",
-      "better-sqlite3"
-    ]
-  },
-  "overrides": {
-    "postcss": "8.5.25",
-    "brace-expansion@^5.0.0": "5.0.12",
-    "fast-uri@^3.0.0": "3.1.8",
-    "undici@^6.0.0": "6.28.1",
-    "sharp": "0.35.5",
-    "vite": "6.4.3",
-    "js-yaml": "4.3.2",
-    "qs": "6.16.0",
-    "dompurify": "3.4.16"
+      "better-sqlite3",
+      "esbuild"
+    ],
+    "overrides": {
+      "postcss": "8.5.25",
+      "brace-expansion@^5.0.0": "5.0.12",
+      "fast-uri@^3.0.0": "3.1.8",
+      "undici@^6.0.0": "6.28.1",
+      "sharp": "0.35.5",
+      "vite": "6.4.3",
+      "js-yaml": "4.3.2",
+      "qs": "6.16.0",
+      "dompurify": "3.4.16"
+    }
   }
 }

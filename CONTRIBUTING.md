@@ -1,14 +1,14 @@
 ## Contributing
 
-Tagvico AI requires Node.js 22 and npm. Before starting substantial work, open
+Tagvico AI requires Node.js 22 and pnpm 10 (`corepack enable` picks the version pinned in `package.json`). Before starting substantial work, open
 an issue or comment on an existing one so that implementation direction can be
 agreed without duplicating effort.
 
 1. Fork the repository and create a focused branch.
-2. Install the locked dependencies with `npm ci`.
+2. Install the locked dependencies with `pnpm install --frozen-lockfile`.
 3. Make the smallest change that addresses the issue and add regression tests
    for behavior changes.
-4. Run `npm test`, which performs type checking, linting, repository policy
+4. Run `pnpm test`, which performs type checking, linting, repository policy
    checks, a production build, and the unit-test suite.
 5. Open a pull request using the repository template and explain how the change
    was verified.

@@ -10,7 +10,7 @@ const root = path.resolve(__dirname, '..');
 test('the production image builds and verifies bundled versioned docs', () => {
   const dockerfile = fs.readFileSync(path.join(root, 'Dockerfile'), 'utf8');
   assert.match(dockerfile, /apt-get install[\s\S]*\bgit\b/);
-  assert.match(dockerfile, /npm run docs:build/);
+  assert.match(dockerfile, /pnpm docs:build/);
   assert.match(dockerfile, /docs-site\/index\.html/);
   assert.match(dockerfile, /require\("\.\/package\.json"\)\.version\.split\("\."\)\[0\]/);
   assert.match(dockerfile, /"docs-site\/"\+major\+"\/index\.html"/);
