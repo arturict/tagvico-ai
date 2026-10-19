@@ -115,6 +115,7 @@
     "@types/node": "^22.13.10",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "esbuild": "^0.25.12",
     "eslint": "^9.22.0",
     "eslint-config-next": "16.2.11",
     "eslint-config-prettier": "^10.1.1",
@@ -123,6 +124,7 @@
     "nodemon": "^3.1.9",
     "postcss": "8.5.25",
     "prettier": "^3.5.3",
+    "sharp": "0.35.5",
     "typescript": "^5.8.2",
     "typescript-eslint": "^8.62.1",
     "vitepress": "^1.6.4"
@@ -130,7 +132,8 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "@scarf/scarf",
-      "better-sqlite3"
+      "better-sqlite3",
+      "esbuild"
     ],
     "overrides": {
       "postcss": "8.5.25",
